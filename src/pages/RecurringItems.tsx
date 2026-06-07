@@ -5,7 +5,7 @@ import {
   updateRecurringItem,
   deleteRecurringItem,
 } from '../hooks/useRecurringItems'
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../lib/constants'
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
 import type { RecurringItem } from '../types'
 
 const emptyForm = {
@@ -17,6 +17,7 @@ const emptyForm = {
   end_date: '',
   payee: '',
   execution_type: 'automatic' as 'automatic' | 'requires_approval',
+  payment_method: '',
 }
 
 function formatAmount(n: number) {
@@ -54,6 +55,7 @@ export default function RecurringItems() {
       end_date: item.end_date ?? '',
       payee: item.payee ?? '',
       execution_type: item.execution_type,
+      payment_method: item.payment_method ?? '',
     })
     setEditingId(item.id)
     setFormError(null)
@@ -91,6 +93,7 @@ export default function RecurringItems() {
       end_date: form.end_date || null,
       payee: form.payee || null,
       execution_type: form.execution_type,
+      payment_method: form.payment_method || null,
       contract_id: null,
       renewal_alert_days: [90, 30],
     }
@@ -196,6 +199,14 @@ export default function RecurringItems() {
                 </div>
               </div>
 
+              <div className="form-row">
+                <label htmlFor="ri-payment">אמצעי תשלום</label>
+                <select id="ri-payment" value={form.payment_method}
+                  onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
+                  {PAYMENT_METHODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </div>
+
               {formError && <div className="form-error">{formError}</div>}
               <div className="form-actions">
                 <button type="button" className="btn-secondary" onClick={closeForm}>ביטול</button>
@@ -257,6 +268,7 @@ function RecurringSection({
               <th>מקבל / משלם</th>
               <th>סכום</th>
               <th>יום</th>
+              <th>אמצעי תשלום</th>
               <th>ביצוע</th>
               <th>תוקף</th>
               <th></th>
@@ -271,6 +283,11 @@ function RecurringSection({
                   {formatAmount(Number(item.amount))}
                 </td>
                 <td>{item.day_of_month}</td>
+                <td className="text-muted">
+                  {item.payment_method
+                    ? PAYMENT_METHODS.find(p => p.value === item.payment_method)?.label ?? '—'
+                    : '—'}
+                </td>
                 <td>
                   <span className={`badge ${item.execution_type}`}>
                     {EXECUTION_LABELS[item.execution_type]}

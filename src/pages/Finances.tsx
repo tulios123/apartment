@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
   useTransactions,
   createTransaction,
   updateTransaction,
   deleteTransaction,
 } from '../hooks/useTransactions'
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../lib/constants'
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
+import { uploadReceipt, getReceiptSignedUrl } from '../lib/storage'
+import { supabase } from '../lib/supabase'
+import { OWNER_ID } from '../lib/constants'
 import type { Transaction } from '../types'
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -31,6 +34,7 @@ const emptyForm = {
   date: new Date().toISOString().slice(0, 10),
   category: INCOME_CATEGORIES[0],
   description: '',
+  payment_method: '',
 }
 
 function formatAmount(amount: number) {
@@ -41,6 +45,10 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString('he-IL')
 }
 
+const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(
+  PAYMENT_METHODS.filter(p => p.value).map(p => [p.value, p.label])
+)
+
 export default function Finances() {
   const [year, setYear] = useState<number | undefined>(CURRENT_YEAR)
   const [month, setMonth] = useState<number | undefined>(new Date().getMonth() + 1)
@@ -49,8 +57,10 @@ export default function Finances() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const totalIncome = transactions
     .filter(t => t.direction === 'income')
@@ -62,6 +72,7 @@ export default function Finances() {
 
   function openNew() {
     setForm(emptyForm)
+    setReceiptFile(null)
     setEditingId(null)
     setFormError(null)
     setShowForm(true)
@@ -74,7 +85,9 @@ export default function Finances() {
       date: t.date,
       category: t.category,
       description: t.description ?? '',
+      payment_method: t.payment_method ?? '',
     })
+    setReceiptFile(null)
     setEditingId(t.id)
     setFormError(null)
     setShowForm(true)
@@ -83,6 +96,7 @@ export default function Finances() {
   function closeForm() {
     setShowForm(false)
     setEditingId(null)
+    setReceiptFile(null)
   }
 
   function handleDirectionChange(dir: 'income' | 'expense') {
@@ -102,26 +116,54 @@ export default function Finances() {
     setSaving(true)
     setFormError(null)
 
-    const payload = {
-      direction: form.direction,
-      amount: Number(form.amount),
-      date: form.date,
-      category: form.category,
-      description: form.description || null,
-      contract_id: null,
-      recurring_item_id: null,
-      document_id: null,
-    }
+    try {
+      const payload: Partial<Transaction> = {
+        direction: form.direction,
+        amount: Number(form.amount),
+        date: form.date,
+        category: form.category,
+        description: form.description || null,
+        payment_method: form.payment_method || null,
+        contract_id: null,
+        recurring_item_id: null,
+      }
 
-    const { error } = editingId
-      ? await updateTransaction(editingId, payload)
-      : await createTransaction(payload)
+      let txId = editingId
 
-    if (error) {
-      setFormError(error.message)
-    } else {
+      if (editingId) {
+        await updateTransaction(editingId, payload)
+      } else {
+        const { data, error } = await createTransaction(payload as Omit<Transaction, 'id' | 'owner_id' | 'created_at'>)
+        if (error) throw new Error(error.message)
+        txId = (data as Transaction[])?.[0]?.id ?? null
+      }
+
+      // Upload receipt if provided
+      if (receiptFile && txId) {
+        const storagePath = await uploadReceipt(receiptFile, txId)
+        // Save document record and link to transaction
+        const { data: docData } = await supabase
+          .from('documents')
+          .insert({
+            owner_id: OWNER_ID,
+            transaction_id: txId,
+            type: 'receipt',
+            name: receiptFile.name,
+            storage_path: storagePath,
+            date: form.date,
+          })
+          .select('id')
+          .single()
+
+        if (docData?.id) {
+          await updateTransaction(txId, { document_id: docData.id })
+        }
+      }
+
       closeForm()
       refetch()
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'שגיאה בשמירה')
     }
     setSaving(false)
   }
@@ -130,6 +172,18 @@ export default function Finances() {
     if (!confirm('למחוק תנועה זו?')) return
     await deleteTransaction(id)
     refetch()
+  }
+
+  async function openReceipt(t: Transaction) {
+    if (!t.document_id) return
+    const { data } = await supabase
+      .from('documents')
+      .select('storage_path')
+      .eq('id', t.document_id)
+      .single()
+    if (!data) return
+    const url = await getReceiptSignedUrl(data.storage_path)
+    window.open(url, '_blank')
   }
 
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
@@ -141,7 +195,6 @@ export default function Finances() {
         <button className="btn-primary" onClick={openNew}>+ תנועה חדשה</button>
       </div>
 
-      {/* Filters */}
       <div className="filters">
         <select value={year ?? ''} onChange={e => setYear(e.target.value ? Number(e.target.value) : undefined)}>
           <option value="">כל השנים</option>
@@ -153,7 +206,6 @@ export default function Finances() {
         </select>
       </div>
 
-      {/* Summary */}
       <div className="summary-cards">
         <div className="summary-card income">
           <div className="summary-label">הכנסות</div>
@@ -171,7 +223,6 @@ export default function Finances() {
         </div>
       </div>
 
-      {/* Form modal */}
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -183,67 +234,75 @@ export default function Finances() {
               <div className="form-row">
                 <label>סוג</label>
                 <div className="toggle-group">
-                  <button
-                    type="button"
+                  <button type="button"
                     className={`toggle-btn ${form.direction === 'income' ? 'active' : ''}`}
-                    onClick={() => handleDirectionChange('income')}
-                  >הכנסה</button>
-                  <button
-                    type="button"
+                    onClick={() => handleDirectionChange('income')}>הכנסה</button>
+                  <button type="button"
                     className={`toggle-btn ${form.direction === 'expense' ? 'active' : ''}`}
-                    onClick={() => handleDirectionChange('expense')}
-                  >הוצאה</button>
+                    onClick={() => handleDirectionChange('expense')}>הוצאה</button>
                 </div>
               </div>
 
               <div className="form-row">
                 <label htmlFor="amount">סכום (₪)</label>
-                <input
-                  id="amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                <input id="amount" type="number" min="0" step="0.01"
                   value={form.amount}
-                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                  required
-                />
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
               </div>
 
               <div className="form-row">
                 <label htmlFor="date">תאריך</label>
-                <input
-                  id="date"
-                  type="date"
-                  value={form.date}
-                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  required
-                />
+                <input id="date" type="date" value={form.date}
+                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
               </div>
 
               <div className="form-row">
                 <label htmlFor="category">קטגוריה</label>
-                <select
-                  id="category"
-                  value={form.category}
-                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                >
+                <select id="category" value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
 
               <div className="form-row">
+                <label htmlFor="payment_method">אמצעי תשלום</label>
+                <select id="payment_method" value={form.payment_method}
+                  onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
+                  {PAYMENT_METHODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </div>
+
+              <div className="form-row">
                 <label htmlFor="description">תיאור</label>
-                <input
-                  id="description"
-                  type="text"
-                  value={form.description}
+                <input id="description" type="text" value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="אופציונלי"
-                />
+                  placeholder="אופציונלי" />
+              </div>
+
+              <div className="form-row">
+                <label>קבלה</label>
+                <div className="file-upload">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    style={{ display: 'none' }}
+                    onChange={e => setReceiptFile(e.target.files?.[0] ?? null)}
+                  />
+                  <button type="button" className="btn-secondary"
+                    onClick={() => fileInputRef.current?.click()}>
+                    {receiptFile ? receiptFile.name : 'בחר קובץ'}
+                  </button>
+                  {receiptFile && (
+                    <button type="button" className="btn-icon"
+                      onClick={() => { setReceiptFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}>
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
 
               {formError && <div className="form-error">{formError}</div>}
-
               <div className="form-actions">
                 <button type="button" className="btn-secondary" onClick={closeForm}>ביטול</button>
                 <button type="submit" className="btn-primary" disabled={saving}>
@@ -255,7 +314,6 @@ export default function Finances() {
         </div>
       )}
 
-      {/* Transaction list */}
       {loading && <div className="empty-state">טוען...</div>}
       {error && <div className="form-error">{error}</div>}
       {!loading && !error && transactions.length === 0 && (
@@ -269,6 +327,7 @@ export default function Finances() {
                 <th>תאריך</th>
                 <th>קטגוריה</th>
                 <th>תיאור</th>
+                <th>אמצעי תשלום</th>
                 <th>סכום</th>
                 <th></th>
               </tr>
@@ -279,10 +338,14 @@ export default function Finances() {
                   <td>{formatDate(t.date)}</td>
                   <td>{t.category}</td>
                   <td className="text-muted">{t.description ?? '—'}</td>
+                  <td className="text-muted">{t.payment_method ? PAYMENT_LABEL[t.payment_method] : '—'}</td>
                   <td className={`amount ${t.direction}`}>
                     {t.direction === 'income' ? '+' : '-'}{formatAmount(Number(t.amount))}
                   </td>
                   <td className="row-actions">
+                    {t.document_id && (
+                      <button className="btn-icon" title="קבלה" onClick={() => openReceipt(t)}>🧾</button>
+                    )}
                     <button className="btn-icon" onClick={() => openEdit(t)}>✏️</button>
                     <button className="btn-icon danger" onClick={() => handleDelete(t.id)}>🗑</button>
                   </td>

@@ -371,6 +371,13 @@ body {
   color: #854d0e;
 }
 
+/* File upload */
+.file-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Mobile: bottom nav */
 @media (max-width: 640px) {
   .sidebar {

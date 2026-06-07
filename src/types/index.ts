@@ -3,6 +3,7 @@ export type ExecutionType = 'automatic' | 'requires_approval'
 export type TaskStatus = 'open' | 'done'
 export type TaskSource = 'manual' | 'recurring_item' | 'renewal'
 export type DocumentType = 'purchase_contract' | 'property_photos' | 'rental_contract' | 'insurance_policy' | 'receipt' | 'invoice' | 'other'
+export type PaymentMethod = 'bit' | 'cash' | 'check' | 'bank_transfer' | 'standing_order'
 
 export interface Owner {
   id: string
@@ -44,6 +45,7 @@ export interface RecurringItem {
   end_date: string | null
   payee: string | null
   execution_type: ExecutionType
+  payment_method: string | null
   renewal_alert_days: number[]
   created_at: string
 }
@@ -59,6 +61,7 @@ export interface Transaction {
   date: string
   category: string
   description: string | null
+  payment_method: string | null
   created_at: string
 }
 
