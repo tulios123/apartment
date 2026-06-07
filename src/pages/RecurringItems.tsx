@@ -5,13 +5,13 @@ import {
   updateRecurringItem,
   deleteRecurringItem,
 } from '../hooks/useRecurringItems'
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
+import { RECURRING_INCOME_CATEGORIES, RECURRING_EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
 import type { RecurringItem } from '../types'
 
 const emptyForm = {
   direction: 'expense' as 'income' | 'expense',
   amount: '',
-  category: EXPENSE_CATEGORIES[0],
+  category: RECURRING_EXPENSE_CATEGORIES[0],
   day_of_month: '1',
   start_date: new Date().toISOString().slice(0, 10),
   end_date: '',
@@ -71,7 +71,7 @@ export default function RecurringItems() {
     setForm(f => ({
       ...f,
       direction: dir,
-      category: dir === 'income' ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0],
+      category: dir === 'income' ? RECURRING_INCOME_CATEGORIES[0] : RECURRING_EXPENSE_CATEGORIES[0],
     }))
   }
 
@@ -117,7 +117,7 @@ export default function RecurringItems() {
     refetch()
   }
 
-  const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const categories = form.direction === 'income' ? RECURRING_INCOME_CATEGORIES : RECURRING_EXPENSE_CATEGORIES
 
   return (
     <div className="page">
