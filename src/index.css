@@ -334,6 +334,43 @@ body {
   font-size: 15px;
 }
 
+.empty-state.small {
+  padding: 20px 0;
+  font-size: 14px;
+}
+
+/* Sections */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.badge.automatic {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badge.requires_approval {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
 /* Mobile: bottom nav */
 @media (max-width: 640px) {
   .sidebar {
