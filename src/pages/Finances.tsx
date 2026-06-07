@@ -131,11 +131,12 @@ export default function Finances() {
       let txId = editingId
 
       if (editingId) {
-        await updateTransaction(editingId, payload)
+        const { error } = await updateTransaction(editingId, payload)
+        if (error) throw new Error(error.message)
       } else {
         const { data, error } = await createTransaction(payload as Omit<Transaction, 'id' | 'owner_id' | 'created_at'>)
         if (error) throw new Error(error.message)
-        txId = (data as Transaction[])?.[0]?.id ?? null
+        txId = (data as Transaction)?.id ?? null
       }
 
       // Upload receipt if provided
@@ -344,7 +345,11 @@ export default function Finances() {
                   </td>
                   <td className="row-actions">
                     {t.document_id && (
-                      <button className="btn-icon" title="קבלה" onClick={() => openReceipt(t)}>🧾</button>
+                      <button className="btn-icon receipt-btn" title="פתח קבלה" onClick={() => openReceipt(t)}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                        </svg>
+                      </button>
                     )}
                     <button className="btn-icon" onClick={() => openEdit(t)}>✏️</button>
                     <button className="btn-icon danger" onClick={() => handleDelete(t.id)}>🗑</button>

@@ -49,7 +49,11 @@ export function useTransactions(filters: Filters = {}) {
 export async function createTransaction(
   data: Omit<Transaction, 'id' | 'owner_id' | 'created_at'>
 ) {
-  return supabase.from('transactions').insert({ ...data, owner_id: OWNER_ID })
+  return supabase
+    .from('transactions')
+    .insert({ ...data, owner_id: OWNER_ID })
+    .select()
+    .single()
 }
 
 export async function updateTransaction(

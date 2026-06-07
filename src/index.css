@@ -147,6 +147,8 @@ body {
 
 .btn-icon:hover { background: var(--bg); }
 .btn-icon.danger:hover { color: var(--danger); }
+.btn-icon.receipt-btn { color: var(--accent); }
+.btn-icon.receipt-btn:hover { background: var(--accent-light); }
 
 /* Filters */
 .filters {
