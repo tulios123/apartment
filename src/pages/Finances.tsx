@@ -9,6 +9,7 @@ import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/c
 import { uploadReceipt, getReceiptSignedUrl } from '../lib/storage'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { formatCurrency, formatDate } from '../lib/format'
 import type { Transaction } from '../types'
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -38,11 +39,7 @@ const emptyForm = {
 }
 
 function formatAmount(amount: number) {
-  return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(amount)
-}
-
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('he-IL')
+  return formatCurrency(amount)
 }
 
 const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(

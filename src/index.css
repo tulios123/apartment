@@ -373,28 +373,400 @@ body {
   color: #854d0e;
 }
 
-/* Tasks */
-.task-checkbox {
-  width: 16px;
-  height: 16px;
+/* Dashboard */
+.dashboard-page .summary-cards {
+  margin-bottom: 24px;
+}
+
+.dashboard-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 700px;
+}
+
+.dashboard-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+.dashboard-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.dashboard-section-header h2 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
   cursor: pointer;
-  accent-color: var(--accent);
-}
-
-.task-done td {
-  opacity: 0.45;
-  text-decoration: line-through;
-}
-
-.task-done td:first-child,
-.task-done td:last-child {
+  padding: 0;
   text-decoration: none;
+}
+
+.btn-link:hover { text-decoration: underline; }
+
+/* Dashboard task list */
+.dashboard-task-list,
+.dashboard-tx-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-task-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  gap: 8px;
+}
+
+.dashboard-task-item:last-child { border-bottom: none; }
+
+.dashboard-task-item.overdue .dashboard-task-title { color: var(--danger); }
+
+.dashboard-task-title {
+  font-size: 14px;
+  flex: 1;
+}
+
+.dashboard-task-due {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.dashboard-task-item.overdue .dashboard-task-due { color: var(--danger); }
+
+/* Dashboard transactions list */
+.dashboard-tx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dashboard-tx-item:last-child { border-bottom: none; }
+
+.dashboard-tx-date {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 64px;
+}
+
+.dashboard-tx-cat {
+  flex: 1;
+  color: var(--text);
+}
+
+.dashboard-tx-amount {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-tx-amount.positive { color: var(--success); }
+.dashboard-tx-amount.negative { color: var(--danger); }
+
+/* Documents */
+.docs-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 700px;
+}
+
+.doc-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.doc-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.doc-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-name {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.doc-type-badge {
+  font-size: 12px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-weight: 500;
+}
+
+.doc-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.doc-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Tasks — Google Tasks style */
+.tasks-page .page-header {
+  align-items: center;
+}
+
+.gtasks-list {
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+}
+
+.gtask-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  cursor: default;
+  transition: background 0.1s;
+  position: relative;
+}
+
+.gtask-item:hover {
+  background: var(--bg);
+}
+
+.gtask-item:hover .gtask-delete {
   opacity: 1;
 }
 
-.task-overdue {
+.gtask-check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  transition: border-color 0.15s, background 0.15s;
+  color: white;
+}
+
+.gtask-check:hover {
+  border-color: var(--accent);
+}
+
+.gtask-check.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.gtask-check svg {
+  width: 11px;
+  height: 11px;
+}
+
+.gtask-body {
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.gtask-title {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.gtask-done .gtask-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.gtask-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.gtask-due {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.gtask-due.overdue {
   color: var(--danger);
-  font-weight: 500;
+}
+
+.gtask-cat {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.gtask-cat::before {
+  content: '·';
+  margin-left: 4px;
+}
+
+.gtask-source-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.gtask-delete {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  color: var(--text-muted);
+  transition: background 0.1s, color 0.1s, opacity 0.1s;
+}
+
+.gtask-delete:hover {
+  background: #fee2e2;
+  color: var(--danger);
+}
+
+.gtask-delete svg {
+  width: 14px;
+  height: 14px;
+}
+
+.gtask-empty {
+  padding: 32px 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Inline add task */
+.gtask-add-form {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.gtask-add-check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px dashed var(--border);
+  background: none;
+  margin-top: 2px;
+  cursor: default;
+}
+
+.gtask-add-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gtask-add-input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: var(--text);
+  background: transparent;
+  width: 100%;
+  padding: 2px 0;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.gtask-add-input:focus {
+  border-bottom-color: var(--accent);
+}
+
+.gtask-add-input::placeholder {
+  color: var(--text-muted);
+}
+
+.gtask-add-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gtask-add-date,
+.gtask-add-cat {
+  font-size: 13px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.gtask-add-actions {
+  display: flex;
+  gap: 8px;
+  margin-right: auto;
 }
 
 /* Auth */

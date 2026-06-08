@@ -1,5 +1,15 @@
 import { supabase } from './supabase'
 
+export async function uploadDocument(file: File, docId: string): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const ext = file.name.split('.').pop()
+  const path = `${user.id}/docs/${docId}.${ext}`
+  const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
+  if (error) throw error
+  return path
+}
+
 export async function uploadReceipt(file: File, transactionId: string): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')

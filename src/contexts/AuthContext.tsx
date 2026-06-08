@@ -45,6 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session)
+      if (session?.provider_token) {
+        localStorage.setItem('google_provider_token', session.provider_token)
+      }
+      if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('google_provider_token')
+      }
       if (event === 'SIGNED_IN' && session?.user) {
         const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
         await migrateOldData(session.user.id, name)

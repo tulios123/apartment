@@ -6,6 +6,7 @@ import {
   deleteRecurringItem,
 } from '../hooks/useRecurringItems'
 import { RECURRING_INCOME_CATEGORIES, RECURRING_EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
+import { formatCurrency, formatDate } from '../lib/format'
 import type { RecurringItem } from '../types'
 
 const emptyForm = {
@@ -21,7 +22,7 @@ const emptyForm = {
 }
 
 function formatAmount(n: number) {
-  return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
+  return formatCurrency(n)
 }
 
 const EXECUTION_LABELS = { automatic: 'אוטומטי', requires_approval: 'דורש אישור' }
@@ -294,9 +295,7 @@ function RecurringSection({
                   </span>
                 </td>
                 <td className="text-muted">
-                  {item.end_date
-                    ? new Date(item.end_date).toLocaleDateString('he-IL')
-                    : 'ללא הגבלה'}
+                  {item.end_date ? formatDate(item.end_date) : 'ללא הגבלה'}
                 </td>
                 <td className="row-actions">
                   <button className="btn-icon" onClick={() => onEdit(item)}>✏️</button>

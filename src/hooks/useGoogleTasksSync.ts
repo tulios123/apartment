@@ -20,15 +20,24 @@ export async function syncGoogleTasks(ownerId: string): Promise<void> {
 
   const { data: ourTasks } = await supabase
     .from('tasks')
-    .select('id, title, due_date, status, google_task_id')
+    .select('id, title, due_date, status, google_task_id, source, recurring_item_id')
     .eq('owner_id', ownerId)
 
   if (!ourTasks) return
 
+  const apartmentIds = new Set(googleTasks.map(t => t.id))
   const ourByGoogleId = new Map(
     ourTasks.filter(t => t.google_task_id).map(t => [t.google_task_id as string, t])
   )
   const ourWithoutGoogleId = ourTasks.filter(t => !t.google_task_id)
+
+  // Remove tasks that were synced from a different Google list (stale google_task_id)
+  const stale = ourTasks.filter(
+    t => t.google_task_id && !apartmentIds.has(t.google_task_id) && t.source === 'manual' && !t.recurring_item_id
+  )
+  if (stale.length > 0) {
+    await supabase.from('tasks').delete().in('id', stale.map(t => t.id))
+  }
 
   // Google → our DB
   const toInsert: object[] = []
