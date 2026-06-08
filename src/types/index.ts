@@ -5,9 +5,19 @@ export type TaskSource = 'manual' | 'recurring_item' | 'renewal'
 export type DocumentType = 'purchase_contract' | 'property_photos' | 'rental_contract' | 'insurance_policy' | 'receipt' | 'invoice' | 'other'
 export type PaymentMethod = 'bit' | 'cash' | 'check' | 'bank_transfer' | 'standing_order'
 
+export type UtilityPayer = 'tenant' | 'owner'
+
 export interface Owner {
   id: string
   name: string
+  email?: string
+}
+
+export interface ContractUtility {
+  id: string
+  contract_id: string
+  utility: string
+  payer: UtilityPayer
 }
 
 export interface Property {

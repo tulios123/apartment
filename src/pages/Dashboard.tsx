@@ -3,6 +3,7 @@ import { useDashboardStats } from '../hooks/useDashboardStats'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { Task } from '../types'
 
+
 function isOverdue(task: Task) {
   if (!task.due_date || task.status === 'done') return false
   return task.due_date < new Date().toISOString().slice(0, 10)
@@ -10,7 +11,7 @@ function isOverdue(task: Task) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { totalIncome, totalExpense, balance, recentTransactions, openTasks, loading, error } = useDashboardStats()
+  const { totalIncome, totalExpense, balance, recentTransactions, openTasks, upcomingRenewals, loading, error } = useDashboardStats()
 
   if (loading) return <div className="empty-state">טוען...</div>
   if (error) return <div className="form-error">{error}</div>
@@ -89,12 +90,30 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* Upcoming renewals — placeholder until Contracts (Step 3) */}
+        {/* Upcoming renewals */}
         <section className="dashboard-section">
           <div className="dashboard-section-header">
             <h2>חידושים קרובים</h2>
+            <button className="btn-link" onClick={() => navigate('/property')}>נכס</button>
           </div>
-          <div className="empty-state small">אין חידושים קרובים</div>
+          {upcomingRenewals.length === 0 ? (
+            <div className="empty-state small">אין חידושים קרובים</div>
+          ) : (
+            <ul className="dashboard-task-list">
+              {upcomingRenewals.map(({ contract, daysLeft }) => (
+                <li
+                  key={contract.id}
+                  className={`dashboard-task-item${daysLeft <= 30 ? ' overdue' : ''}`}
+                  onClick={() => navigate('/property')}
+                >
+                  <span className="dashboard-task-title">{contract.company_name}</span>
+                  <span className="dashboard-task-due">
+                    {formatDate(contract.end_date)} · {daysLeft} ימים
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </div>

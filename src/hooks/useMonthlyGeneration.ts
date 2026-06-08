@@ -100,5 +100,49 @@ async function generate(monthKey: string) {
   if (newTransactions.length > 0) await supabase.from('transactions').insert(newTransactions)
   if (newTasks.length > 0) await supabase.from('tasks').insert(newTasks)
 
+  // Renewal alerts: create a task when a contract is within its alert window
+  const today = new Date()
+  const todayStr = today.toISOString().slice(0, 10)
+
+  const { data: contracts } = await supabase
+    .from('contracts')
+    .select('id, property_id, company_name, end_date, renewal_alert_days')
+    .eq('owner_id', ownerId)
+    .gte('end_date', todayStr)
+
+  for (const contract of contracts ?? []) {
+    const daysLeft = Math.ceil((new Date(contract.end_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    const alertDays: number[] = contract.renewal_alert_days ?? [90, 30]
+    const maxAlert = Math.max(...alertDays)
+    if (daysLeft > maxAlert) continue
+
+    // Skip if an open renewal task already exists for this property
+    const { data: existing } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('owner_id', ownerId)
+      .eq('source', 'renewal')
+      .eq('property_id', contract.property_id)
+      .eq('status', 'open')
+      .gte('due_date', todayStr)
+      .limit(1)
+
+    if (existing && existing.length > 0) continue
+
+    await supabase.from('tasks').insert({
+      owner_id: ownerId,
+      property_id: contract.property_id,
+      title: `חידוש חוזה עם ${contract.company_name} – נותרו ${daysLeft} ימים`,
+      due_date: todayStr,
+      category: 'כללי',
+      status: 'open',
+      source: 'renewal',
+      is_recurring: false,
+      recurrence_days: null,
+      recurring_item_id: null,
+      transaction_id: null,
+    })
+  }
+
   localStorage.setItem(GENERATION_KEY, monthKey)
 }

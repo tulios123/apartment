@@ -8,6 +8,7 @@ const navItems = [
   { to: '/recurring', label: 'קבועים' },
   { to: '/tasks', label: 'משימות' },
   { to: '/documents', label: 'מסמכים' },
+  { to: '/property', label: 'נכס' },
   { to: '/settings', label: 'הגדרות' },
 ]
 

@@ -489,6 +489,153 @@ body {
 .dashboard-tx-amount.positive { color: var(--success); }
 .dashboard-tx-amount.negative { color: var(--danger); }
 
+/* Property page */
+.property-page {
+  max-width: 700px;
+}
+
+.prop-section {
+  margin-bottom: 28px;
+}
+
+.prop-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.prop-section-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.prop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prop-field-row {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  align-items: baseline;
+}
+
+.prop-field-label {
+  color: var(--text-muted);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+/* Contract cards */
+.contract-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+.contract-card.expired {
+  opacity: 0.65;
+}
+
+.contract-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.contract-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contract-company {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.contract-status-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #dcfce7;
+  color: #15803d;
+  font-weight: 500;
+}
+
+.contract-status-badge.warning {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.contract-status-badge.urgent {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.contract-status-badge.expired-badge {
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+.contract-card-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.contract-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* Utilities */
+.utilities-section {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.utilities-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.utilities-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.utility-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.utility-name {
+  color: var(--text);
+}
+
+.toggle-group.small .toggle-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
 /* Documents */
 .docs-grid {
   display: flex;

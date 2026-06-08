@@ -7,6 +7,7 @@ import Finances from './pages/Finances'
 import RecurringItems from './pages/RecurringItems'
 import Tasks from './pages/Tasks'
 import Documents from './pages/Documents'
+import Property from './pages/Property'
 import Settings from './pages/Settings'
 
 function AppRoutes() {
@@ -24,6 +25,7 @@ function AppRoutes() {
           <Route path="recurring" element={<RecurringItems />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="documents" element={<Documents />} />
+          <Route path="property" element={<Property />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
