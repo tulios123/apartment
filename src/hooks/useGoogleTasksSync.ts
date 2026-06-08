@@ -10,12 +10,12 @@ function parseGoogleDue(due?: string): string | null {
   return due.slice(0, 10)
 }
 
-export async function syncGoogleTasks(ownerId: string): Promise<void> {
+export async function syncGoogleTasks(ownerId: string): Promise<{ error: string | null }> {
   let googleTasks: Awaited<ReturnType<typeof listGoogleTasks>>
   try {
     googleTasks = await listGoogleTasks()
-  } catch {
-    return // No token or expired — skip silently
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Google sync failed' }
   }
 
   const { data: ourTasks } = await supabase
@@ -80,7 +80,9 @@ export async function syncGoogleTasks(ownerId: string): Promise<void> {
       const gt = await createGoogleTask(task.title, task.due_date)
       await supabase.from('tasks').update({ google_task_id: gt.id }).eq('id', task.id)
     } catch {
-      // Skip silently
+      // Skip silently — individual push failures don't block the rest
     }
   }
+
+  return { error: null }
 }

@@ -14,6 +14,7 @@ export function useTasks(filters: Filters = {}) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!user) return
@@ -41,12 +42,15 @@ export function useTasks(filters: Filters = {}) {
 
   useEffect(() => {
     if (!user) return
-    syncGoogleTasks(user.id).then(fetch)
+    syncGoogleTasks(user.id).then(result => {
+      setSyncError(result.error)
+      fetch()
+    })
   }, [user?.id])
 
   useEffect(() => { fetch() }, [fetch])
 
-  return { tasks, loading, error, refetch: fetch }
+  return { tasks, loading, error, syncError, refetch: fetch }
 }
 
 async function getOwnerId(): Promise<string> {

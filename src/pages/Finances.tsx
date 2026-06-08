@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   useTransactions,
   createTransaction,
@@ -11,6 +12,12 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { Transaction } from '../types'
+
+interface RepairPrefill {
+  direction: 'expense'
+  category: string
+  description: string
+}
 
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i)
@@ -48,6 +55,8 @@ const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(
 
 export default function Finances() {
   const { user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [year, setYear] = useState<number | undefined>(CURRENT_YEAR)
   const [month, setMonth] = useState<number | undefined>(new Date().getMonth() + 1)
   const { transactions, loading, error, refetch } = useTransactions({ year, month })
@@ -59,6 +68,28 @@ export default function Finances() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Open pre-filled form when navigated here from a repair task
+  useEffect(() => {
+    const prefill = (location.state as { prefill?: RepairPrefill } | null)?.prefill
+    if (prefill) {
+      setForm({
+        direction: prefill.direction,
+        amount: '',
+        date: new Date().toISOString().slice(0, 10),
+        category: prefill.category,
+        description: prefill.description,
+        payment_method: '',
+      })
+      setEditingId(null)
+      setReceiptFile(null)
+      setFormError(null)
+      setShowForm(true)
+      // Clear the state so re-visiting the page doesn't re-open the form
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const totalIncome = transactions
     .filter(t => t.direction === 'income')

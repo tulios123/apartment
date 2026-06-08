@@ -17,6 +17,15 @@ export function useMonthlyGeneration() {
 }
 
 async function generate(monthKey: string) {
+  try {
+    await runGeneration(monthKey)
+    localStorage.setItem(GENERATION_KEY, monthKey)
+  } catch {
+    // Don't set the key — next mount will retry
+  }
+}
+
+async function runGeneration(monthKey: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
   const ownerId = user.id
@@ -34,10 +43,7 @@ async function generate(monthKey: string) {
     .lte('start_date', monthEnd)
     .or(`end_date.is.null,end_date.gte.${monthStart}`)
 
-  if (!items || items.length === 0) {
-    localStorage.setItem(GENERATION_KEY, monthKey)
-    return
-  }
+  if (!items || items.length === 0) return
 
   const { data: existingTx } = await supabase
     .from('transactions')
@@ -143,6 +149,4 @@ async function generate(monthKey: string) {
       transaction_id: null,
     })
   }
-
-  localStorage.setItem(GENERATION_KEY, monthKey)
 }

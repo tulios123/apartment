@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTasks, createTask, updateTask, deleteTask } from '../hooks/useTasks'
 import { TASK_CATEGORIES } from '../lib/constants'
 import { formatDate } from '../lib/format'
 import type { Task } from '../types'
+
+const REPAIR_CATEGORY = 'תיקונים ותחזוקה'
 
 const emptyForm = {
   title: '',
@@ -17,8 +20,9 @@ function isOverdue(task: Task) {
 }
 
 export default function Tasks() {
+  const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState<'open' | 'done' | 'all'>('open')
-  const { tasks, loading, error, refetch } = useTasks({ status: statusFilter })
+  const { tasks, loading, error, syncError, refetch } = useTasks({ status: statusFilter })
 
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -89,8 +93,23 @@ export default function Tasks() {
   }
 
   async function toggleDone(task: Task) {
-    await updateTask(task.id, { status: task.status === 'done' ? 'open' : 'done' })
+    const newStatus = task.status === 'done' ? 'open' : 'done'
+    await updateTask(task.id, { status: newStatus })
     refetch()
+
+    if (newStatus === 'done' && task.category === REPAIR_CATEGORY) {
+      if (confirm('המשימה הושלמה. להזין הוצאת תיקון עבור משימה זו?')) {
+        navigate('/finances', {
+          state: {
+            prefill: {
+              direction: 'expense',
+              category: 'תיקונים',
+              description: task.title,
+            },
+          },
+        })
+      }
+    }
   }
 
   // Focus add input when it appears
@@ -111,6 +130,11 @@ export default function Tasks() {
 
       {loading && <div className="empty-state">טוען...</div>}
       {error && <div className="form-error">{error}</div>}
+      {syncError && (
+        <div className="sync-warning">
+          סנכרון Google נכשל — יש להתחבר מחדש כדי לסנכרן
+        </div>
+      )}
 
       {!loading && (
         <div className="gtasks-list">
