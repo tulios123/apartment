@@ -15,7 +15,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>(null!)
 
-async function migrateOldData(userId: string) {
+async function migrateOldData(userId: string, userName: string) {
+  // Ensure an owners row exists for this user (required by FK constraints)
+  await supabase.from('owners').upsert({ id: userId, name: userName }, { onConflict: 'id' })
+
   if (localStorage.getItem(MIGRATED_KEY) === userId) return
   const tables = ['transactions', 'tasks', 'recurring_items', 'documents', 'properties', 'contracts']
   for (const table of tables) {
@@ -34,13 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
-      if (session?.user) migrateOldData(session.user.id)
+      if (session?.user) {
+        const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
+        migrateOldData(session.user.id, name)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session)
       if (event === 'SIGNED_IN' && session?.user) {
-        await migrateOldData(session.user.id)
+        const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
+        await migrateOldData(session.user.id, name)
       }
     })
 
