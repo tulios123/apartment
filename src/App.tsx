@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Layout from './components/layout/Layout'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Finances from './pages/Finances'
 import RecurringItems from './pages/RecurringItems'
@@ -7,7 +9,12 @@ import Tasks from './pages/Tasks'
 import Documents from './pages/Documents'
 import Settings from './pages/Settings'
 
-export default function App() {
+function AppRoutes() {
+  const { user, loading } = useAuth()
+
+  if (loading) return <div className="app-loading">טוען...</div>
+  if (!user) return <Login />
+
   return (
     <BrowserRouter>
       <Routes>
@@ -21,5 +28,13 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   )
 }

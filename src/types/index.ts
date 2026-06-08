@@ -71,6 +71,7 @@ export interface Task {
   property_id: string | null
   recurring_item_id: string | null
   transaction_id: string | null
+  google_task_id: string | null
   title: string
   due_date: string | null
   category: string

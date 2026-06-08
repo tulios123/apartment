@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { OWNER_ID } from '../lib/constants'
+import { useAuth } from '../contexts/AuthContext'
 import type { Transaction } from '../types'
 
 interface Filters {
@@ -9,18 +9,20 @@ interface Filters {
 }
 
 export function useTransactions(filters: Filters = {}) {
+  const { user } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     setError(null)
 
     let query = supabase
       .from('transactions')
       .select('*')
-      .eq('owner_id', OWNER_ID)
+      .eq('owner_id', user.id)
       .order('date', { ascending: false })
 
     if (filters.year && filters.month) {
@@ -39,19 +41,26 @@ export function useTransactions(filters: Filters = {}) {
     if (error) setError(error.message)
     else setTransactions(data ?? [])
     setLoading(false)
-  }, [filters.year, filters.month])
+  }, [user?.id, filters.year, filters.month])
 
   useEffect(() => { fetch() }, [fetch])
 
   return { transactions, loading, error, refetch: fetch }
 }
 
+async function getOwnerId(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return user.id
+}
+
 export async function createTransaction(
   data: Omit<Transaction, 'id' | 'owner_id' | 'created_at'>
 ) {
+  const ownerId = await getOwnerId()
   return supabase
     .from('transactions')
-    .insert({ ...data, owner_id: OWNER_ID })
+    .insert({ ...data, owner_id: ownerId })
     .select()
     .single()
 }
@@ -60,9 +69,11 @@ export async function updateTransaction(
   id: string,
   data: Partial<Omit<Transaction, 'id' | 'owner_id' | 'created_at'>>
 ) {
-  return supabase.from('transactions').update(data).eq('id', id).eq('owner_id', OWNER_ID)
+  const ownerId = await getOwnerId()
+  return supabase.from('transactions').update(data).eq('id', id).eq('owner_id', ownerId)
 }
 
 export async function deleteTransaction(id: string) {
-  return supabase.from('transactions').delete().eq('id', id).eq('owner_id', OWNER_ID)
+  const ownerId = await getOwnerId()
+  return supabase.from('transactions').delete().eq('id', id).eq('owner_id', ownerId)
 }

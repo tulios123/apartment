@@ -1,5 +1,3 @@
-export const OWNER_ID = '00000000-0000-0000-0000-000000000001'
-
 // Categories for one-time transactions
 export const INCOME_CATEGORIES = ['שכר דירה', 'אחר'] as const
 export const EXPENSE_CATEGORIES = ['תיקונים', 'אחר'] as const

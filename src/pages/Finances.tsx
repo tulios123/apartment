@@ -8,7 +8,7 @@ import {
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
 import { uploadReceipt, getReceiptSignedUrl } from '../lib/storage'
 import { supabase } from '../lib/supabase'
-import { OWNER_ID } from '../lib/constants'
+import { useAuth } from '../contexts/AuthContext'
 import type { Transaction } from '../types'
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -50,6 +50,7 @@ const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(
 )
 
 export default function Finances() {
+  const { user } = useAuth()
   const [year, setYear] = useState<number | undefined>(CURRENT_YEAR)
   const [month, setMonth] = useState<number | undefined>(new Date().getMonth() + 1)
   const { transactions, loading, error, refetch } = useTransactions({ year, month })
@@ -146,7 +147,7 @@ export default function Finances() {
         const { data: docData } = await supabase
           .from('documents')
           .insert({
-            owner_id: OWNER_ID,
+            owner_id: user!.id,
             transaction_id: txId,
             type: 'receipt',
             name: receiptFile.name,

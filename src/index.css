@@ -373,6 +373,140 @@ body {
   color: #854d0e;
 }
 
+/* Tasks */
+.task-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.task-done td {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.task-done td:first-child,
+.task-done td:last-child {
+  text-decoration: none;
+  opacity: 1;
+}
+
+.task-overdue {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+/* Auth */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  background: var(--bg);
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 320px;
+}
+
+.login-logo {
+  font-size: 40px;
+}
+
+.login-card h1 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.login-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-google:hover {
+  background: var(--bg);
+  border-color: #aaa;
+}
+
+/* Sidebar footer */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-user {
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.btn-signout {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-signout:hover {
+  background: var(--bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.badge.recurring_item {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.badge.renewal {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
 /* File upload */
 .file-upload {
   display: flex;

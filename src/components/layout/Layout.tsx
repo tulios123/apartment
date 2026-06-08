@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useMonthlyGeneration } from '../../hooks/useMonthlyGeneration'
+import { useAuth } from '../../contexts/AuthContext'
 
 const navItems = [
   { to: '/', label: 'ראשי', end: true },
@@ -12,6 +13,7 @@ const navItems = [
 
 export default function Layout() {
   useMonthlyGeneration()
+  const { user, signOut } = useAuth()
 
   return (
     <div className="app-layout">
@@ -27,6 +29,10 @@ export default function Layout() {
             {label}
           </NavLink>
         ))}
+        <div className="sidebar-footer">
+          <div className="sidebar-user">{user?.email}</div>
+          <button className="btn-signout" onClick={signOut}>יציאה</button>
+        </div>
       </nav>
       <main className="main-content">
         <Outlet />
