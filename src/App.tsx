@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { supabase } from './lib/supabase'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
+import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Finances from './pages/Finances'
 import RecurringItems from './pages/RecurringItems'
@@ -12,9 +15,21 @@ import Settings from './pages/Settings'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
+  const [hasProperty, setHasProperty] = useState<boolean | null>(null)
 
-  if (loading) return <div className="app-loading">טוען...</div>
+  useEffect(() => {
+    if (!user) { setHasProperty(null); return }
+    supabase
+      .from('properties')
+      .select('id')
+      .eq('owner_id', user.id)
+      .limit(1)
+      .then(({ data }) => setHasProperty((data?.length ?? 0) > 0))
+  }, [user])
+
+  if (loading || (user && hasProperty === null)) return <div className="app-loading">טוען...</div>
   if (!user) return <Login />
+  if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
 
   return (
     <BrowserRouter>
