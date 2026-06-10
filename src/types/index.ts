@@ -25,6 +25,13 @@ export interface Property {
   owner_id: string
   address: string
   notes: string | null
+  buyer_name: string | null
+  block_parcel: string | null
+  purchase_price: number | null
+  purchase_date: string | null
+  key_delivery_date: string | null
+  property_size_sqm: number | null
+  floor: number | null
   created_at: string
 }
 

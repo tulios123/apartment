@@ -71,13 +71,26 @@ export function usePropertyData(): PropertyData {
   return { property, contracts, utilities, loading, error, refetch: fetch }
 }
 
-export async function createProperty(data: { owner_id: string; address: string; notes: string | null }): Promise<Property> {
+export interface PropertyInsert {
+  owner_id: string
+  address: string
+  notes: string | null
+  buyer_name?: string | null
+  block_parcel?: string | null
+  purchase_price?: number | null
+  purchase_date?: string | null
+  key_delivery_date?: string | null
+  property_size_sqm?: number | null
+  floor?: number | null
+}
+
+export async function createProperty(data: PropertyInsert): Promise<Property> {
   const { data: row, error } = await supabase.from('properties').insert(data).select().single()
   if (error) throw error
   return row
 }
 
-export async function updateProperty(id: string, data: { address: string; notes: string | null }): Promise<void> {
+export async function updateProperty(id: string, data: Partial<Omit<Property, 'id' | 'owner_id' | 'created_at'>>): Promise<void> {
   const { error } = await supabase.from('properties').update(data).eq('id', id)
   if (error) throw error
 }
