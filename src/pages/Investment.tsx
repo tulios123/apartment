@@ -106,11 +106,7 @@ export default function InvestmentPage() {
   const localTotal = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
 
   return (
-    <div className="page investment-page">
-      <div className="page-header">
-        <h1>השקעה</h1>
-      </div>
-
+    <>
       {/* ── Summary cards ── */}
       <div className="summary-cards">
         <div className="summary-card">
@@ -191,6 +187,6 @@ export default function InvestmentPage() {
 
         {saveErr && <div className="form-error">{saveErr}</div>}
       </section>
-    </div>
+    </>
   )
 }

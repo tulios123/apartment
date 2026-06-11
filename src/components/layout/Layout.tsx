@@ -4,13 +4,10 @@ import { useAuth } from '../../contexts/AuthContext'
 
 const navItems = [
   { to: '/', label: 'ראשי', end: true },
+  { to: '/property', label: 'הנכס' },
   { to: '/finances', label: 'כספים' },
-  { to: '/recurring', label: 'קבועים' },
   { to: '/tasks', label: 'משימות' },
   { to: '/documents', label: 'מסמכים' },
-  { to: '/property', label: 'נכס' },
-  { to: '/mortgage', label: 'משכנתא' },
-  { to: '/investment', label: 'השקעה' },
   { to: '/settings', label: 'הגדרות' },
 ]
 

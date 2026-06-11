@@ -1963,3 +1963,49 @@ body {
   gap: 8px;
   padding: 12px 0 4px;
 }
+
+/* ── Overview grid ── */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.overview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: right;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.overview-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.overview-card-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.overview-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.overview-card-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

@@ -218,11 +218,7 @@ export default function MortgagePage() {
     : 0
 
   return (
-    <div className="page mortgage-page">
-      <div className="page-header">
-        <h1>משכנתא</h1>
-      </div>
-
+    <>
       {/* ── Summary cards ── */}
       <div className="summary-cards">
         <div className="summary-card">
@@ -582,6 +578,6 @@ export default function MortgagePage() {
       <p className="mortgage-note mortgage-future-note">
         בקרוב: העלאת מסמך משכנתא ומילוי אוטומטי של פרטי המסלולים.
       </p>
-    </div>
+    </>
   )
 }
