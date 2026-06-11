@@ -289,18 +289,19 @@ export default function MortgagePage() {
               />
             </div>
 
+            <div className="form-row">
+              <label>קרן (₪)</label>
+              <input
+                type="number"
+                className="form-input"
+                value={form.principal}
+                onChange={e => setField('principal', e.target.value)}
+                placeholder="1,000,000"
+                min="0"
+              />
+            </div>
+
             <div className="form-2col">
-              <div className="form-row">
-                <label>קרן (₪)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={form.principal}
-                  onChange={e => setField('principal', e.target.value)}
-                  placeholder="1,000,000"
-                  min="0"
-                />
-              </div>
               <div className="form-row">
                 <label>תקופה (חודשים)</label>
                 <input
@@ -316,21 +317,20 @@ export default function MortgagePage() {
                   <span className="form-hint">= {(parseInt(form.term_months) / 12).toFixed(1)} שנים</span>
                 )}
               </div>
-            </div>
-
-            <div className="form-row">
-              <label>גרייס (חודשים)</label>
-              <input
-                type="number"
-                className="form-input"
-                value={form.grace_months}
-                onChange={e => setField('grace_months', e.target.value)}
-                placeholder="0"
-                min="0"
-              />
-              {parseInt(form.grace_months) > 0 && (
-                <span className="form-hint">ריבית בלבד למשך {form.grace_months} חודשים</span>
-              )}
+              <div className="form-row">
+                <label>מתוכם גרייס (חודשים)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={form.grace_months}
+                  onChange={e => setField('grace_months', e.target.value)}
+                  placeholder="0"
+                  min="0"
+                />
+                {parseInt(form.grace_months) > 0 && (
+                  <span className="form-hint">ריבית בלבד</span>
+                )}
+              </div>
             </div>
 
             {form.track_type === 'prime' ? (
