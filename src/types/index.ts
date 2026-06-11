@@ -48,6 +48,8 @@ export interface Contract {
   end_date: string
   monthly_rent: number
   deposit: number | null
+  payment_method: string | null
+  requires_approval: boolean
   renewal_alert_days: number[]
   created_at: string
 }

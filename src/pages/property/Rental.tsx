@@ -20,6 +20,8 @@ const emptyContract = {
   end_date: '',
   monthly_rent: '',
   deposit: '',
+  payment_method: 'check' as 'check' | 'bank_transfer',
+  requires_approval: false,
 }
 
 function ContractForm({
@@ -83,6 +85,25 @@ function ContractForm({
         <label>פיקדון</label>
         <input type="number" min="0" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
       </div>
+      <div className="form-row">
+        <label>אמצעי תשלום</label>
+        <div className="toggle-group">
+          <button type="button"
+            className={`toggle-btn${form.payment_method === 'check' ? ' active' : ''}`}
+            onClick={() => setForm(f => ({ ...f, payment_method: 'check' as const }))}>צ'ק</button>
+          <button type="button"
+            className={`toggle-btn${form.payment_method === 'bank_transfer' ? ' active' : ''}`}
+            onClick={() => setForm(f => ({ ...f, payment_method: 'bank_transfer' as const }))}>העברה בנקאית</button>
+        </div>
+      </div>
+      <div className="form-row">
+        <label>אישור תשלום</label>
+        <label className="toggle-row">
+          <input type="checkbox" checked={form.requires_approval}
+            onChange={e => setForm(f => ({ ...f, requires_approval: e.target.checked }))} />
+          <span>דורש אישור ידני בכל תשלום</span>
+        </label>
+      </div>
       {err && <div className="form-error">{err}</div>}
       <div className="form-actions">
         <button type="button" className="btn-secondary" onClick={onCancel}>ביטול</button>
@@ -137,6 +158,8 @@ export default function Rental() {
       end_date: form.end_date,
       monthly_rent: parseFloat(form.monthly_rent),
       deposit: form.deposit ? parseFloat(form.deposit) : null,
+      payment_method: form.payment_method,
+      requires_approval: form.requires_approval,
       renewal_alert_days: [90, 30],
     }
     if (editingContract) {
@@ -238,6 +261,16 @@ export default function Rental() {
                     <span>{formatCurrency(c.deposit)}</span>
                   </div>
                 )}
+                {c.payment_method && (
+                  <div className="prop-field-row">
+                    <span className="prop-field-label">אמצעי תשלום</span>
+                    <span>{c.payment_method === 'check' ? "צ'ק" : 'העברה בנקאית'}</span>
+                  </div>
+                )}
+                <div className="prop-field-row">
+                  <span className="prop-field-label">אישור תשלום</span>
+                  <span>{c.requires_approval ? 'דורש אישור ידני' : 'אוטומטי'}</span>
+                </div>
               </div>
 
               <div className="utilities-section">
@@ -285,6 +318,8 @@ export default function Rental() {
                 end_date: editingContract.end_date,
                 monthly_rent: String(editingContract.monthly_rent),
                 deposit: editingContract.deposit != null ? String(editingContract.deposit) : '',
+                payment_method: (editingContract.payment_method as 'check' | 'bank_transfer') ?? 'check',
+                requires_approval: editingContract.requires_approval,
               } : {}}
               onSave={handleContractSave}
               onCancel={() => { setShowContractModal(false); setEditingContract(null) }}
