@@ -1930,3 +1930,36 @@ body {
   margin-right: 4px;
   opacity: 0.8;
 }
+
+/* Hub tab navigation */
+.hub-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-raised);
+  border-radius: 10px;
+  padding: 3px;
+  border: 1px solid var(--border);
+}
+.hub-tab {
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.hub-tab:hover { color: var(--text-primary); }
+.hub-tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+/* Sub-page action bar (below hub tabs, above content) */
+.sub-page-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 12px 0 4px;
+}

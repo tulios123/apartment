@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { supabase } from './lib/supabase'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
+import FinancesHub from './pages/finances/FinancesHub'
 import Finances from './pages/Finances'
 import RecurringItems from './pages/RecurringItems'
 import Tasks from './pages/Tasks'
@@ -38,8 +39,11 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="finances" element={<Finances />} />
-          <Route path="recurring" element={<RecurringItems />} />
+          <Route path="finances" element={<FinancesHub />}>
+            <Route index element={<Finances />} />
+            <Route path="recurring" element={<RecurringItems />} />
+          </Route>
+          <Route path="recurring" element={<Navigate to="/finances/recurring" replace />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="documents" element={<Documents />} />
           <Route path="property" element={<Property />} />

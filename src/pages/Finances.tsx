@@ -237,9 +237,8 @@ export default function Finances() {
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>כספים</h1>
+    <>
+      <div className="sub-page-actions">
         <button className="btn-primary" onClick={openNew}>+ תנועה חדשה</button>
       </div>
 
@@ -419,6 +418,6 @@ export default function Finances() {
           </table>
         </div>
       )}
-    </div>
+    </>
   )
 }

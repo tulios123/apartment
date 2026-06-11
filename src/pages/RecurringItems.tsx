@@ -121,9 +121,8 @@ export default function RecurringItems() {
   const categories = form.direction === 'income' ? RECURRING_INCOME_CATEGORIES : RECURRING_EXPENSE_CATEGORIES
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>פריטים קבועים</h1>
+    <>
+      <div className="sub-page-actions">
         <button className="btn-primary" onClick={openNew}>+ פריט חדש</button>
       </div>
 
@@ -239,7 +238,7 @@ export default function RecurringItems() {
           />
         </>
       )}
-    </div>
+    </>
   )
 }
 
