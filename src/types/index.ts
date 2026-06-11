@@ -111,6 +111,30 @@ export interface InvestmentCost {
   created_at: string
 }
 
+export type TrackType = 'prime' | 'fixed_unlinked' | 'fixed_linked' | 'variable'
+
+export interface Mortgage {
+  id: string
+  owner_id: string
+  property_id: string | null
+  lender: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface MortgageTrack {
+  id: string
+  mortgage_id: string
+  owner_id: string
+  label: string | null
+  track_type: TrackType
+  principal: number
+  annual_rate: number   // stored as percent, e.g. 5.25 = 5.25%
+  term_months: number
+  start_date: string
+  created_at: string
+}
+
 export interface Document {
   id: string
   owner_id: string

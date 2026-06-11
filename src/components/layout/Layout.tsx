@@ -9,6 +9,7 @@ const navItems = [
   { to: '/tasks', label: 'משימות' },
   { to: '/documents', label: 'מסמכים' },
   { to: '/property', label: 'נכס' },
+  { to: '/mortgage', label: 'משכנתא' },
   { to: '/investment', label: 'השקעה' },
   { to: '/settings', label: 'הגדרות' },
 ]

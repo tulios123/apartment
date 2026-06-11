@@ -12,6 +12,7 @@ import Tasks from './pages/Tasks'
 import Documents from './pages/Documents'
 import Property from './pages/Property'
 import Investment from './pages/Investment'
+import Mortgage from './pages/Mortgage'
 import Settings from './pages/Settings'
 
 function AppRoutes() {
@@ -43,6 +44,7 @@ function AppRoutes() {
           <Route path="documents" element={<Documents />} />
           <Route path="property" element={<Property />} />
           <Route path="investment" element={<Investment />} />
+          <Route path="mortgage" element={<Mortgage />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

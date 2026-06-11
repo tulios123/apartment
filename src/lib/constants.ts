@@ -21,6 +21,13 @@ export const INVESTMENT_COST_CATEGORIES = [
   { value: 'investment_company', label: 'חברת ליווי השקעה' },
 ] as const
 
+export const MORTGAGE_TRACK_TYPES: { value: string; label: string }[] = [
+  { value: 'prime',          label: 'פריים' },
+  { value: 'fixed_unlinked', label: 'קבועה לא צמודה (קל"צ)' },
+  { value: 'fixed_linked',   label: 'קבועה צמודה' },
+  { value: 'variable',       label: 'משתנה' },
+]
+
 export const TASK_CATEGORIES = ['תיקונים ותחזוקה', 'ביקור ובדיקה', 'כללי'] as const
 
 export const UTILITIES = ['ארנונה', 'מים', 'חשמל', 'ועד בית'] as const

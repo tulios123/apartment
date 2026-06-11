@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { InvestmentCost } from '../types'
+import { interestToDate } from '../lib/mortgage'
+import type { InvestmentCost, MortgageTrack } from '../types'
 
 export interface InvestmentData {
   costs: InvestmentCost[]
@@ -28,9 +29,10 @@ export function useInvestmentData(): InvestmentData {
     setLoading(true)
     setError(null)
     try {
-      const [costsRes, txRes] = await Promise.all([
+      const [costsRes, txRes, tracksRes] = await Promise.all([
         supabase.from('investment_costs').select('*').eq('owner_id', user.id).order('created_at'),
         supabase.from('transactions').select('direction, amount, category').eq('owner_id', user.id),
+        supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id),
       ])
       if (costsRes.error) throw costsRes.error
       if (txRes.error) throw txRes.error
@@ -38,8 +40,11 @@ export function useInvestmentData(): InvestmentData {
       setCosts(costsRes.data ?? [])
 
       const txs = txRes.data ?? []
+      const mortgageTracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
+
       setRentReceived(txs.filter(t => t.direction === 'income' && t.category === 'שכר דירה').reduce((s, t) => s + t.amount, 0))
-      setInterestPaid(txs.filter(t => t.direction === 'expense' && t.category === 'ריבית').reduce((s, t) => s + t.amount, 0))
+      const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === 'ריבית').reduce((s, t) => s + t.amount, 0)
+      setInterestPaid(manualInterest + interestToDate(mortgageTracks))
       setMaintenance(txs.filter(t => t.direction === 'expense' && t.category === 'תיקונים').reduce((s, t) => s + t.amount, 0))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
