@@ -1,3 +1,9 @@
+// Canonical category sets — use these for filtering, never raw strings
+export const RENT_CATEGORIES = ['שכר דירה', 'שכירות'] as const   // accept legacy
+export const MORTGAGE_CATEGORIES = ['משכנתא', 'משכנתא – בנק', 'משכנתא – אב'] as const
+export const INTEREST_CATEGORY = 'ריבית'
+export const MAINTENANCE_CATEGORY = 'תיקונים'
+
 // Categories for one-time transactions
 export const INCOME_CATEGORIES = ['שכר דירה', 'אחר'] as const
 export const EXPENSE_CATEGORIES = ['תיקונים', 'ריבית', 'אחר'] as const

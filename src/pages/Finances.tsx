@@ -7,21 +7,13 @@ import {
   deleteTransaction,
 } from '../hooks/useTransactions'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
+import { monthlyVirtualEntries } from '../lib/projections'
+import type { VirtualEntry } from '../lib/projections'
 import { uploadReceipt, getReceiptSignedUrl } from '../lib/storage'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { trackSchedule } from '../lib/mortgage'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { Transaction, Contract, MortgageTrack } from '../types'
-
-interface VirtualEntry {
-  id: string
-  direction: 'income' | 'expense'
-  amount: number
-  date: string
-  category: string
-  description: string
-}
 
 interface RepairPrefill {
   direction: 'expense'
@@ -84,58 +76,10 @@ export default function Finances() {
     })
   }, [user?.id])
 
-  const virtualEntries = useMemo<VirtualEntry[]>(() => {
-    if (!year) return []
-    const todayStr = new Date().toISOString().slice(0, 10)
-
-    const months = month
-      ? [month]
-      : Array.from({ length: 12 }, (_, i) => i + 1).filter(m =>
-          `${year}-${String(m).padStart(2, '0')}-01` <= todayStr
-        )
-
-    const entries: VirtualEntry[] = []
-
-    for (const m of months) {
-      const monthPad = String(m).padStart(2, '0')
-      const monthStr = `${year}-${monthPad}`
-      const monthStart = `${monthStr}-01`
-      const monthEnd = new Date(year, m, 0).toISOString().slice(0, 10)
-
-      for (const c of contracts) {
-        if (c.start_date <= monthEnd && c.end_date >= monthStart) {
-          entries.push({
-            id: `v-rent-${c.id}-${monthStr}`,
-            direction: 'income',
-            amount: c.monthly_rent,
-            date: monthStart,
-            category: 'שכר דירה',
-            description: c.company_name,
-          })
-        }
-      }
-
-      // Combine all tracks into one mortgage entry per month
-      let mortgageTotal = 0
-      let mortgageDate = monthStart
-      for (const t of mortgageTracks) {
-        const row = trackSchedule(t).find(r => r.date.slice(0, 7) === monthStr)
-        if (row) { mortgageTotal += row.payment; mortgageDate = row.date }
-      }
-      if (mortgageTotal > 0) {
-        entries.push({
-          id: `v-mort-${monthStr}`,
-          direction: 'expense',
-          amount: mortgageTotal,
-          date: mortgageDate,
-          category: 'משכנתא',
-          description: 'תשלום משכנתא',
-        })
-      }
-    }
-
-    return entries.sort((a, b) => b.date.localeCompare(a.date))
-  }, [year, month, contracts, mortgageTracks])
+  const virtualEntries = useMemo<VirtualEntry[]>(
+    () => year ? monthlyVirtualEntries(contracts, mortgageTracks, year, month) : [],
+    [year, month, contracts, mortgageTracks]
+  )
 
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)

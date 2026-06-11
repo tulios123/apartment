@@ -1,32 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { trackSchedule } from '../lib/mortgage'
+import { rentReceivedToDate, mortgagePaidToDate } from '../lib/projections'
+import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import type { Transaction, Task, Contract, MortgageTrack } from '../types'
-
-function contractRentTotal(contracts: Contract[]): number {
-  const today = new Date()
-  let total = 0
-  for (const c of contracts) {
-    const start = new Date(c.start_date)
-    const cap = new Date(Math.min(new Date(c.end_date).getTime(), today.getTime()))
-    if (cap < start) continue
-    const months = (cap.getFullYear() - start.getFullYear()) * 12 + (cap.getMonth() - start.getMonth()) + 1
-    total += Math.max(0, months) * c.monthly_rent
-  }
-  return total
-}
-
-function mortgageTotalPaid(tracks: MortgageTrack[], todayStr: string): number {
-  let total = 0
-  for (const t of tracks) {
-    for (const row of trackSchedule(t)) {
-      if (row.date <= todayStr) total += row.payment
-      else break
-    }
-  }
-  return total
-}
 
 export interface UpcomingRenewal {
   contract: Contract
@@ -96,13 +73,13 @@ export function useDashboardStats(): DashboardStats {
         const allContracts = (allContractsRes.data ?? []) as Contract[]
         const tracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
 
-        const RENT_CATS = new Set(['שכר דירה', 'שכירות'])
-        const MORT_CATS = new Set(['משכנתא', 'משכנתא – בנק', 'משכנתא – אב'])
-        const txIncome = txs.filter(t => t.direction === 'income' && !RENT_CATS.has(t.category)).reduce((s, t) => s + t.amount, 0)
-        const txExpense = txs.filter(t => t.direction === 'expense' && !MORT_CATS.has(t.category)).reduce((s, t) => s + t.amount, 0)
+        const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
+        const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
+        const txIncome = txs.filter(t => t.direction === 'income' && !rentCatSet.has(t.category)).reduce((s, t) => s + t.amount, 0)
+        const txExpense = txs.filter(t => t.direction === 'expense' && !mortCatSet.has(t.category)).reduce((s, t) => s + t.amount, 0)
 
-        setTotalIncome(txIncome + contractRentTotal(allContracts))
-        setTotalExpense(txExpense + mortgageTotalPaid(tracks, todayStr))
+        setTotalIncome(txIncome + rentReceivedToDate(allContracts))
+        setTotalExpense(txExpense + mortgagePaidToDate(tracks, todayStr))
         setRecentTransactions(txs.slice(0, 5))
         setOpenTasks(tasksRes.data ?? [])
 

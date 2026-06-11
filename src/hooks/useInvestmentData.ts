@@ -2,20 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { interestToDate } from '../lib/mortgage'
+import { rentReceivedToDate } from '../lib/projections'
+import { INTEREST_CATEGORY, MAINTENANCE_CATEGORY } from '../lib/constants'
 import type { InvestmentCost, MortgageTrack, Contract } from '../types'
-
-function rentFromContracts(contracts: Contract[]): number {
-  const today = new Date()
-  let total = 0
-  for (const c of contracts) {
-    const start = new Date(c.start_date)
-    const cap = new Date(Math.min(new Date(c.end_date).getTime(), today.getTime()))
-    if (cap < start) continue
-    const months = (cap.getFullYear() - start.getFullYear()) * 12 + (cap.getMonth() - start.getMonth()) + 1
-    total += Math.max(0, months) * c.monthly_rent
-  }
-  return total
-}
 
 export interface InvestmentData {
   costs: InvestmentCost[]
@@ -57,10 +46,10 @@ export function useInvestmentData(): InvestmentData {
       const mortgageTracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
       const contracts = (contractsRes.error ? [] : (contractsRes.data ?? [])) as Contract[]
 
-      setRentReceived(rentFromContracts(contracts))
-      const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === 'ריבית').reduce((s, t) => s + t.amount, 0)
+      setRentReceived(rentReceivedToDate(contracts))
+      const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === INTEREST_CATEGORY).reduce((s, t) => s + t.amount, 0)
       setInterestPaid(manualInterest + interestToDate(mortgageTracks))
-      setMaintenance(txs.filter(t => t.direction === 'expense' && t.category === 'תיקונים').reduce((s, t) => s + t.amount, 0))
+      setMaintenance(txs.filter(t => t.direction === 'expense' && t.category === MAINTENANCE_CATEGORY).reduce((s, t) => s + t.amount, 0))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
