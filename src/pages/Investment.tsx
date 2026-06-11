@@ -41,6 +41,7 @@ export default function InvestmentPage() {
   const [newLabel, setNewLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveErr, setSaveErr] = useState<string | null>(null)
+  const [costsOpen, setCostsOpen] = useState(false)
 
   // Sync rows from DB whenever costs updates
   useEffect(() => {
@@ -226,56 +227,67 @@ export default function InvestmentPage() {
 
       {/* ── כמה הושקע ── */}
       <section className="inv-costs-section">
-        <div className="inv-costs-header">
+        <button className="inv-collapse-header" onClick={() => setCostsOpen(o => !o)}>
           <h2>כמה הושקע</h2>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'שומר...' : 'שמור'}
-          </button>
-        </div>
+          <div className="inv-collapse-right">
+            <span className="inv-collapse-total">{formatCurrency(localTotal)}</span>
+            <span className={`inv-collapse-chevron${costsOpen ? ' open' : ''}`}>›</span>
+          </div>
+        </button>
 
-        <div className="prop-card">
-          {rows.map((row, idx) => (
-            <div key={`${row.category}-${idx}`} className="inv-cost-row">
-              <span className="inv-cost-label">{row.label}</span>
+        {costsOpen && (
+          <>
+            <div className="prop-card">
+              {rows.map((row, idx) => (
+                <div key={`${row.category}-${idx}`} className="inv-cost-row">
+                  <span className="inv-cost-label">{row.label}</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="inv-cost-input"
+                    value={fmtInput(row.amount)}
+                    onChange={e => setAmount(idx, e.target.value)}
+                    placeholder="0"
+                  />
+                  {row.isCustom && (
+                    <button className="btn-icon danger" onClick={() => removeRow(idx)} title="מחק שורה">
+                      <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
+                        <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              <div className="inv-cost-total">
+                <span>סה״כ הושקע</span>
+                <span className="inv-cost-total-amount">{formatCurrency(localTotal)}</span>
+              </div>
+            </div>
+
+            <div className="inv-add-row">
               <input
                 type="text"
-                inputMode="numeric"
-                className="inv-cost-input"
-                value={fmtInput(row.amount)}
-                onChange={e => setAmount(idx, e.target.value)}
-                placeholder="0"
+                value={newLabel}
+                onChange={e => setNewLabel(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addCustomRow()}
+                placeholder="שם עלות נוספת"
+                className="inv-add-input"
               />
-              {row.isCustom && (
-                <button className="btn-icon danger" onClick={() => removeRow(idx)} title="מחק שורה">
-                  <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
-                    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              )}
+              <button className="btn-secondary" onClick={addCustomRow} disabled={!newLabel.trim()}>
+                + הוסף עלות
+              </button>
             </div>
-          ))}
 
-          <div className="inv-cost-total">
-            <span>סה״כ הושקע</span>
-            <span className="inv-cost-total-amount">{formatCurrency(localTotal)}</span>
-          </div>
-        </div>
+            {saveErr && <div className="form-error">{saveErr}</div>}
 
-        <div className="inv-add-row">
-          <input
-            type="text"
-            value={newLabel}
-            onChange={e => setNewLabel(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addCustomRow()}
-            placeholder="שם עלות נוספת"
-            className="inv-add-input"
-          />
-          <button className="btn-secondary" onClick={addCustomRow} disabled={!newLabel.trim()}>
-            + הוסף עלות
-          </button>
-        </div>
-
-        {saveErr && <div className="form-error">{saveErr}</div>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <button className="btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'שומר...' : 'שמור'}
+              </button>
+            </div>
+          </>
+        )}
       </section>
     </>
   )
