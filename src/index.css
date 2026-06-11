@@ -1652,6 +1652,15 @@ body {
   max-width: 260px;
 }
 
+/* ── Monthly cash flow ── */
+.inv-flow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.inv-flow-header h2 { margin: 0; }
+
 /* ── Monthly cash flow rows ── */
 .inv-flow-row {
   display: flex;

@@ -42,6 +42,7 @@ export default function InvestmentPage() {
   const [saving, setSaving] = useState(false)
   const [saveErr, setSaveErr] = useState<string | null>(null)
   const [costsOpen, setCostsOpen] = useState(false)
+  const [graceView, setGraceView] = useState<'grace' | 'post'>('grace')
 
   // Sync rows from DB whenever costs updates
   useEffect(() => {
@@ -136,8 +137,10 @@ export default function InvestmentPage() {
       }, 0)
     : 0
   const monthlyMortgage = mortgageSummary.monthlyPayment
-  const currentMonthlyMortgage = hasGrace ? gracePeriodPayment : monthlyMortgage
-  const monthlyNet = (monthlyRent ?? 0) - currentMonthlyMortgage - monthlyInsurance
+  const selectedMortgage = hasGrace
+    ? (graceView === 'grace' ? gracePeriodPayment : monthlyMortgage)
+    : monthlyMortgage
+  const monthlyNet = (monthlyRent ?? 0) - selectedMortgage - monthlyInsurance
 
   const netPosition = rentReceived - interestPaid - insurancePaidToDate - maintenance
   const localTotal = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
@@ -177,7 +180,19 @@ export default function InvestmentPage() {
 
       {/* ── Monthly cash flow ── */}
       <section className="inv-costs-section">
-        <h2 style={{ marginBottom: 12 }}>תזרים חודשי</h2>
+        <div className="inv-flow-header">
+          <h2>תזרים חודשי</h2>
+          {hasGrace && (
+            <div className="toggle-group">
+              <button type="button"
+                className={`toggle-btn${graceView === 'grace' ? ' active' : ''}`}
+                onClick={() => setGraceView('grace')}>בגרייס</button>
+              <button type="button"
+                className={`toggle-btn${graceView === 'post' ? ' active' : ''}`}
+                onClick={() => setGraceView('post')}>לאחר גרייס</button>
+            </div>
+          )}
+        </div>
         <div className="prop-card">
           <div className="inv-flow-row">
             <span className="inv-flow-sign positive">+</span>
@@ -186,26 +201,13 @@ export default function InvestmentPage() {
               {monthlyRent != null ? formatCurrency(monthlyRent) : <span className="text-muted">אין חוזה פעיל</span>}
             </span>
           </div>
-          {hasGrace ? (
-            <>
-              <div className="inv-flow-row">
-                <span className="inv-flow-sign negative">−</span>
-                <span className="inv-flow-label">משכנתא <span className="inv-flow-sublabel">בגרייס</span></span>
-                <span className="inv-flow-amount negative">{formatCurrency(gracePeriodPayment)}</span>
-              </div>
-              <div className="inv-flow-row">
-                <span className="inv-flow-sign negative">−</span>
-                <span className="inv-flow-label">משכנתא <span className="inv-flow-sublabel">לאחר גרייס</span></span>
-                <span className="inv-flow-amount negative">{formatCurrency(monthlyMortgage)}</span>
-              </div>
-            </>
-          ) : (
-            <div className="inv-flow-row">
-              <span className="inv-flow-sign negative">−</span>
-              <span className="inv-flow-label">משכנתא</span>
-              <span className="inv-flow-amount negative">{monthlyMortgage > 0 ? formatCurrency(monthlyMortgage) : <span className="text-muted">—</span>}</span>
-            </div>
-          )}
+          <div className="inv-flow-row">
+            <span className="inv-flow-sign negative">−</span>
+            <span className="inv-flow-label">משכנתא</span>
+            <span className="inv-flow-amount negative">
+              {selectedMortgage > 0 ? formatCurrency(selectedMortgage) : <span className="text-muted">—</span>}
+            </span>
+          </div>
           <div className="inv-flow-row">
             <span className="inv-flow-sign negative">−</span>
             <span className="inv-flow-label">ביטוח</span>
@@ -214,10 +216,7 @@ export default function InvestmentPage() {
           <div className="inv-flow-divider" />
           <div className="inv-flow-row inv-flow-total">
             <span className="inv-flow-sign">=</span>
-            <span className="inv-flow-label">
-              נטו חודשי
-              {hasGrace && <span className="inv-flow-sublabel">בגרייס</span>}
-            </span>
+            <span className="inv-flow-label">נטו חודשי</span>
             <span className={`inv-flow-amount ${monthlyNet >= 0 ? 'positive' : 'negative'}`}>
               {formatCurrency(monthlyNet)}
             </span>
