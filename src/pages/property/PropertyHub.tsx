@@ -15,6 +15,7 @@ export default function PropertyHub() {
           <NavLink to="/property/details" className={({ isActive }) => `hub-tab${isActive ? ' active' : ''}`}>נכס</NavLink>
           <NavLink to="/property/mortgage" className={({ isActive }) => `hub-tab${isActive ? ' active' : ''}`}>משכנתא</NavLink>
           <NavLink to="/property/rental" className={({ isActive }) => `hub-tab${isActive ? ' active' : ''}`}>שכירות</NavLink>
+          <NavLink to="/property/insurance" className={({ isActive }) => `hub-tab${isActive ? ' active' : ''}`}>ביטוח</NavLink>
           <NavLink to="/property/investment" className={({ isActive }) => `hub-tab${isActive ? ' active' : ''}`}>תשואה</NavLink>
         </nav>
       </div>

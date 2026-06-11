@@ -138,6 +138,20 @@ export interface MortgageTrack {
   created_at: string
 }
 
+export interface InsurancePolicy {
+  id: string
+  owner_id: string
+  property_id: string | null
+  type: string
+  company: string | null
+  policy_number: string | null
+  monthly_premium: number | null
+  start_date: string | null
+  end_date: string | null
+  notes: string | null
+  created_at: string
+}
+
 export interface Document {
   id: string
   owner_id: string

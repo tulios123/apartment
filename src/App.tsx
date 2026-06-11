@@ -15,6 +15,7 @@ import PropertyHub from './pages/property/PropertyHub'
 import Overview from './pages/property/Overview'
 import Details from './pages/property/Details'
 import Rental from './pages/property/Rental'
+import Insurance from './pages/property/Insurance'
 import Investment from './pages/Investment'
 import Mortgage from './pages/Mortgage'
 import Settings from './pages/Settings'
@@ -55,6 +56,7 @@ function AppRoutes() {
             <Route path="details" element={<Details />} />
             <Route path="mortgage" element={<Mortgage />} />
             <Route path="rental" element={<Rental />} />
+            <Route path="insurance" element={<Insurance />} />
             <Route path="investment" element={<Investment />} />
           </Route>
           <Route path="mortgage" element={<Navigate to="/property/mortgage" replace />} />
