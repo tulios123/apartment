@@ -318,17 +318,26 @@ export default function MortgagePage() {
                 )}
               </div>
               <div className="form-row">
-                <label>מתוכם גרייס (חודשים)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={form.grace_months}
-                  onChange={e => setField('grace_months', e.target.value)}
-                  placeholder="0"
-                  min="0"
-                />
+                <label className="grace-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={parseInt(form.grace_months) > 0}
+                    onChange={e => setField('grace_months', e.target.checked ? '12' : '')}
+                  />
+                  גרייס
+                </label>
                 {parseInt(form.grace_months) > 0 && (
-                  <span className="form-hint">ריבית בלבד</span>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={form.grace_months}
+                    onChange={e => setField('grace_months', e.target.value)}
+                    placeholder="12"
+                    min="1"
+                  />
+                )}
+                {parseInt(form.grace_months) > 0 && (
+                  <span className="form-hint">חודשי ריבית בלבד</span>
                 )}
               </div>
             </div>
