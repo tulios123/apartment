@@ -117,6 +117,7 @@ export default function MortgagePage() {
   const [form, setForm] = useState<TrackForm | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveErr, setSaveErr] = useState<string | null>(null)
+  const [graceEdit, setGraceEdit] = useState<{ trackId: string; enabled: boolean; months: string } | null>(null)
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set())
   const [scheduleTrackFilter, setScheduleTrackFilter] = useState<string>('all')
 
@@ -172,6 +173,29 @@ export default function MortgagePage() {
     try {
       await deleteMortgageTrack(id)
       await refetch()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'שגיאה')
+    }
+  }
+
+  async function saveGrace(track: MortgageTrack) {
+    if (!graceEdit || !user) return
+    const grace = graceEdit.enabled ? (parseInt(graceEdit.months) || 0) : 0
+    try {
+      await upsertMortgageTrack({
+        id: track.id,
+        mortgage_id: track.mortgage_id,
+        owner_id: user.id,
+        label: track.label,
+        track_type: track.track_type,
+        principal: track.principal,
+        annual_rate: track.annual_rate,
+        term_months: track.term_months,
+        grace_months: grace,
+        start_date: track.start_date,
+      })
+      await refetch()
+      setGraceEdit(null)
     } catch (e) {
       alert(e instanceof Error ? e.message : 'שגיאה')
     }
@@ -233,12 +257,35 @@ export default function MortgagePage() {
                   {MORTGAGE_TRACK_TYPES.find(t => t.value === track.track_type)?.label ?? track.track_type}
                 </span>
                 {track.label && <span className="mortgage-track-label">{track.label}</span>}
-                {(track.grace_months ?? 0) > 0 ? (
-                  <span className="grace-badge grace-badge-clickable" onClick={() => setForm(formFromTrack(track))}>
+                {graceEdit?.trackId === track.id ? (
+                  <span className="grace-inline-edit">
+                    <label className="grace-checkbox-label" style={{ marginBottom: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={graceEdit.enabled}
+                        onChange={e => setGraceEdit(g => g ? { ...g, enabled: e.target.checked, months: e.target.checked ? (g.months || '12') : g.months } : g)}
+                      />
+                      גרייס
+                    </label>
+                    {graceEdit.enabled && (
+                      <input
+                        type="number"
+                        className="grace-months-input"
+                        value={graceEdit.months}
+                        onChange={e => setGraceEdit(g => g ? { ...g, months: e.target.value } : g)}
+                        min="1"
+                        autoFocus
+                      />
+                    )}
+                    <button className="btn-primary btn-xs" onClick={() => saveGrace(track)}>שמור</button>
+                    <button className="btn-secondary btn-xs" onClick={() => setGraceEdit(null)}>ביטול</button>
+                  </span>
+                ) : (track.grace_months ?? 0) > 0 ? (
+                  <span className="grace-badge grace-badge-clickable" onClick={() => setGraceEdit({ trackId: track.id, enabled: true, months: String(track.grace_months) })}>
                     גרייס {track.grace_months} חודשים ✎
                   </span>
                 ) : (
-                  <span className="grace-badge grace-badge-empty" onClick={() => setForm(formFromTrack(track))}>
+                  <span className="grace-badge grace-badge-empty" onClick={() => setGraceEdit({ trackId: track.id, enabled: false, months: '12' })}>
                     + הוסף גרייס
                   </span>
                 )}
