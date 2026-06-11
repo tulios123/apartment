@@ -174,7 +174,7 @@ export default function Onboarding({ onComplete }: Props) {
           contract_id: contract.id,
           direction: 'income',
           amount: parseFloat(monthlyRent),
-          category: 'שכירות',
+          category: 'שכר דירה',
           day_of_month: parseInt(rentPaymentDay, 10) || 1,
           start_date: startDate || new Date().toISOString().slice(0, 10),
           end_date: endDate || null,

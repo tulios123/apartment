@@ -110,6 +110,19 @@ export default function Tasks() {
         })
       }
     }
+    if (newStatus === 'done' && task.source === 'recurring_item' && task.title.startsWith('גביית')) {
+      if (confirm('המשימה הושלמה. להזין קבלת שכר דירה?')) {
+        navigate('/finances', {
+          state: {
+            prefill: {
+              direction: 'income',
+              category: 'שכר דירה',
+              description: task.title,
+            },
+          },
+        })
+      }
+    }
   }
 
   // Focus add input when it appears

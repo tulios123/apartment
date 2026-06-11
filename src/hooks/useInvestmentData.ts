@@ -42,7 +42,7 @@ export function useInvestmentData(): InvestmentData {
       const txs = txRes.data ?? []
       const mortgageTracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
 
-      setRentReceived(txs.filter(t => t.direction === 'income' && t.category === 'שכר דירה').reduce((s, t) => s + t.amount, 0))
+      setRentReceived(txs.filter(t => t.direction === 'income' && (t.category === 'שכר דירה' || t.category === 'שכירות')).reduce((s, t) => s + t.amount, 0))
       const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === 'ריבית').reduce((s, t) => s + t.amount, 0)
       setInterestPaid(manualInterest + interestToDate(mortgageTracks))
       setMaintenance(txs.filter(t => t.direction === 'expense' && t.category === 'תיקונים').reduce((s, t) => s + t.amount, 0))
