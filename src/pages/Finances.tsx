@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   useTransactions,
@@ -10,8 +10,18 @@ import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/c
 import { uploadReceipt, getReceiptSignedUrl } from '../lib/storage'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { trackSchedule } from '../lib/mortgage'
 import { formatCurrency, formatDate } from '../lib/format'
-import type { Transaction } from '../types'
+import type { Transaction, Contract, MortgageTrack } from '../types'
+
+interface VirtualEntry {
+  id: string
+  direction: 'income' | 'expense'
+  amount: number
+  date: string
+  category: string
+  description: string
+}
 
 interface RepairPrefill {
   direction: 'expense'
@@ -61,6 +71,57 @@ export default function Finances() {
   const [month, setMonth] = useState<number | undefined>(new Date().getMonth() + 1)
   const { transactions, loading, error, refetch } = useTransactions({ year, month })
 
+  const [contracts, setContracts] = useState<Contract[]>([])
+  const [mortgageTracks, setMortgageTracks] = useState<MortgageTrack[]>([])
+  useEffect(() => {
+    if (!user) return
+    Promise.all([
+      supabase.from('contracts').select('*').eq('owner_id', user.id),
+      supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id),
+    ]).then(([cRes, tRes]) => {
+      setContracts((cRes.data ?? []) as Contract[])
+      setMortgageTracks((tRes.data ?? []) as MortgageTrack[])
+    })
+  }, [user?.id])
+
+  const virtualEntries = useMemo<VirtualEntry[]>(() => {
+    if (!year || !month) return []
+    const monthPad = String(month).padStart(2, '0')
+    const monthStr = `${year}-${monthPad}`
+    const monthStart = `${monthStr}-01`
+    const monthEnd = new Date(year, month, 0).toISOString().slice(0, 10)
+    const entries: VirtualEntry[] = []
+
+    for (const c of contracts) {
+      if (c.start_date <= monthEnd && c.end_date >= monthStart) {
+        entries.push({
+          id: `v-rent-${c.id}`,
+          direction: 'income',
+          amount: c.monthly_rent,
+          date: monthStart,
+          category: 'שכר דירה',
+          description: c.company_name,
+        })
+      }
+    }
+
+    for (const t of mortgageTracks) {
+      const row = trackSchedule(t).find(r => r.date.slice(0, 7) === monthStr)
+      if (row) {
+        entries.push({
+          id: `v-mort-${t.id}`,
+          direction: 'expense',
+          amount: row.payment,
+          date: row.date,
+          category: 'משכנתא',
+          description: t.label ?? `מסלול ${t.track_type}`,
+        })
+      }
+    }
+
+    return entries
+  }, [year, month, contracts, mortgageTracks])
+
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -91,13 +152,11 @@ export default function Finances() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const totalIncome = transactions
-    .filter(t => t.direction === 'income')
-    .reduce((sum, t) => sum + Number(t.amount), 0)
+  const totalIncome = transactions.filter(t => t.direction === 'income').reduce((sum, t) => sum + Number(t.amount), 0)
+    + virtualEntries.filter(e => e.direction === 'income').reduce((sum, e) => sum + e.amount, 0)
 
-  const totalExpense = transactions
-    .filter(t => t.direction === 'expense')
-    .reduce((sum, t) => sum + Number(t.amount), 0)
+  const totalExpense = transactions.filter(t => t.direction === 'expense').reduce((sum, t) => sum + Number(t.amount), 0)
+    + virtualEntries.filter(e => e.direction === 'expense').reduce((sum, e) => sum + e.amount, 0)
 
   function openNew() {
     setForm(emptyForm)
@@ -346,10 +405,10 @@ export default function Finances() {
 
       {loading && <div className="empty-state">טוען...</div>}
       {error && <div className="form-error">{error}</div>}
-      {!loading && !error && transactions.length === 0 && (
+      {!loading && !error && transactions.length === 0 && virtualEntries.length === 0 && (
         <div className="empty-state">אין תנועות בתקופה זו</div>
       )}
-      {!loading && transactions.length > 0 && (
+      {!loading && (transactions.length > 0 || virtualEntries.length > 0) && (
         <div className="table-wrapper">
           <table className="data-table">
             <thead>
@@ -363,6 +422,18 @@ export default function Finances() {
               </tr>
             </thead>
             <tbody>
+              {virtualEntries.map(e => (
+                <tr key={e.id} className="virtual-tx-row">
+                  <td>{formatDate(e.date)}</td>
+                  <td>{e.category} <span className="virtual-badge">מחושב</span></td>
+                  <td className="text-muted">{e.description}</td>
+                  <td className="text-muted">—</td>
+                  <td className={`amount ${e.direction}`}>
+                    {e.direction === 'income' ? '+' : '-'}{formatAmount(e.amount)}
+                  </td>
+                  <td></td>
+                </tr>
+              ))}
               {transactions.map(t => (
                 <tr key={t.id}>
                   <td>{formatDate(t.date)}</td>
