@@ -131,6 +131,7 @@ export interface MortgageTrack {
   principal: number
   annual_rate: number   // stored as percent, e.g. 5.25 = 5.25%
   term_months: number
+  grace_months: number
   start_date: string
   created_at: string
 }

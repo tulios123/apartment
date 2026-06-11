@@ -23,6 +23,7 @@ interface TrackForm {
   prime_rate: string    // only for prime track type
   margin: string        // only for prime track type
   term_months: string
+  grace_months: string
   start_date: string
 }
 
@@ -35,6 +36,7 @@ function emptyForm(): TrackForm {
     prime_rate: '',
     margin: '',
     term_months: '',
+    grace_months: '',
     start_date: TODAY,
   }
 }
@@ -49,6 +51,7 @@ function formFromTrack(t: MortgageTrack): TrackForm {
     prime_rate: '',
     margin: '',
     term_months: String(t.term_months),
+    grace_months: t.grace_months ? String(t.grace_months) : '',
     start_date: t.start_date,
   }
 }
@@ -66,7 +69,14 @@ function previewPayment(form: TrackForm): number {
   const p = parseFloat(form.principal) || 0
   const r = effectiveRate(form)
   const n = parseInt(form.term_months) || 0
-  return monthlyPayment(p, r, n)
+  const g = parseInt(form.grace_months) || 0
+  return monthlyPayment(p, r, n, g)
+}
+
+function gracePayment(form: TrackForm): number {
+  const p = parseFloat(form.principal) || 0
+  const r = effectiveRate(form) / 100 / 12
+  return p * r
 }
 
 interface YearRow {
@@ -145,6 +155,7 @@ export default function MortgagePage() {
         principal: parseFloat(form.principal) || 0,
         annual_rate: rate,
         term_months: parseInt(form.term_months) || 0,
+        grace_months: parseInt(form.grace_months) || 0,
         start_date: form.start_date,
       })
       await refetch()
@@ -227,7 +238,10 @@ export default function MortgagePage() {
                 <span>קרן: <strong>{formatCurrency(track.principal)}</strong></span>
                 <span>ריבית: <strong>{track.annual_rate.toFixed(3)}%</strong></span>
                 <span>תקופה: <strong>{track.term_months} חודשים</strong></span>
-                <span>תשלום: <strong>{formatCurrency(monthlyPayment(track.principal, track.annual_rate, track.term_months))}</strong></span>
+                {track.grace_months > 0 && (
+                  <span>גרייס: <strong>{track.grace_months} חודשים</strong></span>
+                )}
+                <span>תשלום: <strong>{formatCurrency(monthlyPayment(track.principal, track.annual_rate, track.term_months, track.grace_months ?? 0))}</strong></span>
               </div>
               <div className="mortgage-track-meta">
                 <span>מתאריך {formatDate(track.start_date)}</span>
@@ -304,6 +318,21 @@ export default function MortgagePage() {
               </div>
             </div>
 
+            <div className="form-row">
+              <label>גרייס (חודשים)</label>
+              <input
+                type="number"
+                className="form-input"
+                value={form.grace_months}
+                onChange={e => setField('grace_months', e.target.value)}
+                placeholder="0"
+                min="0"
+              />
+              {parseInt(form.grace_months) > 0 && (
+                <span className="form-hint">ריבית בלבד למשך {form.grace_months} חודשים</span>
+              )}
+            </div>
+
             {form.track_type === 'prime' ? (
               <div className="form-2col">
                 <div className="form-row">
@@ -363,7 +392,14 @@ export default function MortgagePage() {
             {/* Live payment preview */}
             {preview > 0 && (
               <div className="mortgage-payment-preview">
-                תשלום חודשי משוער: <strong>{formatCurrency(preview)}</strong>
+                {parseInt(form.grace_months) > 0 ? (
+                  <>
+                    <div>בגרייס ({form.grace_months} חודשים): <strong>{formatCurrency(gracePayment(form))}</strong> ריבית בלבד</div>
+                    <div>לאחר גרייס: <strong>{formatCurrency(preview)}</strong> לחודש</div>
+                  </>
+                ) : (
+                  <>תשלום חודשי משוער: <strong>{formatCurrency(preview)}</strong></>
+                )}
               </div>
             )}
 

@@ -9,12 +9,16 @@ export interface ScheduleRow {
   balance: number     // remaining after this payment
 }
 
-/** Shpitzer equal monthly payment. annualRate is PERCENT (5.25 → 5.25%). */
-export function monthlyPayment(principal: number, annualRate: number, termMonths: number): number {
-  if (termMonths <= 0 || principal <= 0) return 0
+/**
+ * Shpitzer equal monthly payment for the post-grace amortization period.
+ * annualRate is PERCENT (5.25 → 5.25%). graceMonths is subtracted from termMonths.
+ */
+export function monthlyPayment(principal: number, annualRate: number, termMonths: number, graceMonths = 0): number {
+  const effectiveTerm = termMonths - graceMonths
+  if (effectiveTerm <= 0 || principal <= 0) return 0
   const r = annualRate / 100 / 12
-  if (r === 0) return principal / termMonths
-  const f = Math.pow(1 + r, termMonths)
+  if (r === 0) return principal / effectiveTerm
+  const f = Math.pow(1 + r, effectiveTerm)
   return (principal * r * f) / (f - 1)
 }
 
@@ -24,23 +28,33 @@ function addMonths(iso: string, months: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-/** Full month-by-month schedule for a single track. */
+/** Full month-by-month schedule for a single track, including any grace period. */
 export function trackSchedule(track: MortgageTrack): ScheduleRow[] {
-  const { principal, annual_rate, term_months, start_date } = track
+  const { principal, annual_rate, term_months, start_date, grace_months = 0 } = track
   if (term_months <= 0 || principal <= 0) return []
   const r = annual_rate / 100 / 12
-  const pay = monthlyPayment(principal, annual_rate, term_months)
+  // Post-grace Shpitzer payment (on full principal for remaining term)
+  const postGracePay = monthlyPayment(principal, annual_rate, term_months, grace_months)
   const rows: ScheduleRow[] = []
   let balance = principal
   for (let i = 1; i <= term_months; i++) {
     const interest = r === 0 ? 0 : balance * r
-    let prin = pay - interest
-    if (i === term_months) prin = balance   // absorb rounding drift
+    let prin: number
+    let payment: number
+    if (i <= grace_months) {
+      // Grace: interest only, no principal repayment
+      prin = 0
+      payment = interest
+    } else {
+      prin = postGracePay - interest
+      if (i === term_months) prin = balance   // absorb rounding drift
+      payment = interest + prin
+    }
     balance = Math.max(0, balance - prin)
     rows.push({
       monthIndex: i,
       date: addMonths(start_date, i),
-      payment: interest + prin,
+      payment,
       interest,
       principal: prin,
       balance,

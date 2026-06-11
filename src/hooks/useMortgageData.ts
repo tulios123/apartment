@@ -59,7 +59,7 @@ export function useMortgageData(): MortgageData {
   const summary: MortgageSummary = {
     totalPrincipal: tracks.reduce((s, t) => s + t.principal, 0),
     currentBalance: lastPaidRow ? lastPaidRow.balance : tracks.reduce((s, t) => s + t.principal, 0),
-    monthlyPayment: tracks.reduce((s, t) => s + monthlyPayment(t.principal, t.annual_rate, t.term_months), 0),
+    monthlyPayment: tracks.reduce((s, t) => s + monthlyPayment(t.principal, t.annual_rate, t.term_months, t.grace_months ?? 0), 0),
     totalInterestLife: tracks.flatMap(trackSchedule).reduce((s, r) => s + r.interest, 0),
     interestPaidToDate: interestToDate(tracks),
   }
@@ -88,6 +88,7 @@ export async function upsertMortgageTrack(data: {
   principal: number
   annual_rate: number
   term_months: number
+  grace_months: number
   start_date: string
 }): Promise<MortgageTrack> {
   if (data.id) {
@@ -99,6 +100,7 @@ export async function upsertMortgageTrack(data: {
         principal: data.principal,
         annual_rate: data.annual_rate,
         term_months: data.term_months,
+        grace_months: data.grace_months,
         start_date: data.start_date,
       })
       .eq('id', data.id)
@@ -116,6 +118,7 @@ export async function upsertMortgageTrack(data: {
         principal: data.principal,
         annual_rate: data.annual_rate,
         term_months: data.term_months,
+        grace_months: data.grace_months,
         start_date: data.start_date,
       })
       .select().single()
