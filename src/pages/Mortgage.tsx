@@ -233,14 +233,14 @@ export default function MortgagePage() {
                   {MORTGAGE_TRACK_TYPES.find(t => t.value === track.track_type)?.label ?? track.track_type}
                 </span>
                 {track.label && <span className="mortgage-track-label">{track.label}</span>}
+                {(track.grace_months ?? 0) > 0 && (
+                  <span className="grace-badge">גרייס {track.grace_months} חודשים</span>
+                )}
               </div>
               <div className="mortgage-track-numbers">
                 <span>קרן: <strong>{formatCurrency(track.principal)}</strong></span>
                 <span>ריבית: <strong>{track.annual_rate.toFixed(3)}%</strong></span>
                 <span>תקופה: <strong>{track.term_months} חודשים</strong></span>
-                {track.grace_months > 0 && (
-                  <span>גרייס: <strong>{track.grace_months} חודשים</strong></span>
-                )}
                 <span>תשלום: <strong>{formatCurrency(monthlyPayment(track.principal, track.annual_rate, track.term_months, track.grace_months ?? 0))}</strong></span>
               </div>
               <div className="mortgage-track-meta">
