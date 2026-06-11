@@ -36,6 +36,9 @@ export default function Onboarding({ onComplete }: Props) {
   const [propertySizeSqm, setPropertySizeSqm] = useState('')
   const [floorNumber, setFloorNumber] = useState('')
 
+  // Purchase expander
+  const [extraOpen, setExtraOpen] = useState(false)
+
   // Rental fields
   const [rentalFile, setRentalFile] = useState<File | null>(null)
   const [companyName, setCompanyName] = useState('')
@@ -62,7 +65,7 @@ export default function Onboarding({ onComplete }: Props) {
     setSaving(true)
     setError(null)
     try {
-      const address = [street.trim(), city.trim()].filter(Boolean).join(', ') || '—'
+      const address = [street.trim(), city.trim()].filter(Boolean).join(', ') || 'הנכס שלי'
       const blockParcel = block && parcel ? `גוש ${block} חלקה ${parcel}` : block || parcel || null
 
       const property = await createProperty({
@@ -174,7 +177,10 @@ export default function Onboarding({ onComplete }: Props) {
     })
   }
 
-  const rentalValid = companyName.trim() && startDate && endDate && monthlyRent
+  const rentalEmpty = !companyName.trim() && !startDate && !endDate && !monthlyRent
+
+  const currentStepIndex = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
+  const stepTotal = STEP_ORDER.length
 
   return (
     <div className="onboarding-wrap">
@@ -198,19 +204,18 @@ export default function Onboarding({ onComplete }: Props) {
         {step === 'purchase' && (
           <form onSubmit={e => { e.preventDefault(); setStep('rental') }}>
             <div className="onboarding-dots">{dots('purchase')}</div>
+            {currentStepIndex >= 0 && (
+              <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
+            )}
             <div className="onboarding-icon">🏷️</div>
             <h2 className="onboarding-title">פרטי רכישה</h2>
             <div className="onboarding-form">
-              <div className="onboarding-field">
-                <label>שם הרוכש</label>
-                <input type="text" placeholder="שם מלא" value={buyerName}
-                  onChange={e => setBuyerName(e.target.value)} autoFocus />
-              </div>
+              {/* Essential fields */}
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label>רחוב</label>
                   <input type="text" placeholder="רחוב ומספר" value={street}
-                    onChange={e => setStreet(e.target.value)} />
+                    onChange={e => setStreet(e.target.value)} autoFocus />
                 </div>
                 <div className="onboarding-field">
                   <label>עיר</label>
@@ -218,42 +223,11 @@ export default function Onboarding({ onComplete }: Props) {
                     onChange={e => setCity(e.target.value)} />
                 </div>
               </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>גוש</label>
-                  <input type="number" placeholder="0" min="0" value={block}
-                    onChange={e => setBlock(e.target.value)} />
-                </div>
-                <div className="onboarding-field">
-                  <label>חלקה</label>
-                  <input type="number" placeholder="0" min="0" value={parcel}
-                    onChange={e => setParcel(e.target.value)} />
-                </div>
-              </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>שטח (מ&quot;ר)</label>
-                  <input type="number" placeholder="0" min="0" value={propertySizeSqm}
-                    onChange={e => setPropertySizeSqm(e.target.value)} />
-                </div>
-                <div className="onboarding-field">
-                  <label>קומה</label>
-                  <input type="number" placeholder="0" value={floorNumber}
-                    onChange={e => setFloorNumber(e.target.value)} />
-                </div>
-              </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>מספר חדרים</label>
-                  <input type="number" placeholder="0" min="0" step="0.5" value={rooms}
-                    onChange={e => setRooms(e.target.value)} />
-                </div>
-                <div className="onboarding-field">
-                  <label>מחיר רכישה (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
-                    value={formatPrice(purchasePrice)}
-                    onChange={e => setPurchasePrice(e.target.value.replace(/\D/g, ''))} />
-                </div>
+              <div className="onboarding-field">
+                <label>מחיר רכישה (₪)</label>
+                <input type="text" inputMode="numeric" placeholder="0"
+                  value={formatPrice(purchasePrice)}
+                  onChange={e => setPurchasePrice(e.target.value.replace(/\D/g, ''))} />
               </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
@@ -265,6 +239,56 @@ export default function Onboarding({ onComplete }: Props) {
                   <input type="date" value={keyDeliveryDate} onChange={e => setKeyDeliveryDate(e.target.value)} />
                 </div>
               </div>
+
+              {/* "פרטים נוספים" expander */}
+              <button
+                type="button"
+                className="onboarding-expander-toggle"
+                onClick={() => setExtraOpen(o => !o)}
+                aria-expanded={extraOpen}
+              >
+                <span>פרטים נוספים</span>
+                <span className={`onboarding-expander-chevron${extraOpen ? ' open' : ''}`}>›</span>
+              </button>
+              {extraOpen && (
+                <div className="onboarding-expander-body">
+                  <div className="onboarding-field">
+                    <label>שם הרוכש</label>
+                    <input type="text" placeholder="שם מלא" value={buyerName}
+                      onChange={e => setBuyerName(e.target.value)} />
+                  </div>
+                  <div className="onboarding-row">
+                    <div className="onboarding-field">
+                      <label>גוש</label>
+                      <input type="number" placeholder="0" min="0" value={block}
+                        onChange={e => setBlock(e.target.value)} />
+                    </div>
+                    <div className="onboarding-field">
+                      <label>חלקה</label>
+                      <input type="number" placeholder="0" min="0" value={parcel}
+                        onChange={e => setParcel(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="onboarding-row">
+                    <div className="onboarding-field">
+                      <label>שטח (מ&quot;ר)</label>
+                      <input type="number" placeholder="0" min="0" value={propertySizeSqm}
+                        onChange={e => setPropertySizeSqm(e.target.value)} />
+                    </div>
+                    <div className="onboarding-field">
+                      <label>קומה</label>
+                      <input type="number" placeholder="0" value={floorNumber}
+                        onChange={e => setFloorNumber(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="onboarding-field">
+                    <label>מספר חדרים</label>
+                    <input type="number" placeholder="0" min="0" step="0.5" value={rooms}
+                      onChange={e => setRooms(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
               <div className="onboarding-file-field" onClick={() => purchaseInputRef.current?.click()}>
                 <span className="onboarding-file-label">חוזה רכישה</span>
                 <span className="onboarding-file-name">{purchaseFile?.name ?? 'לחץ לבחירת קובץ'}</span>
@@ -275,7 +299,9 @@ export default function Onboarding({ onComplete }: Props) {
             </div>
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
-              <button type="button" className="btn-onboard-skip" onClick={fillTestPurchase}>מלא דוגמה</button>
+              {import.meta.env.DEV && (
+                <button type="button" className="btn-onboard-skip" onClick={fillTestPurchase}>מלא דוגמה</button>
+              )}
               <button type="submit" className="btn-onboard-primary">הבא →</button>
             </div>
           </form>
@@ -283,8 +309,11 @@ export default function Onboarding({ onComplete }: Props) {
 
         {/* ── Rental ── */}
         {step === 'rental' && (
-          <form onSubmit={e => { e.preventDefault(); if (rentalValid) handleFinish() }}>
+          <form onSubmit={e => { e.preventDefault(); handleFinish() }}>
             <div className="onboarding-dots">{dots('rental')}</div>
+            {currentStepIndex >= 0 && (
+              <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
+            )}
             <div className="onboarding-icon">📄</div>
             <h2 className="onboarding-title">פרטי השכירות</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף אחר כך</p>
@@ -355,11 +384,19 @@ export default function Onboarding({ onComplete }: Props) {
             {error && <p className="onboarding-error">{error}</p>}
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
-              <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
-              <button type="button" className="btn-onboard-skip" onClick={handleFinish} disabled={saving}>דלג</button>
-              <button type="submit" className="btn-onboard-primary" disabled={!rentalValid || saving}>
-                {saving ? 'שומר...' : 'סיום ✓'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {import.meta.env.DEV && (
+                  <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
+                )}
+                {rentalEmpty && (
+                  <button type="button" className="btn-onboard-link" onClick={handleFinish} disabled={saving}>
+                    דלג — אוסיף אחר כך
+                  </button>
+                )}
+                <button type="submit" className="btn-onboard-primary" disabled={saving}>
+                  {saving ? 'שומר...' : 'סיום ✓'}
+                </button>
+              </div>
             </div>
           </form>
         )}

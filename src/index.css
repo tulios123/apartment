@@ -2154,3 +2154,78 @@ body {
   color: var(--text-muted);
   margin-top: -8px;
 }
+
+/* ── Onboarding step counter ── */
+.onboarding-step-count {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: -24px;
+  margin-bottom: 20px;
+  letter-spacing: 0.02em;
+}
+
+/* ── Onboarding "פרטים נוספים" expander ── */
+.onboarding-expander-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: inherit;
+  text-align: right;
+  transition: color 0.15s;
+}
+
+.onboarding-expander-toggle:hover {
+  color: var(--text);
+}
+
+.onboarding-expander-chevron {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  transform: rotate(90deg);
+  transition: transform 0.2s;
+  display: inline-block;
+  line-height: 1;
+}
+
+.onboarding-expander-chevron.open {
+  transform: rotate(-90deg);
+}
+
+.onboarding-expander-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+/* ── Onboarding subtle skip link ── */
+.btn-onboard-link {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 0;
+  text-decoration: none;
+}
+
+.btn-onboard-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.btn-onboard-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
