@@ -416,14 +416,16 @@ export default function MortgagePage() {
                 <tr>
                   <th></th>
                   <th>שנה</th>
-                  <th>תשלום</th>
-                  <th>ריבית</th>
-                  <th>קרן</th>
+                  <th>תשלום חודשי</th>
+                  <th>ריבית חודשית</th>
+                  <th>קרן חודשית</th>
                   <th>יתרה</th>
                 </tr>
               </thead>
               <tbody>
-                {yearRows.map(yr => (
+                {yearRows.map(yr => {
+                  const rep = yr.months[0]
+                  return (
                   <>
                     <tr
                       key={yr.year}
@@ -432,9 +434,9 @@ export default function MortgagePage() {
                     >
                       <td className="mortgage-expand-btn">{expandedYears.has(yr.year) ? '▾' : '▸'}</td>
                       <td><strong>{yr.year}</strong></td>
-                      <td>{formatCurrency(yr.totalPayment)}</td>
-                      <td className="negative">{formatCurrency(yr.totalInterest)}</td>
-                      <td>{formatCurrency(yr.totalPrincipal)}</td>
+                      <td>{formatCurrency(rep.payment)}</td>
+                      <td className="negative">{formatCurrency(rep.interest)}</td>
+                      <td>{formatCurrency(rep.principal)}</td>
                       <td>{formatCurrency(yr.endBalance)}</td>
                     </tr>
                     {expandedYears.has(yr.year) && yr.months.map(row => (
@@ -446,7 +448,9 @@ export default function MortgagePage() {
                         <td>{formatCurrency(row.principal)}</td>
                         <td>{formatCurrency(row.balance)}</td>
                       </tr>
-                    ))}
+                    ))}</>
+                  )
+                })}
                   </>
                 ))}
               </tbody>
