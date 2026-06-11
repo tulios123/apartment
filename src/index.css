@@ -1652,6 +1652,48 @@ body {
   max-width: 260px;
 }
 
+/* ── Monthly cash flow rows ── */
+.inv-flow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.inv-flow-row:last-child { border-bottom: none; }
+
+.inv-flow-sign {
+  font-size: 1rem;
+  font-weight: 700;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.inv-flow-label {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.inv-flow-amount {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.inv-flow-divider {
+  border-top: 2px solid var(--border);
+  margin: 4px 0;
+}
+
+.inv-flow-total .inv-flow-label {
+  font-weight: 600;
+}
+
+.inv-flow-total .inv-flow-amount {
+  font-size: 1.05rem;
+}
+
 /* Mobile: bottom nav */
 @media (max-width: 640px) {
   .sidebar {
