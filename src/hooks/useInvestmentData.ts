@@ -2,7 +2,20 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { interestToDate } from '../lib/mortgage'
-import type { InvestmentCost, MortgageTrack } from '../types'
+import type { InvestmentCost, MortgageTrack, Contract } from '../types'
+
+function rentFromContracts(contracts: Contract[]): number {
+  const today = new Date()
+  let total = 0
+  for (const c of contracts) {
+    const start = new Date(c.start_date)
+    const cap = new Date(Math.min(new Date(c.end_date).getTime(), today.getTime()))
+    if (cap < start) continue
+    const months = (cap.getFullYear() - start.getFullYear()) * 12 + (cap.getMonth() - start.getMonth()) + 1
+    total += Math.max(0, months) * c.monthly_rent
+  }
+  return total
+}
 
 export interface InvestmentData {
   costs: InvestmentCost[]
@@ -29,10 +42,11 @@ export function useInvestmentData(): InvestmentData {
     setLoading(true)
     setError(null)
     try {
-      const [costsRes, txRes, tracksRes] = await Promise.all([
+      const [costsRes, txRes, tracksRes, contractsRes] = await Promise.all([
         supabase.from('investment_costs').select('*').eq('owner_id', user.id).order('created_at'),
         supabase.from('transactions').select('direction, amount, category').eq('owner_id', user.id),
         supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id),
+        supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', user.id),
       ])
       if (costsRes.error) throw costsRes.error
       if (txRes.error) throw txRes.error
@@ -41,8 +55,9 @@ export function useInvestmentData(): InvestmentData {
 
       const txs = txRes.data ?? []
       const mortgageTracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
+      const contracts = (contractsRes.error ? [] : (contractsRes.data ?? [])) as Contract[]
 
-      setRentReceived(txs.filter(t => t.direction === 'income' && (t.category === 'שכר דירה' || t.category === 'שכירות')).reduce((s, t) => s + t.amount, 0))
+      setRentReceived(rentFromContracts(contracts))
       const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === 'ריבית').reduce((s, t) => s + t.amount, 0)
       setInterestPaid(manualInterest + interestToDate(mortgageTracks))
       setMaintenance(txs.filter(t => t.direction === 'expense' && t.category === 'תיקונים').reduce((s, t) => s + t.amount, 0))
