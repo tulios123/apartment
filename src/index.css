@@ -2229,3 +2229,106 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ── Onboarding multi-item list (tracks / policies) ── */
+.onboarding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.onboarding-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--accent-light, rgba(37,99,235,0.06));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.onboarding-list-row-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-list-row-type {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.onboarding-list-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.onboarding-list-remove:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* ── Onboarding inline builder form ── */
+.onboarding-inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg);
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+/* ── Onboarding running total / helper line ── */
+.onboarding-running-total {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.onboarding-running-total strong {
+  color: var(--text);
+}
+
+/* ── Onboarding "add" button inside inline form ── */
+.onboarding-add-btn {
+  align-self: flex-start;
+  font-weight: 600;
+  color: var(--accent) !important;
+}
+
+/* ── form-input used in mortgage select ── */
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+}
