@@ -207,6 +207,16 @@ export default function MortgagePage() {
   const preview = form ? previewPayment(form) : 0
   const effectiveRateVal = form ? effectiveRate(form) : 0
 
+  const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
+  const gracePeriodPayment = hasGrace
+    ? tracks.reduce((s, t) => {
+        const r = t.annual_rate / 100 / 12
+        return s + ((t.grace_months ?? 0) > 0
+          ? t.principal * r                                           // interest-only during grace
+          : monthlyPayment(t.principal, t.annual_rate, t.term_months, 0))  // full Shpitzer if no grace
+      }, 0)
+    : 0
+
   return (
     <div className="page mortgage-page">
       <div className="page-header">
@@ -221,7 +231,20 @@ export default function MortgagePage() {
         </div>
         <div className="summary-card">
           <div className="summary-label">תשלום חודשי</div>
-          <div className="summary-amount">{formatCurrency(summary.monthlyPayment)}</div>
+          {hasGrace ? (
+            <>
+              <div className="mortgage-payment-split">
+                <span className="mortgage-payment-split-label">בגרייס</span>
+                <span className="summary-amount">{formatCurrency(gracePeriodPayment)}</span>
+              </div>
+              <div className="mortgage-payment-split">
+                <span className="mortgage-payment-split-label">לאחר גרייס</span>
+                <span className="summary-amount">{formatCurrency(summary.monthlyPayment)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="summary-amount">{formatCurrency(summary.monthlyPayment)}</div>
+          )}
         </div>
         <div className="summary-card">
           <div className="summary-label">סה״כ ריבית לאורך חיי ההלוואה</div>

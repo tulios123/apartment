@@ -1875,6 +1875,24 @@ body {
   border-color: var(--primary);
 }
 
+.mortgage-payment-split {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.mortgage-payment-split-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mortgage-payment-split .summary-amount {
+  font-size: 16px;
+}
+
 .grace-inline-edit {
   display: flex;
   align-items: center;
