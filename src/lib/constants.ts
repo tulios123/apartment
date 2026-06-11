@@ -1,6 +1,6 @@
 // Categories for one-time transactions
 export const INCOME_CATEGORIES = ['שכר דירה', 'אחר'] as const
-export const EXPENSE_CATEGORIES = ['תיקונים', 'אחר'] as const
+export const EXPENSE_CATEGORIES = ['תיקונים', 'ריבית', 'אחר'] as const
 
 // Categories for recurring item templates (includes mortgage, insurance)
 export const RECURRING_INCOME_CATEGORIES = ['שכר דירה', 'אחר'] as const
@@ -9,7 +9,16 @@ export const RECURRING_EXPENSE_CATEGORIES = [
   'משכנתא – אב',
   'ביטוח',
   'תיקונים',
+  'ריבית',
   'אחר',
+] as const
+
+export const INVESTMENT_COST_CATEGORIES = [
+  { value: 'self_equity',        label: 'הון עצמי' },
+  { value: 'lawyer',             label: 'עורך דין' },
+  { value: 'brokerage',          label: 'דמי תיווך' },
+  { value: 'mortgage_advisor',   label: 'יועץ משכנתאות' },
+  { value: 'investment_company', label: 'חברת ליווי השקעה' },
 ] as const
 
 export const TASK_CATEGORIES = ['תיקונים ותחזוקה', 'ביקור ובדיקה', 'כללי'] as const

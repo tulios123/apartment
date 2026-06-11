@@ -1554,6 +1554,88 @@ body {
   }
 }
 
+/* Investment page */
+.investment-page {
+  max-width: 700px;
+}
+
+.inv-sub-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.inv-costs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inv-costs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inv-costs-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.inv-cost-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.inv-cost-row:last-of-type {
+  border-bottom: none;
+}
+
+.inv-cost-label {
+  flex: 1;
+  color: var(--text);
+}
+
+.inv-cost-input {
+  width: 130px;
+  text-align: left;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.inv-cost-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 2px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.inv-cost-total-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.inv-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.inv-add-input {
+  flex: 1;
+  max-width: 260px;
+}
+
 /* Mobile: bottom nav */
 @media (max-width: 640px) {
   .sidebar {

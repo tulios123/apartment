@@ -29,6 +29,7 @@ export default function Settings() {
       await supabase.from('tasks').delete().eq('owner_id', user.id)
       await supabase.from('documents').delete().eq('owner_id', user.id)
       await supabase.from('recurring_items').delete().eq('owner_id', user.id)
+      await supabase.from('investment_costs').delete().eq('owner_id', user.id)
       await supabase.from('properties').delete().eq('owner_id', user.id)
 
       if (docs && docs.length > 0) {

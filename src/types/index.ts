@@ -33,6 +33,7 @@ export interface Property {
   property_size_sqm: number | null
   floor: number | null
   rooms: number | null
+  estimated_value: number | null
   created_at: string
 }
 
@@ -97,6 +98,16 @@ export interface Task {
   source: TaskSource
   is_recurring: boolean
   recurrence_days: number | null
+  created_at: string
+}
+
+export interface InvestmentCost {
+  id: string
+  owner_id: string
+  category: string
+  label: string | null
+  amount: number
+  notes: string | null
   created_at: string
 }
 
