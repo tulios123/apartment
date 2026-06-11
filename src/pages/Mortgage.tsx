@@ -451,8 +451,6 @@ export default function MortgagePage() {
                     ))}</>
                   )
                 })}
-                  </>
-                ))}
               </tbody>
             </table>
           </div>
