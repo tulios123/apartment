@@ -233,8 +233,14 @@ export default function MortgagePage() {
                   {MORTGAGE_TRACK_TYPES.find(t => t.value === track.track_type)?.label ?? track.track_type}
                 </span>
                 {track.label && <span className="mortgage-track-label">{track.label}</span>}
-                {(track.grace_months ?? 0) > 0 && (
-                  <span className="grace-badge">גרייס {track.grace_months} חודשים</span>
+                {(track.grace_months ?? 0) > 0 ? (
+                  <span className="grace-badge grace-badge-clickable" onClick={() => setForm(formFromTrack(track))}>
+                    גרייס {track.grace_months} חודשים ✎
+                  </span>
+                ) : (
+                  <span className="grace-badge grace-badge-empty" onClick={() => setForm(formFromTrack(track))}>
+                    + הוסף גרייס
+                  </span>
                 )}
               </div>
               <div className="mortgage-track-numbers">
