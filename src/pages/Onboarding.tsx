@@ -5,8 +5,7 @@ import { createProperty, createContract } from '../hooks/usePropertyData'
 import { createRecurringItem } from '../hooks/useRecurringItems'
 import { supabase } from '../lib/supabase'
 
-type Step = 'welcome' | 'property' | 'purchase' | 'rental' | 'recurring' | 'done'
-type DocMode = 'choice' | 'upload' | 'manual'
+type Step = 'welcome' | 'purchase' | 'rental' | 'mortgage' | 'insurance' | 'recurring' | 'done'
 
 interface RecurringTemplate {
   key: string
@@ -19,43 +18,41 @@ interface RecurringTemplate {
 }
 
 const TEMPLATES: Omit<RecurringTemplate, 'enabled' | 'amount'>[] = [
-  { key: 'mortgage', label: 'משכנתא', category: 'משכנתא', executionType: 'requires_approval', dayOfMonth: 1 },
-  { key: 'insurance', label: 'ביטוח', category: 'ביטוח', executionType: 'automatic', dayOfMonth: 1 },
   { key: 'vaad', label: 'ועד בית', category: 'ועד בית', executionType: 'automatic', dayOfMonth: 1 },
 ]
 
-const STEP_ORDER: Step[] = ['purchase', 'rental', 'recurring']
+const STEP_ORDER: Step[] = ['purchase', 'rental', 'mortgage', 'insurance', 'recurring']
 
-const EXTRACTABLE_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+const INSURANCE_TYPES = [
+  { key: 'building', label: 'מבנה' },
+  { key: 'life',     label: 'חיים' },
+  { key: 'contents', label: 'תכולה' },
+] as const
+type InsuranceType = typeof INSURANCE_TYPES[number]['key']
 
 interface Props { onComplete: () => void }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve((reader.result as string).split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+function formatPrice(raw: string) {
+  if (!raw) return ''
+  return Number(raw).toLocaleString('en-US')
 }
 
 export default function Onboarding({ onComplete }: Props) {
   const { user } = useAuth()
   const [step, setStep] = useState<Step>('welcome')
-  const [purchaseMode, setPurchaseMode] = useState<DocMode>('choice')
-  const [rentalMode, setRentalMode] = useState<DocMode>('choice')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Purchase contract fields
   const [purchaseFile, setPurchaseFile] = useState<File | null>(null)
-  const [extracting, setExtracting] = useState(false)
-  const [autoFilled, setAutoFilled] = useState(false)
   const [buyerName, setBuyerName] = useState('')
-  const [propertyAddress, setPropertyAddress] = useState('')
-  const [blockParcel, setBlockParcel] = useState('')
+  const [street, setStreet] = useState('')
+  const [city, setCity] = useState('')
+  const [block, setBlock] = useState('')
+  const [parcel, setParcel] = useState('')
+  const [rooms, setRooms] = useState('')
   const [purchasePrice, setPurchasePrice] = useState('')
-  const [purchaseDate, setPurchaseDate] = useState('')
+  const [signingDate, setSigningDate] = useState('')
   const [keyDeliveryDate, setKeyDeliveryDate] = useState('')
   const [propertySizeSqm, setPropertySizeSqm] = useState('')
   const [floorNumber, setFloorNumber] = useState('')
@@ -68,6 +65,22 @@ export default function Onboarding({ onComplete }: Props) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [monthlyRent, setMonthlyRent] = useState('')
+  const [rentPaymentMethod, setRentPaymentMethod] = useState<'check' | 'bank_transfer'>('check')
+  const [rentPaymentDay, setRentPaymentDay] = useState('1')
+  const [addRentReminder, setAddRentReminder] = useState(false)
+
+  // Mortgage fields
+  const [mortgageAmount, setMortgageAmount] = useState('')
+  const [mortgageBank, setMortgageBank] = useState('')
+  const [mortgageDay, setMortgageDay] = useState('1')
+  const [mortgagePaymentMethod, setMortgagePaymentMethod] = useState<'bank_transfer' | 'standing_order'>('standing_order')
+
+  // Insurance fields
+  const [insuranceFile, setInsuranceFile] = useState<File | null>(null)
+  const [insuranceType, setInsuranceType] = useState<InsuranceType>('building')
+  const [insuranceAmount, setInsuranceAmount] = useState('')
+  const [insuranceCompany, setInsuranceCompany] = useState('')
+  const [insuranceDay, setInsuranceDay] = useState('1')
 
   const [recurring, setRecurring] = useState<RecurringTemplate[]>(
     TEMPLATES.map(t => ({ ...t, enabled: false, amount: '' }))
@@ -75,6 +88,7 @@ export default function Onboarding({ onComplete }: Props) {
 
   const purchaseInputRef = useRef<HTMLInputElement>(null)
   const rentalInputRef = useRef<HTMLInputElement>(null)
+  const insuranceInputRef = useRef<HTMLInputElement>(null)
 
   function next() {
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
@@ -83,13 +97,8 @@ export default function Onboarding({ onComplete }: Props) {
 
   function back() {
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
-    if (idx > 0) {
-      setStep(STEP_ORDER[idx - 1])
-      if (step === 'purchase') setPurchaseMode('choice')
-      if (step === 'rental') setRentalMode('choice')
-    } else {
-      setStep('welcome')
-    }
+    if (idx > 0) setStep(STEP_ORDER[idx - 1])
+    else setStep('welcome')
   }
 
   function toggleItem(key: string) {
@@ -100,49 +109,26 @@ export default function Onboarding({ onComplete }: Props) {
     setRecurring(r => r.map(i => i.key === key ? { ...i, amount: val } : i))
   }
 
-  async function extractFromContract(file: File) {
-    if (!EXTRACTABLE_TYPES.includes(file.type)) return
-    setExtracting(true)
-    setAutoFilled(false)
-    try {
-      const fileBase64 = await fileToBase64(file)
-      const { data, error: fnErr } = await supabase.functions.invoke('extract-contract', {
-        body: { fileBase64, mediaType: file.type },
-      })
-      if (fnErr) throw fnErr
-      if (data?.buyerName) setBuyerName(data.buyerName)
-      if (data?.propertyAddress) setPropertyAddress(data.propertyAddress)
-      if (data?.blockParcel) setBlockParcel(data.blockParcel)
-      if (data?.purchasePrice) setPurchasePrice(String(data.purchasePrice))
-      if (data?.purchaseDate) setPurchaseDate(data.purchaseDate)
-      if (data?.keyDeliveryDate) setKeyDeliveryDate(data.keyDeliveryDate)
-      if (data?.propertySizeSqm) setPropertySizeSqm(String(data.propertySizeSqm))
-      if (data?.floor != null) setFloorNumber(String(data.floor))
-      const filled = Object.values(data ?? {}).some(v => v != null && v !== '')
-      setAutoFilled(filled)
-    } catch (e) {
-      console.error('Extraction failed:', e)
-    } finally {
-      setExtracting(false)
-    }
-  }
-
   async function handleFinish() {
     if (!user) return
     setSaving(true)
     setError(null)
     try {
+      const address = [street.trim(), city.trim()].filter(Boolean).join(', ') || '—'
+      const blockParcel = block && parcel ? `גוש ${block} חלקה ${parcel}` : block || parcel || null
+
       const property = await createProperty({
         owner_id: user.id,
-        address: propertyAddress.trim() || '—',
+        address,
         notes: null,
         buyer_name: buyerName.trim() || null,
-        block_parcel: blockParcel.trim() || null,
+        block_parcel: blockParcel,
         purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
-        purchase_date: purchaseDate || null,
+        purchase_date: signingDate || null,
         key_delivery_date: keyDeliveryDate || null,
         property_size_sqm: propertySizeSqm ? parseFloat(propertySizeSqm) : null,
         floor: floorNumber !== '' ? parseInt(floorNumber, 10) : null,
+        rooms: rooms !== '' ? parseInt(rooms, 10) : null,
       })
 
       let contract = null
@@ -168,7 +154,7 @@ export default function Onboarding({ onComplete }: Props) {
           id: docId, owner_id: user.id, property_id: property.id,
           contract_id: null, transaction_id: null,
           type: 'purchase_contract', name: purchaseFile.name,
-          storage_path: path, date: purchaseDate || null,
+          storage_path: path, date: signingDate || null,
         })
       }
 
@@ -180,6 +166,65 @@ export default function Onboarding({ onComplete }: Props) {
           contract_id: contract.id, transaction_id: null,
           type: 'rental_contract', name: rentalFile.name,
           storage_path: path, date: startDate || null,
+        })
+      }
+
+      if (addRentReminder && contract && monthlyRent) {
+        await createRecurringItem({
+          contract_id: contract.id,
+          direction: 'income',
+          amount: parseFloat(monthlyRent),
+          category: 'שכירות',
+          day_of_month: parseInt(rentPaymentDay, 10) || 1,
+          start_date: startDate || new Date().toISOString().slice(0, 10),
+          end_date: endDate || null,
+          payee: companyName.trim() || null,
+          execution_type: 'requires_approval',
+          payment_method: rentPaymentMethod,
+          renewal_alert_days: [90, 30],
+        })
+      }
+
+      if (mortgageAmount) {
+        await createRecurringItem({
+          contract_id: contract?.id ?? null,
+          direction: 'expense',
+          amount: parseFloat(mortgageAmount),
+          category: 'משכנתא',
+          day_of_month: parseInt(mortgageDay, 10) || 1,
+          start_date: startDate || new Date().toISOString().slice(0, 10),
+          end_date: endDate || null,
+          payee: mortgageBank.trim() || null,
+          execution_type: 'requires_approval',
+          payment_method: mortgagePaymentMethod,
+          renewal_alert_days: [90, 30],
+        })
+      }
+
+      if (insuranceAmount) {
+        const typeLabel = INSURANCE_TYPES.find(t => t.key === insuranceType)?.label ?? 'ביטוח'
+        if (insuranceFile) {
+          const docId = crypto.randomUUID()
+          const path = await uploadDocument(insuranceFile, docId)
+          await supabase.from('documents').insert({
+            id: docId, owner_id: user.id, property_id: property.id,
+            contract_id: null, transaction_id: null,
+            type: 'insurance_policy', name: insuranceFile.name,
+            storage_path: path, date: null,
+          })
+        }
+        await createRecurringItem({
+          contract_id: contract?.id ?? null,
+          direction: 'expense',
+          amount: parseFloat(insuranceAmount),
+          category: `ביטוח ${typeLabel}`,
+          day_of_month: parseInt(insuranceDay, 10) || 1,
+          start_date: startDate || new Date().toISOString().slice(0, 10),
+          end_date: endDate || null,
+          payee: insuranceCompany.trim() || null,
+          execution_type: 'automatic',
+          payment_method: null,
+          renewal_alert_days: [90, 30],
         })
       }
 
@@ -207,6 +252,45 @@ export default function Onboarding({ onComplete }: Props) {
     }
   }
 
+  function fillTestPurchase() {
+    setBuyerName('איתי שובי')
+    setStreet('הרצל 42')
+    setCity('תל אביב')
+    setBlock('6660')
+    setParcel('12')
+    setRooms('3.5')
+    setPurchasePrice('1090000')
+    setSigningDate('2022-03-15')
+    setKeyDeliveryDate('2022-07-01')
+    setPropertySizeSqm('85')
+    setFloorNumber('4')
+  }
+
+  function fillTestRental() {
+    setCompanyName('כוח אדם גלובל בע"מ')
+    setContactName('יוסי כהן')
+    setContactPhone('050-1234567')
+    setStartDate('2024-01-01')
+    setEndDate('2025-12-31')
+    setMonthlyRent('4500')
+    setRentPaymentDay('5')
+    setAddRentReminder(true)
+  }
+
+  function fillTestMortgage() {
+    setMortgageAmount('3200')
+    setMortgageBank('בנק לאומי')
+    setMortgageDay('1')
+    setMortgagePaymentMethod('standing_order')
+  }
+
+  function fillTestInsurance() {
+    setInsuranceType('building')
+    setInsuranceAmount('180')
+    setInsuranceCompany('הראל')
+    setInsuranceDay('1')
+  }
+
   function dots(current: Step) {
     return STEP_ORDER.map((s, i) => {
       const active = STEP_ORDER.indexOf(current)
@@ -227,8 +311,7 @@ export default function Onboarding({ onComplete }: Props) {
             <div className="onboarding-icon">🏠</div>
             <h1 className="onboarding-title">ברוך הבא!</h1>
             <p className="onboarding-subtitle">
-              בואו נגדיר את הנכס שלך ב-3 שלבים קצרים.
-              <br />זה ייקח פחות מדקה.
+              בואו נגדיר את הנכס שלך בכמה שלבים קצרים.
             </p>
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
               <button type="submit" className="btn-onboard-primary">התחל →</button>
@@ -236,145 +319,11 @@ export default function Onboarding({ onComplete }: Props) {
           </form>
         )}
 
-        {/* ── Purchase — choice ── */}
-        {step === 'purchase' && purchaseMode === 'choice' && (
-          <>
+        {/* ── Purchase ── */}
+        {step === 'purchase' && (
+          <form onSubmit={e => { e.preventDefault(); next() }}>
             <div className="onboarding-dots">{dots('purchase')}</div>
             <div className="onboarding-icon">🏷️</div>
-            <h2 className="onboarding-title">חוזה רכישה</h2>
-            <p className="onboarding-subtitle">יש לך חוזה רכישה של הנכס?</p>
-            <div className="choice-grid">
-              <div className="choice-card choice-card-left" onClick={() => { setPurchaseMode('upload'); purchaseInputRef.current?.click() }}>
-                <span className="choice-icon">📁</span>
-                <span className="choice-label">העלה חוזה רכישה</span>
-                <input ref={purchaseInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
-                  style={{ display: 'none' }}
-                  onChange={e => {
-                    const f = e.target.files?.[0]
-                    if (f) { setPurchaseFile(f); setPurchaseMode('upload'); extractFromContract(f) }
-                  }} />
-              </div>
-              <div className="choice-card choice-card-sm" onClick={() => setPurchaseMode('manual')}>
-                <span className="choice-icon">✏️</span>
-                <span className="choice-label">הזן ידנית</span>
-              </div>
-              <div className="choice-card choice-card-sm choice-card-muted" onClick={() => { setPurchaseMode('choice'); next() }}>
-                <span className="choice-label">דלג על חלק זה</span>
-              </div>
-            </div>
-            <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
-            </div>
-          </>
-        )}
-
-        {/* ── Purchase — upload ── */}
-        {step === 'purchase' && purchaseMode === 'upload' && (
-          <form onSubmit={e => { e.preventDefault(); next(); setPurchaseMode('choice') }}>
-            <div className="onboarding-dots">{dots('purchase')}</div>
-            <div className="onboarding-icon">📁</div>
-            <h2 className="onboarding-title">חוזה רכישה</h2>
-
-            <div className="onboarding-form">
-              {/* File row */}
-              <div className="onboarding-field">
-                <label>קובץ</label>
-                <div className="onboarding-file-row">
-                  <span className="onboarding-file-name">{purchaseFile?.name ?? 'לא נבחר קובץ'}</span>
-                  <button type="button" className="btn-onboard-skip" onClick={() => purchaseInputRef.current?.click()}>
-                    {purchaseFile ? 'החלף' : 'בחר קובץ'}
-                  </button>
-                  <input ref={purchaseInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
-                    style={{ display: 'none' }}
-                    onChange={e => {
-                      const f = e.target.files?.[0]
-                      if (f) { setPurchaseFile(f); extractFromContract(f) }
-                    }} />
-                </div>
-              </div>
-
-              {/* Extraction status */}
-              {extracting && (
-                <div className="onboarding-extracting">
-                  <span className="onboarding-extracting-spinner" />
-                  מנתח חוזה...
-                </div>
-              )}
-
-              {!extracting && autoFilled && (
-                <div className="onboarding-extract-banner">
-                  ✨ פרטים זוהו אוטומטית — בדוק ותקן אם נדרש
-                </div>
-              )}
-
-              {!extracting && (
-                <>
-                  <div className="onboarding-field">
-                    <label>שם הרוכש</label>
-                    <input type="text" placeholder="שם מלא" value={buyerName}
-                      onChange={e => setBuyerName(e.target.value)} />
-                  </div>
-
-                  <div className="onboarding-field">
-                    <label>כתובת הנכס</label>
-                    <input type="text" placeholder="רחוב, עיר" value={propertyAddress}
-                      onChange={e => setPropertyAddress(e.target.value)} />
-                  </div>
-
-                  <div className="onboarding-row">
-                    <div className="onboarding-field">
-                      <label>גוש חלקה</label>
-                      <input type="text" placeholder="גוש X חלקה Y" value={blockParcel}
-                        onChange={e => setBlockParcel(e.target.value)} />
-                    </div>
-                    <div className="onboarding-field">
-                      <label>שטח (מ&quot;ר)</label>
-                      <input type="number" placeholder="0" min="0" value={propertySizeSqm}
-                        onChange={e => setPropertySizeSqm(e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div className="onboarding-row">
-                    <div className="onboarding-field">
-                      <label>קומה</label>
-                      <input type="number" placeholder="0" value={floorNumber}
-                        onChange={e => setFloorNumber(e.target.value)} />
-                    </div>
-                    <div className="onboarding-field">
-                      <label>מחיר רכישה (₪)</label>
-                      <input type="number" placeholder="0" min="0" value={purchasePrice}
-                        onChange={e => setPurchasePrice(e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div className="onboarding-row">
-                    <div className="onboarding-field">
-                      <label>תאריך רכישה</label>
-                      <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
-                    </div>
-                    <div className="onboarding-field">
-                      <label>מסירת מפתח</label>
-                      <input type="date" value={keyDeliveryDate} onChange={e => setKeyDeliveryDate(e.target.value)} />
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={() => setPurchaseMode('choice')}>← חזור</button>
-              <button type="submit" className="btn-onboard-primary" disabled={!purchaseFile || extracting}>
-                {extracting ? 'מנתח...' : 'הבא →'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* ── Purchase — manual ── */}
-        {step === 'purchase' && purchaseMode === 'manual' && (
-          <form onSubmit={e => { e.preventDefault(); next(); setPurchaseMode('choice') }}>
-            <div className="onboarding-dots">{dots('purchase')}</div>
-            <div className="onboarding-icon">✏️</div>
             <h2 className="onboarding-title">פרטי רכישה</h2>
             <div className="onboarding-form">
               <div className="onboarding-field">
@@ -382,103 +331,88 @@ export default function Onboarding({ onComplete }: Props) {
                 <input type="text" placeholder="שם מלא" value={buyerName}
                   onChange={e => setBuyerName(e.target.value)} autoFocus />
               </div>
-              <div className="onboarding-field">
-                <label>כתובת הנכס</label>
-                <input type="text" placeholder="רחוב, עיר" value={propertyAddress}
-                  onChange={e => setPropertyAddress(e.target.value)} />
+              <div className="onboarding-row">
+                <div className="onboarding-field">
+                  <label>רחוב</label>
+                  <input type="text" placeholder="רחוב ומספר" value={street}
+                    onChange={e => setStreet(e.target.value)} />
+                </div>
+                <div className="onboarding-field">
+                  <label>עיר</label>
+                  <input type="text" placeholder="עיר" value={city}
+                    onChange={e => setCity(e.target.value)} />
+                </div>
               </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
-                  <label>גוש חלקה</label>
-                  <input type="text" placeholder="גוש X חלקה Y" value={blockParcel}
-                    onChange={e => setBlockParcel(e.target.value)} />
+                  <label>גוש</label>
+                  <input type="number" placeholder="0" min="0" value={block}
+                    onChange={e => setBlock(e.target.value)} />
                 </div>
+                <div className="onboarding-field">
+                  <label>חלקה</label>
+                  <input type="number" placeholder="0" min="0" value={parcel}
+                    onChange={e => setParcel(e.target.value)} />
+                </div>
+              </div>
+              <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label>שטח (מ&quot;ר)</label>
                   <input type="number" placeholder="0" min="0" value={propertySizeSqm}
                     onChange={e => setPropertySizeSqm(e.target.value)} />
                 </div>
-              </div>
-              <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label>קומה</label>
                   <input type="number" placeholder="0" value={floorNumber}
                     onChange={e => setFloorNumber(e.target.value)} />
                 </div>
+              </div>
+              <div className="onboarding-row">
+                <div className="onboarding-field">
+                  <label>מספר חדרים</label>
+                  <input type="number" placeholder="0" min="0" step="0.5" value={rooms}
+                    onChange={e => setRooms(e.target.value)} />
+                </div>
                 <div className="onboarding-field">
                   <label>מחיר רכישה (₪)</label>
-                  <input type="number" placeholder="0" min="0" value={purchasePrice}
-                    onChange={e => setPurchasePrice(e.target.value)} />
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={formatPrice(purchasePrice)}
+                    onChange={e => setPurchasePrice(e.target.value.replace(/\D/g, ''))} />
                 </div>
               </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
-                  <label>תאריך רכישה</label>
-                  <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
+                  <label>תאריך חתימת חוזה</label>
+                  <input type="date" value={signingDate} onChange={e => setSigningDate(e.target.value)} />
                 </div>
                 <div className="onboarding-field">
                   <label>מסירת מפתח</label>
                   <input type="date" value={keyDeliveryDate} onChange={e => setKeyDeliveryDate(e.target.value)} />
                 </div>
               </div>
+              <div className="onboarding-file-field" onClick={() => purchaseInputRef.current?.click()}>
+                <span className="onboarding-file-label">חוזה רכישה</span>
+                <span className="onboarding-file-name">{purchaseFile?.name ?? 'לחץ לבחירת קובץ'}</span>
+                <input ref={purchaseInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                  style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) setPurchaseFile(f) }} />
+              </div>
             </div>
             <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={() => setPurchaseMode('choice')}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={fillTestPurchase}>מלא דוגמה</button>
               <button type="submit" className="btn-onboard-primary">הבא →</button>
             </div>
           </form>
         )}
 
-        {/* ── Rental — choice ── */}
-        {step === 'rental' && rentalMode === 'choice' && (
-          <>
+        {/* ── Rental ── */}
+        {step === 'rental' && (
+          <form onSubmit={e => { e.preventDefault(); if (rentalValid) next() }}>
             <div className="onboarding-dots">{dots('rental')}</div>
             <div className="onboarding-icon">📄</div>
-            <h2 className="onboarding-title">חוזה שכירות</h2>
-            <p className="onboarding-subtitle">יש לך חוזה שכירות פעיל?</p>
-            <div className="choice-grid">
-              <div className="choice-card choice-card-left" onClick={() => { setRentalMode('upload'); rentalInputRef.current?.click() }}>
-                <span className="choice-icon">📁</span>
-                <span className="choice-label">העלה חוזה שכירות</span>
-                <input ref={rentalInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) { setRentalFile(f); setRentalMode('upload') } }} />
-              </div>
-              <div className="choice-card choice-card-sm" onClick={() => setRentalMode('manual')}>
-                <span className="choice-icon">✏️</span>
-                <span className="choice-label">הזן ידנית</span>
-              </div>
-              <div className="choice-card choice-card-sm choice-card-muted" onClick={() => { setRentalMode('choice'); next() }}>
-                <span className="choice-label">דלג על חלק זה</span>
-              </div>
-            </div>
-            <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
-            </div>
-          </>
-        )}
-
-        {/* ── Rental — form ── */}
-        {step === 'rental' && (rentalMode === 'upload' || rentalMode === 'manual') && (
-          <form onSubmit={e => { e.preventDefault(); if (rentalValid) { next(); setRentalMode('choice') } }}>
-            <div className="onboarding-dots">{dots('rental')}</div>
-            <div className="onboarding-icon">📄</div>
-            <h2 className="onboarding-title">פרטי החוזה</h2>
+            <h2 className="onboarding-title">פרטי השכירות</h2>
             <div className="onboarding-form">
-              {rentalMode === 'upload' && (
-                <div className="onboarding-field">
-                  <label>קובץ החוזה</label>
-                  <div className="onboarding-file-row">
-                    <span className="onboarding-file-name">{rentalFile?.name ?? 'לא נבחר קובץ'}</span>
-                    <button type="button" className="btn-onboard-skip" onClick={() => rentalInputRef.current?.click()}>
-                      {rentalFile ? 'החלף' : 'בחר קובץ'}
-                    </button>
-                    <input ref={rentalInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      style={{ display: 'none' }}
-                      onChange={e => { const f = e.target.files?.[0]; if (f) setRentalFile(f) }} />
-                  </div>
-                </div>
-              )}
               <div className="onboarding-field">
                 <label>שם חברה / שוכר</label>
                 <input type="text" placeholder="שם החברה או השוכר" value={companyName}
@@ -511,21 +445,149 @@ export default function Onboarding({ onComplete }: Props) {
                 <input type="number" placeholder="0" value={monthlyRent} min="0"
                   onChange={e => setMonthlyRent(e.target.value)} />
               </div>
+              <div className="onboarding-row">
+                <div className="onboarding-field">
+                  <label>אמצעי תשלום</label>
+                  <div className="toggle-group">
+                    <button type="button"
+                      className={`toggle-btn${rentPaymentMethod === 'check' ? ' active' : ''}`}
+                      onClick={() => setRentPaymentMethod('check')}>צ'ק</button>
+                    <button type="button"
+                      className={`toggle-btn${rentPaymentMethod === 'bank_transfer' ? ' active' : ''}`}
+                      onClick={() => setRentPaymentMethod('bank_transfer')}>העברה בנקאית</button>
+                  </div>
+                </div>
+                <div className="onboarding-field">
+                  <label>יום תשלום בחודש</label>
+                  <input type="number" placeholder="1" min="1" max="28" value={rentPaymentDay}
+                    onChange={e => setRentPaymentDay(e.target.value)} />
+                </div>
+              </div>
+              <label className="onboarding-checkbox-row">
+                <input type="checkbox" checked={addRentReminder}
+                  onChange={e => setAddRentReminder(e.target.checked)} />
+                <span>הוסף תזכורת חודשית לאישור קבלת תשלום</span>
+              </label>
+              <div className="onboarding-file-field" onClick={() => rentalInputRef.current?.click()}>
+                <span className="onboarding-file-label">חוזה שכירות</span>
+                <span className="onboarding-file-name">{rentalFile?.name ?? 'לחץ לבחירת קובץ'}</span>
+                <input ref={rentalInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) setRentalFile(f) }} />
+              </div>
             </div>
             <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={() => setRentalMode('choice')}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
+              <button type="button" className="btn-onboard-skip" onClick={next}>דלג</button>
               <button type="submit" className="btn-onboard-primary" disabled={!rentalValid}>הבא →</button>
             </div>
           </form>
         )}
 
-        {/* ── Recurring ── */}
+        {/* ── Mortgage ── */}
+        {step === 'mortgage' && (
+          <form onSubmit={e => { e.preventDefault(); next() }}>
+            <div className="onboarding-dots">{dots('mortgage')}</div>
+            <div className="onboarding-icon">🏦</div>
+            <h2 className="onboarding-title">משכנתא</h2>
+            <div className="onboarding-form">
+              <div className="onboarding-row">
+                <div className="onboarding-field">
+                  <label>תשלום חודשי (₪)</label>
+                  <input type="number" placeholder="0" min="0" value={mortgageAmount}
+                    onChange={e => setMortgageAmount(e.target.value)} autoFocus />
+                </div>
+                <div className="onboarding-field">
+                  <label>יום תשלום</label>
+                  <input type="number" placeholder="1" min="1" max="28" value={mortgageDay}
+                    onChange={e => setMortgageDay(e.target.value)} />
+                </div>
+              </div>
+              <div className="onboarding-field">
+                <label>בנק / נמען</label>
+                <input type="text" placeholder="שם הבנק (אופציונלי)" value={mortgageBank}
+                  onChange={e => setMortgageBank(e.target.value)} />
+              </div>
+              <div className="onboarding-field">
+                <label>אמצעי תשלום</label>
+                <div className="toggle-group">
+                  <button type="button"
+                    className={`toggle-btn${mortgagePaymentMethod === 'standing_order' ? ' active' : ''}`}
+                    onClick={() => setMortgagePaymentMethod('standing_order')}>הוראת קבע</button>
+                  <button type="button"
+                    className={`toggle-btn${mortgagePaymentMethod === 'bank_transfer' ? ' active' : ''}`}
+                    onClick={() => setMortgagePaymentMethod('bank_transfer')}>העברה בנקאית</button>
+                </div>
+              </div>
+            </div>
+            <div className="onboarding-actions">
+              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={fillTestMortgage}>מלא דוגמה</button>
+              <button type="button" className="btn-onboard-skip" onClick={next}>דלג</button>
+              <button type="submit" className="btn-onboard-primary">הבא →</button>
+            </div>
+          </form>
+        )}
+
+        {/* ── Insurance ── */}
+        {step === 'insurance' && (
+          <form onSubmit={e => { e.preventDefault(); next() }}>
+            <div className="onboarding-dots">{dots('insurance')}</div>
+            <div className="onboarding-icon">🛡️</div>
+            <h2 className="onboarding-title">ביטוח</h2>
+            <div className="onboarding-form">
+              <div className="onboarding-field">
+                <label>סוג ביטוח</label>
+                <div className="toggle-group">
+                  {INSURANCE_TYPES.map(t => (
+                    <button key={t.key} type="button"
+                      className={`toggle-btn${insuranceType === t.key ? ' active' : ''}`}
+                      onClick={() => setInsuranceType(t.key)}>{t.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="onboarding-row">
+                <div className="onboarding-field">
+                  <label>פרמיה חודשית (₪)</label>
+                  <input type="number" placeholder="0" min="0" value={insuranceAmount}
+                    onChange={e => setInsuranceAmount(e.target.value)} autoFocus />
+                </div>
+                <div className="onboarding-field">
+                  <label>יום תשלום</label>
+                  <input type="number" placeholder="1" min="1" max="28" value={insuranceDay}
+                    onChange={e => setInsuranceDay(e.target.value)} />
+                </div>
+              </div>
+              <div className="onboarding-field">
+                <label>חברת ביטוח</label>
+                <input type="text" placeholder="שם החברה (אופציונלי)" value={insuranceCompany}
+                  onChange={e => setInsuranceCompany(e.target.value)} />
+              </div>
+              <div className="onboarding-file-field" onClick={() => insuranceInputRef.current?.click()}>
+                <span className="onboarding-file-label">פוליסת ביטוח</span>
+                <span className="onboarding-file-name">{insuranceFile?.name ?? 'לחץ לבחירת קובץ'}</span>
+                <input ref={insuranceInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) setInsuranceFile(f) }} />
+              </div>
+            </div>
+            <div className="onboarding-actions">
+              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={fillTestInsurance}>מלא דוגמה</button>
+              <button type="button" className="btn-onboard-skip" onClick={next}>דלג</button>
+              <button type="submit" className="btn-onboard-primary">הבא →</button>
+            </div>
+          </form>
+        )}
+
+        {/* ── Recurring (vaad bait + others) ── */}
         {step === 'recurring' && (
           <form onSubmit={e => { e.preventDefault(); handleFinish() }}>
             <div className="onboarding-dots">{dots('recurring')}</div>
             <div className="onboarding-icon">🔄</div>
             <h2 className="onboarding-title">תשלומים קבועים</h2>
-            <p className="onboarding-subtitle">אילו הוצאות חוזרות יש לך? סמן והזן סכום.</p>
+            <p className="onboarding-subtitle">אילו הוצאות חוזרות נוספות יש לך?</p>
             <div className="onboarding-recurring-list">
               {recurring.map(item => (
                 <div key={item.key}

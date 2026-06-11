@@ -281,6 +281,29 @@ body {
   margin-top: 4px;
 }
 
+.form-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  margin-top: 4px;
+}
+
+.form-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-3col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
 /* Toggle group */
 .toggle-group {
   display: flex;
@@ -1300,6 +1323,17 @@ body {
   border-color: var(--accent);
 }
 
+/* Insurance detail panel */
+.onboarding-insurance-detail {
+  padding: 14px 14px 6px;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  margin-top: -6px;
+  margin-bottom: 4px;
+}
+
 /* Actions */
 .onboarding-actions {
   display: flex;
@@ -1406,7 +1440,57 @@ body {
   line-height: 1.4;
 }
 
-/* File row inside onboarding */
+/* Clickable file upload field */
+.onboarding-file-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1.5px dashed var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  margin-top: 4px;
+}
+.onboarding-file-field:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+.onboarding-file-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.onboarding-file-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Checkbox row */
+.onboarding-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 6px 0;
+}
+.onboarding-checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Legacy file row — kept for any other usage */
 .onboarding-file-row {
   display: flex;
   align-items: center;
@@ -1415,15 +1499,6 @@ body {
   border: 1.5px solid var(--border);
   border-radius: 9px;
   background: var(--bg);
-}
-
-.onboarding-file-name {
-  flex: 1;
-  font-size: 13px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Extraction loading state */

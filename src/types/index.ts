@@ -32,6 +32,7 @@ export interface Property {
   key_delivery_date: string | null
   property_size_sqm: number | null
   floor: number | null
+  rooms: number | null
   created_at: string
 }
 

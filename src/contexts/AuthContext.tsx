@@ -5,6 +5,10 @@ import { supabase } from '../lib/supabase'
 const OLD_OWNER_ID = '00000000-0000-0000-0000-000000000001'
 const MIGRATED_KEY = 'data_migrated_v1'
 
+const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
+const DEV_EMAIL = import.meta.env.VITE_DEV_USER_EMAIL as string
+const DEV_PASSWORD = import.meta.env.VITE_DEV_USER_PASSWORD as string
+
 interface AuthContextType {
   user: User | null
   session: Session | null
@@ -34,16 +38,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
-      if (session?.user) {
-        const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
-        migrateOldData(session.user.id, name)
+    async function init() {
+      if (DEV_BYPASS) {
+        const { data } = await supabase.auth.signInWithPassword({ email: DEV_EMAIL, password: DEV_PASSWORD })
+        if (data.session?.user) {
+          await migrateOldData(data.session.user.id, 'Dev User')
+        }
+        setSession(data.session)
+        setLoading(false)
+        return
       }
-    })
+
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session)
+        setLoading(false)
+        if (session?.user) {
+          const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
+          migrateOldData(session.user.id, name)
+        }
+      })
+    }
+
+    init()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (DEV_BYPASS) return
       setSession(session)
       if (session?.provider_token) {
         localStorage.setItem('google_provider_token', session.provider_token)

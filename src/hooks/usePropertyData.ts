@@ -82,6 +82,7 @@ export interface PropertyInsert {
   key_delivery_date?: string | null
   property_size_sqm?: number | null
   floor?: number | null
+  rooms?: number | null
 }
 
 export async function createProperty(data: PropertyInsert): Promise<Property> {
