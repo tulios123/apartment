@@ -4,6 +4,7 @@ import { useInvestmentData, upsertInvestmentCost, deleteInvestmentCost } from '.
 import { useMortgageData } from '../hooks/useMortgageData'
 import { useInsurance } from '../hooks/useInsurance'
 import { usePropertyData } from '../hooks/usePropertyData'
+import { monthlyPayment } from '../lib/mortgage'
 import { INVESTMENT_COST_CATEGORIES } from '../lib/constants'
 import { formatCurrency } from '../lib/format'
 
@@ -31,7 +32,7 @@ function elapsedMonths(startStr: string | null, endStr: string | null): number {
 export default function InvestmentPage() {
   const { user } = useAuth()
   const { costs, totalInvested, rentReceived, interestPaid, maintenance, loading, error, refetch } = useInvestmentData()
-  const { summary: mortgageSummary, loading: mortLoading } = useMortgageData()
+  const { summary: mortgageSummary, tracks, loading: mortLoading } = useMortgageData()
   const { policies, loading: insLoading } = useInsurance()
   const { contracts, loading: propLoading } = usePropertyData()
 
@@ -123,8 +124,19 @@ export default function InvestmentPage() {
   const now = new Date()
   const activeContract = contracts.find(c => new Date(c.start_date) <= now && new Date(c.end_date) >= now)
   const monthlyRent = activeContract?.monthly_rent ?? null
+
+  const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
+  const gracePeriodPayment = hasGrace
+    ? tracks.reduce((s, t) => {
+        const r = t.annual_rate / 100 / 12
+        return s + ((t.grace_months ?? 0) > 0
+          ? t.principal * r
+          : monthlyPayment(t.principal, t.annual_rate, t.term_months, 0))
+      }, 0)
+    : 0
   const monthlyMortgage = mortgageSummary.monthlyPayment
-  const monthlyNet = (monthlyRent ?? 0) - monthlyMortgage - monthlyInsurance
+  const currentMonthlyMortgage = hasGrace ? gracePeriodPayment : monthlyMortgage
+  const monthlyNet = (monthlyRent ?? 0) - currentMonthlyMortgage - monthlyInsurance
 
   const netPosition = rentReceived - interestPaid - insurancePaidToDate - maintenance
   const localTotal = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
@@ -173,11 +185,26 @@ export default function InvestmentPage() {
               {monthlyRent != null ? formatCurrency(monthlyRent) : <span className="text-muted">אין חוזה פעיל</span>}
             </span>
           </div>
-          <div className="inv-flow-row">
-            <span className="inv-flow-sign negative">−</span>
-            <span className="inv-flow-label">משכנתא</span>
-            <span className="inv-flow-amount negative">{monthlyMortgage > 0 ? formatCurrency(monthlyMortgage) : <span className="text-muted">—</span>}</span>
-          </div>
+          {hasGrace ? (
+            <>
+              <div className="inv-flow-row">
+                <span className="inv-flow-sign negative">−</span>
+                <span className="inv-flow-label">משכנתא <span className="inv-flow-sublabel">בגרייס</span></span>
+                <span className="inv-flow-amount negative">{formatCurrency(gracePeriodPayment)}</span>
+              </div>
+              <div className="inv-flow-row">
+                <span className="inv-flow-sign negative">−</span>
+                <span className="inv-flow-label">משכנתא <span className="inv-flow-sublabel">לאחר גרייס</span></span>
+                <span className="inv-flow-amount negative">{formatCurrency(monthlyMortgage)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="inv-flow-row">
+              <span className="inv-flow-sign negative">−</span>
+              <span className="inv-flow-label">משכנתא</span>
+              <span className="inv-flow-amount negative">{monthlyMortgage > 0 ? formatCurrency(monthlyMortgage) : <span className="text-muted">—</span>}</span>
+            </div>
+          )}
           <div className="inv-flow-row">
             <span className="inv-flow-sign negative">−</span>
             <span className="inv-flow-label">ביטוח</span>
@@ -186,7 +213,10 @@ export default function InvestmentPage() {
           <div className="inv-flow-divider" />
           <div className="inv-flow-row inv-flow-total">
             <span className="inv-flow-sign">=</span>
-            <span className="inv-flow-label">נטו חודשי</span>
+            <span className="inv-flow-label">
+              נטו חודשי
+              {hasGrace && <span className="inv-flow-sublabel">בגרייס</span>}
+            </span>
             <span className={`inv-flow-amount ${monthlyNet >= 0 ? 'positive' : 'negative'}`}>
               {formatCurrency(monthlyNet)}
             </span>

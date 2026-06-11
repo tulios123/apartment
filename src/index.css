@@ -1694,6 +1694,13 @@ body {
   font-size: 1.05rem;
 }
 
+.inv-flow-sublabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-right: 4px;
+}
+
 /* Mobile: bottom nav */
 @media (max-width: 640px) {
   .sidebar {
