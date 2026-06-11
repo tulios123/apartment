@@ -204,6 +204,16 @@ export default function MortgagePage() {
   if (loading) return <div className="empty-state">טוען...</div>
   if (error) return <div className="form-error">{error}</div>
 
+  if (tracks.length === 0 && !form) {
+    return (
+      <div className="empty-state-cta">
+        <div className="empty-state-cta-icon">🏦</div>
+        <p>עדיין לא הוספת משכנתא</p>
+        <button className="btn-primary" onClick={() => setForm(emptyForm())}>+ הוסף מסלול משכנתא</button>
+      </div>
+    )
+  }
+
   const preview = form ? previewPayment(form) : 0
   const effectiveRateVal = form ? effectiveRate(form) : 0
 

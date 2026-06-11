@@ -2009,3 +2009,30 @@ body {
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+
+/* ── Empty-state CTA (hub tabs with no data) ── */
+.empty-state-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty-state-cta-icon {
+  font-size: 2.5rem;
+}
+
+.empty-state-cta p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* ── Onboarding optional label ── */
+.onboarding-optional {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: -8px;
+}

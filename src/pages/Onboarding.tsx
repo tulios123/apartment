@@ -5,30 +5,9 @@ import { createProperty, createContract } from '../hooks/usePropertyData'
 import { createRecurringItem } from '../hooks/useRecurringItems'
 import { supabase } from '../lib/supabase'
 
-type Step = 'welcome' | 'purchase' | 'rental' | 'mortgage' | 'insurance' | 'recurring' | 'done'
+type Step = 'welcome' | 'purchase' | 'rental' | 'done'
 
-interface RecurringTemplate {
-  key: string
-  label: string
-  category: string
-  executionType: 'automatic' | 'requires_approval'
-  dayOfMonth: number
-  enabled: boolean
-  amount: string
-}
-
-const TEMPLATES: Omit<RecurringTemplate, 'enabled' | 'amount'>[] = [
-  { key: 'vaad', label: 'ועד בית', category: 'ועד בית', executionType: 'automatic', dayOfMonth: 1 },
-]
-
-const STEP_ORDER: Step[] = ['purchase', 'rental', 'mortgage', 'insurance', 'recurring']
-
-const INSURANCE_TYPES = [
-  { key: 'building', label: 'מבנה' },
-  { key: 'life',     label: 'חיים' },
-  { key: 'contents', label: 'תכולה' },
-] as const
-type InsuranceType = typeof INSURANCE_TYPES[number]['key']
+const STEP_ORDER: Step[] = ['purchase', 'rental']
 
 interface Props { onComplete: () => void }
 
@@ -43,7 +22,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Purchase contract fields
+  // Purchase fields
   const [purchaseFile, setPurchaseFile] = useState<File | null>(null)
   const [buyerName, setBuyerName] = useState('')
   const [street, setStreet] = useState('')
@@ -57,7 +36,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [propertySizeSqm, setPropertySizeSqm] = useState('')
   const [floorNumber, setFloorNumber] = useState('')
 
-  // Rental contract fields
+  // Rental fields
   const [rentalFile, setRentalFile] = useState<File | null>(null)
   const [companyName, setCompanyName] = useState('')
   const [contactName, setContactName] = useState('')
@@ -69,44 +48,13 @@ export default function Onboarding({ onComplete }: Props) {
   const [rentPaymentDay, setRentPaymentDay] = useState('1')
   const [addRentReminder, setAddRentReminder] = useState(false)
 
-  // Mortgage fields
-  const [mortgageAmount, setMortgageAmount] = useState('')
-  const [mortgageBank, setMortgageBank] = useState('')
-  const [mortgageDay, setMortgageDay] = useState('1')
-  const [mortgagePaymentMethod, setMortgagePaymentMethod] = useState<'bank_transfer' | 'standing_order'>('standing_order')
-
-  // Insurance fields
-  const [insuranceFile, setInsuranceFile] = useState<File | null>(null)
-  const [insuranceType, setInsuranceType] = useState<InsuranceType>('building')
-  const [insuranceAmount, setInsuranceAmount] = useState('')
-  const [insuranceCompany, setInsuranceCompany] = useState('')
-  const [insuranceDay, setInsuranceDay] = useState('1')
-
-  const [recurring, setRecurring] = useState<RecurringTemplate[]>(
-    TEMPLATES.map(t => ({ ...t, enabled: false, amount: '' }))
-  )
-
   const purchaseInputRef = useRef<HTMLInputElement>(null)
   const rentalInputRef = useRef<HTMLInputElement>(null)
-  const insuranceInputRef = useRef<HTMLInputElement>(null)
-
-  function next() {
-    const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
-    if (idx >= 0 && idx < STEP_ORDER.length - 1) setStep(STEP_ORDER[idx + 1])
-  }
 
   function back() {
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
     else setStep('welcome')
-  }
-
-  function toggleItem(key: string) {
-    setRecurring(r => r.map(i => i.key === key ? { ...i, enabled: !i.enabled } : i))
-  }
-
-  function setAmount(key: string, val: string) {
-    setRecurring(r => r.map(i => i.key === key ? { ...i, amount: val } : i))
   }
 
   async function handleFinish() {
@@ -185,65 +133,6 @@ export default function Onboarding({ onComplete }: Props) {
         })
       }
 
-      if (mortgageAmount) {
-        await createRecurringItem({
-          contract_id: contract?.id ?? null,
-          direction: 'expense',
-          amount: parseFloat(mortgageAmount),
-          category: 'משכנתא',
-          day_of_month: parseInt(mortgageDay, 10) || 1,
-          start_date: startDate || new Date().toISOString().slice(0, 10),
-          end_date: endDate || null,
-          payee: mortgageBank.trim() || null,
-          execution_type: 'requires_approval',
-          payment_method: mortgagePaymentMethod,
-          renewal_alert_days: [90, 30],
-        })
-      }
-
-      if (insuranceAmount) {
-        const typeLabel = INSURANCE_TYPES.find(t => t.key === insuranceType)?.label ?? 'ביטוח'
-        if (insuranceFile) {
-          const docId = crypto.randomUUID()
-          const path = await uploadDocument(insuranceFile, docId)
-          await supabase.from('documents').insert({
-            id: docId, owner_id: user.id, property_id: property.id,
-            contract_id: null, transaction_id: null,
-            type: 'insurance_policy', name: insuranceFile.name,
-            storage_path: path, date: null,
-          })
-        }
-        await createRecurringItem({
-          contract_id: contract?.id ?? null,
-          direction: 'expense',
-          amount: parseFloat(insuranceAmount),
-          category: `ביטוח ${typeLabel}`,
-          day_of_month: parseInt(insuranceDay, 10) || 1,
-          start_date: startDate || new Date().toISOString().slice(0, 10),
-          end_date: endDate || null,
-          payee: insuranceCompany.trim() || null,
-          execution_type: 'automatic',
-          payment_method: null,
-          renewal_alert_days: [90, 30],
-        })
-      }
-
-      for (const item of recurring.filter(i => i.enabled && i.amount)) {
-        await createRecurringItem({
-          contract_id: contract?.id ?? null,
-          direction: 'expense',
-          amount: parseFloat(item.amount),
-          category: item.category,
-          day_of_month: item.dayOfMonth,
-          start_date: startDate || new Date().toISOString().slice(0, 10),
-          end_date: endDate || null,
-          payee: null,
-          execution_type: item.executionType,
-          payment_method: null,
-          renewal_alert_days: [90, 30],
-        })
-      }
-
       setStep('done')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בשמירה')
@@ -277,20 +166,6 @@ export default function Onboarding({ onComplete }: Props) {
     setAddRentReminder(true)
   }
 
-  function fillTestMortgage() {
-    setMortgageAmount('3200')
-    setMortgageBank('בנק לאומי')
-    setMortgageDay('1')
-    setMortgagePaymentMethod('standing_order')
-  }
-
-  function fillTestInsurance() {
-    setInsuranceType('building')
-    setInsuranceAmount('180')
-    setInsuranceCompany('הראל')
-    setInsuranceDay('1')
-  }
-
   function dots(current: Step) {
     return STEP_ORDER.map((s, i) => {
       const active = STEP_ORDER.indexOf(current)
@@ -321,7 +196,7 @@ export default function Onboarding({ onComplete }: Props) {
 
         {/* ── Purchase ── */}
         {step === 'purchase' && (
-          <form onSubmit={e => { e.preventDefault(); next() }}>
+          <form onSubmit={e => { e.preventDefault(); setStep('rental') }}>
             <div className="onboarding-dots">{dots('purchase')}</div>
             <div className="onboarding-icon">🏷️</div>
             <h2 className="onboarding-title">פרטי רכישה</h2>
@@ -408,10 +283,11 @@ export default function Onboarding({ onComplete }: Props) {
 
         {/* ── Rental ── */}
         {step === 'rental' && (
-          <form onSubmit={e => { e.preventDefault(); if (rentalValid) next() }}>
+          <form onSubmit={e => { e.preventDefault(); if (rentalValid) handleFinish() }}>
             <div className="onboarding-dots">{dots('rental')}</div>
             <div className="onboarding-icon">📄</div>
             <h2 className="onboarding-title">פרטי השכירות</h2>
+            <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף אחר כך</p>
             <div className="onboarding-form">
               <div className="onboarding-field">
                 <label>שם חברה / שוכר</label>
@@ -476,136 +352,12 @@ export default function Onboarding({ onComplete }: Props) {
                   onChange={e => { const f = e.target.files?.[0]; if (f) setRentalFile(f) }} />
               </div>
             </div>
-            <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
-              <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
-              <button type="button" className="btn-onboard-skip" onClick={next}>דלג</button>
-              <button type="submit" className="btn-onboard-primary" disabled={!rentalValid}>הבא →</button>
-            </div>
-          </form>
-        )}
-
-        {/* ── Mortgage ── */}
-        {step === 'mortgage' && (
-          <form onSubmit={e => { e.preventDefault(); next() }}>
-            <div className="onboarding-dots">{dots('mortgage')}</div>
-            <div className="onboarding-icon">🏦</div>
-            <h2 className="onboarding-title">משכנתא</h2>
-            <div className="onboarding-form">
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>תשלום חודשי (₪)</label>
-                  <input type="number" placeholder="0" min="0" value={mortgageAmount}
-                    onChange={e => setMortgageAmount(e.target.value)} autoFocus />
-                </div>
-                <div className="onboarding-field">
-                  <label>יום תשלום</label>
-                  <input type="number" placeholder="1" min="1" max="28" value={mortgageDay}
-                    onChange={e => setMortgageDay(e.target.value)} />
-                </div>
-              </div>
-              <div className="onboarding-field">
-                <label>בנק / נמען</label>
-                <input type="text" placeholder="שם הבנק (אופציונלי)" value={mortgageBank}
-                  onChange={e => setMortgageBank(e.target.value)} />
-              </div>
-              <div className="onboarding-field">
-                <label>אמצעי תשלום</label>
-                <div className="toggle-group">
-                  <button type="button"
-                    className={`toggle-btn${mortgagePaymentMethod === 'standing_order' ? ' active' : ''}`}
-                    onClick={() => setMortgagePaymentMethod('standing_order')}>הוראת קבע</button>
-                  <button type="button"
-                    className={`toggle-btn${mortgagePaymentMethod === 'bank_transfer' ? ' active' : ''}`}
-                    onClick={() => setMortgagePaymentMethod('bank_transfer')}>העברה בנקאית</button>
-                </div>
-              </div>
-            </div>
-            <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
-              <button type="button" className="btn-onboard-skip" onClick={fillTestMortgage}>מלא דוגמה</button>
-              <button type="button" className="btn-onboard-skip" onClick={next}>דלג</button>
-              <button type="submit" className="btn-onboard-primary">הבא →</button>
-            </div>
-          </form>
-        )}
-
-        {/* ── Insurance ── */}
-        {step === 'insurance' && (
-          <form onSubmit={e => { e.preventDefault(); next() }}>
-            <div className="onboarding-dots">{dots('insurance')}</div>
-            <div className="onboarding-icon">🛡️</div>
-            <h2 className="onboarding-title">ביטוח</h2>
-            <div className="onboarding-form">
-              <div className="onboarding-field">
-                <label>סוג ביטוח</label>
-                <div className="toggle-group">
-                  {INSURANCE_TYPES.map(t => (
-                    <button key={t.key} type="button"
-                      className={`toggle-btn${insuranceType === t.key ? ' active' : ''}`}
-                      onClick={() => setInsuranceType(t.key)}>{t.label}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>פרמיה חודשית (₪)</label>
-                  <input type="number" placeholder="0" min="0" value={insuranceAmount}
-                    onChange={e => setInsuranceAmount(e.target.value)} autoFocus />
-                </div>
-                <div className="onboarding-field">
-                  <label>יום תשלום</label>
-                  <input type="number" placeholder="1" min="1" max="28" value={insuranceDay}
-                    onChange={e => setInsuranceDay(e.target.value)} />
-                </div>
-              </div>
-              <div className="onboarding-field">
-                <label>חברת ביטוח</label>
-                <input type="text" placeholder="שם החברה (אופציונלי)" value={insuranceCompany}
-                  onChange={e => setInsuranceCompany(e.target.value)} />
-              </div>
-              <div className="onboarding-file-field" onClick={() => insuranceInputRef.current?.click()}>
-                <span className="onboarding-file-label">פוליסת ביטוח</span>
-                <span className="onboarding-file-name">{insuranceFile?.name ?? 'לחץ לבחירת קובץ'}</span>
-                <input ref={insuranceInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) setInsuranceFile(f) }} />
-              </div>
-            </div>
-            <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
-              <button type="button" className="btn-onboard-skip" onClick={fillTestInsurance}>מלא דוגמה</button>
-              <button type="button" className="btn-onboard-skip" onClick={next}>דלג</button>
-              <button type="submit" className="btn-onboard-primary">הבא →</button>
-            </div>
-          </form>
-        )}
-
-        {/* ── Recurring (vaad bait + others) ── */}
-        {step === 'recurring' && (
-          <form onSubmit={e => { e.preventDefault(); handleFinish() }}>
-            <div className="onboarding-dots">{dots('recurring')}</div>
-            <div className="onboarding-icon">🔄</div>
-            <h2 className="onboarding-title">תשלומים קבועים</h2>
-            <p className="onboarding-subtitle">אילו הוצאות חוזרות נוספות יש לך?</p>
-            <div className="onboarding-recurring-list">
-              {recurring.map(item => (
-                <div key={item.key}
-                  className={`onboarding-recurring-item${item.enabled ? ' on' : ''}`}
-                  onClick={() => toggleItem(item.key)}>
-                  <div className="onboarding-check">{item.enabled && '✓'}</div>
-                  <span className="onboarding-recurring-label">{item.label}</span>
-                  <input className="onboarding-recurring-amount" type="number" placeholder="₪"
-                    value={item.amount} min="0"
-                    onClick={e => e.stopPropagation()}
-                    onChange={e => { setAmount(item.key, e.target.value); if (!item.enabled) toggleItem(item.key) }} />
-                </div>
-              ))}
-            </div>
             {error && <p className="onboarding-error">{error}</p>}
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
-              <button type="submit" className="btn-onboard-primary" disabled={saving}>
+              <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
+              <button type="button" className="btn-onboard-skip" onClick={handleFinish} disabled={saving}>דלג</button>
+              <button type="submit" className="btn-onboard-primary" disabled={!rentalValid || saving}>
                 {saving ? 'שומר...' : 'סיום ✓'}
               </button>
             </div>
@@ -618,7 +370,7 @@ export default function Onboarding({ onComplete }: Props) {
             <div className="onboarding-done-icon">🎉</div>
             <h2 className="onboarding-title">הכל מוכן!</h2>
             <p className="onboarding-subtitle">
-              הנכס שלך הוגדר בהצלחה.<br />תוכל לערוך כל פרט בכל עת.
+              הנכס שלך הוגדר בהצלחה.<br />תוכל להוסיף משכנתא, ביטוח ותשלומים קבועים מתוך האפליקציה.
             </p>
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
               <button className="btn-onboard-primary" onClick={onComplete}>למסך הראשי →</button>
