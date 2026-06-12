@@ -71,8 +71,7 @@ function InsuranceForm({
       </div>
       <div className="form-row">
         <label>פרמיה חודשית (₪)</label>
-        <input type="number" min="0" step="0.01" value={form.monthly_premium}
-          onChange={e => set('monthly_premium', e.target.value)} placeholder="0" />
+        <input type="text" inputMode="numeric" value={form.monthly_premium ? Number(form.monthly_premium).toLocaleString('en-US') : ''} onChange={e => set('monthly_premium', e.target.value.replace(/[^\d]/g, ''))} placeholder="0" />
       </div>
       <div className="form-2col">
         <div className="form-row">

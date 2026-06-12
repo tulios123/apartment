@@ -8,7 +8,7 @@ import {
 } from '../hooks/useMortgageData'
 import { monthlyPayment, trackSchedule } from '../lib/mortgage'
 import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
-import { formatCurrency, formatDate } from '../lib/format'
+import { formatCurrency, formatDate, formatNum } from '../lib/format'
 import type { MortgageTrack, TrackType } from '../types'
 import type { ScheduleRow } from '../lib/mortgage'
 
@@ -42,14 +42,15 @@ function emptyForm(): TrackForm {
 }
 
 function formFromTrack(t: MortgageTrack): TrackForm {
+  const isAnchored = t.track_type === 'prime' || t.track_type === 'variable'
   return {
     id: t.id,
     label: t.label ?? '',
     track_type: t.track_type as TrackType,
     principal: String(Math.round(t.principal)),
-    annual_rate: t.annual_rate.toFixed(3),
-    prime_rate: '',
-    margin: '',
+    annual_rate: isAnchored ? '' : t.annual_rate.toFixed(3),
+    prime_rate: isAnchored ? t.annual_rate.toFixed(3) : '',
+    margin: isAnchored ? '0' : '',
     term_months: String(t.term_months),
     grace_months: t.grace_months ? String(t.grace_months) : '',
     start_date: t.start_date,
@@ -57,7 +58,7 @@ function formFromTrack(t: MortgageTrack): TrackForm {
 }
 
 function effectiveRate(form: TrackForm): number {
-  if (form.track_type === 'prime') {
+  if (form.track_type === 'prime' || form.track_type === 'variable') {
     const p = parseFloat(form.prime_rate) || 0
     const m = parseFloat(form.margin) || 0
     return p + m
@@ -374,12 +375,12 @@ export default function MortgagePage() {
             <div className="form-row">
               <label>קרן (₪)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 className="form-input"
-                value={form.principal}
-                onChange={e => setField('principal', e.target.value)}
+                value={formatNum(form.principal)}
+                onChange={e => setField('principal', e.target.value.replace(/[^\d]/g, ''))}
                 placeholder="1,000,000"
-                min="0"
               />
             </div>
 
@@ -424,27 +425,27 @@ export default function MortgagePage() {
               </div>
             </div>
 
-            {form.track_type === 'prime' ? (
+            {(form.track_type === 'prime' || form.track_type === 'variable') ? (
               <div className="form-2col">
                 <div className="form-row">
-                  <label>ריבית פריים נוכחית (%)</label>
+                  <label>{form.track_type === 'prime' ? 'ריבית פריים נוכחית (%)' : 'עוגן (%)'}</label>
                   <input
                     type="number"
                     className="form-input"
                     value={form.prime_rate}
                     onChange={e => setField('prime_rate', e.target.value)}
-                    placeholder="6.0"
+                    placeholder={form.track_type === 'prime' ? '6.0' : '3.5'}
                     step="0.001"
                   />
                 </div>
                 <div className="form-row">
-                  <label>מרווח / מרג'ין (%)</label>
+                  <label>מרווח (%)</label>
                   <input
                     type="number"
                     className="form-input"
                     value={form.margin}
                     onChange={e => setField('margin', e.target.value)}
-                    placeholder="-0.5"
+                    placeholder={form.track_type === 'prime' ? '-0.5' : '1.5'}
                     step="0.001"
                   />
                 </div>
@@ -464,7 +465,7 @@ export default function MortgagePage() {
               </div>
             )}
 
-            {form.track_type === 'prime' && (
+            {(form.track_type === 'prime' || form.track_type === 'variable') && (
               <div className="mortgage-effective-rate">
                 ריבית אפקטיבית: <strong>{effectiveRateVal.toFixed(3)}%</strong>
               </div>

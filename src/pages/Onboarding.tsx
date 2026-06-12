@@ -68,6 +68,13 @@ function formatCurrency(n: number) {
   return '₪' + Math.round(n).toLocaleString('he-IL')
 }
 
+function formatNum(raw: string | number): string {
+  const str = String(raw)
+  if (str === '') return ''
+  const n = Number(str)
+  return isNaN(n) ? str : n.toLocaleString('en-US')
+}
+
 function defaultLawyerCost(price: number): string {
   return price > 0 ? String(Math.round((price * 0.005 + 1000) * 1.18)) : ''
 }
@@ -126,6 +133,8 @@ export default function Onboarding({ onComplete }: Props) {
   // ── Insurance policies ──
   const [policies, setPolicies] = useState<PolicyDraft[]>([])
   const [policyForm, setPolicyForm] = useState<PolicyDraft>(emptyPolicy())
+  const [expandedPolicies, setExpandedPolicies] = useState<Set<number>>(new Set())
+  const [showPolicyForm, setShowPolicyForm] = useState(true)
 
   const purchaseInputRef = useRef<HTMLInputElement>(null)
   const rentalInputRef = useRef<HTMLInputElement>(null)
@@ -152,9 +161,13 @@ export default function Onboarding({ onComplete }: Props) {
 
   // ── Derived: mortgage track live preview ─────────────────────────────────────
   function trackEffectiveRate(d: TrackDraft): number {
-    return d.track_type === 'prime'
-      ? (parseFloat(d.prime_rate) || 6.25) + (parseFloat(d.margin) || -0.5)
-      : (parseFloat(d.annual_rate) || 5.0)
+    if (d.track_type === 'prime') {
+      return (parseFloat(d.prime_rate) || 6.25) + (parseFloat(d.margin) || -0.5)
+    }
+    if (d.track_type === 'variable') {
+      return (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
+    }
+    return parseFloat(d.annual_rate) || 5.0
   }
 
   function trackMonthlyPayment(d: TrackDraft): number {
@@ -402,6 +415,7 @@ export default function Onboarding({ onComplete }: Props) {
     if (!policyForm.company.trim() && !policyForm.monthly_premium) return
     setPolicies(prev => [...prev, { ...policyForm }])
     setPolicyForm(emptyPolicy())
+    setShowPolicyForm(false)
   }
 
   function removePolicy(idx: number) {
@@ -658,16 +672,20 @@ export default function Onboarding({ onComplete }: Props) {
                     value={formatPrice(trackForm.principal)}
                     onChange={e => setTF('principal', e.target.value.replace(/\D/g, ''))} />
                 </div>
-                {trackForm.track_type === 'prime' ? (
+                {(trackForm.track_type === 'prime' || trackForm.track_type === 'variable') ? (
                   <div className="onboarding-row">
                     <div className="onboarding-field">
-                      <label>ריבית פריים (%)</label>
-                      <input type="number" step="0.01" placeholder="6.25" value={trackForm.prime_rate}
+                      <label>{trackForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
+                      <input type="number" step="0.01"
+                        placeholder={trackForm.track_type === 'prime' ? '6.25' : '3.5'}
+                        value={trackForm.prime_rate}
                         onChange={e => setTF('prime_rate', e.target.value)} />
                     </div>
                     <div className="onboarding-field">
                       <label>מרווח (%)</label>
-                      <input type="number" step="0.01" placeholder="-0.5" value={trackForm.margin}
+                      <input type="number" step="0.01"
+                        placeholder={trackForm.track_type === 'prime' ? '-0.5' : '1.5'}
+                        value={trackForm.margin}
                         onChange={e => setTF('margin', e.target.value)} />
                     </div>
                   </div>
@@ -813,27 +831,31 @@ export default function Onboarding({ onComplete }: Props) {
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label>עורך דין (₪)</label>
-                  <input type="number" min="0" placeholder="0" value={costs.lawyer}
-                    onChange={e => setCosts(c => ({ ...c, lawyer: e.target.value }))} />
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={formatNum(costs.lawyer)}
+                    onChange={e => setCosts(c => ({ ...c, lawyer: e.target.value.replace(/[^\d]/g, '') }))} />
                   <span className="onboarding-field-hint">0.5% + ₪1,000 + מע"מ 18%</span>
                 </div>
                 <div className="onboarding-field">
                   <label>דמי תיווך (₪)</label>
-                  <input type="number" min="0" placeholder="0" value={costs.brokerage}
-                    onChange={e => setCosts(c => ({ ...c, brokerage: e.target.value }))} />
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={formatNum(costs.brokerage)}
+                    onChange={e => setCosts(c => ({ ...c, brokerage: e.target.value.replace(/[^\d]/g, '') }))} />
                   <span className="onboarding-field-hint">2% + מע"מ 18%</span>
                 </div>
               </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label>יועץ משכנתאות (₪)</label>
-                  <input type="number" min="0" placeholder="0" value={costs.mortgage_advisor}
-                    onChange={e => setCosts(c => ({ ...c, mortgage_advisor: e.target.value }))} />
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={formatNum(costs.mortgage_advisor)}
+                    onChange={e => setCosts(c => ({ ...c, mortgage_advisor: e.target.value.replace(/[^\d]/g, '') }))} />
                 </div>
                 <div className="onboarding-field">
                   <label>חברת ליווי השקעה (₪)</label>
-                  <input type="number" min="0" placeholder="0" value={costs.investment_company}
-                    onChange={e => setCosts(c => ({ ...c, investment_company: e.target.value }))} />
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={formatNum(costs.investment_company)}
+                    onChange={e => setCosts(c => ({ ...c, investment_company: e.target.value.replace(/[^\d]/g, '') }))} />
                 </div>
               </div>
 
@@ -891,8 +913,9 @@ export default function Onboarding({ onComplete }: Props) {
               </div>
               <div className="onboarding-field">
                 <label>שכירות חודשית (₪)</label>
-                <input type="number" placeholder="0" value={monthlyRent} min="0"
-                  onChange={e => setMonthlyRent(e.target.value)} />
+                <input type="text" inputMode="numeric" placeholder="0"
+                  value={formatNum(monthlyRent)}
+                  onChange={e => setMonthlyRent(e.target.value.replace(/[^\d]/g, ''))} />
               </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
@@ -944,65 +967,126 @@ export default function Onboarding({ onComplete }: Props) {
             <h2 className="onboarding-title">ביטוחים</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
-            {/* Added policies list */}
+            {/* Saved policies list */}
             {policies.length > 0 && (
               <div className="onboarding-list">
-                {policies.map((p, i) => (
-                  <div key={i} className="onboarding-list-row">
-                    <div className="onboarding-list-row-info">
-                      <span className="onboarding-list-row-type">{p.type}</span>
-                      {p.company && <span>{p.company}</span>}
-                      {p.monthly_premium && <span>{formatCurrency(parseFloat(p.monthly_premium))}/חודש</span>}
+                {policies.map((p, i) => {
+                  const isOpen = expandedPolicies.has(i)
+                  const premium = parseFloat(p.monthly_premium) || 0
+                  return (
+                    <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
+                      <div className="onboarding-list-row-header"
+                        onClick={() => setExpandedPolicies(prev => {
+                          const next = new Set(prev)
+                          next.has(i) ? next.delete(i) : next.add(i)
+                          return next
+                        })}>
+                        <div className="onboarding-track-summary">
+                          <div className="onboarding-track-summary-top">
+                            <span className="onboarding-list-row-type">{p.type}</span>
+                            <span className="onboarding-track-payment">
+                              {premium > 0 ? formatCurrency(premium) : <span className="text-muted">—</span>}
+                              <span className="text-muted"> / חודש</span>
+                            </span>
+                          </div>
+                          {p.company && (
+                            <div className="onboarding-track-summary-sub">
+                              <span>{p.company}</span>
+                              {p.start_date && <><span>·</span><span>מ-{p.start_date}</span></>}
+                            </div>
+                          )}
+                        </div>
+                        <div className="onboarding-list-row-actions">
+                          <button type="button" className="onboarding-list-edit" title="ערוך" onClick={e => {
+                            e.stopPropagation()
+                            setPolicyForm({ ...p })
+                            setShowPolicyForm(true)
+                            removePolicy(i)
+                          }}>✎</button>
+                          <span className={`inv-collapse-chevron${isOpen ? ' open' : ''}`}>›</span>
+                          <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removePolicy(i) }}>✕</button>
+                        </div>
+                      </div>
+                      {isOpen && (
+                        <div className="onboarding-list-row-detail">
+                          <div className="onboarding-list-detail-row"><span>סוג</span><span>{p.type}</span></div>
+                          {p.company && <div className="onboarding-list-detail-row"><span>חברה</span><span>{p.company}</span></div>}
+                          {premium > 0 && <div className="onboarding-list-detail-row"><span>פרמיה חודשית</span><strong>{formatCurrency(premium)}</strong></div>}
+                          {p.start_date && <div className="onboarding-list-detail-row"><span>תחילת כיסוי</span><span>{p.start_date}</span></div>}
+                          {p.end_date && <div className="onboarding-list-detail-row"><span>סיום כיסוי</span><span>{p.end_date}</span></div>}
+                        </div>
+                      )}
                     </div>
-                    <button type="button" className="onboarding-list-remove" onClick={() => removePolicy(i)}>✕</button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 
             {/* Inline policy form */}
-            <div className="onboarding-inline-form">
-              <div className="onboarding-field">
-                <label>סוג ביטוח</label>
-                <div className="toggle-group" style={{ flexWrap: 'wrap' }}>
-                  {INS_TYPES.map(t => (
-                    <button key={t} type="button"
-                      className={`toggle-btn${policyForm.type === t ? ' active' : ''}`}
-                      onClick={() => setPF('type', t)}>{t}</button>
-                  ))}
+            {showPolicyForm && (
+              <div className="onboarding-inline-form">
+                <div className="onboarding-field">
+                  <label>סוג ביטוח</label>
+                  <div className="toggle-group" style={{ flexWrap: 'wrap' }}>
+                    {INS_TYPES.map(t => (
+                      <button key={t} type="button"
+                        className={`toggle-btn${policyForm.type === t ? ' active' : ''}`}
+                        onClick={() => setPF('type', t)}>{t}</button>
+                    ))}
+                  </div>
                 </div>
+                <div className="onboarding-row">
+                  <div className="onboarding-field">
+                    <label>חברת ביטוח</label>
+                    <input type="text" placeholder="שם החברה" value={policyForm.company}
+                      onChange={e => setPF('company', e.target.value)} />
+                  </div>
+                  <div className="onboarding-field">
+                    <label>פרמיה חודשית (₪)</label>
+                    <input type="text" inputMode="numeric" placeholder="0"
+                      value={formatNum(policyForm.monthly_premium)}
+                      onChange={e => setPF('monthly_premium', e.target.value.replace(/[^\d]/g, ''))} />
+                  </div>
+                </div>
+                <div className="onboarding-row">
+                  <div className="onboarding-field">
+                    <label>תחילת כיסוי</label>
+                    <input type="date" value={policyForm.start_date}
+                      onChange={e => setPF('start_date', e.target.value)} />
+                  </div>
+                  <div className="onboarding-field">
+                    <label>סיום כיסוי</label>
+                    <input type="date" value={policyForm.end_date}
+                      onChange={e => setPF('end_date', e.target.value)} />
+                  </div>
+                </div>
+                <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
+                  מומלץ: ביטוח חיים + ביטוח משכנתא
+                </p>
+                <button type="button" className="btn-onboard-primary" style={{ marginTop: 8 }} onClick={addPolicy}>
+                  שמור פוליסה ✓
+                </button>
               </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>חברת ביטוח</label>
-                  <input type="text" placeholder="שם החברה" value={policyForm.company}
-                    onChange={e => setPF('company', e.target.value)} />
-                </div>
-                <div className="onboarding-field">
-                  <label>פרמיה חודשית (₪)</label>
-                  <input type="number" min="0" placeholder="0" value={policyForm.monthly_premium}
-                    onChange={e => setPF('monthly_premium', e.target.value)} />
-                </div>
-              </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>תחילת כיסוי</label>
-                  <input type="date" value={policyForm.start_date}
-                    onChange={e => setPF('start_date', e.target.value)} />
-                </div>
-                <div className="onboarding-field">
-                  <label>סיום כיסוי</label>
-                  <input type="date" value={policyForm.end_date}
-                    onChange={e => setPF('end_date', e.target.value)} />
-                </div>
-              </div>
-              <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
-                מומלץ: ביטוח חיים + ביטוח משכנתא
-              </p>
-              <button type="button" className="btn-onboard-skip onboarding-add-btn" onClick={addPolicy}>
+            )}
+
+            {/* Add another policy button */}
+            {!showPolicyForm && (
+              <button type="button" className="btn-onboard-skip onboarding-add-btn"
+                style={{ marginBottom: 16 }}
+                onClick={() => { setPolicyForm(emptyPolicy()); setShowPolicyForm(true) }}>
                 + הוסף פוליסה
               </button>
-            </div>
+            )}
+
+            {/* Monthly total */}
+            {policies.length > 0 && (
+              <div className="onboarding-mortgage-summary">
+                <div className="onboarding-list-total">
+                  <span>סה״כ פרמיה חודשית</span>
+                  <strong>{formatCurrency(policies.reduce((s, p) => s + (parseFloat(p.monthly_premium) || 0), 0))}</strong>
+                </div>
+              </div>
+            )}
 
             {error && <p className="onboarding-error">{error}</p>}
             <div className="onboarding-actions">

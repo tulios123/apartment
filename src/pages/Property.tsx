@@ -234,11 +234,11 @@ function ContractForm({
       </div>
       <div className="form-row">
         <label>שכר דירה חודשי</label>
-        <input type="number" min="0" value={form.monthly_rent} onChange={e => set('monthly_rent', e.target.value)} required />
+        <input type="text" inputMode="numeric" value={form.monthly_rent ? Number(form.monthly_rent).toLocaleString('en-US') : ''} onChange={e => set('monthly_rent', e.target.value.replace(/[^\d]/g, ''))} required />
       </div>
       <div className="form-row">
         <label>פיקדון</label>
-        <input type="number" min="0" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
+        <input type="text" inputMode="numeric" value={form.deposit ? Number(form.deposit).toLocaleString('en-US') : ''} onChange={e => set('deposit', e.target.value.replace(/[^\d]/g, ''))} />
       </div>
       {err && <div className="form-error">{err}</div>}
       <div className="form-actions">

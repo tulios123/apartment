@@ -156,9 +156,9 @@ export default function RecurringItems() {
 
               <div className="form-row">
                 <label htmlFor="ri-amount">סכום (₪)</label>
-                <input id="ri-amount" type="number" min="0" step="0.01"
-                  value={form.amount}
-                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
+                <input id="ri-amount" type="text" inputMode="numeric"
+                  value={form.amount ? Number(form.amount.replace(/,/g, '')).toLocaleString('en-US') : ''}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value.replace(/[^\d.]/g, '') }))} required />
               </div>
 
               <div className="form-row">

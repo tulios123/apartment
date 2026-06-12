@@ -292,9 +292,9 @@ export default function Finances() {
 
               <div className="form-row">
                 <label htmlFor="amount">סכום (₪)</label>
-                <input id="amount" type="number" min="0" step="0.01"
-                  value={form.amount}
-                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
+                <input id="amount" type="text" inputMode="numeric"
+                  value={form.amount ? Number(form.amount.replace(/,/g, '')).toLocaleString('en-US') : ''}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value.replace(/[^\d.]/g, '') }))} required />
               </div>
 
               <div className="form-row">
