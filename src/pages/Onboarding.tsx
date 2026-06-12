@@ -860,16 +860,32 @@ export default function Onboarding({ onComplete }: Props) {
                       onClick={() => { setEquityMode('percent'); setEquityValue('') }}>%</button>
                   </div>
                   {(() => {
-                    const eqDef = equityMode === 'percent'
+                    const eqDefRaw = equityMode === 'percent'
                       ? defaultSelfEquityPct()
                       : (price > 0 ? String(Math.round(price * 0.25)) : '')
-                    const isGrey = !equityValue && !!eqDef && focusedInput !== 'equity'
+                    const isGrey = !equityValue && !!eqDefRaw && focusedInput !== 'equity'
+                    if (equityMode === 'amount') {
+                      const displayVal = focusedInput === 'equity'
+                        ? formatNum(equityValue)
+                        : formatNum(equityValue || eqDefRaw)
+                      return (
+                        <input
+                          type="text" inputMode="numeric"
+                          className={isGrey ? 'input-ph-grey' : ''}
+                          value={displayVal}
+                          onFocus={() => setFocusedInput('equity')}
+                          onBlur={() => setFocusedInput(null)}
+                          onChange={e => setEquityValue(e.target.value.replace(/\D/g, ''))}
+                          style={{ flex: 1 }}
+                        />
+                      )
+                    }
                     return (
                       <input
-                        type="number" min="0" step={equityMode === 'percent' ? '0.1' : '1'}
+                        type="number" min="0" step="0.1"
                         className={isGrey ? 'input-ph-grey' : ''}
-                        value={focusedInput === 'equity' ? equityValue : (equityValue || eqDef)}
-                        onFocus={() => { setFocusedInput('equity'); if (!equityValue && equityMode === 'percent') setEquityValue('0') }}
+                        value={focusedInput === 'equity' ? equityValue : (equityValue || eqDefRaw)}
+                        onFocus={() => { setFocusedInput('equity'); if (!equityValue) setEquityValue('0') }}
                         onBlur={() => setFocusedInput(null)}
                         onChange={e => setEquityValue(e.target.value)}
                         style={{ flex: 1 }}
