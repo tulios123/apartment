@@ -862,7 +862,7 @@ export default function Onboarding({ onComplete }: Props) {
                   {(() => {
                     const eqDef = equityMode === 'percent'
                       ? defaultSelfEquityPct()
-                      : (price > 0 ? String(Math.round(price * 0.25).toLocaleString('en-US')) : '')
+                      : (price > 0 ? String(Math.round(price * 0.25)) : '')
                     const isGrey = !equityValue && !!eqDef && focusedInput !== 'equity'
                     return (
                       <input
