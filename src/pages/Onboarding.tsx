@@ -38,13 +38,14 @@ type PolicyDraft = {
   end_date: string
 }
 
-function emptyTrack(startDate?: string): TrackDraft {
+function emptyTrack(startDate?: string, purchasePrice?: number): TrackDraft {
+  const defaultPrincipal = purchasePrice ? String(Math.round(purchasePrice * 0.7)) : ''
   return {
     track_type: 'fixed_unlinked',
-    principal: '',
-    annual_rate: '',
-    prime_rate: '',
-    margin: '',
+    principal: defaultPrincipal,
+    annual_rate: '3.500',
+    prime_rate: '6.250',
+    margin: '-0.500',
     term_months: '360',
     grace_months: '',
     start_date: startDate || new Date().toISOString().slice(0, 10),
@@ -141,16 +142,16 @@ export default function Onboarding({ onComplete }: Props) {
   // ── Derived: mortgage track live preview ─────────────────────────────────────
   function trackEffectiveRate(d: TrackDraft): number {
     return d.track_type === 'prime'
-      ? (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
-      : parseFloat(d.annual_rate) || 0
+      ? (parseFloat(d.prime_rate) || 6.25) + (parseFloat(d.margin) || -0.5)
+      : (parseFloat(d.annual_rate) || 3.5)
   }
 
   function trackMonthlyPayment(d: TrackDraft): number {
     const p = parseFloat(d.principal) || 0
-    const t = parseInt(d.term_months) || 0
+    const t = parseInt(d.term_months) || 360
     const g = parseInt(d.grace_months) || 0
     const r = trackEffectiveRate(d)
-    if (p <= 0 || t <= 0) return 0
+    if (p <= 0) return 0
     return monthlyPayment(p, r, t, g)
   }
 
@@ -179,9 +180,9 @@ export default function Onboarding({ onComplete }: Props) {
       })
 
       // 2. Mortgage tracks
-      const pendingTrackValid = (parseFloat(trackForm.principal) || 0) > 0 && (parseInt(trackForm.term_months) || 0) > 0
+      const pendingTrackValid = (parseFloat(trackForm.principal) || 0) > 0
       const allTracks = [...tracks, ...(pendingTrackValid ? [trackForm] : [])]
-      const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0 && (parseInt(d.term_months) || 0) > 0)
+      const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0)
       if (validTracks.length > 0) {
         const m = await ensureMortgage(user.id, property.id)
         for (const d of validTracks) {
@@ -364,10 +365,9 @@ export default function Onboarding({ onComplete }: Props) {
   // ── Track helpers ─────────────────────────────────────────────────────────────
   function addTrack() {
     const p = parseFloat(trackForm.principal) || 0
-    const t = parseInt(trackForm.term_months) || 0
-    if (p <= 0 || t <= 0) return
+    if (p <= 0) return
     setTracks(prev => [...prev, { ...trackForm }])
-    setTrackForm(emptyTrack(keyDeliveryDate || undefined))
+    setTrackForm(emptyTrack(keyDeliveryDate || undefined, parseFloat(purchasePrice) || undefined))
     setGraceOn(false)
   }
 
@@ -429,7 +429,7 @@ export default function Onboarding({ onComplete }: Props) {
         {step === 'purchase' && (
           <form onSubmit={e => {
             e.preventDefault()
-            setTrackForm(emptyTrack(keyDeliveryDate || undefined))
+            setTrackForm(emptyTrack(keyDeliveryDate || undefined, parseFloat(purchasePrice) || undefined))
             advance('mortgage')
           }}>
             <div className="onboarding-dots">{dots('purchase')}</div>
