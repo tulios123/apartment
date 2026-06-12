@@ -110,7 +110,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [trackForm, setTrackForm] = useState<TrackDraft>(emptyTrack())
   const [graceOn, setGraceOn] = useState(false)
   const [showTrackForm, setShowTrackForm] = useState(true)
-  const [cancelTrack, setCancelTrack] = useState<TrackDraft | null>(null)
+  const [editingIdx, setEditingIdx] = useState<number | null>(null)
 
   // ── Investment / equity ──
   const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('percent')
@@ -156,7 +156,9 @@ export default function Onboarding({ onComplete }: Props) {
   // ── Derived: equity ─────────────────────────────────────────────────────────
   const price = parseFloat(purchasePrice) || 0
   // effective = user value if typed, else computed default (grey placeholder)
-  const effEquity = equityValue || (equityMode === 'percent' ? defaultSelfEquityPct() : '')
+  const effEquity = equityValue || (equityMode === 'percent'
+    ? defaultSelfEquityPct()
+    : (price > 0 ? String(Math.round(price * 0.25)) : ''))
   const effLawyer = costs.lawyer || defaultLawyerCost(price)
   const effBrokerage = costs.brokerage || defaultBrokerageCost(price)
   const equityAmount = equityMode === 'percent'
@@ -414,10 +416,8 @@ export default function Onboarding({ onComplete }: Props) {
   const stepTotal = STEP_ORDER.length
 
   // ── Track helpers ─────────────────────────────────────────────────────────────
-  function addTrack() {
-    const p = parseFloat(trackForm.principal) || (price > 0 ? Math.round(price * 0.75) : 0)
-    if (p <= 0) return
-    const normalized: TrackDraft = {
+  function normalizeTrackDraft(): TrackDraft {
+    return {
       ...trackForm,
       principal: trackForm.principal || (price > 0 ? String(Math.round(price * 0.75)) : ''),
       annual_rate: trackForm.annual_rate || '5.000',
@@ -425,11 +425,35 @@ export default function Onboarding({ onComplete }: Props) {
       margin: trackForm.margin || '-0.500',
       term_months: trackForm.term_months || '360',
     }
-    setTracks(prev => [...prev, normalized])
+  }
+
+  function addTrack() {
+    const p = parseFloat(trackForm.principal) || (price > 0 ? Math.round(price * 0.75) : 0)
+    if (p <= 0) return
+    setTracks(prev => [...prev, normalizeTrackDraft()])
     setTrackForm(emptyTrack(keyDeliveryDate || undefined))
     setGraceOn(false)
     setShowTrackForm(false)
-    setCancelTrack(null)
+  }
+
+  function saveTrackEdit(idx: number) {
+    setTracks(prev => prev.map((t, i) => i === idx ? normalizeTrackDraft() : t))
+    setEditingIdx(null)
+  }
+
+  function saveCurrentAndOpenNew() {
+    const p = parseFloat(trackForm.principal) || (price > 0 ? Math.round(price * 0.75) : 0)
+    if (p > 0) {
+      if (editingIdx !== null) {
+        setTracks(prev => prev.map((t, i) => i === editingIdx ? normalizeTrackDraft() : t))
+      } else {
+        setTracks(prev => [...prev, normalizeTrackDraft()])
+      }
+    }
+    setEditingIdx(null)
+    setTrackForm(emptyTrack(keyDeliveryDate || undefined))
+    setGraceOn(false)
+    setShowTrackForm(true)
   }
 
   function removeTrack(idx: number) {
@@ -487,6 +511,107 @@ export default function Onboarding({ onComplete }: Props) {
   const previewGrace = graceOn && (parseFloat(effectiveTrackForm.principal) || 0) > 0
     ? (parseFloat(effectiveTrackForm.principal) || 0) * (trackEffectiveRate(effectiveTrackForm) / 100 / 12)
     : 0
+
+  // ── Track form renderer ───────────────────────────────────────────────────────
+  function renderTrackForm(onSave: () => void, onCancel: () => void) {
+    const principalDefault = price > 0 ? String(Math.round(price * 0.75)) : ''
+    const primeDefault = trackForm.track_type === 'prime' ? '6.250' : '3.500'
+    const marginDefault = trackForm.track_type === 'prime' ? '-0.500' : '1.500'
+    const ph = (id: string, val: string, def: string) => ({
+      className: !val && !!def && focusedInput !== id ? 'input-ph-grey' : '',
+      value: focusedInput === id ? val : (val || def),
+      onFocus: () => setFocusedInput(id),
+      onBlur: () => setFocusedInput(null),
+    })
+    return (
+      <div className="onboarding-inline-form">
+        <div className="onboarding-field">
+          <label>סוג מסלול</label>
+          <select className="form-input" value={trackForm.track_type}
+            onChange={e => setTF('track_type', e.target.value as TrackType)}>
+            {MORTGAGE_TRACK_TYPES.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="onboarding-field">
+          <label>קרן (₪)</label>
+          <input type="text" inputMode="numeric"
+            {...ph('tf.principal', trackForm.principal, principalDefault)}
+            value={focusedInput === 'tf.principal'
+              ? formatNum(trackForm.principal)
+              : formatNum(trackForm.principal || principalDefault)}
+            onChange={e => setTF('principal', e.target.value.replace(/\D/g, ''))} />
+        </div>
+        {(trackForm.track_type === 'prime' || trackForm.track_type === 'variable') ? (
+          <div className="onboarding-row">
+            <div className="onboarding-field">
+              <label>{trackForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
+              <input type="number" step="0.01"
+                {...ph('tf.prime_rate', trackForm.prime_rate, primeDefault)}
+                onChange={e => setTF('prime_rate', e.target.value)} />
+            </div>
+            <div className="onboarding-field">
+              <label>מרווח (%)</label>
+              <input type="number" step="0.01"
+                {...ph('tf.margin', trackForm.margin, marginDefault)}
+                onChange={e => setTF('margin', e.target.value)} />
+            </div>
+          </div>
+        ) : (
+          <div className="onboarding-field">
+            <label>ריבית שנתית (%)</label>
+            <input type="number" step="0.01"
+              {...ph('tf.annual_rate', trackForm.annual_rate, '5.000')}
+              onChange={e => setTF('annual_rate', e.target.value)} />
+          </div>
+        )}
+        <div className="onboarding-row">
+          <div className="onboarding-field">
+            <label>תקופה (חודשים)</label>
+            <input type="number" min="1"
+              {...ph('tf.term', trackForm.term_months, '360')}
+              onChange={e => setTF('term_months', e.target.value)} />
+          </div>
+          <div className="onboarding-field">
+            <label>תאריך התחלה</label>
+            <input type="date" value={trackForm.start_date}
+              onChange={e => setTF('start_date', e.target.value)} />
+          </div>
+        </div>
+        <label className="onboarding-checkbox-row">
+          <input type="checkbox" checked={graceOn}
+            onChange={e => {
+              setGraceOn(e.target.checked)
+              setTF('grace_months', e.target.checked ? '12' : '')
+            }} />
+          <span>גרייס (חודשי ריבית בלבד)</span>
+          {graceOn && (
+            <input type="number" min="1" max="24" value={trackForm.grace_months}
+              onChange={e => setTF('grace_months', e.target.value)}
+              style={{ width: 64, marginRight: 8 }}
+              placeholder="12" />
+          )}
+        </label>
+        {previewMonthly > 0 && (
+          <div className="onboarding-running-total">
+            {graceOn && previewGrace > 0 ? (
+              <>
+                <div>בגרייס: <strong>{formatCurrency(previewGrace)}</strong> / חודש</div>
+                <div>לאחר גרייס: <strong>{formatCurrency(previewMonthly)}</strong> / חודש</div>
+              </>
+            ) : (
+              <div>תשלום חודשי משוער: <strong>{formatCurrency(previewMonthly)}</strong></div>
+            )}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
+          <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור מסלול ✓</button>
+        </div>
+      </div>
+    )
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -610,7 +735,7 @@ export default function Onboarding({ onComplete }: Props) {
             <h2 className="onboarding-title">משכנתא</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
-            {/* Saved tracks list — click row to edit */}
+            {/* Saved tracks list — click header to toggle edit in-place */}
             {tracks.length > 0 && (
               <div className="onboarding-list">
                 {tracks.map((d, i) => {
@@ -618,16 +743,20 @@ export default function Onboarding({ onComplete }: Props) {
                   const graceMonthly = (parseInt(d.grace_months) || 0) > 0
                     ? (parseFloat(d.principal) || 0) * (trackEffectiveRate(d) / 100 / 12)
                     : 0
+                  const isEditing = editingIdx === i
                   return (
                     <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                       <div className="onboarding-list-row-header"
                         style={{ cursor: 'pointer' }}
                         onClick={() => {
-                          setCancelTrack({ ...d })
-                          setTrackForm({ ...d })
-                          setGraceOn((parseInt(d.grace_months) || 0) > 0)
-                          setShowTrackForm(true)
-                          removeTrack(i)
+                          if (isEditing) {
+                            setEditingIdx(null)
+                          } else {
+                            setEditingIdx(i)
+                            setTrackForm({ ...d })
+                            setGraceOn((parseInt(d.grace_months) || 0) > 0)
+                            setShowTrackForm(false)
+                          }
                         }}>
                         <div className="onboarding-track-summary">
                           <div className="onboarding-track-summary-top">
@@ -653,135 +782,31 @@ export default function Onboarding({ onComplete }: Props) {
                           <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }}>✕</button>
                         </div>
                       </div>
+                      {isEditing && renderTrackForm(() => saveTrackEdit(i), () => setEditingIdx(null))}
                     </div>
                   )
                 })}
               </div>
             )}
 
-            {/* Inline track form — shown on first entry, or when user clicks '+ הוסף מסלול' */}
-            {showTrackForm && (() => {
-              const principalDefault = price > 0 ? String(Math.round(price * 0.75)) : ''
-              const primeDefault = trackForm.track_type === 'prime' ? '6.250' : '3.500'
-              const marginDefault = trackForm.track_type === 'prime' ? '-0.500' : '1.500'
-              const ph = (id: string, val: string, def: string) => ({
-                className: !val && !!def && focusedInput !== id ? 'input-ph-grey' : '',
-                value: focusedInput === id ? val : (val || def),
-                onFocus: () => setFocusedInput(id),
-                onBlur: () => setFocusedInput(null),
-              })
-              return (
-              <div className="onboarding-inline-form">
-                <div className="onboarding-field">
-                  <label>סוג מסלול</label>
-                  <select
-                    className="form-input"
-                    value={trackForm.track_type}
-                    onChange={e => setTF('track_type', e.target.value as TrackType)}
-                  >
-                    {MORTGAGE_TRACK_TYPES.map(t => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="onboarding-field">
-                  <label>קרן (₪)</label>
-                  <input type="text" inputMode="numeric"
-                    {...ph('tf.principal', trackForm.principal, principalDefault)}
-                    value={focusedInput === 'tf.principal'
-                      ? formatNum(trackForm.principal)
-                      : formatNum(trackForm.principal || principalDefault)}
-                    onChange={e => setTF('principal', e.target.value.replace(/\D/g, ''))} />
-                </div>
-                {(trackForm.track_type === 'prime' || trackForm.track_type === 'variable') ? (
-                  <div className="onboarding-row">
-                    <div className="onboarding-field">
-                      <label>{trackForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
-                      <input type="number" step="0.01"
-                        {...ph('tf.prime_rate', trackForm.prime_rate, primeDefault)}
-                        onChange={e => setTF('prime_rate', e.target.value)} />
-                    </div>
-                    <div className="onboarding-field">
-                      <label>מרווח (%)</label>
-                      <input type="number" step="0.01"
-                        {...ph('tf.margin', trackForm.margin, marginDefault)}
-                        onChange={e => setTF('margin', e.target.value)} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="onboarding-field">
-                    <label>ריבית שנתית (%)</label>
-                    <input type="number" step="0.01"
-                      {...ph('tf.annual_rate', trackForm.annual_rate, '5.000')}
-                      onChange={e => setTF('annual_rate', e.target.value)} />
-                  </div>
-                )}
-                <div className="onboarding-row">
-                  <div className="onboarding-field">
-                    <label>תקופה (חודשים)</label>
-                    <input type="number" min="1"
-                      {...ph('tf.term', trackForm.term_months, '360')}
-                      onChange={e => setTF('term_months', e.target.value)} />
-                  </div>
-                  <div className="onboarding-field">
-                    <label>תאריך התחלה</label>
-                    <input type="date" value={trackForm.start_date}
-                      onChange={e => setTF('start_date', e.target.value)} />
-                  </div>
-                </div>
-                <label className="onboarding-checkbox-row">
-                  <input type="checkbox" checked={graceOn}
-                    onChange={e => {
-                      setGraceOn(e.target.checked)
-                      setTF('grace_months', e.target.checked ? '12' : '')
-                    }} />
-                  <span>גרייס (חודשי ריבית בלבד)</span>
-                  {graceOn && (
-                    <input type="number" min="1" max="24" value={trackForm.grace_months}
-                      onChange={e => setTF('grace_months', e.target.value)}
-                      style={{ width: 64, marginRight: 8 }}
-                      placeholder="12" />
-                  )}
-                </label>
-                {previewMonthly > 0 && (
-                  <div className="onboarding-running-total">
-                    {graceOn && previewGrace > 0 ? (
-                      <>
-                        <div>בגרייס: <strong>{formatCurrency(previewGrace)}</strong> / חודש</div>
-                        <div>לאחר גרייס: <strong>{formatCurrency(previewMonthly)}</strong> / חודש</div>
-                      </>
-                    ) : (
-                      <div>תשלום חודשי משוער: <strong>{formatCurrency(previewMonthly)}</strong></div>
-                    )}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button type="button" className="btn-onboard-skip" onClick={() => {
-                    if (cancelTrack) { setTracks(prev => [...prev, cancelTrack]); setCancelTrack(null) }
-                    setShowTrackForm(false)
-                  }}>
-                    ביטול
-                  </button>
-                  <button type="button" className="btn-onboard-primary" onClick={addTrack}>
-                    שמור מסלול ✓
-                  </button>
-                </div>
-              </div>
-              )
-            })()}
+            {/* Inline track form for new track */}
+            {showTrackForm && renderTrackForm(addTrack, () => setShowTrackForm(false))}
 
-            {/* Add track button — always shown when form is hidden */}
-            {!showTrackForm && (
-              <button type="button" className="btn-onboard-skip onboarding-add-btn"
-                style={{ marginBottom: 16 }}
-                onClick={() => {
+            {/* Add track button — always shown */}
+            <button type="button" className="btn-onboard-skip onboarding-add-btn"
+              style={{ marginBottom: 16 }}
+              onClick={() => {
+                if (showTrackForm || editingIdx !== null) {
+                  saveCurrentAndOpenNew()
+                } else {
                   setTrackForm(emptyTrack(keyDeliveryDate || undefined))
                   setGraceOn(false)
                   setShowTrackForm(true)
-                }}>
-                + הוסף מסלול
-              </button>
-            )}
+                  setEditingIdx(null)
+                }
+              }}>
+              + הוסף מסלול
+            </button>
 
             {/* Conclusion totals */}
             {tracks.length > 0 && (
@@ -835,7 +860,9 @@ export default function Onboarding({ onComplete }: Props) {
                       onClick={() => { setEquityMode('percent'); setEquityValue('') }}>%</button>
                   </div>
                   {(() => {
-                    const eqDef = equityMode === 'percent' ? defaultSelfEquityPct() : ''
+                    const eqDef = equityMode === 'percent'
+                      ? defaultSelfEquityPct()
+                      : (price > 0 ? String(Math.round(price * 0.25).toLocaleString('en-US')) : '')
                     const isGrey = !equityValue && !!eqDef && focusedInput !== 'equity'
                     return (
                       <input
@@ -850,11 +877,11 @@ export default function Onboarding({ onComplete }: Props) {
                     )
                   })()}
                 </div>
-                {price > 0 && (equityValue || equityMode === 'percent') && (
+                {price > 0 && (
                   <p className="onboarding-running-total" style={{ marginTop: 4 }}>
                     {equityMode === 'percent'
                       ? <>= {formatCurrency(equityAmount)} מתוך {formatCurrency(price)}</>
-                      : equityValue ? <>= {equityPercent.toFixed(1)}% ממחיר הרכישה</> : null
+                      : <>= {equityPercent.toFixed(1)}% ממחיר הרכישה</>
                     }
                   </p>
                 )}
