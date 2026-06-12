@@ -5,11 +5,19 @@ import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { formatCurrency } from '../../lib/format'
 
+function elapsedMonths(startStr: string | null, endStr: string | null): number {
+  if (!startStr) return 0
+  const start = new Date(startStr)
+  const end = endStr ? new Date(Math.min(new Date(endStr).getTime(), Date.now())) : new Date()
+  if (end <= start) return 0
+  return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
+}
+
 export default function Overview() {
   const navigate = useNavigate()
   const { property, contracts, loading: propLoading } = usePropertyData()
   const { summary, loading: mortLoading } = useMortgageData()
-  const { totalInvested, loading: invLoading } = useInvestmentData()
+  const { totalInvested, rentReceived, interestPaid, maintenance, loading: invLoading } = useInvestmentData()
   const { policies, loading: insLoading } = useInsurance()
 
   const loading = propLoading || mortLoading || invLoading || insLoading
@@ -26,6 +34,9 @@ export default function Overview() {
     ? (annualRent / totalInvested) * 100
     : null
   const totalInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
+  const insurancePaidToDate = policies.reduce((s, p) =>
+    s + (p.monthly_premium ?? 0) * elapsedMonths(p.start_date, p.end_date), 0)
+  const totalSpent = totalInvested + interestPaid + insurancePaidToDate + maintenance
 
   if (loading) return <div className="empty-state">טוען...</div>
 
@@ -79,6 +90,18 @@ export default function Overview() {
         {totalInvested > 0 && (
           <div className="overview-card-sub">מתוך {formatCurrency(totalInvested)} שהושקעו</div>
         )}
+      </button>
+
+      <button className="overview-card" onClick={() => navigate('/property/investment')}>
+        <div className="overview-card-label">סה״כ הכנסות</div>
+        <div className="overview-card-value positive">{rentReceived > 0 ? formatCurrency(rentReceived) : <span className="text-muted">אין נתונים</span>}</div>
+        <div className="overview-card-sub">שכירות מצטברת</div>
+      </button>
+
+      <button className="overview-card" onClick={() => navigate('/property/investment')}>
+        <div className="overview-card-label">סה״כ הוצאות</div>
+        <div className="overview-card-value negative">{totalSpent > 0 ? formatCurrency(totalSpent) : <span className="text-muted">אין נתונים</span>}</div>
+        <div className="overview-card-sub">השקעה, ריבית, ביטוח, תחזוקה</div>
       </button>
     </div>
   )
