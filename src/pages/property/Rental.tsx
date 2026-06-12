@@ -204,7 +204,13 @@ export default function Rental() {
           <button className="btn-secondary" onClick={openNewContract}>+ חוזה חדש</button>
         </div>
 
-        {contracts.length === 0 && <div className="empty-state small">אין חוזים</div>}
+        {contracts.length === 0 && (
+          <div className="empty-state-cta">
+            <div className="empty-state-cta-icon">📄</div>
+            <p>עדיין לא נוספו חוזי שכירות</p>
+            <button className="btn-primary" onClick={openNewContract}>+ חוזה חדש</button>
+          </div>
+        )}
 
         {contracts.map(c => {
           const left = daysLeft(c.end_date)

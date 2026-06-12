@@ -6,7 +6,7 @@ import {
   updateTransaction,
   deleteTransaction,
 } from '../hooks/useTransactions'
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import { monthlyVirtualEntries } from '../lib/projections'
 import type { VirtualEntry } from '../lib/projections'
 import { uploadReceipt, getReceiptSignedUrl } from '../lib/storage'
@@ -111,10 +111,13 @@ export default function Finances() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const totalIncome = transactions.filter(t => t.direction === 'income').reduce((sum, t) => sum + Number(t.amount), 0)
+  const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
+  const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
+
+  const totalIncome = transactions.filter(t => t.direction === 'income' && !rentCatSet.has(t.category)).reduce((sum, t) => sum + Number(t.amount), 0)
     + virtualEntries.filter(e => e.direction === 'income').reduce((sum, e) => sum + e.amount, 0)
 
-  const totalExpense = transactions.filter(t => t.direction === 'expense').reduce((sum, t) => sum + Number(t.amount), 0)
+  const totalExpense = transactions.filter(t => t.direction === 'expense' && !mortCatSet.has(t.category)).reduce((sum, t) => sum + Number(t.amount), 0)
     + virtualEntries.filter(e => e.direction === 'expense').reduce((sum, e) => sum + e.amount, 0)
 
   function openNew() {
@@ -235,6 +238,9 @@ export default function Finances() {
   }
 
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+
+  if (loading) return <div className="empty-state">טוען...</div>
+  if (error) return <div className="form-error">{error}</div>
 
   return (
     <>
@@ -361,12 +367,14 @@ export default function Finances() {
         </div>
       )}
 
-      {loading && <div className="empty-state">טוען...</div>}
-      {error && <div className="form-error">{error}</div>}
-      {!loading && !error && transactions.length === 0 && virtualEntries.length === 0 && (
-        <div className="empty-state">אין תנועות בתקופה זו</div>
+      {transactions.length === 0 && virtualEntries.length === 0 && (
+        <div className="empty-state-cta">
+          <div className="empty-state-cta-icon">💸</div>
+          <p>אין תנועות בתקופה זו</p>
+          <button className="btn-primary" onClick={openNew}>+ תנועה חדשה</button>
+        </div>
       )}
-      {!loading && (transactions.length > 0 || virtualEntries.length > 0) && (
+      {(transactions.length > 0 || virtualEntries.length > 0) && (
         <div className="table-wrapper">
           <table className="data-table">
             <thead>

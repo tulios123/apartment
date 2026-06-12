@@ -120,6 +120,9 @@ export default function RecurringItems() {
 
   const categories = form.direction === 'income' ? RECURRING_INCOME_CATEGORIES : RECURRING_EXPENSE_CATEGORIES
 
+  if (loading) return <div className="empty-state">טוען...</div>
+  if (error) return <div className="form-error">{error}</div>
+
   return (
     <>
       <div className="sub-page-actions">
@@ -219,10 +222,13 @@ export default function RecurringItems() {
         </div>
       )}
 
-      {loading && <div className="empty-state">טוען...</div>}
-      {error && <div className="form-error">{error}</div>}
-
-      {!loading && (
+      {items.length === 0 ? (
+        <div className="empty-state-cta">
+          <div className="empty-state-cta-icon">🔁</div>
+          <p>עדיין לא הוספת פריטים חוזרים</p>
+          <button className="btn-primary" onClick={openNew}>+ פריט חדש</button>
+        </div>
+      ) : (
         <>
           <RecurringSection
             title="הכנסות"

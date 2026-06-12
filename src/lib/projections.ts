@@ -1,4 +1,5 @@
 import { trackSchedule } from './mortgage'
+import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
 import type { Contract, MortgageTrack } from '../types'
 
 export interface VirtualEntry {
@@ -70,7 +71,7 @@ export function monthlyVirtualEntries(
           direction: 'income',
           amount: c.monthly_rent,
           date: monthStart,
-          category: 'שכר דירה',
+          category: RENT_CATEGORIES[0],
           description: c.company_name,
         })
       }
@@ -88,7 +89,7 @@ export function monthlyVirtualEntries(
         direction: 'expense',
         amount: mortgageTotal,
         date: mortgageDate,
-        category: 'משכנתא',
+        category: MORTGAGE_CATEGORIES[0],
         description: 'תשלום משכנתא',
       })
     }

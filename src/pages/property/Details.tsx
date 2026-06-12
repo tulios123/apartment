@@ -244,7 +244,11 @@ export default function Details() {
             )}
           </div>
         ) : (
-          <div className="empty-state small">טרם הוזן נכס</div>
+          <div className="empty-state-cta">
+            <div className="empty-state-cta-icon">🏠</div>
+            <p>עדיין לא הוזנו פרטי הנכס</p>
+            <button className="btn-primary" onClick={() => setShowModal(true)}>+ הוסף נכס</button>
+          </div>
         )}
       </section>
 

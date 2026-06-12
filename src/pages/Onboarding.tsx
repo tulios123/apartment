@@ -8,7 +8,7 @@ import { upsertInvestmentCost } from '../hooks/useInvestmentData'
 import { createInsurancePolicy } from '../hooks/useInsurance'
 import { supabase } from '../lib/supabase'
 import { monthlyPayment } from '../lib/mortgage'
-import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
+import { MORTGAGE_TRACK_TYPES, RENT_CATEGORIES } from '../lib/constants'
 import type { TrackType } from '../types'
 
 // ── Step types ────────────────────────────────────────────────────────────────
@@ -193,8 +193,9 @@ export default function Onboarding({ onComplete }: Props) {
     if (!user) return
     setSaving(true)
     setError(null)
+    const failures: string[] = []
     try {
-      // 1. Property
+      // 1. Property — fatal: if this fails, stay on the step
       const address = [street.trim(), city.trim()].filter(Boolean).join(', ') || 'הנכס שלי'
       const blockParcel = block && parcel ? `גוש ${block} חלקה ${parcel}` : block || parcel || null
 
@@ -212,133 +213,164 @@ export default function Onboarding({ onComplete }: Props) {
         rooms: rooms !== '' ? parseInt(rooms, 10) : null,
       })
 
-      // 2. Mortgage tracks
-      const defaultPrincipal = price > 0 ? String(Math.round(price * 0.75)) : ''
+      // 2. Mortgage tracks — non-fatal
+      // Fix 3: only include the inline pending form if the user actually typed a principal
       const normTrack = (d: TrackDraft): TrackDraft => ({
         ...d,
-        principal: d.principal || defaultPrincipal,
         annual_rate: d.annual_rate || '5.000',
         prime_rate: d.prime_rate || '6.250',
         margin: d.margin || '-0.500',
         term_months: d.term_months || '360',
       })
-      const pendingPrincipal = trackForm.principal || defaultPrincipal
-      const pendingTrackValid = (parseFloat(pendingPrincipal) || 0) > 0
+      const pendingTrackValid = (parseFloat(trackForm.principal) || 0) > 0
       const allTracks = [...tracks, ...(pendingTrackValid ? [normTrack(trackForm)] : [])]
       const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0)
       if (validTracks.length > 0) {
-        const m = await ensureMortgage(user.id, property.id)
-        for (const d of validTracks) {
-          const effRate = trackEffectiveRate(d)
-          await upsertMortgageTrack({
-            mortgage_id: m.id,
-            owner_id: user.id,
-            label: null,
-            track_type: d.track_type,
-            principal: parseFloat(d.principal) || 0,
-            annual_rate: effRate,
-            term_months: parseInt(d.term_months) || 360,
-            grace_months: parseInt(d.grace_months) || 0,
-            start_date: d.start_date,
-          })
+        try {
+          const m = await ensureMortgage(user.id, property.id)
+          for (const d of validTracks) {
+            const effRate = trackEffectiveRate(d)
+            await upsertMortgageTrack({
+              mortgage_id: m.id,
+              owner_id: user.id,
+              label: null,
+              track_type: d.track_type,
+              principal: parseFloat(d.principal) || 0,
+              annual_rate: effRate,
+              term_months: parseInt(d.term_months) || 360,
+              grace_months: parseInt(d.grace_months) || 0,
+              start_date: d.start_date,
+            })
+          }
+        } catch {
+          failures.push('משכנתא')
         }
       }
 
-      // 3. Investment costs
-      if (equityAmount > 0) {
-        await upsertInvestmentCost({ owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount })
-      }
-      const effectiveCosts = {
-        lawyer: parseFloat(effLawyer) || 0,
-        brokerage: parseFloat(effBrokerage) || 0,
-        mortgage_advisor: parseFloat(costs.mortgage_advisor) || 0,
-        investment_company: parseFloat(costs.investment_company) || 0,
-      }
-      for (const [key, val] of Object.entries(effectiveCosts) as [keyof typeof costs, number][]) {
-        if (val > 0) {
-          await upsertInvestmentCost({ owner_id: user.id, category: key, label: null, amount: val })
+      // 3. Investment costs — non-fatal
+      try {
+        if (equityAmount > 0) {
+          await upsertInvestmentCost({ owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount })
         }
+        const effectiveCosts = {
+          lawyer: parseFloat(effLawyer) || 0,
+          brokerage: parseFloat(effBrokerage) || 0,
+          mortgage_advisor: parseFloat(costs.mortgage_advisor) || 0,
+          investment_company: parseFloat(costs.investment_company) || 0,
+        }
+        for (const [key, val] of Object.entries(effectiveCosts) as [keyof typeof costs, number][]) {
+          if (val > 0) {
+            await upsertInvestmentCost({ owner_id: user.id, category: key, label: null, amount: val })
+          }
+        }
+      } catch {
+        failures.push('עלויות השקעה')
       }
 
-      // 4. Rental contract
+      // 4. Rental contract — non-fatal
       let contract = null
-      if (companyName.trim() && startDate && endDate && monthlyRent) {
-        contract = await createContract({
-          owner_id: user.id,
-          property_id: property.id,
-          company_name: companyName.trim(),
-          contact_name: contactName.trim() || null,
-          contact_phone: contactPhone.trim() || null,
-          start_date: startDate,
-          end_date: endDate,
-          monthly_rent: parseFloat(monthlyRent),
-          deposit: null,
-          renewal_alert_days: [90, 30],
-        })
-      }
-
-      // 5. Insurance policies
-      const pendingPolicyValid = policyForm.company.trim() !== '' || policyForm.monthly_premium !== ''
-      const allPolicies = [...policies, ...(pendingPolicyValid ? [policyForm] : [])]
-      for (const p of allPolicies) {
-        if (p.company.trim() || p.monthly_premium) {
-          await createInsurancePolicy({
+      try {
+        if (companyName.trim() && startDate && endDate && monthlyRent) {
+          contract = await createContract({
             owner_id: user.id,
             property_id: property.id,
-            type: p.type,
-            company: p.company.trim() || null,
-            policy_number: null,
-            monthly_premium: p.monthly_premium ? parseFloat(p.monthly_premium) : null,
-            start_date: p.start_date || null,
-            end_date: p.end_date || null,
-            notes: null,
+            company_name: companyName.trim(),
+            contact_name: contactName.trim() || null,
+            contact_phone: contactPhone.trim() || null,
+            start_date: startDate,
+            end_date: endDate,
+            monthly_rent: parseFloat(monthlyRent),
+            deposit: null,
+            renewal_alert_days: [90, 30],
           })
+        }
+      } catch {
+        failures.push('שכירות')
+      }
+
+      // 5. Insurance policies — non-fatal
+      try {
+        const pendingPolicyValid = policyForm.company.trim() !== '' || policyForm.monthly_premium !== ''
+        const allPolicies = [...policies, ...(pendingPolicyValid ? [policyForm] : [])]
+        for (const p of allPolicies) {
+          if (p.company.trim() || p.monthly_premium) {
+            await createInsurancePolicy({
+              owner_id: user.id,
+              property_id: property.id,
+              type: p.type,
+              company: p.company.trim() || null,
+              policy_number: null,
+              monthly_premium: p.monthly_premium ? parseFloat(p.monthly_premium) : null,
+              start_date: p.start_date || null,
+              end_date: p.end_date || null,
+              notes: null,
+            })
+          }
+        }
+      } catch {
+        failures.push('ביטוח')
+      }
+
+      // 6. Purchase file — non-fatal
+      if (purchaseFile) {
+        try {
+          const docId = crypto.randomUUID()
+          const path = await uploadDocument(purchaseFile, docId)
+          await supabase.from('documents').insert({
+            id: docId, owner_id: user.id, property_id: property.id,
+            contract_id: null, transaction_id: null,
+            type: 'purchase_contract', name: purchaseFile.name,
+            storage_path: path, date: signingDate || null,
+          })
+        } catch {
+          failures.push('קובץ חוזה רכישה')
         }
       }
 
-      // 6. Purchase file
-      if (purchaseFile) {
-        const docId = crypto.randomUUID()
-        const path = await uploadDocument(purchaseFile, docId)
-        await supabase.from('documents').insert({
-          id: docId, owner_id: user.id, property_id: property.id,
-          contract_id: null, transaction_id: null,
-          type: 'purchase_contract', name: purchaseFile.name,
-          storage_path: path, date: signingDate || null,
-        })
-      }
-
-      // Rental file
+      // Rental file — non-fatal
       if (rentalFile && contract) {
-        const docId = crypto.randomUUID()
-        const path = await uploadDocument(rentalFile, docId)
-        await supabase.from('documents').insert({
-          id: docId, owner_id: user.id, property_id: property.id,
-          contract_id: contract.id, transaction_id: null,
-          type: 'rental_contract', name: rentalFile.name,
-          storage_path: path, date: startDate || null,
-        })
+        try {
+          const docId = crypto.randomUUID()
+          const path = await uploadDocument(rentalFile, docId)
+          await supabase.from('documents').insert({
+            id: docId, owner_id: user.id, property_id: property.id,
+            contract_id: contract.id, transaction_id: null,
+            type: 'rental_contract', name: rentalFile.name,
+            storage_path: path, date: startDate || null,
+          })
+        } catch {
+          failures.push('קובץ חוזה שכירות')
+        }
       }
 
-      // Recurring rent reminder
+      // Recurring rent reminder — non-fatal
       if (addRentReminder && contract && monthlyRent) {
-        await createRecurringItem({
-          contract_id: contract.id,
-          direction: 'income',
-          amount: parseFloat(monthlyRent),
-          category: 'שכר דירה',
-          day_of_month: parseInt(rentPaymentDay, 10) || 1,
-          start_date: startDate || new Date().toISOString().slice(0, 10),
-          end_date: endDate || null,
-          payee: companyName.trim() || null,
-          execution_type: 'requires_approval',
-          payment_method: rentPaymentMethod,
-          renewal_alert_days: [90, 30],
-        })
+        try {
+          await createRecurringItem({
+            contract_id: contract.id,
+            direction: 'income',
+            amount: parseFloat(monthlyRent),
+            category: RENT_CATEGORIES[0],
+            day_of_month: parseInt(rentPaymentDay, 10) || 1,
+            start_date: startDate || new Date().toISOString().slice(0, 10),
+            end_date: endDate || null,
+            payee: companyName.trim() || null,
+            execution_type: 'requires_approval',
+            payment_method: rentPaymentMethod,
+            renewal_alert_days: [90, 30],
+          })
+        } catch {
+          failures.push('תזכורת שכירות')
+        }
       }
 
+      // Surface partial-save notice if needed, then always complete
+      if (failures.length > 0) {
+        setError(`חלק מהפרטים לא נשמרו: ${failures.join(', ')} — ניתן להוסיף אותם מתוך האפליקציה`)
+      }
       setStep('done')
     } catch (e) {
+      // Only createProperty throws here — stay on step so the user can retry
       setError(e instanceof Error ? e.message : 'שגיאה בשמירה')
     } finally {
       setSaving(false)
@@ -1227,6 +1259,7 @@ export default function Onboarding({ onComplete }: Props) {
             <p className="onboarding-subtitle">
               הנכס שלך הוגדר בהצלחה.<br />תוכל לנהל משכנתא, ביטוח, עלויות ותשלומים קבועים מתוך האפליקציה.
             </p>
+            {error && <p className="onboarding-error" style={{ textAlign: 'center' }}>{error}</p>}
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
               <button className="btn-onboard-primary" onClick={onComplete}>למסך הראשי →</button>
             </div>

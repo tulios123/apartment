@@ -101,7 +101,11 @@ export default function Documents() {
       {error && <div className="form-error">{error}</div>}
 
       {!loading && documents.length === 0 && (
-        <div className="empty-state">אין מסמכים עדיין</div>
+        <div className="empty-state-cta">
+          <div className="empty-state-cta-icon">📁</div>
+          <p>עדיין לא הועלו מסמכים</p>
+          <button className="btn-primary" onClick={openNew}>+ העלה מסמך</button>
+        </div>
       )}
 
       {!loading && documents.length > 0 && (

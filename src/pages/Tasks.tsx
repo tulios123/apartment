@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTasks, createTask, updateTask, deleteTask } from '../hooks/useTasks'
-import { TASK_CATEGORIES } from '../lib/constants'
+import { TASK_CATEGORIES, RENT_CATEGORIES } from '../lib/constants'
 import { formatDate } from '../lib/format'
 import type { Task } from '../types'
 
@@ -116,7 +116,7 @@ export default function Tasks() {
           state: {
             prefill: {
               direction: 'income',
-              category: 'שכר דירה',
+              category: RENT_CATEGORIES[0],
               description: task.title,
             },
           },

@@ -39,7 +39,13 @@ export async function createRecurringItem(
   data: Omit<RecurringItem, 'id' | 'owner_id' | 'created_at'>
 ) {
   const ownerId = await getOwnerId()
-  return supabase.from('recurring_items').insert({ ...data, owner_id: ownerId })
+  const { data: inserted, error } = await supabase
+    .from('recurring_items')
+    .insert({ ...data, owner_id: ownerId })
+    .select()
+    .single()
+  if (error) throw error
+  return inserted
 }
 
 export async function updateRecurringItem(
