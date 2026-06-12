@@ -68,6 +68,16 @@ function formatCurrency(n: number) {
   return '₪' + Math.round(n).toLocaleString('he-IL')
 }
 
+function defaultLawyerCost(price: number): string {
+  return price > 0 ? String(Math.round((price * 0.005 + 1000) * 1.18)) : ''
+}
+
+function defaultBrokerageCost(price: number): string {
+  return price > 0 ? String(Math.round(price * 0.02 * 1.18)) : ''
+}
+
+function defaultSelfEquityPct(): string { return '25' }
+
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function Onboarding({ onComplete }: Props) {
   const { user } = useAuth()
@@ -97,8 +107,8 @@ export default function Onboarding({ onComplete }: Props) {
   const [showTrackForm, setShowTrackForm] = useState(true)
 
   // ── Investment / equity ──
-  const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('amount')
-  const [equityValue, setEquityValue] = useState('')
+  const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('percent')
+  const [equityValue, setEquityValue] = useState(defaultSelfEquityPct())
   const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '' })
 
   // ── Rental fields ──
@@ -328,9 +338,15 @@ export default function Onboarding({ onComplete }: Props) {
   }
 
   function fillTestInvestment() {
+    const p = parseFloat(purchasePrice) || 0
     setEquityMode('percent')
     setEquityValue('25')
-    setCosts({ lawyer: '18000', brokerage: '12000', mortgage_advisor: '5000', investment_company: '0' })
+    setCosts({
+      lawyer: defaultLawyerCost(p) || '18000',
+      brokerage: defaultBrokerageCost(p) || '12000',
+      mortgage_advisor: '5000',
+      investment_company: '0',
+    })
   }
 
   function fillTestRental() {
@@ -535,7 +551,16 @@ export default function Onboarding({ onComplete }: Props) {
 
         {/* ── Step 2: Mortgage ── */}
         {step === 'mortgage' && (
-          <form onSubmit={e => { e.preventDefault(); advance('investment') }}>
+          <form onSubmit={e => {
+            e.preventDefault()
+            const p = parseFloat(purchasePrice) || 0
+            setCosts(c => ({
+              ...c,
+              lawyer: c.lawyer || defaultLawyerCost(p),
+              brokerage: c.brokerage || defaultBrokerageCost(p),
+            }))
+            advance('investment')
+          }}>
             <div className="onboarding-dots">{dots('mortgage')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
             <div className="onboarding-icon">🏦</div>
@@ -790,11 +815,13 @@ export default function Onboarding({ onComplete }: Props) {
                   <label>עורך דין (₪)</label>
                   <input type="number" min="0" placeholder="0" value={costs.lawyer}
                     onChange={e => setCosts(c => ({ ...c, lawyer: e.target.value }))} />
+                  <span className="onboarding-field-hint">0.5% + ₪1,000 + מע"מ 18%</span>
                 </div>
                 <div className="onboarding-field">
                   <label>דמי תיווך (₪)</label>
                   <input type="number" min="0" placeholder="0" value={costs.brokerage}
                     onChange={e => setCosts(c => ({ ...c, brokerage: e.target.value }))} />
+                  <span className="onboarding-field-hint">2% + מע"מ 18%</span>
                 </div>
               </div>
               <div className="onboarding-row">
