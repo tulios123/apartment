@@ -92,6 +92,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [tracks, setTracks] = useState<TrackDraft[]>([])
   const [trackForm, setTrackForm] = useState<TrackDraft>(emptyTrack())
   const [graceOn, setGraceOn] = useState(false)
+  const [expandedTracks, setExpandedTracks] = useState<Set<number>>(new Set())
 
   // ── Investment / equity ──
   const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('amount')
@@ -530,24 +531,58 @@ export default function Onboarding({ onComplete }: Props) {
             {/* Added tracks list */}
             {tracks.length > 0 && (
               <div className="onboarding-list">
-                {tracks.map((d, i) => (
-                  <div key={i} className="onboarding-list-row">
-                    <div className="onboarding-list-row-info">
-                      <span className="onboarding-list-row-type">{trackTypeLabel(d.track_type)}</span>
-                      <span>קרן {formatCurrency(parseFloat(d.principal) || 0)}</span>
-                      <span>{trackEffectiveRate(d).toFixed(2)}%</span>
-                      <span>{d.term_months} ח׳</span>
-                      {trackMonthlyPayment(d) > 0 && (
-                        <span>{formatCurrency(trackMonthlyPayment(d))}/חודש</span>
+                {tracks.map((d, i) => {
+                  const isOpen = expandedTracks.has(i)
+                  return (
+                    <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
+                      <div className="onboarding-list-row-header"
+                        onClick={() => setExpandedTracks(prev => {
+                          const next = new Set(prev)
+                          next.has(i) ? next.delete(i) : next.add(i)
+                          return next
+                        })}>
+                        <div className="onboarding-list-row-info">
+                          <span className="onboarding-list-row-type">{trackTypeLabel(d.track_type)}</span>
+                          <span>קרן {formatCurrency(parseFloat(d.principal) || 0)}</span>
+                          <span>{trackEffectiveRate(d).toFixed(2)}%</span>
+                          <span>{d.term_months} ח׳</span>
+                          {trackMonthlyPayment(d) > 0 && (
+                            <span>{formatCurrency(trackMonthlyPayment(d))}/חודש</span>
+                          )}
+                        </div>
+                        <div className="onboarding-list-row-actions">
+                          <span className={`inv-collapse-chevron${isOpen ? ' open' : ''}`}>›</span>
+                          <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }}>✕</button>
+                        </div>
+                      </div>
+                      {isOpen && (
+                        <div className="onboarding-list-row-detail">
+                          <div className="onboarding-list-detail-row"><span>סוג</span><span>{trackTypeLabel(d.track_type)}</span></div>
+                          <div className="onboarding-list-detail-row"><span>קרן</span><span>{formatCurrency(parseFloat(d.principal) || 0)}</span></div>
+                          <div className="onboarding-list-detail-row"><span>ריבית</span><span>{trackEffectiveRate(d).toFixed(3)}%</span></div>
+                          <div className="onboarding-list-detail-row"><span>תקופה</span><span>{d.term_months} חודשים ({(parseInt(d.term_months) / 12).toFixed(0)} שנים)</span></div>
+                          <div className="onboarding-list-detail-row"><span>תאריך התחלה</span><span>{d.start_date}</span></div>
+                          {(parseInt(d.grace_months) || 0) > 0 && (
+                            <div className="onboarding-list-detail-row"><span>גרייס</span><span>{d.grace_months} חודשים</span></div>
+                          )}
+                          {trackMonthlyPayment(d) > 0 && (
+                            <div className="onboarding-list-detail-row"><span>תשלום חודשי</span><strong>{formatCurrency(trackMonthlyPayment(d))}</strong></div>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <button type="button" className="onboarding-list-remove" onClick={() => removeTrack(i)}>✕</button>
-                  </div>
-                ))}
-                <div className="onboarding-running-total">
-                  סה״כ קרן: <strong>{formatCurrency(totalPrincipal)}</strong>
-                  {totalMonthly > 0 && <> &nbsp;·&nbsp; תשלום חודשי כולל: <strong>{formatCurrency(totalMonthly)}</strong></>}
+                  )
+                })}
+                <div className="onboarding-list-total">
+                  <span>סה״כ קרן</span>
+                  <strong>{formatCurrency(totalPrincipal)}</strong>
                 </div>
+                {totalMonthly > 0 && (
+                  <div className="onboarding-list-total">
+                    <span>תשלום חודשי כולל</span>
+                    <strong>{formatCurrency(totalMonthly)}</strong>
+                  </div>
+                )}
               </div>
             )}
 
@@ -627,8 +662,8 @@ export default function Onboarding({ onComplete }: Props) {
                   לחיצה על &quot;הבא&quot; תשמור את המסלול הנוכחי אוטומטית
                 </p>
               )}
-              <button type="button" className="btn-onboard-skip onboarding-add-btn" onClick={addTrack}>
-                + הוסף מסלול נוסף
+              <button type="button" className="btn-onboard-primary" style={{ marginTop: 8 }} onClick={addTrack}>
+                שמור מסלול ✓
               </button>
             </div>
 
