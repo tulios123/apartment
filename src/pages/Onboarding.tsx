@@ -178,7 +178,9 @@ export default function Onboarding({ onComplete }: Props) {
       })
 
       // 2. Mortgage tracks
-      const validTracks = tracks.filter(d => (parseFloat(d.principal) || 0) > 0 && (parseInt(d.term_months) || 0) > 0)
+      const pendingTrackValid = (parseFloat(trackForm.principal) || 0) > 0 && (parseInt(trackForm.term_months) || 0) > 0
+      const allTracks = [...tracks, ...(pendingTrackValid ? [trackForm] : [])]
+      const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0 && (parseInt(d.term_months) || 0) > 0)
       if (validTracks.length > 0) {
         const m = await ensureMortgage(user.id, property.id)
         for (const d of validTracks) {
@@ -227,7 +229,9 @@ export default function Onboarding({ onComplete }: Props) {
       }
 
       // 5. Insurance policies
-      for (const p of policies) {
+      const pendingPolicyValid = policyForm.company.trim() !== '' || policyForm.monthly_premium !== ''
+      const allPolicies = [...policies, ...(pendingPolicyValid ? [policyForm] : [])]
+      for (const p of allPolicies) {
         if (p.company.trim() || p.monthly_premium) {
           await createInsurancePolicy({
             owner_id: user.id,
