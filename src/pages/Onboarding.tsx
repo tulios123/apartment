@@ -842,7 +842,7 @@ export default function Onboarding({ onComplete }: Props) {
                         type="number" min="0" step={equityMode === 'percent' ? '0.1' : '1'}
                         className={isGrey ? 'input-ph-grey' : ''}
                         value={focusedInput === 'equity' ? equityValue : (equityValue || eqDef)}
-                        onFocus={() => setFocusedInput('equity')}
+                        onFocus={() => { setFocusedInput('equity'); if (!equityValue && equityMode === 'percent') setEquityValue('0') }}
                         onBlur={() => setFocusedInput(null)}
                         onChange={e => setEquityValue(e.target.value)}
                         style={{ flex: 1 }}
