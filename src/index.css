@@ -2276,6 +2276,53 @@ body {
   flex-shrink: 0;
 }
 
+.onboarding-track-summary {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.onboarding-track-summary-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.onboarding-track-payment {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.onboarding-track-summary-sub {
+  display: flex;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.onboarding-list-edit {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 2px 5px;
+  border-radius: 5px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.onboarding-list-edit:hover {
+  color: var(--accent);
+  background: var(--accent-light, rgba(37,99,235,0.08));
+}
+
 .onboarding-list-row-detail {
   border-top: 1px solid var(--border);
   padding: 10px 14px;

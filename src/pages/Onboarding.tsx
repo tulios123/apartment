@@ -547,6 +547,10 @@ export default function Onboarding({ onComplete }: Props) {
               <div className="onboarding-list">
                 {tracks.map((d, i) => {
                   const isOpen = expandedTracks.has(i)
+                  const monthly = trackMonthlyPayment(d)
+                  const graceMonthly = (parseInt(d.grace_months) || 0) > 0
+                    ? (parseFloat(d.principal) || 0) * (trackEffectiveRate(d) / 100 / 12)
+                    : 0
                   return (
                     <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                       <div className="onboarding-list-row-header"
@@ -555,16 +559,34 @@ export default function Onboarding({ onComplete }: Props) {
                           next.has(i) ? next.delete(i) : next.add(i)
                           return next
                         })}>
-                        <div className="onboarding-list-row-info">
-                          <span className="onboarding-list-row-type">{trackTypeLabel(d.track_type)}</span>
-                          <span>קרן {formatCurrency(parseFloat(d.principal) || 0)}</span>
-                          <span>{trackEffectiveRate(d).toFixed(2)}%</span>
-                          <span>{d.term_months} ח׳</span>
-                          {trackMonthlyPayment(d) > 0 && (
-                            <span>{formatCurrency(trackMonthlyPayment(d))}/חודש</span>
-                          )}
+                        <div className="onboarding-track-summary">
+                          <div className="onboarding-track-summary-top">
+                            <span className="onboarding-list-row-type">{trackTypeLabel(d.track_type)}</span>
+                            <span className="onboarding-track-payment">
+                              {graceMonthly > 0
+                                ? <>{formatCurrency(graceMonthly)} <span className="text-muted">/ {formatCurrency(monthly)}</span></>
+                                : formatCurrency(monthly)
+                              }
+                              <span className="text-muted"> / חודש</span>
+                            </span>
+                          </div>
+                          <div className="onboarding-track-summary-sub">
+                            <span>קרן {formatCurrency(parseFloat(d.principal) || 0)}</span>
+                            <span>·</span>
+                            <span>{trackEffectiveRate(d).toFixed(2)}%</span>
+                            <span>·</span>
+                            <span>{d.term_months} ח׳</span>
+                            {(parseInt(d.grace_months) || 0) > 0 && <><span>·</span><span>גרייס {d.grace_months} ח׳</span></>}
+                          </div>
                         </div>
                         <div className="onboarding-list-row-actions">
+                          <button type="button" className="onboarding-list-edit" title="ערוך" onClick={e => {
+                            e.stopPropagation()
+                            setTrackForm({ ...d })
+                            setGraceOn((parseInt(d.grace_months) || 0) > 0)
+                            setShowTrackForm(true)
+                            removeTrack(i)
+                          }}>✎</button>
                           <span className={`inv-collapse-chevron${isOpen ? ' open' : ''}`}>›</span>
                           <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }}>✕</button>
                         </div>
