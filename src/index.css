@@ -1769,6 +1769,10 @@ body {
     display: none;
   }
 
+  .sidebar-footer {
+    display: none;
+  }
+
   .nav-link {
     flex: 1;
     text-align: center;
@@ -1779,8 +1783,249 @@ body {
 
   .main-content {
     margin-left: 0;
+    margin-right: 0;
     padding: 16px;
     padding-bottom: 72px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+}
+
+/* ── Comprehensive mobile layout fixes (≤ 480px) ── */
+@media (max-width: 480px) {
+  /* Prevent viewport inflation */
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  #root, .app-layout {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Inputs: prevent iOS zoom-on-focus and ensure they fit */
+  input, select, textarea {
+    font-size: 16px !important;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Pages and headers */
+  .page {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .page-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .page-header h1 {
+    font-size: 18px;
+  }
+
+  /* Summary cards: 3 columns but allow shrink */
+  .summary-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .summary-card {
+    padding: 12px 8px;
+    min-width: 0;
+  }
+
+  .summary-label {
+    font-size: 11px;
+  }
+
+  .summary-amount {
+    font-size: 15px;
+  }
+
+  /* Forms: collapse multi-column grids */
+  .form-2col {
+    grid-template-columns: 1fr;
+  }
+
+  .form-3col {
+    grid-template-columns: 1fr;
+  }
+
+  /* Table wrapper: allow horizontal scroll instead of overflowing page */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    min-width: 400px;
+    font-size: 12px;
+  }
+
+  .data-table th, .data-table td {
+    padding: 8px 8px;
+  }
+
+  /* Hub tabs: scroll horizontally */
+  .hub-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .hub-tab {
+    white-space: nowrap;
+    padding: 6px 10px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  /* Sub-page actions: wrap */
+  .sub-page-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Filters: wrap */
+  .filters {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .filters select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Overview grid: single column on mobile */
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Investment page */
+  .investment-page {
+    max-width: 100%;
+  }
+
+  .inv-cost-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .inv-cost-label {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .inv-cost-input {
+    width: auto;
+    max-width: 140px;
+    min-width: 0;
+    flex: 0 1 110px;
+  }
+
+  .inv-add-row {
+    flex-wrap: wrap;
+  }
+
+  .inv-add-input {
+    max-width: 100%;
+    flex: 1;
+  }
+
+  /* Mortgage page */
+  .mortgage-page {
+    max-width: 100%;
+  }
+
+  .mortgage-track-row {
+    gap: 8px;
+  }
+
+  .mortgage-track-info {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .mortgage-track-numbers {
+    flex: 1 1 100%;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .mortgage-track-actions {
+    flex: 0 0 auto;
+  }
+
+  /* Mortgage schedule table: scrollable */
+  .mortgage-schedule-section {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mortgage-schedule-table {
+    min-width: 500px;
+    font-size: 11px;
+  }
+
+  .mortgage-schedule-table th,
+  .mortgage-schedule-table td {
+    padding: 6px 6px;
+  }
+
+  /* Bottom nav: tighten to fit 6 items */
+  .nav-link {
+    font-size: 11px;
+    padding: 6px 2px;
+    min-width: 0;
+  }
+
+  /* Settings page */
+  .settings-page {
+    max-width: 100%;
+  }
+
+  .settings-row {
+    flex-wrap: wrap;
+  }
+
+  .settings-label {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Login card */
+  .login-card {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Tasks page */
+  .gtasks-list {
+    max-width: 100%;
+  }
+
+  /* Modal */
+  .modal {
+    padding: 20px 16px;
+    margin: 0;
+  }
+
+  /* Onboarding card */
+  .onboarding-card {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .onboarding-row {
+    grid-template-columns: 1fr;
   }
 }
 

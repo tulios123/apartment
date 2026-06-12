@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local verification scratch
+.verify-screenshots/
+verify_onboarding.js
+supabase/.temp/

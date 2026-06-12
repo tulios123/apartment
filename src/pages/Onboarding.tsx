@@ -135,8 +135,8 @@ export default function Onboarding({ onComplete }: Props) {
   // ── Insurance policies ──
   const [policies, setPolicies] = useState<PolicyDraft[]>([])
   const [policyForm, setPolicyForm] = useState<PolicyDraft>(emptyPolicy())
-  const [expandedPolicies, setExpandedPolicies] = useState<Set<number>>(new Set())
   const [showPolicyForm, setShowPolicyForm] = useState(true)
+  const [editingPolicyIdx, setEditingPolicyIdx] = useState<number | null>(null)
 
   const purchaseInputRef = useRef<HTMLInputElement>(null)
   const rentalInputRef = useRef<HTMLInputElement>(null)
@@ -465,11 +465,33 @@ export default function Onboarding({ onComplete }: Props) {
   }
 
   // ── Policy helpers ────────────────────────────────────────────────────────────
+  function normalizePolicyDraft(): PolicyDraft {
+    return { ...policyForm }
+  }
+
   function addPolicy() {
     if (!policyForm.company.trim() && !policyForm.monthly_premium) return
-    setPolicies(prev => [...prev, { ...policyForm }])
+    setPolicies(prev => [...prev, normalizePolicyDraft()])
     setPolicyForm(emptyPolicy())
     setShowPolicyForm(false)
+  }
+
+  function savePolicyEdit(idx: number) {
+    setPolicies(prev => prev.map((p, i) => i === idx ? normalizePolicyDraft() : p))
+    setEditingPolicyIdx(null)
+  }
+
+  function savePolicyAndOpenNew() {
+    if (policyForm.company.trim() || policyForm.monthly_premium) {
+      if (editingPolicyIdx !== null) {
+        setPolicies(prev => prev.map((p, i) => i === editingPolicyIdx ? normalizePolicyDraft() : p))
+      } else {
+        setPolicies(prev => [...prev, normalizePolicyDraft()])
+      }
+    }
+    setEditingPolicyIdx(null)
+    setPolicyForm(emptyPolicy())
+    setShowPolicyForm(true)
   }
 
   function removePolicy(idx: number) {
@@ -608,6 +630,56 @@ export default function Onboarding({ onComplete }: Props) {
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
           <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור מסלול ✓</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Policy form renderer ──────────────────────────────────────────────────────
+  function renderPolicyForm(onSave: () => void, onCancel: () => void) {
+    return (
+      <div className="onboarding-inline-form">
+        <div className="onboarding-field">
+          <label>סוג ביטוח</label>
+          <div className="toggle-group" style={{ flexWrap: 'wrap' }}>
+            {INS_TYPES.map(t => (
+              <button key={t} type="button"
+                className={`toggle-btn${policyForm.type === t ? ' active' : ''}`}
+                onClick={() => setPF('type', t)}>{t}</button>
+            ))}
+          </div>
+        </div>
+        <div className="onboarding-row">
+          <div className="onboarding-field">
+            <label>חברת ביטוח</label>
+            <input type="text" placeholder="שם החברה" value={policyForm.company}
+              onChange={e => setPF('company', e.target.value)} />
+          </div>
+          <div className="onboarding-field">
+            <label>פרמיה חודשית (₪)</label>
+            <input type="text" inputMode="numeric" placeholder="0"
+              value={formatNum(policyForm.monthly_premium)}
+              onChange={e => setPF('monthly_premium', e.target.value.replace(/[^\d]/g, ''))} />
+          </div>
+        </div>
+        <div className="onboarding-row">
+          <div className="onboarding-field">
+            <label>תחילת כיסוי</label>
+            <input type="date" value={policyForm.start_date}
+              onChange={e => setPF('start_date', e.target.value)} />
+          </div>
+          <div className="onboarding-field">
+            <label>סיום כיסוי</label>
+            <input type="date" value={policyForm.end_date}
+              onChange={e => setPF('end_date', e.target.value)} />
+          </div>
+        </div>
+        <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
+          מומלץ: ביטוח חיים + ביטוח משכנתא
+        </p>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
+          <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור פוליסה ✓</button>
         </div>
       </div>
     )
@@ -1061,20 +1133,25 @@ export default function Onboarding({ onComplete }: Props) {
             <h2 className="onboarding-title">ביטוחים</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
-            {/* Saved policies list */}
+            {/* Saved policies list — click header to toggle edit in-place */}
             {policies.length > 0 && (
               <div className="onboarding-list">
                 {policies.map((p, i) => {
-                  const isOpen = expandedPolicies.has(i)
                   const premium = parseFloat(p.monthly_premium) || 0
+                  const isEditing = editingPolicyIdx === i
                   return (
                     <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                       <div className="onboarding-list-row-header"
-                        onClick={() => setExpandedPolicies(prev => {
-                          const next = new Set(prev)
-                          next.has(i) ? next.delete(i) : next.add(i)
-                          return next
-                        })}>
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (isEditing) {
+                            setEditingPolicyIdx(null)
+                          } else {
+                            setEditingPolicyIdx(i)
+                            setPolicyForm({ ...p })
+                            setShowPolicyForm(false)
+                          }
+                        }}>
                         <div className="onboarding-track-summary">
                           <div className="onboarding-track-summary-top">
                             <span className="onboarding-list-row-type">{p.type}</span>
@@ -1091,86 +1168,33 @@ export default function Onboarding({ onComplete }: Props) {
                           )}
                         </div>
                         <div className="onboarding-list-row-actions">
-                          <button type="button" className="onboarding-list-edit" title="ערוך" onClick={e => {
-                            e.stopPropagation()
-                            setPolicyForm({ ...p })
-                            setShowPolicyForm(true)
-                            removePolicy(i)
-                          }}>✎</button>
-                          <span className={`inv-collapse-chevron${isOpen ? ' open' : ''}`}>›</span>
                           <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removePolicy(i) }}>✕</button>
                         </div>
                       </div>
-                      {isOpen && (
-                        <div className="onboarding-list-row-detail">
-                          <div className="onboarding-list-detail-row"><span>סוג</span><span>{p.type}</span></div>
-                          {p.company && <div className="onboarding-list-detail-row"><span>חברה</span><span>{p.company}</span></div>}
-                          {premium > 0 && <div className="onboarding-list-detail-row"><span>פרמיה חודשית</span><strong>{formatCurrency(premium)}</strong></div>}
-                          {p.start_date && <div className="onboarding-list-detail-row"><span>תחילת כיסוי</span><span>{p.start_date}</span></div>}
-                          {p.end_date && <div className="onboarding-list-detail-row"><span>סיום כיסוי</span><span>{p.end_date}</span></div>}
-                        </div>
-                      )}
+                      {isEditing && renderPolicyForm(() => savePolicyEdit(i), () => setEditingPolicyIdx(null))}
                     </div>
                   )
                 })}
               </div>
             )}
 
-            {/* Inline policy form */}
-            {showPolicyForm && (
-              <div className="onboarding-inline-form">
-                <div className="onboarding-field">
-                  <label>סוג ביטוח</label>
-                  <div className="toggle-group" style={{ flexWrap: 'wrap' }}>
-                    {INS_TYPES.map(t => (
-                      <button key={t} type="button"
-                        className={`toggle-btn${policyForm.type === t ? ' active' : ''}`}
-                        onClick={() => setPF('type', t)}>{t}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="onboarding-row">
-                  <div className="onboarding-field">
-                    <label>חברת ביטוח</label>
-                    <input type="text" placeholder="שם החברה" value={policyForm.company}
-                      onChange={e => setPF('company', e.target.value)} />
-                  </div>
-                  <div className="onboarding-field">
-                    <label>פרמיה חודשית (₪)</label>
-                    <input type="text" inputMode="numeric" placeholder="0"
-                      value={formatNum(policyForm.monthly_premium)}
-                      onChange={e => setPF('monthly_premium', e.target.value.replace(/[^\d]/g, ''))} />
-                  </div>
-                </div>
-                <div className="onboarding-row">
-                  <div className="onboarding-field">
-                    <label>תחילת כיסוי</label>
-                    <input type="date" value={policyForm.start_date}
-                      onChange={e => setPF('start_date', e.target.value)} />
-                  </div>
-                  <div className="onboarding-field">
-                    <label>סיום כיסוי</label>
-                    <input type="date" value={policyForm.end_date}
-                      onChange={e => setPF('end_date', e.target.value)} />
-                  </div>
-                </div>
-                <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
-                  מומלץ: ביטוח חיים + ביטוח משכנתא
-                </p>
-                <button type="button" className="btn-onboard-primary" style={{ marginTop: 8 }} onClick={addPolicy}>
-                  שמור פוליסה ✓
-                </button>
-              </div>
-            )}
+            {/* Inline new-policy form */}
+            {showPolicyForm && renderPolicyForm(addPolicy, () => setShowPolicyForm(false))}
 
-            {/* Add another policy button */}
-            {!showPolicyForm && (
-              <button type="button" className="btn-onboard-skip onboarding-add-btn"
-                style={{ marginBottom: 16 }}
-                onClick={() => { setPolicyForm(emptyPolicy()); setShowPolicyForm(true) }}>
-                + הוסף פוליסה
-              </button>
-            )}
+            {/* Add policy button — always shown */}
+            <button type="button" className="btn-onboard-skip onboarding-add-btn"
+              style={{ marginBottom: 16 }}
+              onClick={() => {
+                if (showPolicyForm || editingPolicyIdx !== null) {
+                  savePolicyAndOpenNew()
+                } else {
+                  setPolicyForm(emptyPolicy())
+                  setShowPolicyForm(true)
+                  setEditingPolicyIdx(null)
+                }
+              }}>
+              + הוסף פוליסה
+            </button>
 
             {/* Monthly total */}
             {policies.length > 0 && (
