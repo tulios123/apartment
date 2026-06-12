@@ -38,16 +38,16 @@ type PolicyDraft = {
   end_date: string
 }
 
-function emptyTrack(): TrackDraft {
+function emptyTrack(startDate?: string): TrackDraft {
   return {
     track_type: 'fixed_unlinked',
     principal: '',
     annual_rate: '',
     prime_rate: '',
     margin: '',
-    term_months: '',
+    term_months: '360',
     grace_months: '',
-    start_date: new Date().toISOString().slice(0, 10),
+    start_date: startDate || new Date().toISOString().slice(0, 10),
   }
 }
 
@@ -366,7 +366,7 @@ export default function Onboarding({ onComplete }: Props) {
     const t = parseInt(trackForm.term_months) || 0
     if (p <= 0 || t <= 0) return
     setTracks(prev => [...prev, { ...trackForm }])
-    setTrackForm(emptyTrack())
+    setTrackForm(emptyTrack(keyDeliveryDate || undefined))
     setGraceOn(false)
   }
 
@@ -426,7 +426,11 @@ export default function Onboarding({ onComplete }: Props) {
 
         {/* ── Step 1: Purchase ── */}
         {step === 'purchase' && (
-          <form onSubmit={e => { e.preventDefault(); advance('mortgage') }}>
+          <form onSubmit={e => {
+            e.preventDefault()
+            setTrackForm(emptyTrack(keyDeliveryDate || undefined))
+            advance('mortgage')
+          }}>
             <div className="onboarding-dots">{dots('purchase')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
             <div className="onboarding-icon">🏷️</div>
@@ -618,8 +622,13 @@ export default function Onboarding({ onComplete }: Props) {
                   תשלום חודשי משוער: <strong>{formatCurrency(previewMonthly)}</strong>
                 </p>
               )}
+              {(parseFloat(trackForm.principal) || 0) > 0 && (
+                <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
+                  לחיצה על &quot;הבא&quot; תשמור את המסלול הנוכחי אוטומטית
+                </p>
+              )}
               <button type="button" className="btn-onboard-skip onboarding-add-btn" onClick={addTrack}>
-                + הוסף מסלול
+                + הוסף מסלול נוסף
               </button>
             </div>
 
