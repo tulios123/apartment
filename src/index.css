@@ -2313,6 +2313,14 @@ body {
   font-size: 14px;
 }
 
+.onboarding-mortgage-summary {
+  background: var(--accent-light, rgba(37,99,235,0.06));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
 .onboarding-list-row-info {
   display: flex;
   flex-wrap: wrap;
