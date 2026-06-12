@@ -647,13 +647,6 @@ export default function Onboarding({ onComplete }: Props) {
                           </div>
                         </div>
                         <div className="onboarding-list-row-actions">
-                          <button type="button" className="onboarding-list-edit" title="ערוך" onClick={e => {
-                            e.stopPropagation()
-                            setTrackForm({ ...d })
-                            setGraceOn((parseInt(d.grace_months) || 0) > 0)
-                            setShowTrackForm(true)
-                            removeTrack(i)
-                          }}>✎</button>
                           <span className={`inv-collapse-chevron${isOpen ? ' open' : ''}`}>›</span>
                           <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }}>✕</button>
                         </div>
@@ -775,14 +768,19 @@ export default function Onboarding({ onComplete }: Props) {
                     )}
                   </div>
                 )}
-                <button type="button" className="btn-onboard-primary" style={{ marginTop: 8 }} onClick={addTrack}>
-                  שמור מסלול ✓
-                </button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button type="button" className="btn-onboard-skip" onClick={() => setShowTrackForm(false)}>
+                    ביטול
+                  </button>
+                  <button type="button" className="btn-onboard-primary" onClick={addTrack}>
+                    שמור מסלול ✓
+                  </button>
+                </div>
               </div>
               )
             })()}
 
-            {/* Add another track button — shown after saving */}
+            {/* Add track button — always shown when form is hidden */}
             {!showTrackForm && (
               <button type="button" className="btn-onboard-skip onboarding-add-btn"
                 style={{ marginBottom: 16 }}
