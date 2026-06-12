@@ -109,8 +109,8 @@ export default function Onboarding({ onComplete }: Props) {
   const [tracks, setTracks] = useState<TrackDraft[]>([])
   const [trackForm, setTrackForm] = useState<TrackDraft>(emptyTrack())
   const [graceOn, setGraceOn] = useState(false)
-  const [expandedTracks, setExpandedTracks] = useState<Set<number>>(new Set())
   const [showTrackForm, setShowTrackForm] = useState(true)
+  const [cancelTrack, setCancelTrack] = useState<TrackDraft | null>(null)
 
   // ── Investment / equity ──
   const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('percent')
@@ -429,6 +429,7 @@ export default function Onboarding({ onComplete }: Props) {
     setTrackForm(emptyTrack(keyDeliveryDate || undefined))
     setGraceOn(false)
     setShowTrackForm(false)
+    setCancelTrack(null)
   }
 
   function removeTrack(idx: number) {
@@ -609,11 +610,10 @@ export default function Onboarding({ onComplete }: Props) {
             <h2 className="onboarding-title">משכנתא</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
-            {/* Added tracks list */}
+            {/* Saved tracks list — click row to edit */}
             {tracks.length > 0 && (
               <div className="onboarding-list">
                 {tracks.map((d, i) => {
-                  const isOpen = expandedTracks.has(i)
                   const monthly = trackMonthlyPayment(d)
                   const graceMonthly = (parseInt(d.grace_months) || 0) > 0
                     ? (parseFloat(d.principal) || 0) * (trackEffectiveRate(d) / 100 / 12)
@@ -621,11 +621,14 @@ export default function Onboarding({ onComplete }: Props) {
                   return (
                     <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                       <div className="onboarding-list-row-header"
-                        onClick={() => setExpandedTracks(prev => {
-                          const next = new Set(prev)
-                          next.has(i) ? next.delete(i) : next.add(i)
-                          return next
-                        })}>
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setCancelTrack({ ...d })
+                          setTrackForm({ ...d })
+                          setGraceOn((parseInt(d.grace_months) || 0) > 0)
+                          setShowTrackForm(true)
+                          removeTrack(i)
+                        }}>
                         <div className="onboarding-track-summary">
                           <div className="onboarding-track-summary-top">
                             <span className="onboarding-list-row-type">{trackTypeLabel(d.track_type)}</span>
@@ -647,25 +650,9 @@ export default function Onboarding({ onComplete }: Props) {
                           </div>
                         </div>
                         <div className="onboarding-list-row-actions">
-                          <span className={`inv-collapse-chevron${isOpen ? ' open' : ''}`}>›</span>
                           <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }}>✕</button>
                         </div>
                       </div>
-                      {isOpen && (
-                        <div className="onboarding-list-row-detail">
-                          <div className="onboarding-list-detail-row"><span>סוג</span><span>{trackTypeLabel(d.track_type)}</span></div>
-                          <div className="onboarding-list-detail-row"><span>קרן</span><span>{formatCurrency(parseFloat(d.principal) || 0)}</span></div>
-                          <div className="onboarding-list-detail-row"><span>ריבית</span><span>{trackEffectiveRate(d).toFixed(3)}%</span></div>
-                          <div className="onboarding-list-detail-row"><span>תקופה</span><span>{d.term_months} חודשים ({(parseInt(d.term_months) / 12).toFixed(0)} שנים)</span></div>
-                          <div className="onboarding-list-detail-row"><span>תאריך התחלה</span><span>{d.start_date}</span></div>
-                          {(parseInt(d.grace_months) || 0) > 0 && (
-                            <div className="onboarding-list-detail-row"><span>גרייס</span><span>{d.grace_months} חודשים</span></div>
-                          )}
-                          {trackMonthlyPayment(d) > 0 && (
-                            <div className="onboarding-list-detail-row"><span>תשלום חודשי</span><strong>{formatCurrency(trackMonthlyPayment(d))}</strong></div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )
                 })}
@@ -769,7 +756,10 @@ export default function Onboarding({ onComplete }: Props) {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button type="button" className="btn-onboard-skip" onClick={() => setShowTrackForm(false)}>
+                  <button type="button" className="btn-onboard-skip" onClick={() => {
+                    if (cancelTrack) { setTracks(prev => [...prev, cancelTrack]); setCancelTrack(null) }
+                    setShowTrackForm(false)
+                  }}>
                     ביטול
                   </button>
                   <button type="button" className="btn-onboard-primary" onClick={addTrack}>
