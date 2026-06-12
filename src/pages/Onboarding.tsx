@@ -38,15 +38,14 @@ type PolicyDraft = {
   end_date: string
 }
 
-function emptyTrack(startDate?: string, purchasePrice?: number): TrackDraft {
-  const defaultPrincipal = purchasePrice ? String(Math.round(purchasePrice * 0.75)) : ''
+function emptyTrack(startDate?: string): TrackDraft {
   return {
     track_type: 'fixed_unlinked',
-    principal: defaultPrincipal,
-    annual_rate: '5.000',
-    prime_rate: '6.250',
-    margin: '-0.500',
-    term_months: '360',
+    principal: '',
+    annual_rate: '',
+    prime_rate: '',
+    margin: '',
+    term_months: '',
     grace_months: '',
     start_date: startDate || new Date().toISOString().slice(0, 10),
   }
@@ -115,8 +114,11 @@ export default function Onboarding({ onComplete }: Props) {
 
   // ── Investment / equity ──
   const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('percent')
-  const [equityValue, setEquityValue] = useState(defaultSelfEquityPct())
+  const [equityValue, setEquityValue] = useState('')
   const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '' })
+
+  // ── Focused input tracking (for grey-placeholder UX) ──
+  const [focusedInput, setFocusedInput] = useState<string | null>(null)
 
   // ── Rental fields ──
   const [rentalFile, setRentalFile] = useState<File | null>(null)
@@ -153,11 +155,16 @@ export default function Onboarding({ onComplete }: Props) {
 
   // ── Derived: equity ─────────────────────────────────────────────────────────
   const price = parseFloat(purchasePrice) || 0
+  // effective = user value if typed, else computed default (grey placeholder)
+  const effEquity = equityValue || (equityMode === 'percent' ? defaultSelfEquityPct() : '')
+  const effLawyer = costs.lawyer || defaultLawyerCost(price)
+  const effBrokerage = costs.brokerage || defaultBrokerageCost(price)
   const equityAmount = equityMode === 'percent'
-    ? Math.round(price * (parseFloat(equityValue) || 0) / 100)
-    : Math.round(parseFloat(equityValue) || 0)
+    ? Math.round(price * (parseFloat(effEquity) || 0) / 100)
+    : Math.round(parseFloat(effEquity) || 0)
   const equityPercent = price > 0 ? equityAmount / price * 100 : 0
-  const costsTotal = Object.values(costs).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+  const costsTotal = (parseFloat(effLawyer) || 0) + (parseFloat(effBrokerage) || 0)
+    + (parseFloat(costs.mortgage_advisor) || 0) + (parseFloat(costs.investment_company) || 0)
 
   // ── Derived: mortgage track live preview ─────────────────────────────────────
   function trackEffectiveRate(d: TrackDraft): number {
@@ -204,8 +211,18 @@ export default function Onboarding({ onComplete }: Props) {
       })
 
       // 2. Mortgage tracks
-      const pendingTrackValid = (parseFloat(trackForm.principal) || 0) > 0
-      const allTracks = [...tracks, ...(pendingTrackValid ? [trackForm] : [])]
+      const defaultPrincipal = price > 0 ? String(Math.round(price * 0.75)) : ''
+      const normTrack = (d: TrackDraft): TrackDraft => ({
+        ...d,
+        principal: d.principal || defaultPrincipal,
+        annual_rate: d.annual_rate || '5.000',
+        prime_rate: d.prime_rate || '6.250',
+        margin: d.margin || '-0.500',
+        term_months: d.term_months || '360',
+      })
+      const pendingPrincipal = trackForm.principal || defaultPrincipal
+      const pendingTrackValid = (parseFloat(pendingPrincipal) || 0) > 0
+      const allTracks = [...tracks, ...(pendingTrackValid ? [normTrack(trackForm)] : [])]
       const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0)
       if (validTracks.length > 0) {
         const m = await ensureMortgage(user.id, property.id)
@@ -218,7 +235,7 @@ export default function Onboarding({ onComplete }: Props) {
             track_type: d.track_type,
             principal: parseFloat(d.principal) || 0,
             annual_rate: effRate,
-            term_months: parseInt(d.term_months) || 0,
+            term_months: parseInt(d.term_months) || 360,
             grace_months: parseInt(d.grace_months) || 0,
             start_date: d.start_date,
           })
@@ -229,9 +246,13 @@ export default function Onboarding({ onComplete }: Props) {
       if (equityAmount > 0) {
         await upsertInvestmentCost({ owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount })
       }
-      const costKeys: (keyof typeof costs)[] = ['lawyer', 'brokerage', 'mortgage_advisor', 'investment_company']
-      for (const key of costKeys) {
-        const val = parseFloat(costs[key]) || 0
+      const effectiveCosts = {
+        lawyer: parseFloat(effLawyer) || 0,
+        brokerage: parseFloat(effBrokerage) || 0,
+        mortgage_advisor: parseFloat(costs.mortgage_advisor) || 0,
+        investment_company: parseFloat(costs.investment_company) || 0,
+      }
+      for (const [key, val] of Object.entries(effectiveCosts) as [keyof typeof costs, number][]) {
         if (val > 0) {
           await upsertInvestmentCost({ owner_id: user.id, category: key, label: null, amount: val })
         }
@@ -394,10 +415,18 @@ export default function Onboarding({ onComplete }: Props) {
 
   // ── Track helpers ─────────────────────────────────────────────────────────────
   function addTrack() {
-    const p = parseFloat(trackForm.principal) || 0
+    const p = parseFloat(trackForm.principal) || (price > 0 ? Math.round(price * 0.75) : 0)
     if (p <= 0) return
-    setTracks(prev => [...prev, { ...trackForm }])
-    setTrackForm(emptyTrack(keyDeliveryDate || undefined, parseFloat(purchasePrice) || undefined))
+    const normalized: TrackDraft = {
+      ...trackForm,
+      principal: trackForm.principal || (price > 0 ? String(Math.round(price * 0.75)) : ''),
+      annual_rate: trackForm.annual_rate || '5.000',
+      prime_rate: trackForm.prime_rate || '6.250',
+      margin: trackForm.margin || '-0.500',
+      term_months: trackForm.term_months || '360',
+    }
+    setTracks(prev => [...prev, normalized])
+    setTrackForm(emptyTrack(keyDeliveryDate || undefined))
     setGraceOn(false)
     setShowTrackForm(false)
   }
@@ -444,10 +473,18 @@ export default function Onboarding({ onComplete }: Props) {
       }, 0)
     : 0
 
-  // ── Live preview for current form ─────────────────────────────────────────────
-  const previewMonthly = trackMonthlyPayment(trackForm)
-  const previewGrace = graceOn && (parseFloat(trackForm.principal) || 0) > 0
-    ? (parseFloat(trackForm.principal) || 0) * (trackEffectiveRate(trackForm) / 100 / 12)
+  // ── Live preview for current form (uses defaults when fields are empty) ──────
+  const effectiveTrackForm: TrackDraft = {
+    ...trackForm,
+    principal: trackForm.principal || (price > 0 ? String(Math.round(price * 0.75)) : ''),
+    annual_rate: trackForm.annual_rate || '5.000',
+    prime_rate: trackForm.prime_rate || (trackForm.track_type === 'prime' ? '6.250' : '3.500'),
+    margin: trackForm.margin || (trackForm.track_type === 'prime' ? '-0.500' : '1.500'),
+    term_months: trackForm.term_months || '360',
+  }
+  const previewMonthly = trackMonthlyPayment(effectiveTrackForm)
+  const previewGrace = graceOn && (parseFloat(effectiveTrackForm.principal) || 0) > 0
+    ? (parseFloat(effectiveTrackForm.principal) || 0) * (trackEffectiveRate(effectiveTrackForm) / 100 / 12)
     : 0
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -473,7 +510,7 @@ export default function Onboarding({ onComplete }: Props) {
         {step === 'purchase' && (
           <form onSubmit={e => {
             e.preventDefault()
-            setTrackForm(emptyTrack(keyDeliveryDate || undefined, parseFloat(purchasePrice) || undefined))
+            setTrackForm(emptyTrack(keyDeliveryDate || undefined))
             advance('mortgage')
           }}>
             <div className="onboarding-dots">{dots('purchase')}</div>
@@ -565,16 +602,7 @@ export default function Onboarding({ onComplete }: Props) {
 
         {/* ── Step 2: Mortgage ── */}
         {step === 'mortgage' && (
-          <form onSubmit={e => {
-            e.preventDefault()
-            const p = parseFloat(purchasePrice) || 0
-            setCosts(c => ({
-              ...c,
-              lawyer: c.lawyer || defaultLawyerCost(p),
-              brokerage: c.brokerage || defaultBrokerageCost(p),
-            }))
-            advance('investment')
-          }}>
+          <form onSubmit={e => { e.preventDefault(); advance('investment') }}>
             <div className="onboarding-dots">{dots('mortgage')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
             <div className="onboarding-icon">🏦</div>
@@ -652,7 +680,17 @@ export default function Onboarding({ onComplete }: Props) {
             )}
 
             {/* Inline track form — shown on first entry, or when user clicks '+ הוסף מסלול' */}
-            {showTrackForm && (
+            {showTrackForm && (() => {
+              const principalDefault = price > 0 ? String(Math.round(price * 0.75)) : ''
+              const primeDefault = trackForm.track_type === 'prime' ? '6.250' : '3.500'
+              const marginDefault = trackForm.track_type === 'prime' ? '-0.500' : '1.500'
+              const ph = (id: string, val: string, def: string) => ({
+                className: !val && !!def && focusedInput !== id ? 'input-ph-grey' : '',
+                value: focusedInput === id ? val : (val || def),
+                onFocus: () => setFocusedInput(id),
+                onBlur: () => setFocusedInput(null),
+              })
+              return (
               <div className="onboarding-inline-form">
                 <div className="onboarding-field">
                   <label>סוג מסלול</label>
@@ -668,8 +706,11 @@ export default function Onboarding({ onComplete }: Props) {
                 </div>
                 <div className="onboarding-field">
                   <label>קרן (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
-                    value={formatPrice(trackForm.principal)}
+                  <input type="text" inputMode="numeric"
+                    {...ph('tf.principal', trackForm.principal, principalDefault)}
+                    value={focusedInput === 'tf.principal'
+                      ? formatNum(trackForm.principal)
+                      : formatNum(trackForm.principal || principalDefault)}
                     onChange={e => setTF('principal', e.target.value.replace(/\D/g, ''))} />
                 </div>
                 {(trackForm.track_type === 'prime' || trackForm.track_type === 'variable') ? (
@@ -677,29 +718,29 @@ export default function Onboarding({ onComplete }: Props) {
                     <div className="onboarding-field">
                       <label>{trackForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
                       <input type="number" step="0.01"
-                        placeholder={trackForm.track_type === 'prime' ? '6.25' : '3.5'}
-                        value={trackForm.prime_rate}
+                        {...ph('tf.prime_rate', trackForm.prime_rate, primeDefault)}
                         onChange={e => setTF('prime_rate', e.target.value)} />
                     </div>
                     <div className="onboarding-field">
                       <label>מרווח (%)</label>
                       <input type="number" step="0.01"
-                        placeholder={trackForm.track_type === 'prime' ? '-0.5' : '1.5'}
-                        value={trackForm.margin}
+                        {...ph('tf.margin', trackForm.margin, marginDefault)}
                         onChange={e => setTF('margin', e.target.value)} />
                     </div>
                   </div>
                 ) : (
                   <div className="onboarding-field">
                     <label>ריבית שנתית (%)</label>
-                    <input type="number" step="0.01" placeholder="3.5" value={trackForm.annual_rate}
+                    <input type="number" step="0.01"
+                      {...ph('tf.annual_rate', trackForm.annual_rate, '5.000')}
                       onChange={e => setTF('annual_rate', e.target.value)} />
                   </div>
                 )}
                 <div className="onboarding-row">
                   <div className="onboarding-field">
                     <label>תקופה (חודשים)</label>
-                    <input type="number" placeholder="360" min="1" value={trackForm.term_months}
+                    <input type="number" min="1"
+                      {...ph('tf.term', trackForm.term_months, '360')}
                       onChange={e => setTF('term_months', e.target.value)} />
                   </div>
                   <div className="onboarding-field">
@@ -738,14 +779,15 @@ export default function Onboarding({ onComplete }: Props) {
                   שמור מסלול ✓
                 </button>
               </div>
-            )}
+              )
+            })()}
 
             {/* Add another track button — shown after saving */}
             {!showTrackForm && (
               <button type="button" className="btn-onboard-skip onboarding-add-btn"
                 style={{ marginBottom: 16 }}
                 onClick={() => {
-                  setTrackForm(emptyTrack(keyDeliveryDate || undefined, parseFloat(purchasePrice) || undefined))
+                  setTrackForm(emptyTrack(keyDeliveryDate || undefined))
                   setGraceOn(false)
                   setShowTrackForm(true)
                 }}>
@@ -804,19 +846,27 @@ export default function Onboarding({ onComplete }: Props) {
                     <button type="button" className={`toggle-btn${equityMode === 'percent' ? ' active' : ''}`}
                       onClick={() => setEquityMode('percent')}>%</button>
                   </div>
-                  <input
-                    type="number" min="0" step={equityMode === 'percent' ? '0.1' : '1'}
-                    placeholder={equityMode === 'percent' ? '25' : '0'}
-                    value={equityValue}
-                    onChange={e => setEquityValue(e.target.value)}
-                    style={{ flex: 1 }}
-                  />
+                  {(() => {
+                    const eqDef = equityMode === 'percent' ? defaultSelfEquityPct() : ''
+                    const isGrey = !equityValue && !!eqDef && focusedInput !== 'equity'
+                    return (
+                      <input
+                        type="number" min="0" step={equityMode === 'percent' ? '0.1' : '1'}
+                        className={isGrey ? 'input-ph-grey' : ''}
+                        value={focusedInput === 'equity' ? equityValue : (equityValue || eqDef)}
+                        onFocus={() => setFocusedInput('equity')}
+                        onBlur={() => setFocusedInput(null)}
+                        onChange={e => setEquityValue(e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                    )
+                  })()}
                 </div>
-                {price > 0 && equityValue && (
+                {price > 0 && (equityValue || equityMode === 'percent') && (
                   <p className="onboarding-running-total" style={{ marginTop: 4 }}>
                     {equityMode === 'percent'
                       ? <>= {formatCurrency(equityAmount)} מתוך {formatCurrency(price)}</>
-                      : <>= {equityPercent.toFixed(1)}% ממחיר הרכישה</>
+                      : equityValue ? <>= {equityPercent.toFixed(1)}% ממחיר הרכישה</> : null
                     }
                   </p>
                 )}
@@ -828,36 +878,49 @@ export default function Onboarding({ onComplete }: Props) {
               </div>
 
               {/* Cost fields */}
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>עורך דין (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
-                    value={formatNum(costs.lawyer)}
-                    onChange={e => setCosts(c => ({ ...c, lawyer: e.target.value.replace(/[^\d]/g, '') }))} />
-                  <span className="onboarding-field-hint">0.5% + ₪1,000 + מע"מ 18%</span>
-                </div>
-                <div className="onboarding-field">
-                  <label>דמי תיווך (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
-                    value={formatNum(costs.brokerage)}
-                    onChange={e => setCosts(c => ({ ...c, brokerage: e.target.value.replace(/[^\d]/g, '') }))} />
-                  <span className="onboarding-field-hint">2% + מע"מ 18%</span>
-                </div>
-              </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>יועץ משכנתאות (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
-                    value={formatNum(costs.mortgage_advisor)}
-                    onChange={e => setCosts(c => ({ ...c, mortgage_advisor: e.target.value.replace(/[^\d]/g, '') }))} />
-                </div>
-                <div className="onboarding-field">
-                  <label>חברת ליווי השקעה (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
-                    value={formatNum(costs.investment_company)}
-                    onChange={e => setCosts(c => ({ ...c, investment_company: e.target.value.replace(/[^\d]/g, '') }))} />
-                </div>
-              </div>
+              {(() => {
+                const lawyerDef = defaultLawyerCost(price)
+                const brokerageDef = defaultBrokerageCost(price)
+                const inp = (id: string, val: string, def: string, onChange: (v: string) => void) => ({
+                  type: 'text' as const,
+                  inputMode: 'numeric' as const,
+                  className: !val && !!def && focusedInput !== id ? 'input-ph-grey' : '',
+                  value: focusedInput === id ? formatNum(val) : formatNum(val || def),
+                  onFocus: () => setFocusedInput(id),
+                  onBlur: () => setFocusedInput(null),
+                  onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value.replace(/[^\d]/g, '')),
+                })
+                return (
+                  <>
+                    <div className="onboarding-row">
+                      <div className="onboarding-field">
+                        <label>עורך דין (₪)</label>
+                        <input {...inp('c.lawyer', costs.lawyer, lawyerDef, v => setCosts(c => ({ ...c, lawyer: v })))} />
+                        <span className="onboarding-field-hint">0.5% + ₪1,000 + מע"מ 18%</span>
+                      </div>
+                      <div className="onboarding-field">
+                        <label>דמי תיווך (₪)</label>
+                        <input {...inp('c.brokerage', costs.brokerage, brokerageDef, v => setCosts(c => ({ ...c, brokerage: v })))} />
+                        <span className="onboarding-field-hint">2% + מע"מ 18%</span>
+                      </div>
+                    </div>
+                    <div className="onboarding-row">
+                      <div className="onboarding-field">
+                        <label>יועץ משכנתאות (₪)</label>
+                        <input type="text" inputMode="numeric" placeholder="0"
+                          value={formatNum(costs.mortgage_advisor)}
+                          onChange={e => setCosts(c => ({ ...c, mortgage_advisor: e.target.value.replace(/[^\d]/g, '') }))} />
+                      </div>
+                      <div className="onboarding-field">
+                        <label>חברת ליווי השקעה (₪)</label>
+                        <input type="text" inputMode="numeric" placeholder="0"
+                          value={formatNum(costs.investment_company)}
+                          onChange={e => setCosts(c => ({ ...c, investment_company: e.target.value.replace(/[^\d]/g, '') }))} />
+                      </div>
+                    </div>
+                  </>
+                )
+              })()}
 
               {(equityAmount + costsTotal) > 0 && (
                 <div className="onboarding-running-total">

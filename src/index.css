@@ -2176,6 +2176,11 @@ body {
   opacity: 0.75;
 }
 
+/* Grey placeholder UX: default value shown muted until user overrides */
+.input-ph-grey {
+  color: var(--text-muted) !important;
+}
+
 /* ── Onboarding step counter ── */
 .onboarding-step-count {
   font-size: 11.5px;
