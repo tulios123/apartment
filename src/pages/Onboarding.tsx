@@ -830,9 +830,9 @@ export default function Onboarding({ onComplete }: Props) {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <div className="toggle-group" style={{ flexShrink: 0 }}>
                     <button type="button" className={`toggle-btn${equityMode === 'amount' ? ' active' : ''}`}
-                      onClick={() => setEquityMode('amount')}>₪</button>
+                      onClick={() => { setEquityMode('amount'); setEquityValue('') }}>₪</button>
                     <button type="button" className={`toggle-btn${equityMode === 'percent' ? ' active' : ''}`}
-                      onClick={() => setEquityMode('percent')}>%</button>
+                      onClick={() => { setEquityMode('percent'); setEquityValue('') }}>%</button>
                   </div>
                   {(() => {
                     const eqDef = equityMode === 'percent' ? defaultSelfEquityPct() : ''
