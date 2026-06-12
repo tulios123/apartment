@@ -2128,6 +2128,19 @@ body {
   color: var(--text-muted);
 }
 
+.overview-card-split {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  font-size: 1rem;
+}
+
+.overview-card-slash {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 /* ── Empty-state CTA (hub tabs with no data) ── */
 .empty-state-cta {
   display: flex;

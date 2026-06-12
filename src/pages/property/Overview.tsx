@@ -93,15 +93,13 @@ export default function Overview() {
       </button>
 
       <button className="overview-card" onClick={() => navigate('/property/investment')}>
-        <div className="overview-card-label">סה״כ הכנסות</div>
-        <div className="overview-card-value positive">{rentReceived > 0 ? formatCurrency(rentReceived) : <span className="text-muted">אין נתונים</span>}</div>
-        <div className="overview-card-sub">שכירות מצטברת</div>
-      </button>
-
-      <button className="overview-card" onClick={() => navigate('/property/investment')}>
-        <div className="overview-card-label">סה״כ הוצאות</div>
-        <div className="overview-card-value negative">{totalSpent > 0 ? formatCurrency(totalSpent) : <span className="text-muted">אין נתונים</span>}</div>
-        <div className="overview-card-sub">השקעה, ריבית, ביטוח, תחזוקה</div>
+        <div className="overview-card-label">הכנסות / הוצאות</div>
+        <div className="overview-card-value overview-card-split">
+          <span className="positive">{rentReceived > 0 ? formatCurrency(rentReceived) : <span className="text-muted">—</span>}</span>
+          <span className="overview-card-slash">/</span>
+          <span className="negative">{totalSpent > 0 ? formatCurrency(totalSpent) : <span className="text-muted">—</span>}</span>
+        </div>
+        <div className="overview-card-sub">שכירות מצטברת / השקעה, ריבית, ביטוח, תחזוקה</div>
       </button>
     </div>
   )
