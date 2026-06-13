@@ -84,6 +84,22 @@ export function combineSchedules(tracks: MortgageTrack[]): ScheduleRow[] {
   return out
 }
 
+/**
+ * Combined monthly payment across all tracks during the grace period.
+ * Tracks with grace_months > 0 pay interest-only; others pay full Shpitzer.
+ * Returns 0 when no track has a grace period.
+ */
+export function gracePeriodPayment(tracks: MortgageTrack[]): number {
+  const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
+  if (!hasGrace) return 0
+  return tracks.reduce((s, t) => {
+    const r = t.annual_rate / 100 / 12
+    return s + ((t.grace_months ?? 0) > 0
+      ? t.principal * r
+      : monthlyPayment(t.principal, t.annual_rate, t.term_months, 0))
+  }, 0)
+}
+
 /** Total interest accrued across all tracks up to and including asOf. */
 export function interestToDate(tracks: MortgageTrack[], asOf: Date = new Date()): number {
   const cutoff = asOf.toISOString().slice(0, 10)

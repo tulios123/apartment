@@ -4,15 +4,8 @@ import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { formatCurrency } from '../../lib/format'
+import { insurancePaidToDate as calcInsurancePaidToDate, activeContract as findActiveContract } from '../../lib/projections'
 import { SkeletonCard } from '../../components/ui/Skeleton'
-
-function elapsedMonths(startStr: string | null, endStr: string | null): number {
-  if (!startStr) return 0
-  const start = new Date(startStr)
-  const end = endStr ? new Date(Math.min(new Date(endStr).getTime(), Date.now())) : new Date()
-  if (end <= start) return 0
-  return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
-}
 
 export default function Overview() {
   const navigate = useNavigate()
@@ -23,20 +16,16 @@ export default function Overview() {
 
   const loading = propLoading || mortLoading || invLoading || insLoading
 
-  const activeContract = contracts.find(c => {
-    const now = new Date()
-    return new Date(c.start_date) <= now && new Date(c.end_date) >= now
-  })
+  const activeContract = findActiveContract(contracts)
 
-  const propertyValue = property?.estimated_value ?? property?.purchase_price ?? null
+  const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
   const monthlyRent = activeContract?.monthly_rent ?? null
   const annualRent = monthlyRent ? monthlyRent * 12 : null
-  const grossYield = annualRent && totalInvested > 0
-    ? (annualRent / totalInvested) * 100
+  const grossYield = propertyValue > 0 && annualRent
+    ? (annualRent / propertyValue) * 100
     : null
   const totalInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
-  const insurancePaidToDate = policies.reduce((s, p) =>
-    s + (p.monthly_premium ?? 0) * elapsedMonths(p.start_date, p.end_date), 0)
+  const insurancePaidToDate = calcInsurancePaidToDate(policies)
   const totalSpent = totalInvested + interestPaid + insurancePaidToDate + maintenance
 
   if (loading) return (
@@ -50,7 +39,7 @@ export default function Overview() {
       <button className="overview-card" onClick={() => navigate('/property/details')}>
         <div className="overview-card-label">שווי נכס</div>
         <div className="overview-card-value">
-          {propertyValue != null ? formatCurrency(propertyValue) : <span className="text-muted">לא הוזן</span>}
+          {propertyValue > 0 ? formatCurrency(propertyValue) : <span className="text-muted">לא הוזן</span>}
         </div>
         {property?.address && <div className="overview-card-sub">{property.address}</div>}
       </button>
@@ -92,8 +81,11 @@ export default function Overview() {
         <div className="overview-card-value">
           {grossYield != null ? `${grossYield.toFixed(1)}%` : <span className="text-muted">לא מחושב</span>}
         </div>
-        {totalInvested > 0 && (
-          <div className="overview-card-sub">מתוך {formatCurrency(totalInvested)} שהושקעו</div>
+        {propertyValue > 0 && (
+          <div className="overview-card-sub">מתוך שווי הנכס {formatCurrency(propertyValue)}</div>
+        )}
+        {totalInvested > 0 && annualRent != null && (
+          <div className="overview-card-sub">תשואה על ההון: {(annualRent / totalInvested * 100).toFixed(1)}%</div>
         )}
       </button>
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   useMortgageData,
@@ -6,7 +6,7 @@ import {
   upsertMortgageTrack,
   deleteMortgageTrack,
 } from '../hooks/useMortgageData'
-import { monthlyPayment, trackSchedule } from '../lib/mortgage'
+import { monthlyPayment, trackSchedule, gracePeriodPayment } from '../lib/mortgage'
 import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
 import { formatCurrency, formatDate, formatNum } from '../lib/format'
 import type { MortgageTrack, TrackType } from '../types'
@@ -227,14 +227,7 @@ export default function MortgagePage() {
   const effectiveRateVal = form ? effectiveRate(form) : 0
 
   const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
-  const gracePeriodPayment = hasGrace
-    ? tracks.reduce((s, t) => {
-        const r = t.annual_rate / 100 / 12
-        return s + ((t.grace_months ?? 0) > 0
-          ? t.principal * r                                           // interest-only during grace
-          : monthlyPayment(t.principal, t.annual_rate, t.term_months, 0))  // full Shpitzer if no grace
-      }, 0)
-    : 0
+  const gracePeriodPaymentAmount = gracePeriodPayment(tracks)
 
   return (
     <>
@@ -250,7 +243,7 @@ export default function MortgagePage() {
             <>
               <div className="mortgage-payment-split">
                 <span className="mortgage-payment-split-label">בגרייס</span>
-                <span className="summary-amount">{formatCurrency(gracePeriodPayment)}</span>
+                <span className="summary-amount">{formatCurrency(gracePeriodPaymentAmount)}</span>
               </div>
               <div className="mortgage-payment-split">
                 <span className="mortgage-payment-split-label">לאחר גרייס</span>
@@ -604,9 +597,8 @@ export default function MortgagePage() {
                 {yearRows.map(yr => {
                   const rep = yr.months[0]
                   return (
-                  <>
+                  <Fragment key={yr.year}>
                     <tr
-                      key={yr.year}
                       className="mortgage-year-row"
                       onClick={() => toggleYear(yr.year)}
                     >
@@ -626,7 +618,8 @@ export default function MortgagePage() {
                         <td>{formatCurrency(row.principal)}</td>
                         <td>{formatCurrency(row.balance)}</td>
                       </tr>
-                    ))}</>
+                    ))}
+                  </Fragment>
                   )
                 })}
               </tbody>

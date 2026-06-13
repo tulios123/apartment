@@ -2,6 +2,23 @@ import { trackSchedule } from './mortgage'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
 import type { Contract, MortgageTrack } from '../types'
 
+/** Number of months elapsed between startStr and endStr (or now if endStr is null/future). */
+export function elapsedMonths(startStr: string | null, endStr: string | null): number {
+  if (!startStr) return 0
+  const start = new Date(startStr)
+  const end = endStr ? new Date(Math.min(new Date(endStr).getTime(), Date.now())) : new Date()
+  if (end <= start) return 0
+  return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
+}
+
+/** Total insurance premiums paid to date across all policies. */
+export function insurancePaidToDate(
+  policies: { monthly_premium: number | null; start_date: string | null; end_date: string | null }[]
+): number {
+  return policies.reduce((s, p) =>
+    s + (p.monthly_premium ?? 0) * elapsedMonths(p.start_date, p.end_date), 0)
+}
+
 export interface VirtualEntry {
   id: string
   direction: 'income' | 'expense'
@@ -9,6 +26,14 @@ export interface VirtualEntry {
   date: string
   category: string
   description: string
+}
+
+/** Returns the contract active at asOf (defaults to now). */
+export function activeContract<T extends { start_date: string; end_date: string }>(
+  contracts: T[],
+  asOf: Date = new Date()
+): T | undefined {
+  return contracts.find(c => new Date(c.start_date) <= asOf && new Date(c.end_date) >= asOf)
 }
 
 /** Total rent received across all contracts from each start_date up to asOf. */

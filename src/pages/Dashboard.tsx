@@ -5,6 +5,7 @@ import { usePropertyData } from '../hooks/usePropertyData'
 import { useInvestmentData } from '../hooks/useInvestmentData'
 import { useInsurance } from '../hooks/useInsurance'
 import { formatCurrency, formatDate } from '../lib/format'
+import { activeContract as findActiveContract } from '../lib/projections'
 import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
 import { EmptyState } from '../components/ui/EmptyState'
 
@@ -44,9 +45,7 @@ export default function Dashboard() {
   const equity = propertyValue - mortgageBalance
 
   const now = new Date()
-  const activeContract = contracts.find(
-    c => new Date(c.start_date) <= now && new Date(c.end_date) >= now
-  )
+  const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
   const monthlyMortgage = summary.monthlyPayment || 0
   const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)

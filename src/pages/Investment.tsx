@@ -4,7 +4,8 @@ import { useInvestmentData, upsertInvestmentCost, deleteInvestmentCost } from '.
 import { useMortgageData } from '../hooks/useMortgageData'
 import { useInsurance } from '../hooks/useInsurance'
 import { usePropertyData } from '../hooks/usePropertyData'
-import { monthlyPayment } from '../lib/mortgage'
+import { gracePeriodPayment } from '../lib/mortgage'
+import { insurancePaidToDate as calcInsurancePaidToDate, activeContract as findActiveContract } from '../lib/projections'
 import { INVESTMENT_COST_CATEGORIES } from '../lib/constants'
 import { formatCurrency } from '../lib/format'
 import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
@@ -20,14 +21,6 @@ type CostRow = {
 function fmtInput(raw: string): string {
   const n = Number(raw)
   return raw === '' || isNaN(n) ? raw : n.toLocaleString('en-US')
-}
-
-function elapsedMonths(startStr: string | null, endStr: string | null): number {
-  if (!startStr) return 0
-  const start = new Date(startStr)
-  const end = endStr ? new Date(Math.min(new Date(endStr).getTime(), Date.now())) : new Date()
-  if (end <= start) return 0
-  return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
 }
 
 export default function InvestmentPage() {
@@ -126,25 +119,16 @@ export default function InvestmentPage() {
   if (error) return <div className="form-error">{error}</div>
 
   const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
-  const insurancePaidToDate = policies.reduce((s, p) =>
-    s + (p.monthly_premium ?? 0) * elapsedMonths(p.start_date, p.end_date), 0)
+  const insurancePaidToDate = calcInsurancePaidToDate(policies)
 
-  const now = new Date()
-  const activeContract = contracts.find(c => new Date(c.start_date) <= now && new Date(c.end_date) >= now)
+  const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? null
 
   const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
-  const gracePeriodPayment = hasGrace
-    ? tracks.reduce((s, t) => {
-        const r = t.annual_rate / 100 / 12
-        return s + ((t.grace_months ?? 0) > 0
-          ? t.principal * r
-          : monthlyPayment(t.principal, t.annual_rate, t.term_months, 0))
-      }, 0)
-    : 0
+  const gracePeriodPaymentAmount = gracePeriodPayment(tracks)
   const monthlyMortgage = mortgageSummary.monthlyPayment
   const selectedMortgage = hasGrace
-    ? (graceView === 'grace' ? gracePeriodPayment : monthlyMortgage)
+    ? (graceView === 'grace' ? gracePeriodPaymentAmount : monthlyMortgage)
     : monthlyMortgage
   const monthlyNet = (monthlyRent ?? 0) - selectedMortgage - monthlyInsurance
 
