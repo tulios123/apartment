@@ -1,3 +1,4 @@
+import { House, X } from '@phosphor-icons/react'
 import { useState } from 'react'
 import {
   usePropertyData,
@@ -246,7 +247,7 @@ export default function Details() {
           </div>
         ) : (
           <div className="empty-state-cta">
-            <div className="empty-state-cta-icon">🏠</div>
+            <div className="empty-state-cta-icon"><House size={40} /></div>
             <p>עדיין לא הוזנו פרטי הנכס</p>
             <button className="btn-primary" onClick={() => setShowModal(true)}>+ הוסף נכס</button>
           </div>
@@ -258,7 +259,7 @@ export default function Details() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{property ? 'עריכת נכס' : 'נכס חדש'}</h2>
-              <button className="btn-icon" onClick={() => setShowModal(false)}>✕</button>
+              <button className="btn-icon" onClick={() => setShowModal(false)} aria-label="סגור" title="סגור"><X size={18} /></button>
             </div>
             <PropertyForm
               initial={property ?? {}}

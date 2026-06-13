@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { FolderOpen, FileText, Image, ShieldCheck, Receipt, File, X } from '@phosphor-icons/react'
+import React, { useState, useRef } from 'react'
 import { useDocuments, createDocument, deleteDocument } from '../hooks/useDocuments'
 import { uploadDocument, getReceiptSignedUrl } from '../lib/storage'
 import { useAuth } from '../contexts/AuthContext'
@@ -103,7 +104,7 @@ export default function Documents() {
 
       {!loading && documents.length === 0 && (
         <div className="empty-state-cta">
-          <div className="empty-state-cta-icon">📁</div>
+          <div className="empty-state-cta-icon"><FolderOpen size={40} /></div>
           <p>עדיין לא הועלו מסמכים</p>
           <button className="btn-primary" onClick={openNew}>+ העלה מסמך</button>
         </div>
@@ -144,7 +145,7 @@ export default function Documents() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>מסמך חדש</h2>
-              <button className="btn-icon" onClick={closeModal}>✕</button>
+              <button className="btn-icon" onClick={closeModal} aria-label="סגור" title="סגור"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} className="form">
               <div className="form-row">
@@ -196,14 +197,14 @@ export default function Documents() {
   )
 }
 
-function docIcon(type: DocumentType): string {
+function docIcon(type: DocumentType): React.ReactNode {
   switch (type) {
     case 'purchase_contract':
-    case 'rental_contract': return '📄'
-    case 'property_photos': return '🖼️'
-    case 'insurance_policy': return '🛡️'
+    case 'rental_contract': return <FileText size={26} />
+    case 'property_photos': return <Image size={26} />
+    case 'insurance_policy': return <ShieldCheck size={26} />
     case 'receipt':
-    case 'invoice': return '🧾'
-    default: return '📁'
+    case 'invoice': return <Receipt size={26} />
+    default: return <File size={26} />
   }
 }

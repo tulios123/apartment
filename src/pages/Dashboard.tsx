@@ -1,3 +1,4 @@
+import { House, CheckCircle, ArrowsLeftRight } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 import { useMortgageData } from '../hooks/useMortgageData'
@@ -107,7 +108,7 @@ export default function Dashboard() {
       {/* ── 1. Hero — equity ──────────────────────────────────────────────── */}
       {!property ? (
         <EmptyState
-          icon="🏠"
+          icon={<House size={40} />}
           title="עדיין לא הוגדר נכס"
           actionLabel="הגדרת נכס"
           onAction={() => navigate('/property/details')}
@@ -192,7 +193,7 @@ export default function Dashboard() {
           <button className="btn-link" onClick={() => navigate('/tasks')}>הכל</button>
         </div>
         {attentionItems.length === 0 ? (
-          <EmptyState icon="✅" title="אין משימות או חידושים קרובים" />
+          <EmptyState icon={<CheckCircle size={40} />} title="אין משימות או חידושים קרובים" />
         ) : (
           <ul className="dashboard-task-list">
             {attentionItems.map(item => (
@@ -225,7 +226,7 @@ export default function Dashboard() {
         </div>
         {recentTransactions.length === 0 ? (
           <EmptyState
-            icon="💸"
+            icon={<ArrowsLeftRight size={40} />}
             title="אין תנועות עדיין"
             actionLabel="הוסף תנועה"
             onAction={() => navigate('/finances')}

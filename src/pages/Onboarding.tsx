@@ -1,3 +1,4 @@
+import { House, Tag, Bank, Coins, FileText, ShieldCheck, CheckCircle, Check, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadDocument } from '../lib/storage'
@@ -669,7 +670,7 @@ export default function Onboarding({ onComplete }: Props) {
         )}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
-          <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור מסלול ✓</button>
+          <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור מסלול <Check size={14} weight="bold" /></button>
         </div>
       </div>
     )
@@ -719,7 +720,7 @@ export default function Onboarding({ onComplete }: Props) {
         </p>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
-          <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור פוליסה ✓</button>
+          <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור פוליסה <Check size={14} weight="bold" /></button>
         </div>
       </div>
     )
@@ -733,13 +734,13 @@ export default function Onboarding({ onComplete }: Props) {
         {/* ── Welcome ── */}
         {step === 'welcome' && (
           <form onSubmit={e => { e.preventDefault(); advance('purchase') }}>
-            <div className="onboarding-icon">🏠</div>
+            <div className="onboarding-icon"><House size={44} color="var(--accent)" /></div>
             <h1 className="onboarding-title">ברוך הבא!</h1>
             <p className="onboarding-subtitle">
               בואו נגדיר את הנכס שלך בכמה שלבים קצרים.
             </p>
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
-              <button type="submit" className="btn-onboard-primary">התחל →</button>
+              <button type="submit" className="btn-onboard-primary">התחל <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -753,7 +754,7 @@ export default function Onboarding({ onComplete }: Props) {
           }}>
             <div className="onboarding-dots">{dots('purchase')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
-            <div className="onboarding-icon">🏷️</div>
+            <div className="onboarding-icon"><Tag size={44} color="var(--accent)" /></div>
             <h2 className="onboarding-title">פרטי רכישה</h2>
             <div className="onboarding-form">
               <div className="onboarding-field">
@@ -829,11 +830,11 @@ export default function Onboarding({ onComplete }: Props) {
               </div>
             </div>
             <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestPurchase}>מלא דוגמה</button>
               )}
-              <button type="submit" className="btn-onboard-primary">הבא →</button>
+              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -843,7 +844,7 @@ export default function Onboarding({ onComplete }: Props) {
           <form onSubmit={e => { e.preventDefault(); advance('investment') }}>
             <div className="onboarding-dots">{dots('mortgage')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
-            <div className="onboarding-icon">🏦</div>
+            <div className="onboarding-icon"><Bank size={44} color="var(--accent)" /></div>
             <h2 className="onboarding-title">משכנתא</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
@@ -891,7 +892,7 @@ export default function Onboarding({ onComplete }: Props) {
                           </div>
                         </div>
                         <div className="onboarding-list-row-actions">
-                          <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }}>✕</button>
+                          <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>
                         </div>
                       </div>
                       {isEditing && renderTrackForm(() => saveTrackEdit(i), () => setEditingIdx(null))}
@@ -943,11 +944,11 @@ export default function Onboarding({ onComplete }: Props) {
             )}
 
             <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestMortgage}>מלא דוגמה</button>
               )}
-              <button type="submit" className="btn-onboard-primary">הבא →</button>
+              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -957,7 +958,7 @@ export default function Onboarding({ onComplete }: Props) {
           <form onSubmit={e => { e.preventDefault(); advance('rental') }}>
             <div className="onboarding-dots">{dots('investment')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
-            <div className="onboarding-icon">💰</div>
+            <div className="onboarding-icon"><Coins size={44} color="var(--accent)" /></div>
             <h2 className="onboarding-title">הון עצמי ועלויות</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
             <div className="onboarding-form">
@@ -1072,11 +1073,11 @@ export default function Onboarding({ onComplete }: Props) {
               )}
             </div>
             <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestInvestment}>מלא דוגמה</button>
               )}
-              <button type="submit" className="btn-onboard-primary">הבא →</button>
+              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -1086,7 +1087,7 @@ export default function Onboarding({ onComplete }: Props) {
           <form onSubmit={e => { e.preventDefault(); advance('insurance') }}>
             <div className="onboarding-dots">{dots('rental')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
-            <div className="onboarding-icon">📄</div>
+            <div className="onboarding-icon"><FileText size={44} color="var(--accent)" /></div>
             <h2 className="onboarding-title">פרטי השכירות</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
             <div className="onboarding-form">
@@ -1155,11 +1156,11 @@ export default function Onboarding({ onComplete }: Props) {
               </div>
             </div>
             <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
               )}
-              <button type="submit" className="btn-onboard-primary">הבא →</button>
+              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -1169,7 +1170,7 @@ export default function Onboarding({ onComplete }: Props) {
           <form onSubmit={e => { e.preventDefault(); handleFinish() }}>
             <div className="onboarding-dots">{dots('insurance')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
-            <div className="onboarding-icon">🛡️</div>
+            <div className="onboarding-icon"><ShieldCheck size={44} color="var(--accent)" /></div>
             <h2 className="onboarding-title">ביטוחים</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
@@ -1208,7 +1209,7 @@ export default function Onboarding({ onComplete }: Props) {
                           )}
                         </div>
                         <div className="onboarding-list-row-actions">
-                          <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removePolicy(i) }}>✕</button>
+                          <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removePolicy(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>
                         </div>
                       </div>
                       {isEditing && renderPolicyForm(() => savePolicyEdit(i), () => setEditingPolicyIdx(null))}
@@ -1248,12 +1249,12 @@ export default function Onboarding({ onComplete }: Props) {
 
             {error && <p className="onboarding-error">{error}</p>}
             <div className="onboarding-actions">
-              <button type="button" className="btn-onboard-skip" onClick={back}>← חזור</button>
+              <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestInsurance}>מלא דוגמה</button>
               )}
               <button type="submit" className="btn-onboard-primary" disabled={saving}>
-                {saving ? 'שומר...' : 'סיום ✓'}
+                {saving ? 'שומר...' : <><span>סיום</span><Check size={14} weight="bold" /></> }
               </button>
             </div>
           </form>
@@ -1262,14 +1263,14 @@ export default function Onboarding({ onComplete }: Props) {
         {/* ── Done ── */}
         {step === 'done' && (
           <>
-            <div className="onboarding-done-icon">🎉</div>
+            <div className="onboarding-done-icon"><CheckCircle weight="fill" size={64} color="var(--success)" /></div>
             <h2 className="onboarding-title">הכל מוכן!</h2>
             <p className="onboarding-subtitle">
               הנכס שלך הוגדר בהצלחה.<br />תוכל לנהל משכנתא, ביטוח, עלויות ותשלומים קבועים מתוך האפליקציה.
             </p>
             {error && <p className="onboarding-error" style={{ textAlign: 'center' }}>{error}</p>}
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
-              <button className="btn-onboard-primary" onClick={onComplete}>למסך הראשי →</button>
+              <button className="btn-onboard-primary" onClick={onComplete}>למסך הראשי <ArrowLeft size={16} /></button>
             </div>
           </>
         )}

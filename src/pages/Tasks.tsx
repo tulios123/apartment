@@ -1,3 +1,4 @@
+import { X } from '@phosphor-icons/react'
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTasks, createTask, updateTask, deleteTask } from '../hooks/useTasks'
@@ -248,7 +249,7 @@ export default function Tasks() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>עריכת משימה</h2>
-              <button className="btn-icon" onClick={() => setShowEditModal(false)}>✕</button>
+              <button className="btn-icon" onClick={() => setShowEditModal(false)} aria-label="סגור" title="סגור"><X size={18} /></button>
             </div>
             <form onSubmit={handleEditSave} className="form">
               <div className="form-row">

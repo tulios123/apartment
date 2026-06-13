@@ -1,3 +1,4 @@
+import { Bank, PencilSimple } from '@phosphor-icons/react'
 import { useState, useMemo, Fragment } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -216,7 +217,7 @@ export default function MortgagePage() {
   if (tracks.length === 0 && !form) {
     return (
       <div className="empty-state-cta">
-        <div className="empty-state-cta-icon">🏦</div>
+        <div className="empty-state-cta-icon"><Bank size={40} /></div>
         <p>עדיין לא הוספת משכנתא</p>
         <button className="btn-primary" onClick={() => setForm(emptyForm())}>+ הוסף מסלול משכנתא</button>
       </div>
@@ -313,7 +314,7 @@ export default function MortgagePage() {
                   </span>
                 ) : (track.grace_months ?? 0) > 0 ? (
                   <span className="grace-badge grace-badge-clickable" onClick={() => setGraceEdit({ trackId: track.id, enabled: true, months: String(track.grace_months) })}>
-                    גרייס {track.grace_months} חודשים ✎
+                    גרייס {track.grace_months} חודשים <PencilSimple size={13} />
                   </span>
                 ) : (
                   <span className="grace-badge grace-badge-empty" onClick={() => setGraceEdit({ trackId: track.id, enabled: false, months: '12' })}>

@@ -1,4 +1,5 @@
 import './ui.css'
+import type React from 'react'
 
 export function EmptyState({
   icon,
@@ -7,7 +8,7 @@ export function EmptyState({
   actionLabel,
   onAction,
 }: {
-  icon: string
+  icon: React.ReactNode
   title: string
   hint?: string
   actionLabel?: string

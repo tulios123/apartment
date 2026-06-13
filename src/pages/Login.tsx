@@ -1,3 +1,4 @@
+import { House } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Login() {
@@ -6,7 +7,7 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-logo">🏠</div>
+        <div className="login-logo"><House weight="duotone" size={40} color="var(--accent)" /></div>
         <h1>ניהול דירה</h1>
         <p className="login-subtitle">התחבר כדי להמשיך</p>
         <button className="btn-google" onClick={signInWithGoogle}>

@@ -1,3 +1,4 @@
+import { FileText, X } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -207,7 +208,7 @@ export default function Rental() {
 
         {contracts.length === 0 && (
           <div className="empty-state-cta">
-            <div className="empty-state-cta-icon">📄</div>
+            <div className="empty-state-cta-icon"><FileText size={40} /></div>
             <p>עדיין לא נוספו חוזי שכירות</p>
             <button className="btn-primary" onClick={openNewContract}>+ חוזה חדש</button>
           </div>
@@ -314,7 +315,7 @@ export default function Rental() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editingContract ? 'עריכת חוזה' : 'חוזה חדש'}</h2>
-              <button className="btn-icon" onClick={() => setShowContractModal(false)}>✕</button>
+              <button className="btn-icon" onClick={() => setShowContractModal(false)} aria-label="סגור" title="סגור"><X size={18} /></button>
             </div>
             <ContractForm
               initial={editingContract ? {

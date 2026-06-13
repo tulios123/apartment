@@ -1,3 +1,4 @@
+import { ShieldCheck, X } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useInsurance, createInsurancePolicy, updateInsurancePolicy, deleteInsurancePolicy } from '../../hooks/useInsurance'
@@ -168,7 +169,7 @@ export default function Insurance() {
 
       {policies.length === 0 && (
         <div className="empty-state-cta">
-          <div className="empty-state-cta-icon">🛡️</div>
+          <div className="empty-state-cta-icon"><ShieldCheck size={40} /></div>
           <p>עדיין לא הוספת פוליסות ביטוח</p>
           <button className="btn-primary" onClick={openNew}>+ הוסף פוליסה</button>
         </div>
@@ -240,7 +241,7 @@ export default function Insurance() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editing ? 'עריכת פוליסה' : 'פוליסה חדשה'}</h2>
-              <button className="btn-icon" onClick={closeModal}>✕</button>
+              <button className="btn-icon" onClick={closeModal} aria-label="סגור" title="סגור"><X size={18} /></button>
             </div>
             <InsuranceForm
               initial={editing ? {

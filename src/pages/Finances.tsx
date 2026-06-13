@@ -1,3 +1,4 @@
+import { Receipt, PencilSimple, Trash, X } from '@phosphor-icons/react'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -297,7 +298,7 @@ export default function Finances() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editingId ? 'עריכת תנועה' : 'תנועה חדשה'}</h2>
-              <button className="btn-icon" onClick={closeForm}>✕</button>
+              <button className="btn-icon" onClick={closeForm} aria-label="סגור" title="סגור"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} className="form">
               <div className="form-row">
@@ -363,9 +364,9 @@ export default function Finances() {
                     {receiptFile ? receiptFile.name : 'בחר קובץ'}
                   </button>
                   {receiptFile && (
-                    <button type="button" className="btn-icon"
+                    <button type="button" className="btn-icon" aria-label="הסר קובץ" title="הסר קובץ"
                       onClick={() => { setReceiptFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}>
-                      ✕
+                      <X size={18} />
                     </button>
                   )}
                 </div>
@@ -385,7 +386,7 @@ export default function Finances() {
 
       {transactions.length === 0 && virtualEntries.length === 0 && (
         <div className="empty-state-cta">
-          <div className="empty-state-cta-icon">💸</div>
+          <div className="empty-state-cta-icon"><Receipt size={40} /></div>
           <p>אין תנועות בתקופה זו</p>
           <button className="btn-primary" onClick={openNew}>+ תנועה חדשה</button>
         </div>
@@ -433,8 +434,8 @@ export default function Finances() {
                         </svg>
                       </button>
                     )}
-                    <button className="btn-icon" onClick={() => openEdit(t)}>✏️</button>
-                    <button className="btn-icon danger" onClick={() => handleDelete(t.id)}>🗑</button>
+                    <button className="btn-icon" onClick={() => openEdit(t)} aria-label="עריכה" title="עריכה"><PencilSimple size={16} /></button>
+                    <button className="btn-icon danger" onClick={() => handleDelete(t.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
                   </td>
                 </tr>
               ))}

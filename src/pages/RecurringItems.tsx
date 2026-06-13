@@ -1,3 +1,4 @@
+import { ArrowsClockwise, PencilSimple, Trash, X } from '@phosphor-icons/react'
 import { useState } from 'react'
 import {
   useRecurringItems,
@@ -135,7 +136,7 @@ export default function RecurringItems() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editingId ? 'עריכת פריט' : 'פריט חדש'}</h2>
-              <button className="btn-icon" onClick={closeForm}>✕</button>
+              <button className="btn-icon" onClick={closeForm} aria-label="סגור" title="סגור"><X size={16} /></button>
             </div>
             <form onSubmit={handleSubmit} className="form">
               <div className="form-row">
@@ -225,7 +226,7 @@ export default function RecurringItems() {
 
       {items.length === 0 ? (
         <div className="empty-state-cta">
-          <div className="empty-state-cta-icon">🔁</div>
+          <div className="empty-state-cta-icon"><ArrowsClockwise size={40} /></div>
           <p>עדיין לא הוספת פריטים חוזרים</p>
           <button className="btn-primary" onClick={openNew}>+ פריט חדש</button>
         </div>
@@ -304,8 +305,8 @@ function RecurringSection({
                   {item.end_date ? formatDate(item.end_date) : 'ללא הגבלה'}
                 </td>
                 <td className="row-actions">
-                  <button className="btn-icon" onClick={() => onEdit(item)}>✏️</button>
-                  <button className="btn-icon danger" onClick={() => onDelete(item.id)}>🗑</button>
+                  <button className="btn-icon" onClick={() => onEdit(item)} aria-label="עריכה" title="עריכה"><PencilSimple size={16} /></button>
+                  <button className="btn-icon danger" onClick={() => onDelete(item.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
                 </td>
               </tr>
             ))}
