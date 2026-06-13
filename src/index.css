@@ -1,23 +1,27 @@
-:root {
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --text-muted: #64748b;
-  --accent: #2563eb;
-  --accent-light: #eff6ff;
-  --danger: #dc2626;
-  --success: #16a34a;
-  --warning: #d97706;
-  --sidebar-width: 210px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg: 0 16px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+@import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Rubik:wght@400;500;600;700&display=swap');
 
-  font: 15px/1.55 'Rubik', system-ui, sans-serif;
-  color: var(--text);
-  background: var(--bg);
-  -webkit-font-smoothing: antialiased;
+:root {
+  --bg:#f6f8fa; --bg-alt:#eef2f5; --bg-card:#ffffff; --surface:#ffffff; --surface-raised:#f1f5f7; --hover-bg:#eef2f5;
+  --border:#dde3e9; --border-strong:#c3cdd6;
+  --text:#0e1f2a; --text-primary:#0e1f2a; --text-muted:#5b6b78; --text-secondary:#5b6b78; --text-on-accent:#ffffff;
+  --accent:#0d7d7d; --accent-hover:#0a6a6a; --accent-light:#e4f2f2; --accent-ring:rgba(13,125,125,0.30); --primary:#0d7d7d; --primary-light:#e4f2f2;
+  --success:#138a5e; --success-bg:#d8f0e4; --success-text:#0d6b48;
+  --danger:#c92a2a; --danger-bg:#fbe0e0; --danger-text:#a31616;
+  --warning:#b06a00; --warning-bg:#fdf2dc; --warning-text:#8a5200;
+  --accent-2:#6d4ad6; --accent-2-bg:#ece7fb;
+  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px; --radius:12px;
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px; --s-10:40px;
+  --shadow-sm:0 1px 2px rgba(14,31,42,0.04), 0 1px 3px rgba(14,31,42,0.06);
+  --shadow-md:0 2px 6px rgba(14,31,42,0.05), 0 6px 16px rgba(14,31,42,0.08);
+  --shadow-lg:0 4px 12px rgba(14,31,42,0.07), 0 18px 40px rgba(14,31,42,0.12);
+  --shadow-focus:0 0 0 3px var(--accent-ring);
+  --t-fast:150ms; --t-base:200ms; --t-slow:300ms; --ease:cubic-bezier(0.4,0,0.2,1);
+  --font-body:'Rubik','Heebo',system-ui,-apple-system,sans-serif;
+  --font-display:'Frank Ruhl Libre','Rubik',Georgia,serif;
+  --sidebar-width:210px;
+  font:400 15px/1.6 var(--font-body);
+  color:var(--text); background:var(--bg);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
 }
 
 *, *::before, *::after {
@@ -67,7 +71,7 @@ body {
 .nav-link {
   display: block;
   padding: 7px 10px;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   color: var(--text-muted);
   text-decoration: none;
   font-size: 14px;
@@ -117,27 +121,29 @@ body {
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   padding: 8px 18px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 
-.btn-primary:hover { opacity: 0.9; }
+.btn-primary:hover { background: var(--accent-hover); }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-secondary {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   padding: 8px 18px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 
 .btn-secondary:hover { background: var(--bg); }
@@ -147,7 +153,7 @@ body {
   border: none;
   cursor: pointer;
   padding: 4px 6px;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   font-size: 14px;
   color: var(--text-muted);
 }
@@ -165,12 +171,18 @@ body {
 
 .filters select, select, input[type="text"], input[type="number"], input[type="date"] {
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   padding: 6px 10px;
   font-size: 14px;
   background: var(--surface);
   color: var(--text);
   font-family: inherit;
+}
+
+.filters select:focus, select:focus, input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+  outline: none;
 }
 
 /* Summary cards */
@@ -183,7 +195,8 @@ body {
 .summary-card {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
   padding: 18px;
 }
 
@@ -206,7 +219,7 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(14,31,42,0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -216,7 +229,7 @@ body {
 
 .modal {
   background: var(--surface);
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   width: 100%;
   max-width: 460px;
   padding: 28px;
@@ -266,9 +279,9 @@ body {
 .sync-warning {
   font-size: 13px;
   color: var(--warning);
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 6px;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--r-xs);
   padding: 8px 12px;
   margin-bottom: 8px;
   max-width: 640px;
@@ -308,7 +321,7 @@ body {
 .toggle-group {
   display: flex;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   overflow: hidden;
   width: fit-content;
 }
@@ -332,7 +345,8 @@ body {
 .table-wrapper {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 
@@ -400,18 +414,18 @@ body {
   display: inline-block;
   font-size: 12px;
   padding: 2px 8px;
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   font-weight: 500;
 }
 
 .badge.automatic {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 
 .badge.requires_approval {
-  background: #fef9c3;
-  color: #854d0e;
+  background: var(--warning-bg);
+  color: var(--warning-text);
 }
 
 /* Dashboard */
@@ -429,7 +443,8 @@ body {
 .dashboard-section {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
   padding: 18px 20px;
 }
 
@@ -555,7 +570,7 @@ body {
 .prop-card {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 18px 20px;
   display: flex;
   flex-direction: column;
@@ -579,7 +594,7 @@ body {
 .contract-card {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 18px 20px;
   margin-bottom: 12px;
 }
@@ -609,20 +624,20 @@ body {
 .contract-status-badge {
   font-size: 12px;
   padding: 2px 8px;
-  border-radius: 20px;
-  background: #dcfce7;
-  color: #15803d;
+  border-radius: var(--r-pill);
+  background: var(--success-bg);
+  color: var(--success-text);
   font-weight: 500;
 }
 
 .contract-status-badge.warning {
-  background: #fef9c3;
-  color: #854d0e;
+  background: var(--warning-bg);
+  color: var(--warning-text);
 }
 
 .contract-status-badge.urgent {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .contract-status-badge.expired-badge {
@@ -691,7 +706,7 @@ body {
   gap: 14px;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 14px 18px;
 }
 
@@ -725,7 +740,7 @@ body {
   font-size: 12px;
   background: var(--accent-light);
   color: var(--accent);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 2px 8px;
   font-weight: 500;
 }
@@ -755,7 +770,7 @@ body {
 .settings-section {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 18px 20px;
 }
 
@@ -813,9 +828,9 @@ body {
   align-items: flex-start;
   gap: 12px;
   padding: 10px 8px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   cursor: default;
-  transition: background 0.1s;
+  transition: background var(--t-fast) var(--ease);
   position: relative;
 }
 
@@ -904,7 +919,7 @@ body {
 .gtask-source-badge {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: var(--r-pill);
   background: var(--accent-light);
   color: var(--accent);
 }
@@ -922,11 +937,11 @@ body {
   justify-content: center;
   opacity: 0;
   color: var(--text-muted);
-  transition: background 0.1s, color 0.1s, opacity 0.1s;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
 }
 
 .gtask-delete:hover {
-  background: #fee2e2;
+  background: var(--danger-bg);
   color: var(--danger);
 }
 
@@ -948,7 +963,7 @@ body {
   align-items: flex-start;
   gap: 12px;
   padding: 8px 8px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   margin-top: 4px;
 }
 
@@ -1002,7 +1017,7 @@ body {
   font-size: 13px;
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   color: var(--text);
   background: var(--surface);
 }
@@ -1098,7 +1113,7 @@ body {
 .btn-signout {
   background: none;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   padding: 6px 10px;
   font-size: 13px;
   color: var(--text-muted);
@@ -1114,8 +1129,8 @@ body {
 }
 
 .badge.recurring_item {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--accent-2-bg);
+  color: var(--accent-2);
 }
 
 .badge.renewal {
@@ -1228,7 +1243,7 @@ body {
   width: 100%;
   padding: 10px 14px;
   border: 1.5px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   font-size: 15px;
   color: var(--text);
   background: var(--surface);
@@ -1239,7 +1254,7 @@ body {
 .onboarding-field input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+  box-shadow: var(--shadow-focus);
 }
 
 .onboarding-row {
@@ -1262,7 +1277,7 @@ body {
   gap: 12px;
   padding: 13px 16px;
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   user-select: none;
@@ -1345,16 +1360,16 @@ body {
   background: var(--accent);
   color: white;
   border: none;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   padding: 11px 28px;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.15s;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 
-.btn-onboard-primary:hover { opacity: 0.9; }
+.btn-onboard-primary:hover { background: var(--accent-hover); }
 .btn-onboard-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-onboard-skip {
@@ -1387,7 +1402,7 @@ body {
 
 .choice-card {
   border: 1.5px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   padding: 18px 14px;
   cursor: pointer;
   display: flex;
@@ -1403,7 +1418,7 @@ body {
 .choice-card:hover {
   border-color: var(--accent);
   background: var(--accent-light);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+  box-shadow: var(--shadow-focus);
 }
 
 .choice-card-left {
@@ -1447,7 +1462,7 @@ body {
   gap: 12px;
   padding: 11px 14px;
   border: 1.5px dashed var(--border);
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   background: var(--bg);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -1513,7 +1528,7 @@ body {
   gap: 10px;
   padding: 9px 14px;
   border: 1.5px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   background: var(--bg);
 }
 
@@ -1544,8 +1559,8 @@ body {
 
 .onboarding-extract-banner {
   background: var(--accent-light);
-  border: 1px solid rgba(37,99,235,0.18);
-  border-radius: 8px;
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--r-sm);
   padding: 9px 13px;
   font-size: 12.5px;
   color: var(--accent);
@@ -2113,16 +2128,16 @@ body {
 }
 
 .mortgage-effective-rate {
-  background: var(--bg-alt, #f8f9fa);
-  border-radius: 6px;
+  background: var(--bg-alt);
+  border-radius: var(--r-xs);
   padding: 8px 12px;
   font-size: 14px;
   margin-bottom: 8px;
 }
 
 .mortgage-payment-preview {
-  background: var(--primary-light, #e8f0fe);
-  border-radius: 6px;
+  background: var(--primary-light);
+  border-radius: var(--r-xs);
   padding: 10px 14px;
   font-size: 15px;
   margin-top: 8px;
@@ -2150,11 +2165,11 @@ body {
 
 .mortgage-year-row {
   cursor: pointer;
-  background: var(--bg-alt, #f8f9fa);
+  background: var(--bg-alt);
 }
 
 .mortgage-year-row:hover {
-  background: var(--hover-bg, #f0f0f0);
+  background: var(--hover-bg);
 }
 
 .mortgage-expand-btn {
@@ -2164,7 +2179,7 @@ body {
 }
 
 .mortgage-month-row td {
-  background: #fff;
+  background: var(--surface);
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -2201,7 +2216,7 @@ body {
 
 .grace-badge {
   display: inline-block;
-  border-radius: 12px;
+  border-radius: var(--r-pill);
   font-size: 11px;
   font-weight: 600;
   padding: 2px 8px;
@@ -2209,14 +2224,15 @@ body {
 }
 
 .grace-badge-clickable {
-  background: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffc107;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border: 1px solid var(--warning);
   cursor: pointer;
 }
 
 .grace-badge-clickable:hover {
-  background: #ffe69c;
+  background: var(--warning-bg);
+  filter: brightness(0.95);
 }
 
 .grace-badge-empty {
@@ -2261,7 +2277,7 @@ body {
   width: 56px;
   padding: 2px 6px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   font-size: 13px;
   text-align: center;
 }
@@ -2292,7 +2308,7 @@ body {
   display: flex;
   gap: 2px;
   background: var(--surface-raised);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   padding: 3px;
   border: 1px solid var(--border);
 }
@@ -2342,7 +2358,7 @@ body {
   padding: 20px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   cursor: pointer;
   text-align: right;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -2510,9 +2526,9 @@ body {
 }
 
 .onboarding-list-row {
-  background: var(--accent-light, rgba(37,99,235,0.06));
+  background: var(--accent-light);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   font-size: 13px;
   overflow: hidden;
 }
@@ -2578,7 +2594,7 @@ body {
 
 .onboarding-list-edit:hover {
   color: var(--accent);
-  background: var(--accent-light, rgba(37,99,235,0.08));
+  background: var(--accent-light);
 }
 
 .onboarding-list-row-detail {
@@ -2619,9 +2635,9 @@ body {
 }
 
 .onboarding-mortgage-summary {
-  background: var(--accent-light, rgba(37,99,235,0.06));
+  background: var(--accent-light);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   overflow: hidden;
   margin-bottom: 16px;
 }
@@ -2655,8 +2671,8 @@ body {
 }
 
 .onboarding-list-remove:hover {
-  color: #dc2626;
-  background: rgba(220, 38, 38, 0.08);
+  color: var(--danger);
+  background: var(--danger-bg);
 }
 
 /* ── Onboarding inline builder form ── */
@@ -2667,7 +2683,7 @@ body {
   padding: 16px;
   background: var(--bg);
   border: 1.5px dashed var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   margin-bottom: 20px;
 }
 
@@ -2695,7 +2711,7 @@ body {
   width: 100%;
   padding: 10px 14px;
   border: 1.5px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   font-size: 15px;
   color: var(--text);
   background: var(--surface);
@@ -2706,7 +2722,7 @@ body {
 .form-input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+  box-shadow: var(--shadow-focus);
 }
 
 /* ── Dashboard redesign ───────────────────────────────────────────────────── */
@@ -2739,7 +2755,7 @@ body {
 }
 
 .dash-hero:focus-visible {
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+  box-shadow: var(--shadow-focus);
 }
 
 .dash-hero-label {
@@ -2813,7 +2829,7 @@ body {
   gap: 12px;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 14px 18px;
   border: 1px solid var(--border);
   flex-wrap: wrap;
@@ -2858,7 +2874,7 @@ body {
   display: inline-block;
   font-size: 10px;
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: var(--r-pill);
   font-weight: 600;
   margin-left: 6px;
   vertical-align: middle;
@@ -2918,7 +2934,7 @@ body {
 .chart-card {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -2958,5 +2974,54 @@ body {
 
   .chart-card-title {
     font-size: 13px;
+  }
+}
+
+/* ── Typography role assignments ─────────────────────────────────────────── */
+.dash-hero-value,
+.login-card h1,
+.onboarding-title,
+.sidebar-title,
+.page-header h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* Tabular numerals for money/number displays */
+.amount,
+.summary-amount,
+.dash-hero-value,
+.overview-card-value,
+.dashboard-metric-value,
+.data-table td,
+.mortgage-schedule-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Focus-visible ring (accessibility) ──────────────────────────────────── */
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-icon:focus-visible,
+.nav-link:focus-visible,
+.hub-tab:focus-visible,
+.toggle-btn:focus-visible,
+.btn-onboard-primary:focus-visible,
+.btn-onboard-skip:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
   }
 }
