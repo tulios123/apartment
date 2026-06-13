@@ -301,7 +301,7 @@ export default function Onboarding({ onComplete }: Props) {
               company: p.company.trim() || null,
               policy_number: null,
               monthly_premium: p.monthly_premium ? parseFloat(p.monthly_premium) : null,
-              start_date: p.start_date || null,
+              start_date: p.start_date || keyDeliveryDate || null,
               end_date: p.end_date || null,
               notes: null,
             })
@@ -498,7 +498,7 @@ export default function Onboarding({ onComplete }: Props) {
 
   // ── Policy helpers ────────────────────────────────────────────────────────────
   function normalizePolicyDraft(): PolicyDraft {
-    return { ...policyForm }
+    return { ...policyForm, start_date: policyForm.start_date || keyDeliveryDate }
   }
 
   function addPolicy() {
@@ -697,7 +697,7 @@ export default function Onboarding({ onComplete }: Props) {
         <div className="onboarding-row">
           <div className="onboarding-field">
             <label>תחילת כיסוי</label>
-            <input type="date" value={policyForm.start_date}
+            <input type="date" value={policyForm.start_date || keyDeliveryDate}
               onChange={e => setPF('start_date', e.target.value)} />
           </div>
           <div className="onboarding-field">
