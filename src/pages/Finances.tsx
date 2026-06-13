@@ -114,14 +114,22 @@ export default function Finances() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
-  const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
+  // "Actual overrides projected": hide the virtual row when a real transaction
+  // of the same type exists for the selected period.
+  const realRentExists = transactions.some(t => t.direction === 'income' && (RENT_CATEGORIES as readonly string[]).includes(t.category))
+  const realMortgageExists = transactions.some(t => t.direction === 'expense' && (MORTGAGE_CATEGORIES as readonly string[]).includes(t.category))
 
-  const totalIncome = transactions.filter(t => t.direction === 'income' && !rentCatSet.has(t.category)).reduce((sum, t) => sum + Number(t.amount), 0)
-    + virtualEntries.filter(e => e.direction === 'income').reduce((sum, e) => sum + e.amount, 0)
+  const shownVirtual = virtualEntries.filter(e => {
+    if (e.direction === 'income' && (RENT_CATEGORIES as readonly string[]).includes(e.category) && realRentExists) return false
+    if (e.direction === 'expense' && (MORTGAGE_CATEGORIES as readonly string[]).includes(e.category) && realMortgageExists) return false
+    return true
+  })
 
-  const totalExpense = transactions.filter(t => t.direction === 'expense' && !mortCatSet.has(t.category)).reduce((sum, t) => sum + Number(t.amount), 0)
-    + virtualEntries.filter(e => e.direction === 'expense').reduce((sum, e) => sum + e.amount, 0)
+  const totalIncome = transactions.filter(t => t.direction === 'income').reduce((sum, t) => sum + Number(t.amount), 0)
+    + shownVirtual.filter(e => e.direction === 'income').reduce((sum, e) => sum + e.amount, 0)
+
+  const totalExpense = transactions.filter(t => t.direction === 'expense').reduce((sum, t) => sum + Number(t.amount), 0)
+    + shownVirtual.filter(e => e.direction === 'expense').reduce((sum, e) => sum + e.amount, 0)
 
   function openNew() {
     setForm(emptyForm)
@@ -384,15 +392,20 @@ export default function Finances() {
         </div>
       )}
 
-      {transactions.length === 0 && virtualEntries.length === 0 && (
+      {transactions.length === 0 && shownVirtual.length === 0 && (
         <div className="empty-state-cta">
           <div className="empty-state-cta-icon"><Receipt size={40} /></div>
           <p>אין תנועות בתקופה זו</p>
           <button className="btn-primary" onClick={openNew}>+ תנועה חדשה</button>
         </div>
       )}
-      {(transactions.length > 0 || virtualEntries.length > 0) && (
+      {(transactions.length > 0 || shownVirtual.length > 0) && (
         <div className="table-wrapper">
+          {shownVirtual.length > 0 && (
+            <p className="text-muted virtual-legend">
+              שורות המסומנות &quot;מחושב&quot; הן תחזית מהחוזה/המשכנתא — יוחלפו בתנועה אמיתית כשתירשם.
+            </p>
+          )}
           <table className="data-table">
             <thead>
               <tr>
@@ -405,7 +418,7 @@ export default function Finances() {
               </tr>
             </thead>
             <tbody>
-              {virtualEntries.map(e => (
+              {shownVirtual.map(e => (
                 <tr key={e.id} className="virtual-tx-row">
                   <td>{formatDate(e.date)}</td>
                   <td>{e.category} <span className="virtual-badge">מחושב</span></td>

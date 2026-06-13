@@ -89,6 +89,8 @@ export default function InvestmentPage() {
         await deleteInvestmentCost(id)
       }
       for (const row of rows) {
+        // Skip rows already handled in the deletedIds pass above
+        if (row.id && deletedIds.includes(row.id)) continue
         const amount = parseFloat(row.amount) || 0
         if (amount > 0) {
           await upsertInvestmentCost({
