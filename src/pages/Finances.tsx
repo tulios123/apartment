@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { Transaction, Contract, MortgageTrack } from '../types'
 import { SkeletonList } from '../components/ui/Skeleton'
+import { BarChart } from '../components/ui/BarChart'
 
 interface RepairPrefill {
   direction: 'expense'
@@ -276,6 +277,20 @@ export default function Finances() {
           </div>
         </div>
       </div>
+
+      {(totalIncome > 0 || totalExpense > 0) && (
+        <div className="chart-card">
+          <div className="chart-card-title">הכנסות מול הוצאות — התקופה הנבחרת</div>
+          <BarChart
+            data={[
+              { label: 'הכנסות', value: totalIncome, color: 'var(--success)' },
+              { label: 'הוצאות', value: totalExpense, color: 'var(--danger)' },
+            ]}
+            height={120}
+            formatValue={formatCurrency}
+          />
+        </div>
+      )}
 
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>

@@ -12,6 +12,8 @@ import { formatCurrency, formatDate, formatNum } from '../lib/format'
 import type { MortgageTrack, TrackType } from '../types'
 import type { ScheduleRow } from '../lib/mortgage'
 import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
+import { Sparkline } from '../components/ui/Sparkline'
+import { BarChart } from '../components/ui/BarChart'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -521,6 +523,48 @@ export default function MortgagePage() {
           </p>
         )}
       </section>
+
+      {/* ── Analytics ── */}
+      {tracks.length > 0 && combined.length > 0 && (
+        <section className="mortgage-analytics-section">
+          <div className="mortgage-section-header">
+            <h2>ניתוח משכנתא</h2>
+          </div>
+
+          {/* Balance over time */}
+          <div className="chart-card">
+            <div className="chart-card-title">יתרת המשכנתא לאורך זמן</div>
+            <Sparkline
+              data={combined.map(r => r.balance)}
+              height={120}
+              color="var(--accent)"
+            />
+            <div className="chart-labels">
+              <span>{formatCurrency(summary.currentBalance)} יתרה נוכחית</span>
+              <span>סה״כ קרן: {formatCurrency(summary.totalPrincipal)}</span>
+            </div>
+            <div className="chart-caption">
+              עד לסיום ההלוואה היתרה תרד לאפס
+            </div>
+          </div>
+
+          {/* Principal vs interest */}
+          <div className="chart-card">
+            <div className="chart-card-title">קרן מול ריבית — לאורך חיי ההלוואה</div>
+            <BarChart
+              data={[
+                { label: 'קרן', value: summary.totalPrincipal, color: 'var(--accent)' },
+                { label: 'ריבית', value: summary.totalInterestLife, color: 'var(--danger)' },
+              ]}
+              height={140}
+              formatValue={formatCurrency}
+            />
+            <div className="chart-caption">
+              עלות כוללת של ההלוואה: <strong>{formatCurrency(summary.totalPrincipal + summary.totalInterestLife)}</strong>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Amortization schedule ── */}
       {combined.length > 0 && (
