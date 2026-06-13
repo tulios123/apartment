@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { Task } from '../types'
+import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
 
 
 function isOverdue(task: Task) {
@@ -13,7 +14,12 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { totalIncome, totalExpense, balance, recentTransactions, openTasks, upcomingRenewals, loading, error } = useDashboardStats()
 
-  if (loading) return <div className="empty-state">טוען...</div>
+  if (loading) return (
+    <div className="page dashboard-page">
+      <SkeletonStats count={3} />
+      <SkeletonList rows={4} />
+    </div>
+  )
   if (error) return <div className="form-error">{error}</div>
 
   return (

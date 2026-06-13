@@ -4,6 +4,7 @@ import { useInsurance, createInsurancePolicy, updateInsurancePolicy, deleteInsur
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { formatCurrency, formatDate } from '../../lib/format'
 import type { InsurancePolicy } from '../../types'
+import { SkeletonList } from '../../components/ui/Skeleton'
 
 const INSURANCE_TYPES = ['מבנה', 'חיים', 'משכנתא', 'תכולה', 'אחר']
 
@@ -153,7 +154,7 @@ export default function Insurance() {
 
   const totalMonthly = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
 
-  if (loading) return <div className="empty-state">טוען...</div>
+  if (loading) return <SkeletonList rows={3} />
   if (error) return <div className="form-error">{error}</div>
 
   return (

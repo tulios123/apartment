@@ -4,6 +4,7 @@ import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { formatCurrency } from '../../lib/format'
+import { SkeletonCard } from '../../components/ui/Skeleton'
 
 function elapsedMonths(startStr: string | null, endStr: string | null): number {
   if (!startStr) return 0
@@ -38,7 +39,11 @@ export default function Overview() {
     s + (p.monthly_premium ?? 0) * elapsedMonths(p.start_date, p.end_date), 0)
   const totalSpent = totalInvested + interestPaid + insurancePaidToDate + maintenance
 
-  if (loading) return <div className="empty-state">טוען...</div>
+  if (loading) return (
+    <div className="overview-grid">
+      {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  )
 
   return (
     <div className="overview-grid">

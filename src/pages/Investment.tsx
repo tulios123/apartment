@@ -7,6 +7,7 @@ import { usePropertyData } from '../hooks/usePropertyData'
 import { monthlyPayment } from '../lib/mortgage'
 import { INVESTMENT_COST_CATEGORIES } from '../lib/constants'
 import { formatCurrency } from '../lib/format'
+import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
 
 type CostRow = {
   id?: string
@@ -116,7 +117,12 @@ export default function InvestmentPage() {
     }
   }
 
-  if (loading || mortLoading || insLoading || propLoading) return <div className="empty-state">טוען...</div>
+  if (loading || mortLoading || insLoading || propLoading) return (
+    <div className="page investment-page">
+      <SkeletonStats count={3} />
+      <SkeletonList rows={4} />
+    </div>
+  )
   if (error) return <div className="form-error">{error}</div>
 
   const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)

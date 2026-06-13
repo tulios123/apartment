@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { UTILITIES } from '../../lib/constants'
 import { formatDate, formatCurrency } from '../../lib/format'
 import type { Contract, UtilityPayer } from '../../types'
+import { SkeletonCard } from '../../components/ui/Skeleton'
 
 const emptyContract = {
   company_name: '',
@@ -184,7 +185,7 @@ export default function Rental() {
     return Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
   }
 
-  if (loading) return <div className="empty-state">טוען...</div>
+  if (loading) return <SkeletonCard />
   if (error) return <div className="form-error">{error}</div>
 
   if (!property) {

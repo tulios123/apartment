@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate, formatCurrency } from '../../lib/format'
 import type { Property } from '../../types'
+import { SkeletonList } from '../../components/ui/Skeleton'
 
 type PropertyFields = Partial<Omit<Property, 'id' | 'owner_id' | 'created_at'>>
 
@@ -176,7 +177,7 @@ export default function Details() {
     refetch()
   }
 
-  if (loading) return <div className="empty-state">טוען...</div>
+  if (loading) return <SkeletonList rows={5} />
   if (error) return <div className="form-error">{error}</div>
 
   return (

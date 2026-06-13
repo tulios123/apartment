@@ -4,6 +4,7 @@ import { uploadDocument, getReceiptSignedUrl } from '../lib/storage'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate } from '../lib/format'
 import type { DocumentType } from '../types'
+import { SkeletonList } from '../components/ui/Skeleton'
 
 const DOC_TYPE_LABELS: Record<DocumentType, string> = {
   purchase_contract: 'חוזה רכישה',
@@ -97,7 +98,7 @@ export default function Documents() {
         <button className="btn-primary" onClick={openNew}>+ מסמך חדש</button>
       </div>
 
-      {loading && <div className="empty-state">טוען...</div>}
+      {loading && <SkeletonList rows={4} />}
       {error && <div className="form-error">{error}</div>}
 
       {!loading && documents.length === 0 && (

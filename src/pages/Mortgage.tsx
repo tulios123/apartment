@@ -11,6 +11,7 @@ import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
 import { formatCurrency, formatDate, formatNum } from '../lib/format'
 import type { MortgageTrack, TrackType } from '../types'
 import type { ScheduleRow } from '../lib/mortgage'
+import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -202,7 +203,12 @@ export default function MortgagePage() {
     }
   }
 
-  if (loading) return <div className="empty-state">טוען...</div>
+  if (loading) return (
+    <div className="page mortgage-page">
+      <SkeletonStats count={3} />
+      <SkeletonList rows={3} />
+    </div>
+  )
   if (error) return <div className="form-error">{error}</div>
 
   if (tracks.length === 0 && !form) {

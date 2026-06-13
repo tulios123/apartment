@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { Transaction, Contract, MortgageTrack } from '../types'
+import { SkeletonList } from '../components/ui/Skeleton'
 
 interface RepairPrefill {
   direction: 'expense'
@@ -239,7 +240,7 @@ export default function Finances() {
 
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
-  if (loading) return <div className="empty-state">טוען...</div>
+  if (loading) return <SkeletonList rows={6} />
   if (error) return <div className="form-error">{error}</div>
 
   return (

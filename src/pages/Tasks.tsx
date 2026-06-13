@@ -4,6 +4,7 @@ import { useTasks, createTask, updateTask, deleteTask } from '../hooks/useTasks'
 import { TASK_CATEGORIES, RENT_CATEGORIES } from '../lib/constants'
 import { formatDate } from '../lib/format'
 import type { Task } from '../types'
+import { SkeletonList } from '../components/ui/Skeleton'
 
 const REPAIR_CATEGORY = 'תיקונים ותחזוקה'
 
@@ -141,7 +142,7 @@ export default function Tasks() {
         </div>
       </div>
 
-      {loading && <div className="empty-state">טוען...</div>}
+      {loading && <SkeletonList rows={4} />}
       {error && <div className="form-error">{error}</div>}
       {syncError && (
         <div className="sync-warning">

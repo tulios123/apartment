@@ -8,6 +8,7 @@ import {
 import { RECURRING_INCOME_CATEGORIES, RECURRING_EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { RecurringItem } from '../types'
+import { SkeletonList } from '../components/ui/Skeleton'
 
 const emptyForm = {
   direction: 'expense' as 'income' | 'expense',
@@ -120,7 +121,7 @@ export default function RecurringItems() {
 
   const categories = form.direction === 'income' ? RECURRING_INCOME_CATEGORIES : RECURRING_EXPENSE_CATEGORIES
 
-  if (loading) return <div className="empty-state">טוען...</div>
+  if (loading) return <SkeletonList rows={5} />
   if (error) return <div className="form-error">{error}</div>
 
   return (
