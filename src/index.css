@@ -152,10 +152,16 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--r-xs);
   font-size: 14px;
   color: var(--text-muted);
+  transition: transform var(--t-fast) var(--ease);
 }
 
 .btn-icon:hover { background: var(--bg); }
@@ -468,8 +474,11 @@ body {
   color: var(--accent);
   font-size: 13px;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 8px;
   text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .btn-link:hover { text-decoration: underline; }
@@ -856,6 +865,10 @@ body {
   margin-top: 2px;
   transition: border-color 0.15s, background 0.15s;
   color: white;
+  /* Expand touch hit area to ≥44px without changing visual size */
+  padding: 12px;
+  margin: -12px;
+  box-sizing: content-box;
 }
 
 .gtask-check:hover {
@@ -1771,10 +1784,10 @@ body {
     left: 0;
     right: 0;
     width: 100%;
-    height: 56px;
+    height: 62px;
     flex-direction: row;
     align-items: center;
-    padding: 0 8px;
+    padding: 0 4px;
     box-shadow: 0 -1px 0 var(--border), 0 -4px 12px rgba(0,0,0,0.04);
     gap: 0;
     z-index: 100;
@@ -1791,16 +1804,21 @@ body {
   .nav-link {
     flex: 1;
     text-align: center;
-    padding: 8px 4px;
+    padding: 0 2px;
     font-size: 12px;
     border-radius: 6px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
   }
 
   .main-content {
     margin-left: 0;
     margin-right: 0;
     padding: 16px;
-    padding-bottom: 72px;
+    padding-bottom: 78px;
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
@@ -1998,8 +2016,9 @@ body {
   /* Bottom nav: tighten to fit 6 items */
   .nav-link {
     font-size: 11px;
-    padding: 6px 2px;
+    padding: 0 2px;
     min-width: 0;
+    min-height: 44px;
   }
 
   /* Settings page */
@@ -3014,6 +3033,38 @@ select:focus-visible,
 textarea:focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus);
+}
+
+/* ── Touch-action: remove 300ms tap delay on all interactive elements ─────── */
+button,
+a,
+.nav-link,
+.hub-tab,
+.toggle-btn,
+input,
+select {
+  touch-action: manipulation;
+}
+
+/* ── Active/pressed feedback for touch ──────────────────────────────────── */
+.btn-primary,
+.btn-secondary,
+.btn-icon,
+.btn-link,
+.nav-link,
+.toggle-btn,
+.hub-tab {
+  transition: transform var(--t-fast) var(--ease), background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+
+.btn-primary:active,
+.btn-secondary:active,
+.btn-icon:active,
+.btn-link:active,
+.nav-link:active,
+.toggle-btn:active,
+.hub-tab:active {
+  transform: scale(0.97);
 }
 
 /* ── Reduced motion ──────────────────────────────────────────────────────── */

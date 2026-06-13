@@ -13,85 +13,42 @@ export function BarChart({
     return <p className="barchart-empty">אין נתונים</p>
   }
 
+  const fmt = formatValue ?? String
   const values = data.map((d) => d.value)
   const maxVal = Math.max(...values, 0)
-  const minVal = Math.min(...values, 0)
-  const range = maxVal - minVal || 1
+  // Use 1 as minimum to avoid divide-by-zero; bars will all be at 0% height
+  const effectiveMax = maxVal || 1
 
-  // Layout constants
-  const labelHeight = 18   // space below baseline for labels
-  const valueHeight = 14   // space above chart for positive-value labels
-  const paddingTop = valueHeight
-  const paddingBottom = labelHeight
-  const chartH = height - paddingTop - paddingBottom  // drawable bar area
-  const n = data.length
-  const barPct = 0.6        // bar occupies 60% of slot width
-  const slotW = 100 / n     // percent
-
-  // Y position helpers (0% = top of SVG drawing area)
-  // baseline at the "zero" position in chart coordinates
-  const baselineY = paddingTop + (maxVal / range) * chartH
-
-  const fmt = formatValue ?? String
+  const ariaLabel = data.map((d) => `${d.label}: ${fmt(d.value)}`).join(', ')
 
   return (
-    <svg
+    <div
       className="barchart"
-      viewBox={`0 0 100 ${height}`}
-      width="100%"
-      height={height}
-      preserveAspectRatio="none"
-      aria-hidden="true"
+      role="img"
+      aria-label={ariaLabel}
+      style={{ height: `${height + 40}px` }}
     >
-      {/* Baseline */}
-      <line
-        x1="0"
-        y1={baselineY}
-        x2="100"
-        y2={baselineY}
-        stroke="var(--border, #e2e8f0)"
-        strokeWidth="0.5"
-        vectorEffect="non-scaling-stroke"
-      />
-
-      {data.map((d, i) => {
-        const slotCenter = slotW * i + slotW / 2
-        const barW = slotW * barPct
-        const barX = slotCenter - barW / 2
-
-        // bar height in SVG units (proportional to value)
-        const barH = Math.abs(d.value) / range * chartH
-        const barY = d.value >= 0 ? baselineY - barH : baselineY
-        const color = d.color ?? 'var(--accent, #2563eb)'
-
-        const labelY = height - 2          // just above bottom
-        const valLabel = fmt(d.value)
-
-        return (
-          <g key={i} className="barchart-bar">
-            <title>{`${d.label}: ${valLabel}`}</title>
-            <rect
-              x={barX}
-              y={barY}
-              width={barW}
-              height={Math.max(barH, 0.5)}
-              fill={color}
-              rx="1.5"
-              ry="1.5"
-            />
-            {/* Label below baseline */}
-            <text
-              x={slotCenter}
-              y={labelY}
-              textAnchor="middle"
-              className="barchart-label"
-              fontSize="3.5"
-            >
-              {d.label.length > 5 ? d.label.slice(0, 5) + '…' : d.label}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
+      <div className="barchart-bars" style={{ height: `${height}px` }}>
+        {data.map((d, i) => {
+          const pct = Math.max(d.value, 0) / effectiveMax * 100
+          const color = d.color ?? 'var(--accent)'
+          return (
+            <div key={i} className="barchart-col">
+              <span className="barchart-value">{fmt(d.value)}</span>
+              <div
+                className="barchart-bar"
+                style={{ height: `${pct}%`, background: color }}
+                title={`${d.label}: ${fmt(d.value)}`}
+              />
+            </div>
+          )
+        })}
+      </div>
+      <div className="barchart-labels">
+        {data.map((d, i) => (
+          <div key={i} className="barchart-label">{d.label}</div>
+        ))}
+      </div>
+    </div>
   )
 }
