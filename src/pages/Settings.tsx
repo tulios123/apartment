@@ -30,6 +30,8 @@ export default function Settings() {
       await supabase.from('documents').delete().eq('owner_id', user.id)
       await supabase.from('recurring_items').delete().eq('owner_id', user.id)
       await supabase.from('investment_costs').delete().eq('owner_id', user.id)
+      await supabase.from('insurance_policies').delete().eq('owner_id', user.id)
+      await supabase.from('contracts').delete().eq('owner_id', user.id)
       await supabase.from('mortgage_tracks').delete().eq('owner_id', user.id)
       await supabase.from('mortgages').delete().eq('owner_id', user.id)
       await supabase.from('properties').delete().eq('owner_id', user.id)

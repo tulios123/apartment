@@ -223,7 +223,11 @@ export default function Onboarding({ onComplete }: Props) {
         term_months: d.term_months || '360',
       })
       const pendingTrackValid = (parseFloat(trackForm.principal) || 0) > 0
-      const allTracks = [...tracks, ...(pendingTrackValid ? [normTrack(trackForm)] : [])]
+      const allTracks = [...tracks]
+      if (pendingTrackValid) {
+        if (editingIdx !== null) allTracks[editingIdx] = normTrack(trackForm)
+        else if (showTrackForm) allTracks.push(normTrack(trackForm))
+      }
       const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0)
       if (validTracks.length > 0) {
         try {
@@ -291,7 +295,11 @@ export default function Onboarding({ onComplete }: Props) {
       // 5. Insurance policies — non-fatal
       try {
         const pendingPolicyValid = policyForm.company.trim() !== '' || policyForm.monthly_premium !== ''
-        const allPolicies = [...policies, ...(pendingPolicyValid ? [policyForm] : [])]
+        const allPolicies = [...policies]
+        if (pendingPolicyValid) {
+          if (editingPolicyIdx !== null) allPolicies[editingPolicyIdx] = policyForm
+          else if (showPolicyForm) allPolicies.push(policyForm)
+        }
         for (const p of allPolicies) {
           if (p.company.trim() || p.monthly_premium) {
             await createInsurancePolicy({
