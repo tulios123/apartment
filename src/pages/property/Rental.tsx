@@ -106,7 +106,7 @@ function ContractForm({
           <span>דורש אישור ידני בכל תשלום</span>
         </label>
       </div>
-      {err && <div className="form-error">{err}</div>}
+      {err && <div className="form-error" role="alert">{err}</div>}
       <div className="form-actions">
         <button type="button" className="btn-secondary" onClick={onCancel}>ביטול</button>
         <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'שומר...' : 'שמור'}</button>
@@ -187,7 +187,7 @@ export default function Rental() {
   }
 
   if (loading) return <SkeletonCard />
-  if (error) return <div className="form-error">{error}</div>
+  if (error) return <div className="form-error" role="alert">{error}</div>
 
   if (!property) {
     return (

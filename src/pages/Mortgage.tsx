@@ -212,7 +212,7 @@ export default function MortgagePage() {
       <SkeletonList rows={3} />
     </div>
   )
-  if (error) return <div className="form-error">{error}</div>
+  if (error) return <div className="form-error" role="alert">{error}</div>
 
   if (tracks.length === 0 && !form) {
     return (
@@ -497,7 +497,7 @@ export default function MortgagePage() {
               </div>
             )}
 
-            {saveErr && <div className="form-error">{saveErr}</div>}
+            {saveErr && <div className="form-error" role="alert">{saveErr}</div>}
 
             <div className="form-actions">
               <button className="btn-secondary" onClick={() => { setForm(null); setSaveErr(null) }} disabled={saving}>

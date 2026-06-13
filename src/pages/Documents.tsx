@@ -100,7 +100,7 @@ export default function Documents() {
       </div>
 
       {loading && <SkeletonList rows={4} />}
-      {error && <div className="form-error">{error}</div>}
+      {error && <div className="form-error" role="alert">{error}</div>}
 
       {!loading && documents.length === 0 && (
         <div className="empty-state-cta">
@@ -182,7 +182,7 @@ export default function Documents() {
                   </button>
                 </div>
               </div>
-              {formError && <div className="form-error">{formError}</div>}
+              {formError && <div className="form-error" role="alert">{formError}</div>}
               <div className="form-actions">
                 <button type="button" className="btn-secondary" onClick={closeModal}>ביטול</button>
                 <button type="submit" className="btn-primary" disabled={saving}>

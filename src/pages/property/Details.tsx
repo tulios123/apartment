@@ -153,7 +153,7 @@ function PropertyForm({
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)} />
       </div>
 
-      {err && <div className="form-error">{err}</div>}
+      {err && <div className="form-error" role="alert">{err}</div>}
       <div className="form-actions">
         <button type="button" className="btn-secondary" onClick={onCancel}>ביטול</button>
         <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'שומר...' : 'שמור'}</button>
@@ -179,7 +179,7 @@ export default function Details() {
   }
 
   if (loading) return <SkeletonList rows={5} />
-  if (error) return <div className="form-error">{error}</div>
+  if (error) return <div className="form-error" role="alert">{error}</div>
 
   return (
     <>

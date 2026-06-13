@@ -89,7 +89,7 @@ function InsuranceForm({
         <label>הערות</label>
         <input type="text" value={form.notes} onChange={e => set('notes', e.target.value)} />
       </div>
-      {err && <div className="form-error">{err}</div>}
+      {err && <div className="form-error" role="alert">{err}</div>}
       <div className="form-actions">
         <button type="button" className="btn-secondary" onClick={onCancel}>ביטול</button>
         <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'שומר...' : 'שמור'}</button>
@@ -156,7 +156,7 @@ export default function Insurance() {
   const totalMonthly = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
 
   if (loading) return <SkeletonList rows={3} />
-  if (error) return <div className="form-error">{error}</div>
+  if (error) return <div className="form-error" role="alert">{error}</div>
 
   return (
     <>

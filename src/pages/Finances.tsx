@@ -251,7 +251,7 @@ export default function Finances() {
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
   if (loading) return <SkeletonList rows={6} />
-  if (error) return <div className="form-error">{error}</div>
+  if (error) return <div className="form-error" role="alert">{error}</div>
 
   return (
     <>
@@ -380,7 +380,7 @@ export default function Finances() {
                 </div>
               </div>
 
-              {formError && <div className="form-error">{formError}</div>}
+              {formError && <div className="form-error" role="alert">{formError}</div>}
               <div className="form-actions">
                 <button type="button" className="btn-secondary" onClick={closeForm}>ביטול</button>
                 <button type="submit" className="btn-primary" disabled={saving}>

@@ -38,7 +38,7 @@ export default function Dashboard() {
     )
   }
 
-  if (error) return <div className="form-error">{error}</div>
+  if (error) return <div className="form-error" role="alert">{error}</div>
 
   // ── Computations ──────────────────────────────────────────────────────────
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0

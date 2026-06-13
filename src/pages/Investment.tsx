@@ -118,7 +118,7 @@ export default function InvestmentPage() {
       <SkeletonList rows={4} />
     </div>
   )
-  if (error) return <div className="form-error">{error}</div>
+  if (error) return <div className="form-error" role="alert">{error}</div>
 
   const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
   const insurancePaidToDate = calcInsurancePaidToDate(policies)
@@ -270,7 +270,7 @@ export default function InvestmentPage() {
               </button>
             </div>
 
-            {saveErr && <div className="form-error">{saveErr}</div>}
+            {saveErr && <div className="form-error" role="alert">{saveErr}</div>}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
               <button className="btn-primary" onClick={handleSave} disabled={saving}>

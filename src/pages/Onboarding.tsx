@@ -1247,7 +1247,7 @@ export default function Onboarding({ onComplete }: Props) {
               </div>
             )}
 
-            {error && <p className="onboarding-error">{error}</p>}
+            {error && <p className="onboarding-error" role="alert">{error}</p>}
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
               {import.meta.env.DEV && (
@@ -1268,7 +1268,7 @@ export default function Onboarding({ onComplete }: Props) {
             <p className="onboarding-subtitle">
               הנכס שלך הוגדר בהצלחה.<br />תוכל לנהל משכנתא, ביטוח, עלויות ותשלומים קבועים מתוך האפליקציה.
             </p>
-            {error && <p className="onboarding-error" style={{ textAlign: 'center' }}>{error}</p>}
+            {error && <p className="onboarding-error" role="alert" style={{ textAlign: 'center' }}>{error}</p>}
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
               <button className="btn-onboard-primary" onClick={onComplete}>למסך הראשי <ArrowLeft size={16} /></button>
             </div>

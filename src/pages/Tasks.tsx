@@ -144,7 +144,7 @@ export default function Tasks() {
       </div>
 
       {loading && <SkeletonList rows={4} />}
-      {error && <div className="form-error">{error}</div>}
+      {error && <div className="form-error" role="alert">{error}</div>}
       {syncError && (
         <div className="sync-warning">
           סנכרון Google נכשל — יש להתחבר מחדש כדי לסנכרן
