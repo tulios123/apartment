@@ -238,6 +238,9 @@ export default function Onboarding({ onComplete }: Props) {
           const m = await ensureMortgage(user.id, property.id)
           for (const d of validTracks) {
             const effRate = trackEffectiveRate(d)
+            const isAnchored = d.track_type === 'prime' || d.track_type === 'variable'
+            const primeDefault = d.track_type === 'prime' ? 6.25 : 0
+            const marginDefault = d.track_type === 'prime' ? -0.5 : 0
             await upsertMortgageTrack({
               mortgage_id: m.id,
               owner_id: user.id,
@@ -245,6 +248,8 @@ export default function Onboarding({ onComplete }: Props) {
               track_type: d.track_type,
               principal: parseFloat(d.principal) || 0,
               annual_rate: effRate,
+              prime_rate: isAnchored ? (parseFloat(d.prime_rate) || primeDefault) : null,
+              margin: isAnchored ? (parseFloat(d.margin) || marginDefault) : null,
               term_months: parseInt(d.term_months) || 360,
               grace_months: parseInt(d.grace_months) || 0,
               start_date: d.start_date,
@@ -394,13 +399,13 @@ export default function Onboarding({ onComplete }: Props) {
     setBuyerName('איתי שובי')
     setStreet('בעל שם טוב 21')
     setCity('אשקלון')
-    setBlock('')
-    setParcel('')
+    setBlock('1234')
+    setParcel('56')
     setRooms('4.5')
     setPurchasePrice('1090000')
     setSigningDate('2025-11-25')
     setKeyDeliveryDate('2026-03-11')
-    setPropertySizeSqm('')
+    setPropertySizeSqm('105')
     setFloorNumber('3')
   }
 
@@ -456,8 +461,8 @@ export default function Onboarding({ onComplete }: Props) {
 
   function fillTestInsurance() {
     setPolicies([
-      { type: 'מבנה', company: '', monthly_premium: '40', start_date: '2026-03-11', end_date: '' },
-      { type: 'חיים', company: '', monthly_premium: '30', start_date: '2026-03-11', end_date: '' },
+      { type: 'מבנה', company: 'הראל', monthly_premium: '40', start_date: '2026-03-11', end_date: '' },
+      { type: 'חיים', company: 'מגדל', monthly_premium: '30', start_date: '2026-03-11', end_date: '' },
     ])
   }
 
@@ -733,7 +738,7 @@ export default function Onboarding({ onComplete }: Props) {
           </div>
         </div>
         <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
-          מומלץ: ביטוח חיים + ביטוח משכנתא
+          הבנק דורש בדרך כלל ביטוח מבנה + ביטוח חיים
         </p>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
@@ -1136,7 +1141,7 @@ export default function Onboarding({ onComplete }: Props) {
                 </div>
               </div>
               <div className="onboarding-field">
-                <label>שכירות חודשית (₪)</label>
+                <label>שכר דירה חודשי (₪)</label>
                 <input type="text" inputMode="numeric" placeholder="0"
                   value={formatNum(monthlyRent)}
                   onChange={e => setMonthlyRent(e.target.value.replace(/[^\d]/g, ''))} />
@@ -1218,10 +1223,11 @@ export default function Onboarding({ onComplete }: Props) {
                               <span className="text-muted"> / חודש</span>
                             </span>
                           </div>
-                          {p.company && (
+                          {(p.company || p.start_date) && (
                             <div className="onboarding-track-summary-sub">
-                              <span>{p.company}</span>
-                              {p.start_date && <><span>·</span><span>מ-{p.start_date}</span></>}
+                              {p.company && <span>{p.company}</span>}
+                              {p.company && p.start_date && <span>·</span>}
+                              {p.start_date && <span>מ-{p.start_date}</span>}
                             </div>
                           )}
                         </div>

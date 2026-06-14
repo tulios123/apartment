@@ -131,7 +131,9 @@ export interface MortgageTrack {
   label: string | null
   track_type: TrackType
   principal: number
-  annual_rate: number   // stored as percent, e.g. 5.25 = 5.25%
+  annual_rate: number   // effective rate as percent (prime + margin), e.g. 5.25 = 5.25%
+  prime_rate: number | null  // prime/anchor component, for prime & variable tracks
+  margin: number | null      // fixed margin component, for prime & variable tracks
   term_months: number
   grace_months: number
   start_date: string

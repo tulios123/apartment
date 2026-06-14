@@ -87,6 +87,8 @@ export async function upsertMortgageTrack(data: {
   track_type: TrackType
   principal: number
   annual_rate: number
+  prime_rate?: number | null
+  margin?: number | null
   term_months: number
   grace_months: number
   start_date: string
@@ -99,6 +101,8 @@ export async function upsertMortgageTrack(data: {
         track_type: data.track_type,
         principal: data.principal,
         annual_rate: data.annual_rate,
+        prime_rate: data.prime_rate ?? null,
+        margin: data.margin ?? null,
         term_months: data.term_months,
         grace_months: data.grace_months,
         start_date: data.start_date,
@@ -117,6 +121,8 @@ export async function upsertMortgageTrack(data: {
         track_type: data.track_type,
         principal: data.principal,
         annual_rate: data.annual_rate,
+        prime_rate: data.prime_rate ?? null,
+        margin: data.margin ?? null,
         term_months: data.term_months,
         grace_months: data.grace_months,
         start_date: data.start_date,

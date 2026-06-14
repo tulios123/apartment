@@ -147,7 +147,7 @@ export default function InvestmentPage() {
           <div className="summary-amount">{formatCurrency(totalInvested)}</div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">שכירות שהתקבלה</div>
+          <div className="summary-label">שכר דירה שהתקבל</div>
           <div className="summary-amount positive">{formatCurrency(rentReceived)}</div>
         </div>
         <div className="summary-card">
@@ -155,7 +155,7 @@ export default function InvestmentPage() {
           <div className={`summary-amount ${netPosition >= 0 ? 'positive' : 'negative'}`}>
             {formatCurrency(netPosition)}
           </div>
-          <div className="inv-sub-label">שכירות פחות ריבית, ביטוח ותחזוקה</div>
+          <div className="inv-sub-label">שכ״ד פחות ריבית, ביטוח ותחזוקה</div>
         </div>
         <div className="summary-card">
           <div className="summary-label">ריבית ששולמה</div>

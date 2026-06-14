@@ -47,14 +47,17 @@ function emptyForm(): TrackForm {
 
 function formFromTrack(t: MortgageTrack): TrackForm {
   const isAnchored = t.track_type === 'prime' || t.track_type === 'variable'
+  // Prefer the stored prime/margin split; fall back for legacy rows saved
+  // before those columns existed (effective rate in prime, zero margin).
+  const hasSplit = t.prime_rate != null || t.margin != null
   return {
     id: t.id,
     label: t.label ?? '',
     track_type: t.track_type as TrackType,
     principal: String(Math.round(t.principal)),
     annual_rate: isAnchored ? '' : t.annual_rate.toFixed(3),
-    prime_rate: isAnchored ? t.annual_rate.toFixed(3) : '',
-    margin: isAnchored ? '0' : '',
+    prime_rate: isAnchored ? (hasSplit ? (t.prime_rate ?? 0).toFixed(3) : t.annual_rate.toFixed(3)) : '',
+    margin: isAnchored ? (hasSplit ? (t.margin ?? 0).toFixed(3) : '0') : '',
     term_months: String(t.term_months),
     grace_months: t.grace_months ? String(t.grace_months) : '',
     start_date: t.start_date,
@@ -152,6 +155,7 @@ export default function MortgagePage() {
     try {
       const mortgageRow = mortgage ?? await ensureMortgage(user.id)
       const rate = effectiveRate(form)
+      const isAnchored = form.track_type === 'prime' || form.track_type === 'variable'
       await upsertMortgageTrack({
         id: form.id,
         mortgage_id: mortgageRow.id,
@@ -160,6 +164,8 @@ export default function MortgagePage() {
         track_type: form.track_type,
         principal: parseFloat(form.principal) || 0,
         annual_rate: rate,
+        prime_rate: isAnchored ? (parseFloat(form.prime_rate) || 0) : null,
+        margin: isAnchored ? (parseFloat(form.margin) || 0) : null,
         term_months: parseInt(form.term_months) || 0,
         grace_months: parseInt(form.grace_months) || 0,
         start_date: form.start_date,
@@ -195,6 +201,8 @@ export default function MortgagePage() {
         track_type: track.track_type,
         principal: track.principal,
         annual_rate: track.annual_rate,
+        prime_rate: track.prime_rate,
+        margin: track.margin,
         term_months: track.term_months,
         grace_months: grace,
         start_date: track.start_date,
