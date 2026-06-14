@@ -3038,6 +3038,33 @@ body {
   flex-wrap: wrap;
 }
 
+/* Equity-buildup sparkline inside the hero */
+.dash-hero-spark {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.dash-hero-spark-caption {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  text-align: center;
+}
+
+/* Section title row with optional toggle on the side */
+.dash-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: -8px;
+}
+
+.dash-section-title-row .dash-section-title {
+  margin-bottom: 0;
+}
+
 /* Muted note under a stat card */
 .dash-card-note {
   font-size: 11px;

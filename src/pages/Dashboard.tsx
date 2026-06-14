@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { House, CheckCircle, ArrowsLeftRight } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboardStats } from '../hooks/useDashboardStats'
@@ -6,13 +7,16 @@ import { usePropertyData } from '../hooks/usePropertyData'
 import { useInvestmentData } from '../hooks/useInvestmentData'
 import { useInsurance } from '../hooks/useInsurance'
 import { formatCurrency, formatDate } from '../lib/format'
+import { gracePeriodPayment } from '../lib/mortgage'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import { Skeleton, SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
+import { Sparkline } from '../components/ui/Sparkline'
 import { EmptyState } from '../components/ui/EmptyState'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const [graceView, setGraceView] = useState<'grace' | 'post'>('grace')
 
   const {
     recentTransactions,
@@ -22,7 +26,7 @@ export default function Dashboard() {
     error,
   } = useDashboardStats()
 
-  const { summary, tracks, loading: loadingMortgage } = useMortgageData()
+  const { summary, tracks, combined, loading: loadingMortgage } = useMortgageData()
   const { property, contracts, loading: loadingProperty } = usePropertyData()
   const { totalInvested, rentReceived, loading: loadingInvestment } = useInvestmentData()
   const { policies, loading: loadingInsurance } = useInsurance()
@@ -46,9 +50,20 @@ export default function Dashboard() {
   const monthlyRent = activeContract?.monthly_rent ?? 0
   const monthlyMortgage = summary.monthlyPayment || 0
   const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
-  const monthlyNet = monthlyRent - monthlyMortgage - monthlyInsurance
+
+  const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
+  const gracePeriodPaymentAmount = gracePeriodPayment(tracks)
+  const selectedMortgage = hasGrace
+    ? (graceView === 'grace' ? gracePeriodPaymentAmount : monthlyMortgage)
+    : monthlyMortgage
+  const monthlyNet = monthlyRent - selectedMortgage - monthlyInsurance
   const grossYield =
     propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
+
+  // Equity-buildup series (same story as the hero, moved here from Investment)
+  const equitySeries = propertyValue > 0 && combined.length > 0
+    ? combined.map(r => Math.max(0, propertyValue - r.balance))
+    : []
 
   // Equity bar widths (%)
   const equityPct = propertyValue > 0 ? Math.max(0, Math.min(100, (equity / propertyValue) * 100)) : 0
@@ -129,7 +144,7 @@ export default function Dashboard() {
           onAction={() => navigate('/property/details')}
         />
       ) : (
-        <div className="dash-hero" onClick={() => navigate('/property/overview')} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate('/property/overview')}>
+        <div className="dash-hero" onClick={() => navigate('/property')} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate('/property')}>
           <div className="dash-hero-label">ההון שלי בנכס</div>
           <div className="dash-hero-value">{formatCurrency(equity)}</div>
 
@@ -148,33 +163,60 @@ export default function Dashboard() {
             <span>שווי נכס {formatCurrency(propertyValue)}</span>
             <span>יתרת משכנתא {formatCurrency(mortgageBalance)}</span>
           </div>
+
+          {equitySeries.length > 1 && (
+            <div className="dash-hero-spark">
+              <Sparkline data={equitySeries} height={56} color="var(--success)" />
+              <div className="dash-hero-spark-caption">צבירת הון עצמי עד לבעלות מלאה</div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── 2. תזרים החודש ────────────────────────────────────────────────── */}
-      <div className="dash-section-title">תזרים החודש</div>
+      {/* ── 2. תזרים החודש — one cash-flow card ───────────────────────────── */}
+      <div className="dash-section-title-row">
+        <div className="dash-section-title">תזרים החודש</div>
+        {hasGrace && (
+          <div className="toggle-group">
+            <button type="button"
+              className={`toggle-btn${graceView === 'grace' ? ' active' : ''}`}
+              onClick={() => setGraceView('grace')}>בגרייס</button>
+            <button type="button"
+              className={`toggle-btn${graceView === 'post' ? ' active' : ''}`}
+              onClick={() => setGraceView('post')}>לאחר גרייס</button>
+          </div>
+        )}
+      </div>
       {flowLoading ? <SkeletonStats count={3} /> : (
-      <div className="summary-cards">
-        <div className="summary-card">
-          <div className="summary-label">שכ״ד חודשי</div>
-          <div className={`summary-amount ${monthlyRent > 0 ? 'positive' : ''}`}>
-            {formatCurrency(monthlyRent)}
-          </div>
-          {!activeContract && (
-            <div className="dash-card-note">אין חוזה פעיל</div>
-          )}
+      <div className="prop-card">
+        <div className="inv-flow-row">
+          <span className="inv-flow-sign positive">+</span>
+          <span className="inv-flow-label">שכ״ד</span>
+          <span className="inv-flow-amount positive">
+            {monthlyRent > 0 ? formatCurrency(monthlyRent) : <span className="text-muted">אין חוזה פעיל</span>}
+          </span>
         </div>
-        <div className="summary-card">
-          <div className="summary-label">הוצאות חודשיות</div>
-          <div className="summary-amount negative">
-            {formatCurrency(monthlyMortgage + monthlyInsurance)}
-          </div>
+        <div className="inv-flow-row">
+          <span className="inv-flow-sign negative">−</span>
+          <span className="inv-flow-label">משכנתא</span>
+          <span className="inv-flow-amount negative">
+            {selectedMortgage > 0 ? formatCurrency(selectedMortgage) : <span className="text-muted">—</span>}
+          </span>
         </div>
-        <div className="summary-card">
-          <div className="summary-label">נטו חודשי</div>
-          <div className={`summary-amount ${monthlyNet >= 0 ? 'positive' : 'negative'}`}>
+        <div className="inv-flow-row">
+          <span className="inv-flow-sign negative">−</span>
+          <span className="inv-flow-label">ביטוח</span>
+          <span className="inv-flow-amount negative">
+            {monthlyInsurance > 0 ? formatCurrency(monthlyInsurance) : <span className="text-muted">—</span>}
+          </span>
+        </div>
+        <div className="inv-flow-divider" />
+        <div className="inv-flow-row inv-flow-total">
+          <span className="inv-flow-sign">=</span>
+          <span className="inv-flow-label">נטו חודשי</span>
+          <span className={`inv-flow-amount ${monthlyNet >= 0 ? 'positive' : 'negative'}`}>
             {formatCurrency(monthlyNet)}
-          </div>
+          </span>
         </div>
       </div>
       )}
@@ -184,10 +226,10 @@ export default function Dashboard() {
       <div className="dashboard-metrics">
         <div
           className="dashboard-metric-item"
-          onClick={() => navigate('/property/investment')}
+          onClick={() => navigate('/property')}
           role="button"
           tabIndex={0}
-          onKeyDown={e => e.key === 'Enter' && navigate('/property/investment')}
+          onKeyDown={e => e.key === 'Enter' && navigate('/property')}
         >
           <div className="dashboard-metric-label">תשואה ברוטו</div>
           <div className="dashboard-metric-value">
@@ -273,7 +315,7 @@ export default function Dashboard() {
       <div className="dashboard-quick-actions">
         <button className="btn-secondary" onClick={() => navigate('/finances')}>+ תנועה</button>
         <button className="btn-secondary" onClick={() => navigate('/tasks')}>+ משימה</button>
-        <button className="btn-secondary" onClick={() => navigate('/property/overview')}>הנכס</button>
+        <button className="btn-secondary" onClick={() => navigate('/property')}>הנכס</button>
       </div>
     </div>
   )
