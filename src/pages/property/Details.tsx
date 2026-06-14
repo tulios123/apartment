@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatDate, formatCurrency } from '../../lib/format'
 import type { Property } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import { PageError } from '../../components/ui/EmptyState'
 
 type PropertyFields = Partial<Omit<Property, 'id' | 'owner_id' | 'created_at'>>
 
@@ -24,7 +25,7 @@ function parseBlockParcel(bp: string): [string, string] {
 
 function formatPrice(raw: string) {
   const n = Number(raw.replace(/,/g, ''))
-  return raw === '' || isNaN(n) ? raw : n.toLocaleString('en-US')
+  return raw === '' || isNaN(n) ? raw : n.toLocaleString('he-IL')
 }
 
 function PropertyForm({
@@ -179,7 +180,7 @@ export default function Details() {
   }
 
   if (loading) return <SkeletonList rows={5} />
-  if (error) return <div className="form-error" role="alert">{error}</div>
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   return (
     <>

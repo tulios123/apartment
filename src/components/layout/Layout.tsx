@@ -18,7 +18,7 @@ export default function Layout() {
   return (
     <div className="app-layout">
       <nav className="sidebar">
-        <div className="sidebar-title">דירה</div>
+        <div className="sidebar-title">ניהול דירה</div>
         {navItems.map(({ to, label, end }) => (
           <NavLink
             key={to}

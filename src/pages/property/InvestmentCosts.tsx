@@ -5,6 +5,7 @@ import { useInvestmentData, upsertInvestmentCost, deleteInvestmentCost } from '.
 import { INVESTMENT_COST_CATEGORIES } from '../../lib/constants'
 import { formatCurrency } from '../../lib/format'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import { PageError } from '../../components/ui/EmptyState'
 
 type CostRow = {
   id?: string
@@ -16,7 +17,7 @@ type CostRow = {
 
 function fmtInput(raw: string): string {
   const n = Number(raw)
-  return raw === '' || isNaN(n) ? raw : n.toLocaleString('en-US')
+  return raw === '' || isNaN(n) ? raw : n.toLocaleString('he-IL')
 }
 
 export default function InvestmentCosts() {
@@ -102,7 +103,7 @@ export default function InvestmentCosts() {
   }
 
   if (loading) return <SkeletonList rows={4} />
-  if (error) return <div className="form-error" role="alert">{error}</div>
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   const localTotal = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
 

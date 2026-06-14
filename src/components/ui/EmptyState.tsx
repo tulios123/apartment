@@ -1,5 +1,20 @@
 import './ui.css'
 import type React from 'react'
+import { Warning } from '@phosphor-icons/react'
+
+export function PageError({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="empty-state-cta">
+      <div className="empty-state-cta-icon" style={{ color: 'var(--danger)' }}>
+        <Warning size={40} />
+      </div>
+      <p>{message}</p>
+      <button className="btn-secondary" onClick={onRetry ?? (() => window.location.reload())}>
+        נסה שוב
+      </button>
+    </div>
+  )
+}
 
 export function EmptyState({
   icon,

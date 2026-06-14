@@ -86,9 +86,11 @@ export default function Documents() {
     }
   }
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
   async function handleDelete(id: string, path: string) {
-    if (!confirm('למחוק מסמך זה?')) return
     await deleteDocument(id, path)
+    setConfirmDeleteId(null)
     refetch()
   }
 
@@ -129,11 +131,19 @@ export default function Documents() {
                     <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.4"/>
                   </svg>
                 </button>
-                <button className="btn-icon danger" onClick={() => handleDelete(doc.id, doc.storage_path)} title="מחק">
-                  <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
-                    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </button>
+                {confirmDeleteId === doc.id ? (
+                  <span className="mortgage-delete-confirm">
+                    <span className="mortgage-delete-confirm-label">למחוק?</span>
+                    <button className="btn-xs btn-danger-solid" onClick={() => handleDelete(doc.id, doc.storage_path)}>מחק</button>
+                    <button className="btn-xs btn-secondary" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
+                  </span>
+                ) : (
+                  <button className="btn-icon danger" onClick={() => setConfirmDeleteId(doc.id)} title="מחק">
+                    <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                      <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           ))}

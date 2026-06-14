@@ -13,6 +13,7 @@ import { formatCurrency, formatDate, formatNum } from '../lib/format'
 import type { MortgageTrack, TrackType } from '../types'
 import type { ScheduleRow } from '../lib/mortgage'
 import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
+import { PageError } from '../components/ui/EmptyState'
 import { Sparkline } from '../components/ui/Sparkline'
 import { BarChart } from '../components/ui/BarChart'
 
@@ -132,6 +133,7 @@ export default function MortgagePage() {
   const [scheduleTrackFilter, setScheduleTrackFilter] = useState<string>('all')
   // Single edit-mode toggle for track management
   const [editMode, setEditMode] = useState(false)
+  const [showSchedule, setShowSchedule] = useState(false)
 
   // Inline draft state: keyed by track.id, seeded from formFromTrack on first edit
   const [drafts, setDrafts] = useState<Record<string, TrackForm>>({})
@@ -282,7 +284,7 @@ export default function MortgagePage() {
       <SkeletonList rows={3} />
     </div>
   )
-  if (error) return <div className="form-error" role="alert">{error}</div>
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   if (tracks.length === 0 && !form) {
     return (
@@ -861,12 +863,19 @@ export default function MortgagePage() {
         </section>
       )}
 
-      {/* ── Amortization schedule ── */}
+      {/* ── Amortization schedule — collapsed by default ── */}
       {combined.length > 0 && (
         <section className="mortgage-schedule-section">
           <div className="mortgage-section-header">
-            <h2>לוח סילוקין</h2>
-            {tracks.length > 1 && (
+            <h2>
+              <button
+                className="btn-link mortgage-schedule-toggle"
+                onClick={() => setShowSchedule(s => !s)}
+              >
+                {showSchedule ? 'הסתר לוח סילוקין' : 'הצג לוח סילוקין'}
+              </button>
+            </h2>
+            {showSchedule && tracks.length > 1 && (
               <select
                 className="form-input mortgage-track-filter"
                 value={scheduleTrackFilter}
@@ -883,6 +892,7 @@ export default function MortgagePage() {
             )}
           </div>
 
+          {showSchedule && (
           <div className="prop-card">
             <table className="mortgage-schedule-table">
               <thead>
@@ -927,6 +937,7 @@ export default function MortgagePage() {
               </tbody>
             </table>
           </div>
+          )}
         </section>
       )}
 

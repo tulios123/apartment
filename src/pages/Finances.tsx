@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { Transaction, Contract, MortgageTrack } from '../types'
 import { SkeletonList } from '../components/ui/Skeleton'
+import { PageError } from '../components/ui/EmptyState'
 import { BarChart } from '../components/ui/BarChart'
 
 interface RepairPrefill {
@@ -92,10 +93,11 @@ export default function Finances() {
   const [formError, setFormError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Open pre-filled form when navigated here from a repair task
+  // Open pre-filled form when navigated here from a repair task, or blank form via openForm flag
   useEffect(() => {
-    const prefill = (location.state as { prefill?: RepairPrefill } | null)?.prefill
-    if (prefill) {
+    const state = location.state as { prefill?: RepairPrefill; openForm?: boolean } | null
+    if (state?.prefill) {
+      const prefill = state.prefill
       setForm({
         direction: prefill.direction,
         amount: '',
@@ -108,7 +110,13 @@ export default function Finances() {
       setReceiptFile(null)
       setFormError(null)
       setShowForm(true)
-      // Clear the state so re-visiting the page doesn't re-open the form
+      navigate(location.pathname, { replace: true, state: {} })
+    } else if (state?.openForm) {
+      setForm(emptyForm)
+      setEditingId(null)
+      setReceiptFile(null)
+      setFormError(null)
+      setShowForm(true)
       navigate(location.pathname, { replace: true, state: {} })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -230,9 +238,11 @@ export default function Finances() {
     setSaving(false)
   }
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
   async function handleDelete(id: string) {
-    if (!confirm('למחוק תנועה זו?')) return
     await deleteTransaction(id)
+    setConfirmDeleteId(null)
     refetch()
   }
 
@@ -251,7 +261,7 @@ export default function Finances() {
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
   if (loading) return <SkeletonList rows={6} />
-  if (error) return <div className="form-error" role="alert">{error}</div>
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   return (
     <>
@@ -324,7 +334,7 @@ export default function Finances() {
               <div className="form-row">
                 <label htmlFor="amount">סכום (₪)</label>
                 <input id="amount" type="text" inputMode="numeric"
-                  value={form.amount ? Number(form.amount.replace(/,/g, '')).toLocaleString('en-US') : ''}
+                  value={form.amount ? Number(form.amount.replace(/,/g, '')).toLocaleString('he-IL') : ''}
                   onChange={e => setForm(f => ({ ...f, amount: e.target.value.replace(/[^\d.]/g, '') }))} required />
               </div>
 
@@ -448,7 +458,15 @@ export default function Finances() {
                         </button>
                       )}
                       <button className="btn-icon" onClick={() => openEdit(t)} aria-label="עריכה" title="עריכה"><PencilSimple size={16} /></button>
-                      <button className="btn-icon danger" onClick={() => handleDelete(t.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
+                      {confirmDeleteId === t.id ? (
+                        <span className="mortgage-delete-confirm">
+                          <span className="mortgage-delete-confirm-label">למחוק?</span>
+                          <button className="btn-xs btn-danger-solid" onClick={() => handleDelete(t.id)}>מחק</button>
+                          <button className="btn-xs btn-secondary" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
+                        </span>
+                      ) : (
+                        <button className="btn-icon danger" onClick={() => setConfirmDeleteId(t.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
+                      )}
                     </div>
                   </div>
                 </li>

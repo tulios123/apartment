@@ -10,6 +10,7 @@ import { RECURRING_INCOME_CATEGORIES, RECURRING_EXPENSE_CATEGORIES, PAYMENT_METH
 import { formatCurrency, formatDate } from '../lib/format'
 import type { RecurringItem } from '../types'
 import { SkeletonList } from '../components/ui/Skeleton'
+import { PageError } from '../components/ui/EmptyState'
 
 const emptyForm = {
   direction: 'expense' as 'income' | 'expense',
@@ -115,7 +116,6 @@ export default function RecurringItems() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('למחוק פריט חוזר זה?')) return
     await deleteRecurringItem(id)
     refetch()
   }
@@ -123,7 +123,7 @@ export default function RecurringItems() {
   const categories = form.direction === 'income' ? RECURRING_INCOME_CATEGORIES : RECURRING_EXPENSE_CATEGORIES
 
   if (loading) return <SkeletonList rows={5} />
-  if (error) return <div className="form-error" role="alert">{error}</div>
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   return (
     <>
@@ -162,7 +162,7 @@ export default function RecurringItems() {
               <div className="form-row">
                 <label htmlFor="ri-amount">סכום (₪)</label>
                 <input id="ri-amount" type="text" inputMode="numeric"
-                  value={form.amount ? Number(form.amount.replace(/,/g, '')).toLocaleString('en-US') : ''}
+                  value={form.amount ? Number(form.amount.replace(/,/g, '')).toLocaleString('he-IL') : ''}
                   onChange={e => setForm(f => ({ ...f, amount: e.target.value.replace(/[^\d.]/g, '') }))} required />
               </div>
 
@@ -258,6 +258,7 @@ function RecurringSection({
   onEdit: (item: RecurringItem) => void
   onDelete: (id: string) => void
 }) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   if (items.length === 0) return (
     <div className="section">
       <h2 className="section-title">{title}</h2>
@@ -299,7 +300,14 @@ function RecurringSection({
                   </span>
                   <div className="fin-item-actions">
                     <button className="btn-icon" onClick={() => onEdit(item)} aria-label="עריכה" title="עריכה"><PencilSimple size={16} /></button>
-                    <button className="btn-icon danger" onClick={() => onDelete(item.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
+                    {confirmDeleteId === item.id ? (
+                      <span className="mortgage-delete-confirm">
+                        <button className="btn-xs btn-danger-solid" onClick={() => { onDelete(item.id); setConfirmDeleteId(null) }}>מחק</button>
+                        <button className="btn-xs btn-secondary" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
+                      </span>
+                    ) : (
+                      <button className="btn-icon danger" onClick={() => setConfirmDeleteId(item.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
+                    )}
                   </div>
                 </div>
               </li>

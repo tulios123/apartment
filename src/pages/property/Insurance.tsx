@@ -6,6 +6,9 @@ import { usePropertyData } from '../../hooks/usePropertyData'
 import { formatCurrency, formatDate } from '../../lib/format'
 import type { InsurancePolicy } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import { PageError } from '../../components/ui/EmptyState'
+import { useDocuments } from '../../hooks/useDocuments'
+import { getReceiptSignedUrl } from '../../lib/storage'
 
 const INSURANCE_TYPES = ['מבנה', 'חיים', 'משכנתא', 'תכולה', 'אחר']
 
@@ -73,7 +76,7 @@ function InsuranceForm({
       </div>
       <div className="form-row">
         <label>פרמיה חודשית (₪)</label>
-        <input type="text" inputMode="numeric" value={form.monthly_premium ? Number(form.monthly_premium).toLocaleString('en-US') : ''} onChange={e => set('monthly_premium', e.target.value.replace(/[^\d]/g, ''))} placeholder="0" />
+        <input type="text" inputMode="numeric" value={form.monthly_premium ? Number(form.monthly_premium).toLocaleString('he-IL') : ''} onChange={e => set('monthly_premium', e.target.value.replace(/[^\d]/g, ''))} placeholder="0" />
       </div>
       <div className="form-2col">
         <div className="form-row">
@@ -102,6 +105,8 @@ export default function Insurance() {
   const { user } = useAuth()
   const { property } = usePropertyData()
   const { policies, loading, error, refetch } = useInsurance()
+  const { documents } = useDocuments()
+  const insuranceDocs = documents.filter(d => d.type === 'insurance_policy')
 
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<InsurancePolicy | null>(null)
@@ -143,9 +148,11 @@ export default function Insurance() {
     refetch()
   }
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
   async function handleDelete(id: string) {
-    if (!confirm('למחוק פוליסה זו?')) return
     await deleteInsurancePolicy(id)
+    setConfirmDeleteId(null)
     refetch()
   }
 
@@ -156,7 +163,7 @@ export default function Insurance() {
   const totalMonthly = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
 
   if (loading) return <SkeletonList rows={3} />
-  if (error) return <div className="form-error" role="alert">{error}</div>
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   return (
     <>
@@ -195,11 +202,19 @@ export default function Insurance() {
                     <path d="M14.5 2.5a2.12 2.12 0 013 3L6 17H3v-3L14.5 2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
                   </svg>
                 </button>
-                <button className="btn-icon danger" onClick={() => handleDelete(p.id)} title="מחק">
-                  <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
-                    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </button>
+                {confirmDeleteId === p.id ? (
+                  <span className="mortgage-delete-confirm">
+                    <span className="mortgage-delete-confirm-label">למחוק?</span>
+                    <button className="btn-xs btn-danger-solid" onClick={() => handleDelete(p.id)}>מחק</button>
+                    <button className="btn-xs btn-secondary" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
+                  </span>
+                ) : (
+                  <button className="btn-icon danger" onClick={() => setConfirmDeleteId(p.id)} title="מחק">
+                    <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
+                      <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -235,6 +250,21 @@ export default function Insurance() {
           </div>
         )
       })}
+
+      {insuranceDocs.length > 0 && (
+        <section style={{ marginTop: 16 }}>
+          <h3 style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, margin: '0 0 8px' }}>מסמכי ביטוח</h3>
+          {insuranceDocs.map(doc => (
+            <div key={doc.id} className="prop-field-row">
+              <span className="prop-field-label">{doc.name || 'פוליסת ביטוח'}</span>
+              <button className="btn-link" onClick={async () => {
+                const url = await getReceiptSignedUrl(doc.storage_path)
+                window.open(url, '_blank')
+              }}>פתח</button>
+            </div>
+          ))}
+        </section>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>

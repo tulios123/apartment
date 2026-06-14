@@ -88,9 +88,11 @@ export default function Tasks() {
     refetch()
   }
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
   async function handleDelete(id: string) {
-    if (!confirm('למחוק משימה זו?')) return
     await deleteTask(id)
+    setConfirmDeleteId(null)
     refetch()
   }
 
@@ -184,11 +186,18 @@ export default function Tasks() {
                 </div>
               </div>
 
-              <button className="gtask-delete" onClick={() => handleDelete(task.id)} aria-label="מחק">
-                <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-              </button>
+              {confirmDeleteId === task.id ? (
+                <span className="mortgage-delete-confirm">
+                  <button className="btn-xs btn-danger-solid" onClick={() => handleDelete(task.id)}>מחק</button>
+                  <button className="btn-xs btn-secondary" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
+                </span>
+              ) : (
+                <button className="gtask-delete" onClick={() => setConfirmDeleteId(task.id)} aria-label="מחק">
+                  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              )}
             </div>
           ))}
 

@@ -14,5 +14,5 @@ export function formatNum(raw: string | number): string {
   if (str === '') return ''
   const n = Number(str)
   if (isNaN(n)) return str
-  return n.toLocaleString('en-US')
+  return n.toLocaleString('he-IL')
 }

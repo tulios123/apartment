@@ -12,7 +12,7 @@ import { activeContract as findActiveContract, monthlyVirtualEntries } from '../
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import { Skeleton, SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
 import { Sparkline } from '../components/ui/Sparkline'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyState, PageError } from '../components/ui/EmptyState'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -38,7 +38,7 @@ export default function Dashboard() {
   const metricsLoading = loadingProperty || loadingMortgage || loadingInvestment
   const recentLoading = loadingStats || loadingProperty || loadingMortgage
 
-  if (error) return <div className="form-error" role="alert">{error}</div>
+  if (error) return <PageError message={error} />
 
   // ── Computations ──────────────────────────────────────────────────────────
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
@@ -241,7 +241,7 @@ export default function Dashboard() {
           <div className="dashboard-metric-value">{formatCurrency(totalInvested)}</div>
         </div>
         <div className="dashboard-metric-item">
-          <div className="dashboard-metric-label">שכ״ד שהתקבל</div>
+          <div className="dashboard-metric-label">שכ״ד שנגבה (מצטבר)</div>
           <div className="dashboard-metric-value">{formatCurrency(rentReceived)}</div>
         </div>
       </div>
@@ -313,7 +313,7 @@ export default function Dashboard() {
 
       {/* ── 6. Quick actions ─────────────────────────────────────────────── */}
       <div className="dashboard-quick-actions">
-        <button className="btn-secondary" onClick={() => navigate('/finances')}>+ תנועה</button>
+        <button className="btn-secondary" onClick={() => navigate('/finances', { state: { openForm: true } })}>+ תנועה</button>
         <button className="btn-secondary" onClick={() => navigate('/tasks')}>+ משימה</button>
         <button className="btn-secondary" onClick={() => navigate('/property')}>הנכס</button>
       </div>

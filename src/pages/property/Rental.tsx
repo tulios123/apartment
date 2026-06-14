@@ -13,6 +13,9 @@ import { UTILITIES } from '../../lib/constants'
 import { formatDate, formatCurrency } from '../../lib/format'
 import type { Contract, UtilityPayer } from '../../types'
 import { SkeletonCard } from '../../components/ui/Skeleton'
+import { PageError } from '../../components/ui/EmptyState'
+import { useDocuments } from '../../hooks/useDocuments'
+import { getReceiptSignedUrl } from '../../lib/storage'
 
 const emptyContract = {
   company_name: '',
@@ -81,11 +84,11 @@ function ContractForm({
       </div>
       <div className="form-row">
         <label>שכר דירה חודשי</label>
-        <input type="text" inputMode="numeric" value={form.monthly_rent ? Number(form.monthly_rent).toLocaleString('en-US') : ''} onChange={e => set('monthly_rent', e.target.value.replace(/[^\d]/g, ''))} required />
+        <input type="text" inputMode="numeric" value={form.monthly_rent ? Number(form.monthly_rent).toLocaleString('he-IL') : ''} onChange={e => set('monthly_rent', e.target.value.replace(/[^\d]/g, ''))} required />
       </div>
       <div className="form-row">
         <label>פיקדון</label>
-        <input type="text" inputMode="numeric" value={form.deposit ? Number(form.deposit).toLocaleString('en-US') : ''} onChange={e => set('deposit', e.target.value.replace(/[^\d]/g, ''))} />
+        <input type="text" inputMode="numeric" value={form.deposit ? Number(form.deposit).toLocaleString('he-IL') : ''} onChange={e => set('deposit', e.target.value.replace(/[^\d]/g, ''))} />
       </div>
       <div className="form-row">
         <label>אמצעי תשלום</label>
@@ -119,6 +122,8 @@ export default function Rental() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { property, contracts, utilities, loading, error, refetch } = usePropertyData()
+  const { documents } = useDocuments()
+  const rentalDocs = documents.filter(d => d.type === 'rental_contract')
 
   const [showContractModal, setShowContractModal] = useState(false)
   const [editingContract, setEditingContract] = useState<Contract | null>(null)
@@ -187,7 +192,7 @@ export default function Rental() {
   }
 
   if (loading) return <SkeletonCard />
-  if (error) return <div className="form-error" role="alert">{error}</div>
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   if (!property) {
     return (
@@ -309,6 +314,23 @@ export default function Rental() {
           )
         })}
       </section>
+
+      {rentalDocs.length > 0 && (
+        <section className="prop-section">
+          <div className="prop-section-header">
+            <h2>מסמכי חוזה</h2>
+          </div>
+          {rentalDocs.map(doc => (
+            <div key={doc.id} className="prop-field-row">
+              <span className="prop-field-label">{doc.name || 'חוזה שכירות'}</span>
+              <button className="btn-link" onClick={async () => {
+                const url = await getReceiptSignedUrl(doc.storage_path)
+                window.open(url, '_blank')
+              }}>פתח</button>
+            </div>
+          ))}
+        </section>
+      )}
 
       {showContractModal && (
         <div className="modal-overlay" onClick={() => setShowContractModal(false)}>
