@@ -2159,6 +2159,122 @@ body {
   font-size: 13px;
 }
 
+/* ── Inline edit card layout ── */
+.mortgage-inline-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mortgage-inline-edit-top {
+  display: flex;
+  justify-content: flex-start; /* RTL: visual left */
+  margin-bottom: 2px;
+}
+
+.mortgage-delete-btn {
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 7px;
+  opacity: 0.6;
+}
+
+.mortgage-delete-btn:hover {
+  opacity: 1;
+}
+
+.mortgage-delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.mortgage-delete-confirm-label {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.btn-danger-solid {
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 2px 10px;
+}
+
+.btn-danger-solid:hover {
+  filter: brightness(0.9);
+}
+
+.mortgage-inline-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mortgage-inline-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mortgage-inline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 120px;
+}
+
+.mortgage-inline-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.mortgage-inline-select {
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+.mortgage-inline-computed {
+  justify-content: center;
+}
+
+.mortgage-effective-rate-inline {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary);
+  padding: 4px 0;
+}
+
+.mortgage-inline-payment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--border);
+}
+
+.mortgage-inline-payment-label {
+  color: var(--text-muted);
+}
+
+.mortgage-inline-grace {
+  padding-top: 4px;
+}
+
+.mortgage-inline-error {
+  margin-top: 4px;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
 .mortgage-form-card {
   padding: 20px;
 }
@@ -2244,6 +2360,51 @@ body {
 .mortgage-future-note {
   margin-top: 32px;
   font-style: italic;
+}
+
+/* Mortgage page: 2×2 summary grid (scoped so other pages keep 3-col) */
+.mortgage-page .mortgage-summary-cards {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* "Add track" button below the track list */
+.mortgage-add-track-btn {
+  margin-top: 8px;
+  width: 100%;
+}
+
+/* Grace inline editor: revised layout (no checkbox) */
+.grace-months-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.grace-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: auto; /* push to visual left in RTL */
+}
+
+.btn-ghost-danger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger);
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  font-family: inherit;
+}
+
+.btn-ghost-danger:hover {
+  background: var(--danger-bg, color-mix(in srgb, var(--danger) 10%, transparent));
+}
+
+/* Grace badge: non-clickable variant in view mode */
+.grace-badge-readonly {
+  cursor: default;
 }
 
 .grace-checkbox-label {

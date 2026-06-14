@@ -7,5 +7,6 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: true,
+    port: process.env.PORT ? Number(process.env.PORT) : undefined,
   },
 })

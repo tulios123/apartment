@@ -122,12 +122,23 @@ export default function MortgagePage() {
   const { user } = useAuth()
   const { mortgage, tracks, combined, summary, loading, error, refetch } = useMortgageData()
 
+  // "Add" form — only used for new tracks now (existing tracks are inline-edited)
   const [form, setForm] = useState<TrackForm | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveErr, setSaveErr] = useState<string | null>(null)
-  const [graceEdit, setGraceEdit] = useState<{ trackId: string; enabled: boolean; months: string } | null>(null)
+  // graceEdit: just trackId + months (no enabled boolean — presence = active)
+  const [graceEdit, setGraceEdit] = useState<{ trackId: string; months: string } | null>(null)
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set())
   const [scheduleTrackFilter, setScheduleTrackFilter] = useState<string>('all')
+  // Single edit-mode toggle for track management
+  const [editMode, setEditMode] = useState(false)
+
+  // Inline draft state: keyed by track.id, seeded from formFromTrack on first edit
+  const [drafts, setDrafts] = useState<Record<string, TrackForm>>({})
+  // Per-track save error
+  const [draftErrors, setDraftErrors] = useState<Record<string, string>>({})
+  // Delete confirmation: which track is pending
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const yearRows = useMemo(() => {
     if (scheduleTrackFilter === 'all') return groupByYear(combined)
@@ -144,6 +155,57 @@ export default function MortgagePage() {
     })
   }
 
+  // Seed draft for a track if not already seeded
+  function getDraft(track: MortgageTrack): TrackForm {
+    return drafts[track.id] ?? formFromTrack(track)
+  }
+
+  function setDraftField<K extends keyof TrackForm>(
+    trackId: string,
+    track: MortgageTrack,
+    key: K,
+    val: TrackForm[K],
+  ) {
+    setDrafts(prev => {
+      const base = prev[trackId] ?? formFromTrack(track)
+      return { ...prev, [trackId]: { ...base, [key]: val } }
+    })
+  }
+
+  async function handleBlurSave(track: MortgageTrack) {
+    const draft = drafts[track.id]
+    if (!draft || !user) return
+    // Validate minimums
+    const principal = parseFloat(draft.principal) || 0
+    const termMonths = parseInt(draft.term_months) || 0
+    if (principal <= 0 || termMonths <= 0) return // invalid — don't save
+    try {
+      const mortgageRow = mortgage ?? await ensureMortgage(user.id)
+      const rate = effectiveRate(draft)
+      const isAnchored = draft.track_type === 'prime' || draft.track_type === 'variable'
+      await upsertMortgageTrack({
+        id: track.id,
+        mortgage_id: mortgageRow.id,
+        owner_id: user.id,
+        label: draft.label.trim() || null,
+        track_type: draft.track_type,
+        principal,
+        annual_rate: rate,
+        prime_rate: isAnchored ? (parseFloat(draft.prime_rate) || 0) : null,
+        margin: isAnchored ? (parseFloat(draft.margin) || 0) : null,
+        term_months: termMonths,
+        grace_months: parseInt(draft.grace_months) || 0,
+        start_date: draft.start_date,
+      })
+      // Clear any prior error for this track
+      setDraftErrors(prev => { const next = { ...prev }; delete next[track.id]; return next })
+      await refetch()
+    } catch (e) {
+      setDraftErrors(prev => ({ ...prev, [track.id]: e instanceof Error ? e.message : 'שגיאה בשמירה' }))
+    }
+  }
+
+  // Add-form helpers (only for new tracks)
   function setField<K extends keyof TrackForm>(key: K, val: TrackForm[K]) {
     setForm(f => f ? { ...f, [key]: val } : f)
   }
@@ -180,18 +242,18 @@ export default function MortgagePage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('למחוק מסלול זה?')) return
     try {
       await deleteMortgageTrack(id)
+      setConfirmDeleteId(null)
       await refetch()
     } catch (e) {
       alert(e instanceof Error ? e.message : 'שגיאה')
     }
   }
 
-  async function saveGrace(track: MortgageTrack) {
+  async function saveGrace(track: MortgageTrack, overrideMonths?: number) {
     if (!graceEdit || !user) return
-    const grace = graceEdit.enabled ? (parseInt(graceEdit.months) || 0) : 0
+    const grace = overrideMonths !== undefined ? overrideMonths : (parseInt(graceEdit.months) || 0)
     try {
       await upsertMortgageTrack({
         id: track.id,
@@ -239,9 +301,9 @@ export default function MortgagePage() {
   const gracePeriodPaymentAmount = gracePeriodPayment(tracks)
 
   return (
-    <>
+    <div className="mortgage-page">
       {/* ── Summary cards ── */}
-      <div className="summary-cards">
+      <div className="summary-cards mortgage-summary-cards">
         <div className="summary-card">
           <div className="summary-label">יתרת הלוואה</div>
           <div className="summary-amount">{formatCurrency(summary.currentBalance)}</div>
@@ -277,9 +339,29 @@ export default function MortgagePage() {
       <section className="mortgage-tracks-section">
         <div className="mortgage-section-header">
           <h2>תמהיל מסלולים</h2>
-          {!form && (
-            <button className="btn-primary" onClick={() => setForm(emptyForm())}>
-              + הוסף מסלול
+          {editMode ? (
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                setEditMode(false)
+                setForm(null)
+                setGraceEdit(null)
+                setDrafts({})
+                setDraftErrors({})
+                setConfirmDeleteId(null)
+              }}
+            >
+              סיום
+            </button>
+          ) : (
+            <button className="btn-secondary" onClick={() => {
+              setEditMode(true)
+              // Seed drafts from current tracks
+              const seeded: Record<string, TrackForm> = {}
+              tracks.forEach(t => { seeded[t.id] = formFromTrack(t) })
+              setDrafts(seeded)
+            }}>
+              ערוך
             </button>
           )}
         </div>
@@ -289,74 +371,285 @@ export default function MortgagePage() {
         )}
 
         {/* Existing tracks */}
-        {tracks.map(track => (
-          <div key={track.id} className="prop-card mortgage-track-card">
-            <div className="mortgage-track-row">
-              <div className="mortgage-track-info">
-                <span className="mortgage-track-type">
-                  {MORTGAGE_TRACK_TYPES.find(t => t.value === track.track_type)?.label ?? track.track_type}
-                </span>
-                {track.label && <span className="mortgage-track-label">{track.label}</span>}
-                {graceEdit?.trackId === track.id ? (
-                  <span className="grace-inline-edit">
-                    <label className="grace-checkbox-label" style={{ marginBottom: 0 }}>
-                      <input
-                        type="checkbox"
-                        checked={graceEdit.enabled}
-                        onChange={e => setGraceEdit(g => g ? { ...g, enabled: e.target.checked, months: e.target.checked ? (g.months || '12') : g.months } : g)}
-                      />
-                      גרייס
-                    </label>
-                    {graceEdit.enabled && (
-                      <input
-                        type="number"
-                        className="grace-months-input"
-                        value={graceEdit.months}
-                        onChange={e => setGraceEdit(g => g ? { ...g, months: e.target.value } : g)}
-                        min="1"
-                        autoFocus
-                      />
-                    )}
-                    <button className="btn-primary btn-xs" onClick={() => saveGrace(track)}>שמור</button>
-                    <button className="btn-secondary btn-xs" onClick={() => setGraceEdit(null)}>ביטול</button>
-                  </span>
-                ) : (track.grace_months ?? 0) > 0 ? (
-                  <span className="grace-badge grace-badge-clickable" onClick={() => setGraceEdit({ trackId: track.id, enabled: true, months: String(track.grace_months) })}>
-                    גרייס {track.grace_months} חודשים <PencilSimple size={13} />
-                  </span>
-                ) : (
-                  <span className="grace-badge grace-badge-empty" onClick={() => setGraceEdit({ trackId: track.id, enabled: false, months: '12' })}>
-                    + הוסף גרייס
-                  </span>
-                )}
-              </div>
-              <div className="mortgage-track-numbers">
-                <span>קרן: <strong>{formatCurrency(track.principal)}</strong></span>
-                <span>ריבית: <strong>{track.annual_rate.toFixed(3)}%</strong></span>
-                <span>תקופה: <strong>{track.term_months} חודשים</strong></span>
-                <span>תשלום: <strong>{formatCurrency(monthlyPayment(track.principal, track.annual_rate, track.term_months, track.grace_months ?? 0))}</strong></span>
-              </div>
-              <div className="mortgage-track-meta">
-                <span>מתאריך {formatDate(track.start_date)}</span>
-              </div>
-              <div className="mortgage-track-actions">
-                <button className="btn-secondary btn-sm" onClick={() => setForm(formFromTrack(track))}>
-                  ערוך
-                </button>
-                <button className="btn-icon danger" onClick={() => handleDelete(track.id)} title="מחק">
-                  <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
-                    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+        {tracks.map(track => {
+          const draft = getDraft(track)
+          const isAnchored = draft.track_type === 'prime' || draft.track_type === 'variable'
+          const livePayment = editMode
+            ? previewPayment(draft)
+            : monthlyPayment(track.principal, track.annual_rate, track.term_months, track.grace_months ?? 0)
+          const isPendingDelete = confirmDeleteId === track.id
 
-        {/* Add / edit form */}
+          return (
+            <div key={track.id} className="prop-card mortgage-track-card">
+              {editMode ? (
+                /* ── EDIT MODE: inline editable card ── */
+                <div className="mortgage-inline-edit">
+                  {/* Top row: delete control (top-left in RTL = margin-left: auto) */}
+                  <div className="mortgage-inline-edit-top">
+                    {isPendingDelete ? (
+                      <span className="mortgage-delete-confirm">
+                        <span className="mortgage-delete-confirm-label">למחוק?</span>
+                        <button
+                          className="btn-xs btn-danger-solid"
+                          onClick={() => handleDelete(track.id)}
+                        >
+                          מחק
+                        </button>
+                        <button
+                          className="btn-xs btn-secondary"
+                          onClick={() => setConfirmDeleteId(null)}
+                        >
+                          ביטול
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        className="btn-icon danger mortgage-delete-btn"
+                        onClick={() => setConfirmDeleteId(track.id)}
+                        title="מחק מסלול"
+                        aria-label="מחק מסלול"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Field grid */}
+                  <div className="mortgage-inline-fields">
+                    {/* Row 1: track type + label */}
+                    <div className="mortgage-inline-row">
+                      <div className="mortgage-inline-field">
+                        <label className="mortgage-inline-label">סוג מסלול</label>
+                        <select
+                          className="form-input mortgage-inline-select"
+                          value={draft.track_type}
+                          onChange={e => setDraftField(track.id, track, 'track_type', e.target.value as TrackType)}
+                          onBlur={() => handleBlurSave(track)}
+                        >
+                          {MORTGAGE_TRACK_TYPES.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="mortgage-inline-field">
+                        <label className="mortgage-inline-label">תיאור</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={draft.label}
+                          onChange={e => setDraftField(track.id, track, 'label', e.target.value)}
+                          onBlur={() => handleBlurSave(track)}
+                          placeholder="למשל: מסלול פריים"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 2: principal + term */}
+                    <div className="mortgage-inline-row">
+                      <div className="mortgage-inline-field">
+                        <label className="mortgage-inline-label">קרן (₪)</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className="form-input"
+                          value={formatNum(draft.principal)}
+                          onChange={e => setDraftField(track.id, track, 'principal', e.target.value.replace(/[^\d]/g, ''))}
+                          onBlur={() => handleBlurSave(track)}
+                          placeholder="1,000,000"
+                        />
+                      </div>
+                      <div className="mortgage-inline-field">
+                        <label className="mortgage-inline-label">תקופה (חודשים)</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={draft.term_months}
+                          onChange={e => setDraftField(track.id, track, 'term_months', e.target.value)}
+                          onBlur={() => handleBlurSave(track)}
+                          placeholder="360"
+                          min="1"
+                          max="600"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 3: rate fields — split for anchored types */}
+                    {isAnchored ? (
+                      <div className="mortgage-inline-row">
+                        <div className="mortgage-inline-field">
+                          <label className="mortgage-inline-label">
+                            {draft.track_type === 'prime' ? 'ריבית פריים נוכחית (%)' : 'עוגן (%)'}
+                          </label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={draft.prime_rate}
+                            onChange={e => setDraftField(track.id, track, 'prime_rate', e.target.value)}
+                            onBlur={() => handleBlurSave(track)}
+                            placeholder={draft.track_type === 'prime' ? '6.0' : '3.5'}
+                            step="0.001"
+                          />
+                        </div>
+                        <div className="mortgage-inline-field">
+                          <label className="mortgage-inline-label">מרווח (%)</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={draft.margin}
+                            onChange={e => setDraftField(track.id, track, 'margin', e.target.value)}
+                            onBlur={() => handleBlurSave(track)}
+                            placeholder={draft.track_type === 'prime' ? '-0.5' : '1.5'}
+                            step="0.001"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mortgage-inline-row">
+                        <div className="mortgage-inline-field">
+                          <label className="mortgage-inline-label">ריבית שנתית (%)</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={draft.annual_rate}
+                            onChange={e => setDraftField(track.id, track, 'annual_rate', e.target.value)}
+                            onBlur={() => handleBlurSave(track)}
+                            placeholder="5.250"
+                            step="0.001"
+                            min="0"
+                          />
+                        </div>
+                        <div className="mortgage-inline-field">
+                          <label className="mortgage-inline-label">תאריך התחלה</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            value={draft.start_date}
+                            onChange={e => setDraftField(track.id, track, 'start_date', e.target.value)}
+                            onBlur={() => handleBlurSave(track)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Extra row for anchored: start date */}
+                    {isAnchored && (
+                      <div className="mortgage-inline-row">
+                        <div className="mortgage-inline-field">
+                          <label className="mortgage-inline-label">תאריך התחלה</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            value={draft.start_date}
+                            onChange={e => setDraftField(track.id, track, 'start_date', e.target.value)}
+                            onBlur={() => handleBlurSave(track)}
+                          />
+                        </div>
+                        <div className="mortgage-inline-field mortgage-inline-computed">
+                          <label className="mortgage-inline-label">ריבית אפקטיבית</label>
+                          <span className="mortgage-effective-rate-inline">
+                            {effectiveRate(draft).toFixed(3)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Computed payment row */}
+                    <div className="mortgage-inline-payment">
+                      <span className="mortgage-inline-payment-label">תשלום חודשי (מחושב):</span>
+                      <strong>{livePayment > 0 ? formatCurrency(livePayment) : '—'}</strong>
+                    </div>
+                  </div>
+
+                  {/* Grace control — unchanged logic */}
+                  <div className="mortgage-inline-grace">
+                    {graceEdit?.trackId === track.id ? (
+                      <span className="grace-inline-edit">
+                        <span className="grace-months-label">חודשי גרייס</span>
+                        <input
+                          type="number"
+                          className="grace-months-input"
+                          value={graceEdit.months}
+                          onChange={e => setGraceEdit(g => g ? { ...g, months: e.target.value } : g)}
+                          min="0"
+                          autoFocus
+                        />
+                        <span className="grace-inline-actions">
+                          <button className="btn-primary btn-xs" onClick={() => saveGrace(track)}>שמור</button>
+                          <button className="btn-secondary btn-xs" onClick={() => setGraceEdit(null)}>ביטול</button>
+                          {(track.grace_months ?? 0) > 0 && (
+                            <button
+                              className="btn-xs btn-ghost-danger"
+                              onClick={() => saveGrace(track, 0)}
+                            >
+                              הסר גרייס
+                            </button>
+                          )}
+                        </span>
+                      </span>
+                    ) : (track.grace_months ?? 0) > 0 ? (
+                      <span
+                        className="grace-badge grace-badge-clickable"
+                        onClick={() => setGraceEdit({ trackId: track.id, months: String(track.grace_months) })}
+                      >
+                        גרייס {track.grace_months} חודשים <PencilSimple size={13} />
+                      </span>
+                    ) : (
+                      <span
+                        className="grace-badge grace-badge-empty"
+                        onClick={() => setGraceEdit({ trackId: track.id, months: '12' })}
+                      >
+                        + הוסף גרייס
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Per-track save error */}
+                  {draftErrors[track.id] && (
+                    <div className="form-error mortgage-inline-error" role="alert">
+                      {draftErrors[track.id]}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* ── VIEW MODE: read-only card ── */
+                <div className="mortgage-track-row">
+                  <div className="mortgage-track-info">
+                    <span className="mortgage-track-type">
+                      {MORTGAGE_TRACK_TYPES.find(t => t.value === track.track_type)?.label ?? track.track_type}
+                    </span>
+                    {track.label && <span className="mortgage-track-label">{track.label}</span>}
+                    {(track.grace_months ?? 0) > 0 && (
+                      <span className="grace-badge grace-badge-clickable grace-badge-readonly">
+                        גרייס {track.grace_months} חודשים
+                      </span>
+                    )}
+                  </div>
+                  <div className="mortgage-track-numbers">
+                    <span>קרן: <strong>{formatCurrency(track.principal)}</strong></span>
+                    <span>ריבית: <strong>{track.annual_rate.toFixed(3)}%</strong></span>
+                    <span>תקופה: <strong>{track.term_months} חודשים</strong></span>
+                    <span>תשלום: <strong>{formatCurrency(livePayment)}</strong></span>
+                  </div>
+                  <div className="mortgage-track-meta">
+                    <span>מתאריך {formatDate(track.start_date)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {/* "Add track" button — only in edit mode, after all track cards */}
+        {editMode && !form && (
+          <button className="btn-secondary mortgage-add-track-btn" onClick={() => setForm(emptyForm())}>
+            + הוסף מסלול
+          </button>
+        )}
+
+        {/* Add form — only for NEW tracks */}
         {form && (
           <div className="prop-card mortgage-form-card">
-            <h3>{form.id ? 'עריכת מסלול' : 'מסלול חדש'}</h3>
+            <h3>מסלול חדש</h3>
 
             <div className="form-row">
               <label>סוג מסלול</label>
@@ -641,6 +934,6 @@ export default function MortgagePage() {
       <p className="mortgage-note mortgage-future-note">
         בקרוב: העלאת מסמך משכנתא ומילוי אוטומטי של פרטי המסלולים.
       </p>
-    </>
+    </div>
   )
 }
