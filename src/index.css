@@ -498,10 +498,21 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 0;
+  padding: 6px 4px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   gap: 8px;
+  border-radius: var(--r-xs);
+  transition: background var(--t-base) var(--ease), transform var(--t-base) var(--ease);
+}
+
+.dashboard-task-item:hover {
+  background: var(--hover-bg);
+  transform: translateX(-2px);
+}
+
+.dashboard-task-item:active {
+  transform: scale(0.995);
 }
 
 .dashboard-task-item:last-child { border-bottom: none; }
@@ -526,10 +537,21 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 0;
+  padding: 6px 4px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   font-size: 14px;
+  border-radius: var(--r-xs);
+  transition: background var(--t-base) var(--ease), transform var(--t-base) var(--ease);
+}
+
+.dashboard-tx-item:hover {
+  background: var(--hover-bg);
+  transform: translateX(-2px);
+}
+
+.dashboard-tx-item:active {
+  transform: scale(0.995);
 }
 
 .dashboard-tx-item:last-child { border-bottom: none; }
@@ -2380,12 +2402,20 @@ body {
   border-radius: var(--r-md);
   cursor: pointer;
   text-align: right;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  transition: box-shadow var(--t-base) var(--ease), border-color var(--t-base) var(--ease), transform var(--t-base) var(--ease);
 }
 
 .overview-card:hover {
-  border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.overview-card:active {
+  transform: translateY(0) scale(0.995);
 }
 
 .overview-card-label {
@@ -2763,14 +2793,19 @@ body {
   border-radius: 16px;
   padding: 24px 22px 20px;
   cursor: pointer;
-  transition: box-shadow 0.18s, transform 0.15s;
+  transition: box-shadow var(--t-base) var(--ease), border-color var(--t-base) var(--ease), transform var(--t-base) var(--ease);
   border: 1px solid var(--border);
   outline: none;
 }
 
 .dash-hero:hover {
   box-shadow: var(--shadow-lg);
+  border-color: var(--border-strong);
   transform: translateY(-1px);
+}
+
+.dash-hero:active {
+  transform: translateY(0) scale(0.995);
 }
 
 .dash-hero:focus-visible {
