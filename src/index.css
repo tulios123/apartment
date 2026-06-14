@@ -585,6 +585,89 @@ body {
   margin-bottom: 28px;
 }
 
+/* ── Property accordion ───────────────────────────────────────────────── */
+.prop-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prop-accordion-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.prop-accordion-item.open {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.prop-accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  min-height: 44px;
+  transition: background var(--t-base) var(--ease);
+}
+
+.prop-accordion-header:hover {
+  background: var(--bg);
+}
+
+.prop-accordion-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.prop-accordion-title svg {
+  color: var(--accent);
+}
+
+.prop-accordion-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform var(--t-base) var(--ease);
+}
+
+.prop-accordion-item.open .prop-accordion-chevron {
+  transform: rotate(180deg);
+}
+
+.prop-accordion-panel {
+  padding: 4px 18px 18px;
+  border-top: 1px solid var(--border);
+}
+
+/* Section components inside a panel: drop their own outer spacing/headers' top gap */
+.prop-accordion-panel .prop-section {
+  margin-bottom: 0;
+}
+
+.prop-accordion-panel .mortgage-page > .summary-cards:first-child,
+.prop-accordion-panel .prop-section-header:first-child {
+  margin-top: 12px;
+}
+
+.prop-section-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 12px 0 14px;
+}
+
 .prop-section-header {
   display: flex;
   align-items: center;

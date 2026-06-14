@@ -12,12 +12,6 @@ import RecurringItems from './pages/RecurringItems'
 import Tasks from './pages/Tasks'
 import Documents from './pages/Documents'
 import PropertyHub from './pages/property/PropertyHub'
-import Overview from './pages/property/Overview'
-import Details from './pages/property/Details'
-import Rental from './pages/property/Rental'
-import Insurance from './pages/property/Insurance'
-import Investment from './pages/Investment'
-import Mortgage from './pages/Mortgage'
 import Settings from './pages/Settings'
 
 function AppRoutes() {
@@ -50,15 +44,8 @@ function AppRoutes() {
           <Route path="recurring" element={<Navigate to="/finances/recurring" replace />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="documents" element={<Documents />} />
-          <Route path="property" element={<PropertyHub />}>
-            <Route index element={<Navigate to="overview" replace />} />
-            <Route path="overview" element={<Overview />} />
-            <Route path="details" element={<Details />} />
-            <Route path="mortgage" element={<Mortgage />} />
-            <Route path="rental" element={<Rental />} />
-            <Route path="insurance" element={<Insurance />} />
-            <Route path="investment" element={<Investment />} />
-          </Route>
+          <Route path="property" element={<PropertyHub />} />
+          <Route path="property/:section" element={<PropertyHub />} />
           <Route path="mortgage" element={<Navigate to="/property/mortgage" replace />} />
           <Route path="investment" element={<Navigate to="/property/investment" replace />} />
           <Route path="settings" element={<Settings />} />
