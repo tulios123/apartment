@@ -95,6 +95,7 @@ export default function Settings() {
           </div>
         </section>
 
+        {import.meta.env.DEV && (
         <section className="settings-section">
           <h2>פיתוח ובדיקה</h2>
           <p className="settings-note">
@@ -116,6 +117,7 @@ export default function Settings() {
             )}
           </div>
         </section>
+        )}
       </div>
     </div>
   )
