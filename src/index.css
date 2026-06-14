@@ -1363,7 +1363,8 @@ body {
   justify-content: center;
   min-height: 100svh;
   background: var(--bg);
-  padding: 40px 24px;
+  padding: 40px 24px env(safe-area-inset-bottom, 80px);
+  padding-bottom: max(80px, env(safe-area-inset-bottom, 80px));
 }
 
 .onboarding-card {
@@ -1373,8 +1374,6 @@ body {
   width: 100%;
   max-width: 500px;
   padding: 44px 40px 36px;
-  max-height: 92svh;
-  overflow-y: auto;
 }
 
 /* Step dots */
@@ -3214,18 +3213,36 @@ body {
   flex-wrap: wrap;
 }
 
-/* Equity-buildup sparkline inside the hero */
-.dash-hero-spark {
-  margin-top: 16px;
-  padding-top: 14px;
+/* Investment metrics row inside hero */
+.dash-hero-metrics {
+  display: flex;
+  gap: 0;
+  margin-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
-.dash-hero-spark-caption {
+.dash-hero-metric {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+  border-inline-end: 1px solid var(--border);
+}
+
+.dash-hero-metric:first-child { padding-inline-start: 0; }
+.dash-hero-metric:last-child { border-inline-end: none; }
+
+.dash-hero-metric span {
   font-size: 11px;
   color: var(--text-muted);
-  margin-top: 6px;
-  text-align: center;
+}
+
+.dash-hero-metric strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 /* Section title row with optional toggle on the side */

@@ -11,13 +11,10 @@ import { gracePeriodPayment } from '../lib/mortgage'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import { Skeleton, SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
-import { Sparkline } from '../components/ui/Sparkline'
 import { EmptyState, PageError } from '../components/ui/EmptyState'
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [graceView, setGraceView] = useState<'grace' | 'post'>('grace')
-
   const {
     recentTransactions,
     openTasks,
@@ -26,16 +23,15 @@ export default function Dashboard() {
     error,
   } = useDashboardStats()
 
-  const { summary, tracks, combined, loading: loadingMortgage } = useMortgageData()
+  const { summary, tracks, loading: loadingMortgage } = useMortgageData()
   const { property, contracts, loading: loadingProperty } = usePropertyData()
   const { totalInvested, rentReceived, loading: loadingInvestment } = useInvestmentData()
   const { policies, loading: loadingInsurance } = useInsurance()
 
   // Per-section loading — each region reveals as soon as its own data is ready,
   // instead of blocking the whole screen on the slowest hook.
-  const heroLoading = loadingProperty || loadingMortgage
+  const summaryLoading = loadingProperty || loadingMortgage || loadingInvestment
   const flowLoading = loadingProperty || loadingMortgage || loadingInsurance
-  const metricsLoading = loadingProperty || loadingMortgage || loadingInvestment
   const recentLoading = loadingStats || loadingProperty || loadingMortgage
 
   if (error) return <PageError message={error} />
@@ -53,17 +49,10 @@ export default function Dashboard() {
 
   const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
   const gracePeriodPaymentAmount = gracePeriodPayment(tracks)
-  const selectedMortgage = hasGrace
-    ? (graceView === 'grace' ? gracePeriodPaymentAmount : monthlyMortgage)
-    : monthlyMortgage
+  const selectedMortgage = hasGrace ? gracePeriodPaymentAmount : monthlyMortgage
   const monthlyNet = monthlyRent - selectedMortgage - monthlyInsurance
   const grossYield =
     propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
-
-  // Equity-buildup series (same story as the hero, moved here from Investment)
-  const equitySeries = propertyValue > 0 && combined.length > 0
-    ? combined.map(r => Math.max(0, propertyValue - r.balance))
-    : []
 
   // Equity bar widths (%)
   const equityPct = propertyValue > 0 ? Math.max(0, Math.min(100, (equity / propertyValue) * 100)) : 0
@@ -129,8 +118,8 @@ export default function Dashboard() {
         <h1>ראשי</h1>
       </div>
 
-      {/* ── 1. Hero — equity ──────────────────────────────────────────────── */}
-      {heroLoading ? (
+      {/* ── 1. Hero — equity + investment summary ────────────────────────── */}
+      {summaryLoading ? (
         <div className="dash-hero dash-hero-skeleton">
           <Skeleton width="40%" height={14} />
           <Skeleton width="60%" height={32} />
@@ -163,11 +152,17 @@ export default function Dashboard() {
             <span>שווי נכס {formatCurrency(propertyValue)}</span>
             <span>יתרת משכנתא {formatCurrency(mortgageBalance)}</span>
           </div>
-
-          {equitySeries.length > 1 && (
-            <div className="dash-hero-spark">
-              <Sparkline data={equitySeries} height={56} color="var(--success)" />
-              <div className="dash-hero-spark-caption">צבירת הון עצמי עד לבעלות מלאה</div>
+          {(grossYield != null || totalInvested > 0 || rentReceived > 0) && (
+            <div className="dash-hero-metrics">
+              {grossYield != null && (
+                <div className="dash-hero-metric"><span>תשואה ברוטו</span><strong>{grossYield.toFixed(1)}%</strong></div>
+              )}
+              {totalInvested > 0 && (
+                <div className="dash-hero-metric"><span>הושקע</span><strong>{formatCurrency(totalInvested)}</strong></div>
+              )}
+              {rentReceived > 0 && (
+                <div className="dash-hero-metric"><span>שנגבה</span><strong>{formatCurrency(rentReceived)}</strong></div>
+              )}
             </div>
           )}
         </div>
@@ -176,16 +171,6 @@ export default function Dashboard() {
       {/* ── 2. תזרים החודש — one cash-flow card ───────────────────────────── */}
       <div className="dash-section-title-row">
         <div className="dash-section-title">תזרים החודש</div>
-        {hasGrace && (
-          <div className="toggle-group">
-            <button type="button"
-              className={`toggle-btn${graceView === 'grace' ? ' active' : ''}`}
-              onClick={() => setGraceView('grace')}>בגרייס</button>
-            <button type="button"
-              className={`toggle-btn${graceView === 'post' ? ' active' : ''}`}
-              onClick={() => setGraceView('post')}>לאחר גרייס</button>
-          </div>
-        )}
       </div>
       {flowLoading ? <SkeletonStats count={3} /> : (
       <div className="prop-card">
@@ -221,33 +206,7 @@ export default function Dashboard() {
       </div>
       )}
 
-      {/* ── 3. Small metrics ─────────────────────────────────────────────── */}
-      {metricsLoading ? <SkeletonStats count={3} /> : (
-      <div className="dashboard-metrics">
-        <div
-          className="dashboard-metric-item"
-          onClick={() => navigate('/property')}
-          role="button"
-          tabIndex={0}
-          onKeyDown={e => e.key === 'Enter' && navigate('/property')}
-        >
-          <div className="dashboard-metric-label">תשואה ברוטו</div>
-          <div className="dashboard-metric-value">
-            {grossYield != null ? `${grossYield.toFixed(1)}%` : '—'}
-          </div>
-        </div>
-        <div className="dashboard-metric-item">
-          <div className="dashboard-metric-label">סה״כ הושקע</div>
-          <div className="dashboard-metric-value">{formatCurrency(totalInvested)}</div>
-        </div>
-        <div className="dashboard-metric-item">
-          <div className="dashboard-metric-label">שכ״ד שנגבה (מצטבר)</div>
-          <div className="dashboard-metric-value">{formatCurrency(rentReceived)}</div>
-        </div>
-      </div>
-      )}
-
-      {/* ── 4. דורש תשומת לב ─────────────────────────────────────────────── */}
+      {/* ── 3. דורש תשומת לב ─────────────────────────────────────────────── */}
       <section className="dashboard-section">
         <div className="dashboard-section-header">
           <h2>דורש תשומת לב</h2>

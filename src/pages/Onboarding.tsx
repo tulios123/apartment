@@ -61,7 +61,7 @@ const INS_TYPES = ['מבנה', 'חיים', 'משכנתא', 'תכולה', 'אחר
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatPrice(raw: string) {
   if (!raw) return ''
-  return Number(raw).toLocaleString('en-US')
+  return Number(raw).toLocaleString('he-IL')
 }
 
 function formatCurrency(n: number) {
@@ -72,7 +72,7 @@ function formatNum(raw: string | number): string {
   const str = String(raw)
   if (str === '') return ''
   const n = Number(str)
-  return isNaN(n) ? str : n.toLocaleString('en-US')
+  return isNaN(n) ? str : n.toLocaleString('he-IL')
 }
 
 function defaultLawyerCost(price: number): string {
@@ -97,8 +97,6 @@ export default function Onboarding({ onComplete }: Props) {
   const [buyerName, setBuyerName] = useState('')
   const [street, setStreet] = useState('')
   const [city, setCity] = useState('')
-  const [block, setBlock] = useState('')
-  const [parcel, setParcel] = useState('')
   const [rooms, setRooms] = useState('')
   const [purchasePrice, setPurchasePrice] = useState('')
   const [signingDate, setSigningDate] = useState('')
@@ -124,8 +122,6 @@ export default function Onboarding({ onComplete }: Props) {
   // ── Rental fields ──
   const [rentalFile, setRentalFile] = useState<File | null>(null)
   const [companyName, setCompanyName] = useState('')
-  const [contactName, setContactName] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [monthlyRent, setMonthlyRent] = useState('')
@@ -198,14 +194,13 @@ export default function Onboarding({ onComplete }: Props) {
     try {
       // 1. Property — fatal: if this fails, stay on the step
       const address = [street.trim(), city.trim()].filter(Boolean).join(', ') || 'הנכס שלי'
-      const blockParcel = block && parcel ? `גוש ${block} חלקה ${parcel}` : block || parcel || null
 
       const property = await createProperty({
         owner_id: user.id,
         address,
         notes: null,
         buyer_name: buyerName.trim() || null,
-        block_parcel: blockParcel,
+        block_parcel: null,
         purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
         purchase_date: signingDate || null,
         key_delivery_date: keyDeliveryDate || null,
@@ -288,8 +283,8 @@ export default function Onboarding({ onComplete }: Props) {
             owner_id: user.id,
             property_id: property.id,
             company_name: companyName.trim(),
-            contact_name: contactName.trim() || null,
-            contact_phone: contactPhone.trim() || null,
+            contact_name: null,
+            contact_phone: null,
             start_date: startDate,
             end_date: endDate,
             monthly_rent: parseFloat(monthlyRent),
@@ -399,8 +394,6 @@ export default function Onboarding({ onComplete }: Props) {
     setBuyerName('איתי שובי')
     setStreet('בעל שם טוב 21')
     setCity('אשקלון')
-    setBlock('1234')
-    setParcel('56')
     setRooms('4.5')
     setPurchasePrice('1090000')
     setSigningDate('2025-11-25')
@@ -449,8 +442,6 @@ export default function Onboarding({ onComplete }: Props) {
 
   function fillTestRental() {
     setCompanyName('לחומי ניהול נכסים')
-    setContactName('')
-    setContactPhone('')
     setStartDate('2026-03-11')
     setEndDate('2027-03-11')
     setMonthlyRent('4300')
@@ -704,13 +695,10 @@ export default function Onboarding({ onComplete }: Props) {
       <div className="onboarding-inline-form">
         <div className="onboarding-field">
           <label>סוג ביטוח</label>
-          <div className="toggle-group" style={{ flexWrap: 'wrap' }}>
-            {INS_TYPES.map(t => (
-              <button key={t} type="button"
-                className={`toggle-btn${policyForm.type === t ? ' active' : ''}`}
-                onClick={() => setPF('type', t)}>{t}</button>
-            ))}
-          </div>
+          <select className="form-input" value={policyForm.type}
+            onChange={e => setPF('type', e.target.value)}>
+            {INS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
         <div className="onboarding-row">
           <div className="onboarding-field">
@@ -794,18 +782,6 @@ export default function Onboarding({ onComplete }: Props) {
                   <label>עיר</label>
                   <input type="text" placeholder="עיר" value={city}
                     onChange={e => setCity(e.target.value)} />
-                </div>
-              </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
-                  <label>גוש</label>
-                  <input type="number" placeholder="0" min="0" value={block}
-                    onChange={e => setBlock(e.target.value)} />
-                </div>
-                <div className="onboarding-field">
-                  <label>חלקה</label>
-                  <input type="number" placeholder="0" min="0" value={parcel}
-                    onChange={e => setParcel(e.target.value)} />
                 </div>
               </div>
               <div className="onboarding-row">
@@ -1120,18 +1096,6 @@ export default function Onboarding({ onComplete }: Props) {
               </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
-                  <label>איש קשר</label>
-                  <input type="text" placeholder="שם (אופציונלי)" value={contactName}
-                    onChange={e => setContactName(e.target.value)} />
-                </div>
-                <div className="onboarding-field">
-                  <label>טלפון</label>
-                  <input type="tel" placeholder="050-..." value={contactPhone}
-                    onChange={e => setContactPhone(e.target.value)} />
-                </div>
-              </div>
-              <div className="onboarding-row">
-                <div className="onboarding-field">
                   <label>תאריך התחלה</label>
                   <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
                 </div>
@@ -1293,7 +1257,7 @@ export default function Onboarding({ onComplete }: Props) {
             </p>
             {error && <p className="onboarding-error" role="alert" style={{ textAlign: 'center' }}>{error}</p>}
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
-              <button className="btn-onboard-primary" onClick={onComplete}>למסך הראשי <ArrowLeft size={16} /></button>
+              <button className="btn-onboard-primary" onClick={() => { window.history.replaceState(null, '', '/'); onComplete() }}>למסך הראשי <ArrowLeft size={16} /></button>
             </div>
           </>
         )}
