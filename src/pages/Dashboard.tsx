@@ -6,8 +6,9 @@ import { usePropertyData } from '../hooks/usePropertyData'
 import { useInvestmentData } from '../hooks/useInvestmentData'
 import { useInsurance } from '../hooks/useInsurance'
 import { formatCurrency, formatDate } from '../lib/format'
-import { activeContract as findActiveContract } from '../lib/projections'
-import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
+import { activeContract as findActiveContract, monthlyVirtualEntries } from '../lib/projections'
+import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
+import { Skeleton, SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
 import { EmptyState } from '../components/ui/EmptyState'
 
 export default function Dashboard() {
@@ -21,22 +22,17 @@ export default function Dashboard() {
     error,
   } = useDashboardStats()
 
-  const { summary, loading: loadingMortgage } = useMortgageData()
+  const { summary, tracks, loading: loadingMortgage } = useMortgageData()
   const { property, contracts, loading: loadingProperty } = usePropertyData()
   const { totalInvested, rentReceived, loading: loadingInvestment } = useInvestmentData()
   const { policies, loading: loadingInsurance } = useInsurance()
 
-  const loading = loadingStats || loadingMortgage || loadingProperty || loadingInvestment || loadingInsurance
-
-  if (loading) {
-    return (
-      <div className="page dashboard-page">
-        <div className="page-header"><h1>ראשי</h1></div>
-        <SkeletonStats count={3} />
-        <SkeletonList rows={5} />
-      </div>
-    )
-  }
+  // Per-section loading — each region reveals as soon as its own data is ready,
+  // instead of blocking the whole screen on the slowest hook.
+  const heroLoading = loadingProperty || loadingMortgage
+  const flowLoading = loadingProperty || loadingMortgage || loadingInsurance
+  const metricsLoading = loadingProperty || loadingMortgage || loadingInvestment
+  const recentLoading = loadingStats || loadingProperty || loadingMortgage
 
   if (error) return <div className="form-error" role="alert">{error}</div>
 
@@ -99,6 +95,19 @@ export default function Dashboard() {
     })
     .slice(0, 5)
 
+  // ── תנועות אחרונות — real rows + computed rent/mortgage (mirrors Finances) ──
+  const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
+  const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
+  const realRecent = recentTransactions
+    .filter(t => !(t.direction === 'income' && rentCatSet.has(t.category)))
+    .filter(t => !(t.direction === 'expense' && mortCatSet.has(t.category)))
+    .map(t => ({ id: t.id, date: t.date, category: t.category, direction: t.direction, amount: t.amount }))
+  const virtualRecent = monthlyVirtualEntries(contracts, tracks, now.getFullYear())
+    .map(v => ({ id: v.id, date: v.date, category: v.category, direction: v.direction, amount: v.amount }))
+  const recentItems = [...realRecent, ...virtualRecent]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 5)
+
   return (
     <div className="page dashboard-page">
       <div className="page-header">
@@ -106,7 +115,13 @@ export default function Dashboard() {
       </div>
 
       {/* ── 1. Hero — equity ──────────────────────────────────────────────── */}
-      {!property ? (
+      {heroLoading ? (
+        <div className="dash-hero dash-hero-skeleton">
+          <Skeleton width="40%" height={14} />
+          <Skeleton width="60%" height={32} />
+          <Skeleton width="100%" height={12} radius={6} />
+        </div>
+      ) : !property ? (
         <EmptyState
           icon={<House size={40} />}
           title="עדיין לא הוגדר נכס"
@@ -138,6 +153,7 @@ export default function Dashboard() {
 
       {/* ── 2. תזרים החודש ────────────────────────────────────────────────── */}
       <div className="dash-section-title">תזרים החודש</div>
+      {flowLoading ? <SkeletonStats count={3} /> : (
       <div className="summary-cards">
         <div className="summary-card">
           <div className="summary-label">שכ״ד חודשי</div>
@@ -161,8 +177,10 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── 3. Small metrics ─────────────────────────────────────────────── */}
+      {metricsLoading ? <SkeletonStats count={3} /> : (
       <div className="dashboard-metrics">
         <div
           className="dashboard-metric-item"
@@ -185,6 +203,7 @@ export default function Dashboard() {
           <div className="dashboard-metric-value">{formatCurrency(rentReceived)}</div>
         </div>
       </div>
+      )}
 
       {/* ── 4. דורש תשומת לב ─────────────────────────────────────────────── */}
       <section className="dashboard-section">
@@ -192,7 +211,9 @@ export default function Dashboard() {
           <h2>דורש תשומת לב</h2>
           <button className="btn-link" onClick={() => navigate('/tasks')}>הכל</button>
         </div>
-        {attentionItems.length === 0 ? (
+        {loadingStats ? (
+          <SkeletonList rows={3} />
+        ) : attentionItems.length === 0 ? (
           <EmptyState icon={<CheckCircle size={40} />} title="אין משימות או חידושים קרובים" />
         ) : (
           <ul className="dashboard-task-list">
@@ -224,7 +245,9 @@ export default function Dashboard() {
           <h2>תנועות אחרונות</h2>
           <button className="btn-link" onClick={() => navigate('/finances')}>הכל</button>
         </div>
-        {recentTransactions.length === 0 ? (
+        {recentLoading ? (
+          <SkeletonList rows={4} />
+        ) : recentItems.length === 0 ? (
           <EmptyState
             icon={<ArrowsLeftRight size={40} />}
             title="אין תנועות עדיין"
@@ -233,7 +256,7 @@ export default function Dashboard() {
           />
         ) : (
           <ul className="dashboard-tx-list">
-            {recentTransactions.slice(0, 5).map(tx => (
+            {recentItems.map(tx => (
               <li key={tx.id} className="dashboard-tx-item" onClick={() => navigate('/finances')}>
                 <span className="dashboard-tx-date">{formatDate(tx.date)}</span>
                 <span className="dashboard-tx-cat">{tx.category}</span>

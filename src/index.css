@@ -2798,6 +2798,13 @@ body {
   outline: none;
 }
 
+.dash-hero-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: default;
+}
+
 .dash-hero:hover {
   box-shadow: var(--shadow-lg);
   border-color: var(--border-strong);
