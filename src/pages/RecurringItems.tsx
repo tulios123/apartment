@@ -268,50 +268,44 @@ function RecurringSection({
   return (
     <div className="section">
       <h2 className="section-title">{title}</h2>
-      <div className="table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>קטגוריה</th>
-              <th>מקבל / משלם</th>
-              <th>סכום</th>
-              <th>יום</th>
-              <th>אמצעי תשלום</th>
-              <th>ביצוע</th>
-              <th>תוקף</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map(item => (
-              <tr key={item.id}>
-                <td>{item.category}</td>
-                <td className="text-muted">{item.payee ?? '—'}</td>
-                <td className={`amount ${item.direction}`}>
-                  {formatAmount(Number(item.amount))}
-                </td>
-                <td>{item.day_of_month}</td>
-                <td className="text-muted">
-                  {item.payment_method
-                    ? PAYMENT_METHODS.find(p => p.value === item.payment_method)?.label ?? '—'
-                    : '—'}
-                </td>
-                <td>
-                  <span className={`badge ${item.execution_type}`}>
-                    {EXECUTION_LABELS[item.execution_type]}
+      <div className="fin-list">
+        <ul className="fin-list-items">
+          {items.map(item => {
+            const paymentLabel = item.payment_method
+              ? PAYMENT_METHODS.find(p => p.value === item.payment_method)?.label
+              : null
+            const meta = [
+              `יום ${item.day_of_month} בחודש`,
+              paymentLabel,
+              item.end_date ? `עד ${formatDate(item.end_date)}` : null,
+            ].filter(Boolean).join(' · ')
+            return (
+              <li key={item.id} className="fin-item">
+                <div className="fin-item-main">
+                  <div className="fin-item-top">
+                    <span className="fin-item-cat">{item.category}</span>
+                    {item.payee && <span className="fin-item-date">{item.payee}</span>}
+                  </div>
+                  <div className="fin-item-meta">
+                    {meta}
+                    <span className={`badge ${item.execution_type}`}>
+                      {EXECUTION_LABELS[item.execution_type]}
+                    </span>
+                  </div>
+                </div>
+                <div className="fin-item-side">
+                  <span className={`fin-item-amount ${item.direction}`}>
+                    {formatAmount(Number(item.amount))}
                   </span>
-                </td>
-                <td className="text-muted">
-                  {item.end_date ? formatDate(item.end_date) : 'ללא הגבלה'}
-                </td>
-                <td className="row-actions">
-                  <button className="btn-icon" onClick={() => onEdit(item)} aria-label="עריכה" title="עריכה"><PencilSimple size={16} /></button>
-                  <button className="btn-icon danger" onClick={() => onDelete(item.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <div className="fin-item-actions">
+                    <button className="btn-icon" onClick={() => onEdit(item)} aria-label="עריכה" title="עריכה"><PencilSimple size={16} /></button>
+                    <button className="btn-icon danger" onClick={() => onDelete(item.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
       </div>
     </div>
   )

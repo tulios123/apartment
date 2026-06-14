@@ -400,60 +400,61 @@ export default function Finances() {
         </div>
       )}
       {(transactions.length > 0 || shownVirtual.length > 0) && (
-        <div className="table-wrapper">
+        <div className="fin-list">
           {shownVirtual.length > 0 && (
             <p className="text-muted virtual-legend">
-              שורות המסומנות &quot;מחושב&quot; הן תחזית מהחוזה/המשכנתא — יוחלפו בתנועה אמיתית כשתירשם.
+              השורות המקווקוות הן תחזית מהחוזה/המשכנתא — יוחלפו בתנועה אמיתית כשתירשם.
             </p>
           )}
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>תאריך</th>
-                <th>קטגוריה</th>
-                <th>תיאור</th>
-                <th>אמצעי תשלום</th>
-                <th>סכום</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {shownVirtual.map(e => (
-                <tr key={e.id} className="virtual-tx-row">
-                  <td>{formatDate(e.date)}</td>
-                  <td>{e.category} <span className="virtual-badge">מחושב</span></td>
-                  <td className="text-muted">{e.description}</td>
-                  <td className="text-muted">—</td>
-                  <td className={`amount ${e.direction}`}>
-                    {e.direction === 'income' ? '+' : '-'}{formatAmount(e.amount)}
-                  </td>
-                  <td></td>
-                </tr>
-              ))}
-              {transactions.map(t => (
-                <tr key={t.id}>
-                  <td>{formatDate(t.date)}</td>
-                  <td>{t.category}</td>
-                  <td className="text-muted">{t.description ?? '—'}</td>
-                  <td className="text-muted">{t.payment_method ? PAYMENT_LABEL[t.payment_method] : '—'}</td>
-                  <td className={`amount ${t.direction}`}>
-                    {t.direction === 'income' ? '+' : '-'}{formatAmount(Number(t.amount))}
-                  </td>
-                  <td className="row-actions">
-                    {t.document_id && (
-                      <button className="btn-icon receipt-btn" title="פתח קבלה" onClick={() => openReceipt(t)}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                        </svg>
-                      </button>
-                    )}
-                    <button className="btn-icon" onClick={() => openEdit(t)} aria-label="עריכה" title="עריכה"><PencilSimple size={16} /></button>
-                    <button className="btn-icon danger" onClick={() => handleDelete(t.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ul className="fin-list-items">
+            {shownVirtual.map(e => (
+              <li key={e.id} className="fin-item virtual">
+                <div className="fin-item-main">
+                  <div className="fin-item-top">
+                    <span className="fin-item-cat">{e.category}</span>
+                    <span className="fin-item-date">{formatDate(e.date)}</span>
+                  </div>
+                  {e.description && <div className="fin-item-meta">{e.description}</div>}
+                </div>
+                <div className="fin-item-side">
+                  <span className={`fin-item-amount ${e.direction}`}>
+                    {e.direction === 'income' ? '+' : '−'}{formatAmount(e.amount)}
+                  </span>
+                </div>
+              </li>
+            ))}
+            {transactions.map(t => {
+              const meta = [
+                t.description,
+                t.payment_method ? PAYMENT_LABEL[t.payment_method] : null,
+              ].filter(Boolean).join(' · ')
+              return (
+                <li key={t.id} className="fin-item">
+                  <div className="fin-item-main">
+                    <div className="fin-item-top">
+                      <span className="fin-item-cat">{t.category}</span>
+                      <span className="fin-item-date">{formatDate(t.date)}</span>
+                    </div>
+                    {meta && <div className="fin-item-meta">{meta}</div>}
+                  </div>
+                  <div className="fin-item-side">
+                    <span className={`fin-item-amount ${t.direction}`}>
+                      {t.direction === 'income' ? '+' : '−'}{formatAmount(Number(t.amount))}
+                    </span>
+                    <div className="fin-item-actions">
+                      {t.document_id && (
+                        <button className="btn-icon receipt-btn" aria-label="פתח קבלה" title="פתח קבלה" onClick={() => openReceipt(t)}>
+                          <Receipt size={16} />
+                        </button>
+                      )}
+                      <button className="btn-icon" onClick={() => openEdit(t)} aria-label="עריכה" title="עריכה"><PencilSimple size={16} /></button>
+                      <button className="btn-icon danger" onClick={() => handleDelete(t.id)} aria-label="מחיקה" title="מחיקה"><Trash size={16} /></button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       )}
     </>
