@@ -211,6 +211,9 @@ export default function Onboarding({ onComplete }: Props) {
         key_delivery_date: keyDeliveryDate || null,
         property_size_sqm: propertySizeSqm ? parseFloat(propertySizeSqm) : null,
         floor: floorNumber !== '' ? parseInt(floorNumber, 10) : null,
+        // NOTE: the DB `rooms` column is currently `integer` (migration 008), so a
+        // half-room like 4.5 can't be stored yet. Apply migration 015_rooms_numeric.sql
+        // (npx supabase db push) then change this to parseFloat(rooms) for true 4.5.
         rooms: rooms !== '' ? parseInt(rooms, 10) : null,
       })
 
@@ -389,29 +392,42 @@ export default function Onboarding({ onComplete }: Props) {
   // ── DEV fill helpers ─────────────────────────────────────────────────────────
   function fillTestPurchase() {
     setBuyerName('איתי שובי')
-    setStreet('הרצל 42')
-    setCity('תל אביב')
-    setBlock('6660')
-    setParcel('12')
-    setRooms('3.5')
+    setStreet('בעל שם טוב 21')
+    setCity('אשקלון')
+    setBlock('')
+    setParcel('')
+    setRooms('4.5')
     setPurchasePrice('1090000')
-    setSigningDate('2022-03-15')
-    setKeyDeliveryDate('2022-07-01')
-    setPropertySizeSqm('85')
-    setFloorNumber('4')
+    setSigningDate('2025-11-25')
+    setKeyDeliveryDate('2026-03-11')
+    setPropertySizeSqm('')
+    setFloorNumber('3')
   }
 
   function fillTestMortgage() {
-    setTracks([{
-      track_type: 'prime',
-      principal: '700000',
-      annual_rate: '',
-      prime_rate: '6.25',
-      margin: '-0.5',
-      term_months: '300',
-      grace_months: '',
-      start_date: '2022-07-01',
-    }])
+    // Two different tracks (600k + 217.5k) blending to ~4.6% effective
+    setTracks([
+      {
+        track_type: 'fixed_unlinked',
+        principal: '600000',
+        annual_rate: '4.5',
+        prime_rate: '',
+        margin: '',
+        term_months: '360',
+        grace_months: '',
+        start_date: '2026-03-11',
+      },
+      {
+        track_type: 'fixed_linked',
+        principal: '217500',
+        annual_rate: '4.9',
+        prime_rate: '',
+        margin: '',
+        term_months: '360',
+        grace_months: '',
+        start_date: '2026-03-11',
+      },
+    ])
   }
 
   function fillTestInvestment() {
@@ -427,20 +443,21 @@ export default function Onboarding({ onComplete }: Props) {
   }
 
   function fillTestRental() {
-    setCompanyName('כוח אדם גלובל בע"מ')
-    setContactName('יוסי כהן')
-    setContactPhone('050-1234567')
-    setStartDate('2024-01-01')
-    setEndDate('2025-12-31')
-    setMonthlyRent('4500')
-    setRentPaymentDay('5')
+    setCompanyName('לחומי ניהול נכסים')
+    setContactName('')
+    setContactPhone('')
+    setStartDate('2026-03-11')
+    setEndDate('2027-03-11')
+    setMonthlyRent('4300')
+    setRentPaymentMethod('check')
+    setRentPaymentDay('10')
     setAddRentReminder(true)
   }
 
   function fillTestInsurance() {
     setPolicies([
-      { type: 'חיים', company: 'מנורה מבטחים', monthly_premium: '320', start_date: '2022-07-01', end_date: '' },
-      { type: 'משכנתא', company: 'הראל', monthly_premium: '180', start_date: '2022-07-01', end_date: '' },
+      { type: 'מבנה', company: '', monthly_premium: '40', start_date: '2026-03-11', end_date: '' },
+      { type: 'חיים', company: '', monthly_premium: '30', start_date: '2026-03-11', end_date: '' },
     ])
   }
 

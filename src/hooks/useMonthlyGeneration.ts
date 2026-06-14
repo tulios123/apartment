@@ -3,6 +3,11 @@ import { supabase } from '../lib/supabase'
 
 const GENERATION_KEY = 'monthly_generation'
 
+// Guards against concurrent runs (React StrictMode double-invokes effects in
+// dev, and two mounts/tabs could race) — without this both runs read "no
+// existing rows" before either inserts, producing duplicate generated tasks.
+let inFlight = false
+
 function currentMonthKey() {
   const d = new Date()
   return `${d.getFullYear()}-${d.getMonth() + 1}`
@@ -12,7 +17,9 @@ export function useMonthlyGeneration() {
   useEffect(() => {
     const key = currentMonthKey()
     if (localStorage.getItem(GENERATION_KEY) === key) return
-    generate(key)
+    if (inFlight) return
+    inFlight = true
+    generate(key).finally(() => { inFlight = false })
   }, [])
 }
 
