@@ -9,6 +9,7 @@ import { insurancePaidToDate as calcInsurancePaidToDate, activeContract as findA
 import { INVESTMENT_COST_CATEGORIES } from '../lib/constants'
 import { formatCurrency } from '../lib/format'
 import { SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
+import { Sparkline } from '../components/ui/Sparkline'
 
 type CostRow = {
   id?: string
@@ -26,9 +27,9 @@ function fmtInput(raw: string): string {
 export default function InvestmentPage() {
   const { user } = useAuth()
   const { costs, totalInvested, rentReceived, interestPaid, maintenance, loading, error, refetch } = useInvestmentData()
-  const { summary: mortgageSummary, tracks, loading: mortLoading } = useMortgageData()
+  const { summary: mortgageSummary, tracks, combined, loading: mortLoading } = useMortgageData()
   const { policies, loading: insLoading } = useInsurance()
-  const { contracts, loading: propLoading } = usePropertyData()
+  const { property, contracts, loading: propLoading } = usePropertyData()
 
   const [rows, setRows] = useState<CostRow[]>([])
   const [deletedIds, setDeletedIds] = useState<string[]>([])
@@ -215,6 +216,37 @@ export default function InvestmentPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Equity buildup chart ── */}
+      {(() => {
+        const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
+        if (!propertyValue) return null
+        if (combined.length > 0) {
+          const equitySeries = combined.map(r => Math.max(0, propertyValue - r.balance))
+          const currentEquity = Math.max(0, propertyValue - mortgageSummary.currentBalance)
+          return (
+            <div className="chart-card">
+              <div className="chart-card-title">צבירת הון עצמי לאורך זמן</div>
+              <Sparkline data={equitySeries} height={120} color="var(--success)" />
+              <div className="chart-labels">
+                <span>הון עצמי נוכחי: {formatCurrency(currentEquity)}</span>
+                <span>שווי מלא: {formatCurrency(propertyValue)}</span>
+              </div>
+              <div className="chart-caption">
+                ככל שהמשכנתא נפרעת, חלקך בנכס גדל עד לבעלות מלאה.
+              </div>
+            </div>
+          )
+        }
+        return (
+          <div className="chart-card">
+            <div className="chart-card-title">צבירת הון עצמי לאורך זמן</div>
+            <div className="chart-caption">
+              בעלות מלאה — {formatCurrency(propertyValue)}, ללא משכנתא.
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── כמה הושקע ── */}
       <section className="inv-costs-section">
