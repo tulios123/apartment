@@ -213,13 +213,13 @@ export default function Dashboard() {
             {monthlyInsurance > 0 ? formatCurrency(monthlyInsurance) : <span className="text-muted">—</span>}
           </span>
         </div>
-        {ownerUtilities.map(u => (
-          <div key={u.id} className="inv-flow-row">
+        {monthlyOwnerUtilities > 0 && (
+          <div className="inv-flow-row">
             <span className="inv-flow-sign negative">−</span>
-            <span className="inv-flow-label">{u.utility}</span>
-            <span className="inv-flow-amount negative">{formatCurrency(u.amount!)}</span>
+            <span className="inv-flow-label">חשבונות</span>
+            <span className="inv-flow-amount negative">{formatCurrency(monthlyOwnerUtilities)}</span>
           </div>
-        ))}
+        )}
         {extraIncomeTxs.map(t => (
           <div key={t.id} className="inv-flow-row">
             <span className="inv-flow-sign positive">+</span>
