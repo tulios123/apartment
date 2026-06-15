@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { Property, Contract, ContractUtility, UtilityPayer } from '../types'
@@ -19,10 +19,11 @@ export function usePropertyData(): PropertyData {
   const [utilities, setUtilities] = useState<ContractUtility[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const initialized = useRef(false)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    if (!initialized.current) setLoading(true)
     setError(null)
     try {
       const { data: props, error: pe } = await supabase
@@ -62,6 +63,7 @@ export function usePropertyData(): PropertyData {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
+      initialized.current = true
       setLoading(false)
     }
   }, [user])
