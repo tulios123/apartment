@@ -962,12 +962,24 @@ body {
 .utility-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   font-size: 14px;
+  flex-wrap: wrap;
 }
 
 .utility-name {
+  flex: 1;
+}
+
+.utility-amount-input {
+  width: 80px;
+  padding: 3px 8px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg);
   color: var(--text);
+  text-align: center;
 }
 
 .toggle-group.small .toggle-btn {

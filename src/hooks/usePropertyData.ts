@@ -112,9 +112,9 @@ export async function deleteContract(id: string): Promise<void> {
   if (error) throw error
 }
 
-export async function upsertUtilities(contractId: string, utilities: { utility: string; payer: UtilityPayer }[]): Promise<void> {
+export async function upsertUtilities(contractId: string, utilities: { utility: string; payer: UtilityPayer; amount?: number | null }[]): Promise<void> {
   if (utilities.length === 0) return
-  const rows = utilities.map(u => ({ contract_id: contractId, utility: u.utility, payer: u.payer }))
+  const rows = utilities.map(u => ({ contract_id: contractId, utility: u.utility, payer: u.payer, amount: u.amount ?? null }))
   const { error } = await supabase
     .from('contract_utilities')
     .upsert(rows, { onConflict: 'contract_id,utility' })

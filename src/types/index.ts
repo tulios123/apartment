@@ -18,6 +18,7 @@ export interface ContractUtility {
   contract_id: string
   utility: string
   payer: UtilityPayer
+  amount: number | null
 }
 
 export interface Property {

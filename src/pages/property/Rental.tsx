@@ -133,10 +133,25 @@ export default function Rental() {
     return utilities.find(u => u.contract_id === contractId && u.utility === utility)?.payer ?? 'tenant'
   }
 
+  function getUtilAmount(contractId: string, utility: string): number | null {
+    return utilities.find(u => u.contract_id === contractId && u.utility === utility)?.amount ?? null
+  }
+
   async function toggleUtil(contractId: string, utility: string, payer: UtilityPayer) {
     setSavingUtil(true)
     try {
-      await upsertUtilities(contractId, [{ utility, payer }])
+      const currentAmount = getUtilAmount(contractId, utility)
+      await upsertUtilities(contractId, [{ utility, payer, amount: payer === 'owner' ? currentAmount : null }])
+      refetch()
+    } finally {
+      setSavingUtil(false)
+    }
+  }
+
+  async function setUtilAmount(contractId: string, utility: string, amount: number | null) {
+    setSavingUtil(true)
+    try {
+      await upsertUtilities(contractId, [{ utility, payer: 'owner', amount }])
       refetch()
     } finally {
       setSavingUtil(false)
@@ -289,25 +304,42 @@ export default function Rental() {
               <div className="utilities-section">
                 <div className="utilities-title">תשלומים שוטפים</div>
                 <div className="utilities-grid">
-                  {contractUtils.map(({ utility, payer }) => (
-                    <div key={utility} className="utility-row">
-                      <span className="utility-name">{utility}</span>
-                      <div className="toggle-group small">
-                        <button
-                          type="button"
-                          className={`toggle-btn ${payer === 'tenant' ? 'active' : ''}`}
-                          onClick={() => toggleUtil(c.id, utility, 'tenant')}
-                          disabled={savingUtil}
-                        >שוכר</button>
-                        <button
-                          type="button"
-                          className={`toggle-btn ${payer === 'owner' ? 'active' : ''}`}
-                          onClick={() => toggleUtil(c.id, utility, 'owner')}
-                          disabled={savingUtil}
-                        >בעלים</button>
+                  {contractUtils.map(({ utility, payer }) => {
+                    const utilAmount = getUtilAmount(c.id, utility)
+                    return (
+                      <div key={utility} className="utility-row">
+                        <span className="utility-name">{utility}</span>
+                        <div className="toggle-group small">
+                          <button
+                            type="button"
+                            className={`toggle-btn ${payer === 'tenant' ? 'active' : ''}`}
+                            onClick={() => toggleUtil(c.id, utility, 'tenant')}
+                            disabled={savingUtil}
+                          >שוכר</button>
+                          <button
+                            type="button"
+                            className={`toggle-btn ${payer === 'owner' ? 'active' : ''}`}
+                            onClick={() => toggleUtil(c.id, utility, 'owner')}
+                            disabled={savingUtil}
+                          >בעלים</button>
+                        </div>
+                        {payer === 'owner' && (
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            className="utility-amount-input"
+                            placeholder="₪ סכום"
+                            value={utilAmount != null ? utilAmount.toLocaleString('he-IL') : ''}
+                            onChange={e => {
+                              const raw = e.target.value.replace(/[^\d]/g, '')
+                              const val = raw ? Number(raw) : null
+                              setUtilAmount(c.id, utility, val)
+                            }}
+                          />
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>

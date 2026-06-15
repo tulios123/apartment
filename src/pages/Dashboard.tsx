@@ -24,7 +24,7 @@ export default function Dashboard() {
   } = useDashboardStats()
 
   const { summary, tracks, loading: loadingMortgage } = useMortgageData()
-  const { property, contracts, loading: loadingProperty } = usePropertyData()
+  const { property, contracts, utilities, loading: loadingProperty } = usePropertyData()
   const { totalInvested, rentReceived, loading: loadingInvestment } = useInvestmentData()
   const { policies, loading: loadingInsurance } = useInsurance()
 
@@ -50,7 +50,16 @@ export default function Dashboard() {
   const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
   const gracePeriodPaymentAmount = gracePeriodPayment(tracks)
   const selectedMortgage = hasGrace ? gracePeriodPaymentAmount : monthlyMortgage
-  const monthlyNet = monthlyRent - selectedMortgage - monthlyInsurance
+
+  // Owner-paid utilities with a specified amount
+  const activeContractId = activeContract?.id
+  const ownerUtilities = utilities.filter(u =>
+    u.payer === 'owner' && u.amount != null && u.amount > 0 &&
+    (!activeContractId || u.contract_id === activeContractId)
+  )
+  const monthlyOwnerUtilities = ownerUtilities.reduce((s, u) => s + (u.amount ?? 0), 0)
+
+  const monthlyNet = monthlyRent - selectedMortgage - monthlyInsurance - monthlyOwnerUtilities
   const grossYield =
     propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
 
@@ -204,6 +213,13 @@ export default function Dashboard() {
             {monthlyInsurance > 0 ? formatCurrency(monthlyInsurance) : <span className="text-muted">—</span>}
           </span>
         </div>
+        {ownerUtilities.map(u => (
+          <div key={u.id} className="inv-flow-row">
+            <span className="inv-flow-sign negative">−</span>
+            <span className="inv-flow-label">{u.utility}</span>
+            <span className="inv-flow-amount negative">{formatCurrency(u.amount!)}</span>
+          </div>
+        ))}
         {extraIncomeTxs.map(t => (
           <div key={t.id} className="inv-flow-row">
             <span className="inv-flow-sign positive">+</span>
