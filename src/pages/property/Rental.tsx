@@ -128,6 +128,7 @@ export default function Rental() {
   const [showContractModal, setShowContractModal] = useState(false)
   const [editingContract, setEditingContract] = useState<Contract | null>(null)
   const [savingUtil, setSavingUtil] = useState(false)
+  const [localAmounts, setLocalAmounts] = useState<Record<string, string>>({})
 
   function getUtilPayer(contractId: string, utility: string): UtilityPayer {
     return utilities.find(u => u.contract_id === contractId && u.utility === utility)?.payer ?? 'tenant'
@@ -329,10 +330,12 @@ export default function Rental() {
                             inputMode="numeric"
                             className="utility-amount-input"
                             placeholder="₪ סכום"
-                            value={utilAmount != null ? utilAmount.toLocaleString('he-IL') : ''}
-                            onChange={e => {
+                            value={localAmounts[`${c.id}:${utility}`] ?? (utilAmount != null ? utilAmount.toLocaleString('he-IL') : '')}
+                            onChange={e => setLocalAmounts(prev => ({ ...prev, [`${c.id}:${utility}`]: e.target.value }))}
+                            onBlur={e => {
                               const raw = e.target.value.replace(/[^\d]/g, '')
                               const val = raw ? Number(raw) : null
+                              setLocalAmounts(prev => { const n = { ...prev }; delete n[`${c.id}:${utility}`]; return n })
                               setUtilAmount(c.id, utility, val)
                             }}
                           />
