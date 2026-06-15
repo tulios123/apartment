@@ -6,6 +6,8 @@ import {
   updateRecurringItem,
   deleteRecurringItem,
 } from '../hooks/useRecurringItems'
+import { useMortgageData } from '../hooks/useMortgageData'
+import { gracePeriodPayment } from '../lib/mortgage'
 import { RECURRING_INCOME_CATEGORIES, RECURRING_EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { RecurringItem } from '../types'
@@ -33,6 +35,10 @@ const DIRECTION_LABELS = { income: 'הכנסה', expense: 'הוצאה' }
 
 export default function RecurringItems() {
   const { items, loading, error, refetch } = useRecurringItems()
+  const { summary, tracks } = useMortgageData()
+
+  const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
+  const mortgageMonthly = hasGrace ? gracePeriodPayment(tracks) : (summary.monthlyPayment || 0)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -243,6 +249,7 @@ export default function RecurringItems() {
             items={expenses}
             onEdit={openEdit}
             onDelete={handleDelete}
+            mortgageMonthly={mortgageMonthly}
           />
         </>
       )}
@@ -251,15 +258,18 @@ export default function RecurringItems() {
 }
 
 function RecurringSection({
-  title, items, onEdit, onDelete,
+  title, items, onEdit, onDelete, mortgageMonthly = 0,
 }: {
   title: string
   items: RecurringItem[]
   onEdit: (item: RecurringItem) => void
   onDelete: (id: string) => void
+  mortgageMonthly?: number
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-  if (items.length === 0) return (
+  const showMortgage = mortgageMonthly > 0
+
+  if (items.length === 0 && !showMortgage) return (
     <div className="section">
       <h2 className="section-title">{title}</h2>
       <div className="empty-state small">אין פריטים</div>
@@ -271,6 +281,19 @@ function RecurringSection({
       <h2 className="section-title">{title}</h2>
       <div className="fin-list">
         <ul className="fin-list-items">
+          {showMortgage && (
+            <li className="fin-item virtual">
+              <div className="fin-item-main">
+                <div className="fin-item-top">
+                  <span className="fin-item-cat">משכנתא</span>
+                </div>
+                <div className="fin-item-meta">מחושב לפי נתוני המשכנתא</div>
+              </div>
+              <div className="fin-item-side">
+                <span className="fin-item-amount expense">{formatCurrency(mortgageMonthly)}</span>
+              </div>
+            </li>
+          )}
           {items.map(item => {
             const paymentLabel = item.payment_method
               ? PAYMENT_METHODS.find(p => p.value === item.payment_method)?.label
