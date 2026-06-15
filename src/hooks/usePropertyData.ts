@@ -72,9 +72,15 @@ export function usePropertyData(): PropertyData {
   useEffect(() => { fetch() }, [fetch])
 
   const patchUtility = useCallback((contractId: string, utility: string, patch: Partial<ContractUtility>) => {
-    setUtilities(prev => prev.map(u =>
-      u.contract_id === contractId && u.utility === utility ? { ...u, ...patch } : u
-    ))
+    setUtilities(prev => {
+      const exists = prev.some(u => u.contract_id === contractId && u.utility === utility)
+      if (exists) {
+        return prev.map(u =>
+          u.contract_id === contractId && u.utility === utility ? { ...u, ...patch } : u
+        )
+      }
+      return [...prev, { id: `temp-${contractId}-${utility}`, contract_id: contractId, utility, payer: 'tenant', amount: null, ...patch } as ContractUtility]
+    })
   }, [])
 
   return { property, contracts, utilities, loading, error, refetch: fetch, patchUtility }
