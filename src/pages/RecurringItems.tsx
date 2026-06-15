@@ -1,5 +1,6 @@
 import { ArrowsClockwise, PencilSimple, Trash, X } from '@phosphor-icons/react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   useRecurringItems,
   createRecurringItem,
@@ -8,7 +9,7 @@ import {
 } from '../hooks/useRecurringItems'
 import { useMortgageData } from '../hooks/useMortgageData'
 import { gracePeriodPayment } from '../lib/mortgage'
-import { RECURRING_INCOME_CATEGORIES, RECURRING_EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
+import { RENT_CATEGORIES, RECURRING_INCOME_CATEGORIES, RECURRING_EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../lib/constants'
 import { formatCurrency, formatDate } from '../lib/format'
 import type { RecurringItem } from '../types'
 import { SkeletonList } from '../components/ui/Skeleton'
@@ -33,7 +34,10 @@ function formatAmount(n: number) {
 const EXECUTION_LABELS = { automatic: 'אוטומטי', requires_approval: 'דורש אישור' }
 const DIRECTION_LABELS = { income: 'הכנסה', expense: 'הוצאה' }
 
+const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
+
 export default function RecurringItems() {
+  const navigate = useNavigate()
   const { items, loading, error, refetch } = useRecurringItems()
   const { summary, tracks } = useMortgageData()
 
@@ -56,6 +60,10 @@ export default function RecurringItems() {
   }
 
   function openEdit(item: RecurringItem) {
+    if (rentCatSet.has(item.category)) {
+      navigate('/property/rental')
+      return
+    }
     setForm({
       direction: item.direction,
       amount: String(item.amount),
