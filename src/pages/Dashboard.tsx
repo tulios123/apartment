@@ -105,12 +105,10 @@ export default function Dashboard() {
   const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
 
   const thisMonthTxs = recentTransactions.filter(t => t.date.startsWith(monthPrefix))
-  const extraIncome = thisMonthTxs
-    .filter(t => t.direction === 'income' && !rentCatSet.has(t.category))
-    .reduce((s, t) => s + t.amount, 0)
-  const extraExpense = thisMonthTxs
-    .filter(t => t.direction === 'expense' && !mortCatSet.has(t.category))
-    .reduce((s, t) => s + t.amount, 0)
+  const extraIncomeTxs = thisMonthTxs.filter(t => t.direction === 'income' && !rentCatSet.has(t.category))
+  const extraExpenseTxs = thisMonthTxs.filter(t => t.direction === 'expense' && !mortCatSet.has(t.category))
+  const extraIncome = extraIncomeTxs.reduce((s, t) => s + t.amount, 0)
+  const extraExpense = extraExpenseTxs.reduce((s, t) => s + t.amount, 0)
   const adjustedNet = monthlyNet + extraIncome - extraExpense
 
   const realRecent = recentTransactions
@@ -206,20 +204,20 @@ export default function Dashboard() {
             {monthlyInsurance > 0 ? formatCurrency(monthlyInsurance) : <span className="text-muted">—</span>}
           </span>
         </div>
-        {extraIncome > 0 && (
-          <div className="inv-flow-row">
+        {extraIncomeTxs.map(t => (
+          <div key={t.id} className="inv-flow-row">
             <span className="inv-flow-sign positive">+</span>
-            <span className="inv-flow-label">הכנסות נוספות החודש</span>
-            <span className="inv-flow-amount positive">{formatCurrency(extraIncome)}</span>
+            <span className="inv-flow-label">{t.category}</span>
+            <span className="inv-flow-amount positive">{formatCurrency(t.amount)}</span>
           </div>
-        )}
-        {extraExpense > 0 && (
-          <div className="inv-flow-row">
+        ))}
+        {extraExpenseTxs.map(t => (
+          <div key={t.id} className="inv-flow-row">
             <span className="inv-flow-sign negative">−</span>
-            <span className="inv-flow-label">הוצאות נוספות החודש</span>
-            <span className="inv-flow-amount negative">{formatCurrency(extraExpense)}</span>
+            <span className="inv-flow-label">{t.category}</span>
+            <span className="inv-flow-amount negative">{formatCurrency(t.amount)}</span>
           </div>
-        )}
+        ))}
         <div className="inv-flow-divider" />
         <div className="inv-flow-row inv-flow-total">
           <span className="inv-flow-sign">=</span>
