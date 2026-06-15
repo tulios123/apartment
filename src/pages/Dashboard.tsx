@@ -31,7 +31,7 @@ export default function Dashboard() {
   // Per-section loading — each region reveals as soon as its own data is ready,
   // instead of blocking the whole screen on the slowest hook.
   const summaryLoading = loadingProperty || loadingMortgage || loadingInvestment
-  const flowLoading = loadingProperty || loadingMortgage || loadingInsurance
+  const flowLoading = loadingProperty || loadingMortgage || loadingInsurance || loadingStats
   const recentLoading = loadingStats || loadingProperty || loadingMortgage
 
   if (error) return <PageError message={error} />
@@ -99,9 +99,20 @@ export default function Dashboard() {
     })
     .slice(0, 5)
 
-  // ── תנועות אחרונות — real rows + computed rent/mortgage (mirrors Finances) ──
+  // ── תנועות החודש הנוכחי — הכנסות/הוצאות נוספות מעבר לקבועים ──
+  const monthPrefix = todayStr.slice(0, 7) // "YYYY-MM"
   const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
   const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
+
+  const thisMonthTxs = recentTransactions.filter(t => t.date.startsWith(monthPrefix))
+  const extraIncome = thisMonthTxs
+    .filter(t => t.direction === 'income' && !rentCatSet.has(t.category))
+    .reduce((s, t) => s + t.amount, 0)
+  const extraExpense = thisMonthTxs
+    .filter(t => t.direction === 'expense' && !mortCatSet.has(t.category))
+    .reduce((s, t) => s + t.amount, 0)
+  const adjustedNet = monthlyNet + extraIncome - extraExpense
+
   const realRecent = recentTransactions
     .filter(t => !(t.direction === 'income' && rentCatSet.has(t.category)))
     .filter(t => !(t.direction === 'expense' && mortCatSet.has(t.category)))
@@ -195,12 +206,26 @@ export default function Dashboard() {
             {monthlyInsurance > 0 ? formatCurrency(monthlyInsurance) : <span className="text-muted">—</span>}
           </span>
         </div>
+        {extraIncome > 0 && (
+          <div className="inv-flow-row">
+            <span className="inv-flow-sign positive">+</span>
+            <span className="inv-flow-label">הכנסות נוספות החודש</span>
+            <span className="inv-flow-amount positive">{formatCurrency(extraIncome)}</span>
+          </div>
+        )}
+        {extraExpense > 0 && (
+          <div className="inv-flow-row">
+            <span className="inv-flow-sign negative">−</span>
+            <span className="inv-flow-label">הוצאות נוספות החודש</span>
+            <span className="inv-flow-amount negative">{formatCurrency(extraExpense)}</span>
+          </div>
+        )}
         <div className="inv-flow-divider" />
         <div className="inv-flow-row inv-flow-total">
           <span className="inv-flow-sign">=</span>
           <span className="inv-flow-label">נטו חודשי</span>
-          <span className={`inv-flow-amount ${monthlyNet >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency(monthlyNet)}
+          <span className={`inv-flow-amount ${adjustedNet >= 0 ? 'positive' : 'negative'}`}>
+            {formatCurrency(adjustedNet)}
           </span>
         </div>
       </div>
