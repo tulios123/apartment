@@ -121,7 +121,7 @@ function ContractForm({
 export default function Rental() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { property, contracts, utilities, loading, error, refetch } = usePropertyData()
+  const { property, contracts, utilities, loading, error, refetch, patchUtility } = usePropertyData()
   const { documents } = useDocuments()
   const rentalDocs = documents.filter(d => d.type === 'rental_contract')
 
@@ -139,21 +139,22 @@ export default function Rental() {
   }
 
   async function toggleUtil(contractId: string, utility: string, payer: UtilityPayer) {
+    const currentAmount = getUtilAmount(contractId, utility)
+    const newAmount = payer === 'owner' ? currentAmount : null
+    patchUtility(contractId, utility, { payer, amount: newAmount })
     setSavingUtil(true)
     try {
-      const currentAmount = getUtilAmount(contractId, utility)
-      await upsertUtilities(contractId, [{ utility, payer, amount: payer === 'owner' ? currentAmount : null }])
-      refetch()
+      await upsertUtilities(contractId, [{ utility, payer, amount: newAmount }])
     } finally {
       setSavingUtil(false)
     }
   }
 
   async function setUtilAmount(contractId: string, utility: string, amount: number | null) {
+    patchUtility(contractId, utility, { amount })
     setSavingUtil(true)
     try {
       await upsertUtilities(contractId, [{ utility, payer: 'owner', amount }])
-      refetch()
     } finally {
       setSavingUtil(false)
     }
@@ -336,7 +337,7 @@ export default function Rental() {
                               const raw = e.target.value.replace(/[^\d]/g, '')
                               const val = raw ? Number(raw) : null
                               setLocalAmounts(prev => { const n = { ...prev }; delete n[`${c.id}:${utility}`]; return n })
-                              setUtilAmount(c.id, utility, val)
+                              void setUtilAmount(c.id, utility, val)
                             }}
                           />
                         )}

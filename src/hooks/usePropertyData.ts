@@ -10,6 +10,7 @@ export interface PropertyData {
   loading: boolean
   error: string | null
   refetch: () => void
+  patchUtility: (contractId: string, utility: string, patch: Partial<ContractUtility>) => void
 }
 
 export function usePropertyData(): PropertyData {
@@ -70,7 +71,13 @@ export function usePropertyData(): PropertyData {
 
   useEffect(() => { fetch() }, [fetch])
 
-  return { property, contracts, utilities, loading, error, refetch: fetch }
+  const patchUtility = useCallback((contractId: string, utility: string, patch: Partial<ContractUtility>) => {
+    setUtilities(prev => prev.map(u =>
+      u.contract_id === contractId && u.utility === utility ? { ...u, ...patch } : u
+    ))
+  }, [])
+
+  return { property, contracts, utilities, loading, error, refetch: fetch, patchUtility }
 }
 
 export interface PropertyInsert {
