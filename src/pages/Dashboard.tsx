@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { House, CheckCircle, ArrowsLeftRight } from '@phosphor-icons/react'
+import { House, CheckCircle, ArrowsLeftRight, ArrowDownLeft, ArrowUpRight } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 import { useMortgageData } from '../hooks/useMortgageData'
@@ -298,8 +298,15 @@ export default function Dashboard() {
           <ul className="dashboard-tx-list">
             {recentItems.map(tx => (
               <li key={tx.id} className="dashboard-tx-item" onClick={() => navigate('/finances')}>
-                <span className="dashboard-tx-date">{formatDate(tx.date)}</span>
-                <span className="dashboard-tx-cat">{tx.category}</span>
+                <span className={`tx-tile ${tx.direction}`} aria-hidden="true">
+                  {tx.direction === 'income'
+                    ? <ArrowDownLeft size={17} weight="bold" />
+                    : <ArrowUpRight size={17} weight="bold" />}
+                </span>
+                <span className="dashboard-tx-cat">
+                  <span className="tx-cat-name">{tx.category}</span>
+                  <span className="tx-cat-date">{formatDate(tx.date)}</span>
+                </span>
                 <span className={`dashboard-tx-amount ${tx.direction === 'income' ? 'positive' : 'negative'}`}>
                   {tx.direction === 'income' ? '+' : '−'}{formatCurrency(tx.amount)}
                 </span>
