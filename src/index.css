@@ -1930,8 +1930,19 @@ body {
   color: var(--text);
 }
 
+.inv-cost-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inv-cost-currency {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .inv-cost-input {
-  width: 130px;
+  width: 110px;
   text-align: left;
   font-weight: 500;
   font-family: inherit;

@@ -114,14 +114,17 @@ export default function InvestmentCosts() {
         {rows.map((row, idx) => (
           <div key={`${row.category}-${idx}`} className="inv-cost-row">
             <span className="inv-cost-label">{row.label}</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              className="inv-cost-input"
-              value={fmtInput(row.amount)}
-              onChange={e => setAmount(idx, e.target.value)}
-              placeholder="0"
-            />
+            <div className="inv-cost-input-wrap">
+              <input
+                type="text"
+                inputMode="numeric"
+                className="inv-cost-input"
+                value={fmtInput(row.amount)}
+                onChange={e => setAmount(idx, e.target.value)}
+                placeholder="0"
+              />
+              <span className="inv-cost-currency">₪</span>
+            </div>
             {row.isCustom && (
               <button className="btn-icon danger" onClick={() => removeRow(idx)} aria-label="מחק שורה" title="מחק שורה">
                 <X size={14} />
