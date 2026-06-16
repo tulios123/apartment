@@ -63,25 +63,35 @@ export function trackSchedule(track: MortgageTrack): ScheduleRow[] {
   return rows
 }
 
-/** Combined schedule summing all tracks by calendar month. */
+/**
+ * Combined schedule across all tracks.
+ * Cashflows (payment/interest/principal) sum only the tracks that actually pay on
+ * that date. Balance is the TOTAL outstanding across every track as of that date —
+ * computed by carrying each track's most recent balance forward — so tracks with
+ * different start dates or term lengths don't drop out of the combined balance.
+ */
 export function combineSchedules(tracks: MortgageTrack[]): ScheduleRow[] {
-  const byDate = new Map<string, ScheduleRow>()
-  for (const track of tracks) {
-    for (const row of trackSchedule(track)) {
-      const acc = byDate.get(row.date)
-      if (acc) {
-        acc.payment += row.payment
-        acc.interest += row.interest
-        acc.principal += row.principal
-        acc.balance += row.balance
-      } else {
-        byDate.set(row.date, { ...row })
+  const schedules = tracks.map(trackSchedule)
+  const dates = [...new Set(schedules.flat().map(r => r.date))].sort((a, b) => a.localeCompare(b))
+
+  return dates.map((date, i) => {
+    let payment = 0, interest = 0, principal = 0, balance = 0
+    schedules.forEach((rows, ti) => {
+      const row = rows.find(r => r.date === date)
+      if (row) { payment += row.payment; interest += row.interest; principal += row.principal }
+      // Carry-forward outstanding balance for this track as of `date`:
+      // 0 before the track starts, its principal until the first payment, then the latest row balance.
+      if (tracks[ti].start_date <= date) {
+        let bal = tracks[ti].principal
+        for (const r of rows) {
+          if (r.date <= date) bal = r.balance
+          else break
+        }
+        balance += bal
       }
-    }
-  }
-  const out = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
-  out.forEach((row, i) => { row.monthIndex = i + 1 })
-  return out
+    })
+    return { monthIndex: i + 1, date, payment, interest, principal, balance }
+  })
 }
 
 /**
