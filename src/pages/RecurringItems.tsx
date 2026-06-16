@@ -19,7 +19,7 @@ import { PageError } from '../components/ui/EmptyState'
 const emptyForm = {
   direction: 'expense' as 'income' | 'expense',
   amount: '',
-  category: RECURRING_EXPENSE_CATEGORIES[0],
+  category: RECURRING_EXPENSE_CATEGORIES[0] as string,
   day_of_month: '1',
   start_date: new Date().toISOString().slice(0, 10),
   end_date: '',
@@ -33,7 +33,6 @@ function formatAmount(n: number) {
 }
 
 const EXECUTION_LABELS = { automatic: 'אוטומטי', requires_approval: 'דורש אישור' }
-const DIRECTION_LABELS = { income: 'הכנסה', expense: 'הוצאה' }
 
 const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
 

@@ -289,6 +289,8 @@ export default function Onboarding({ onComplete }: Props) {
             end_date: endDate,
             monthly_rent: parseFloat(monthlyRent),
             deposit: null,
+            payment_method: null,
+            requires_approval: false,
             renewal_alert_days: [90, 30],
           })
         }

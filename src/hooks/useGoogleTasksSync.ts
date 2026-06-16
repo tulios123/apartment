@@ -23,7 +23,7 @@ export async function syncGoogleTasks(ownerId: string): Promise<{ error: string 
     .select('id, title, due_date, status, google_task_id, source, recurring_item_id')
     .eq('owner_id', ownerId)
 
-  if (!ourTasks) return
+  if (!ourTasks) return { error: null }
 
   const apartmentIds = new Set(googleTasks.map(t => t.id))
   const ourByGoogleId = new Map(

@@ -25,14 +25,14 @@ export function useMonthlyGeneration() {
 
 async function generate(monthKey: string) {
   try {
-    await runGeneration(monthKey)
+    await runGeneration()
     localStorage.setItem(GENERATION_KEY, monthKey)
   } catch {
     // Don't set the key — next mount will retry
   }
 }
 
-async function runGeneration(monthKey: string) {
+async function runGeneration() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
   const ownerId = user.id

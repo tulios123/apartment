@@ -1,4 +1,4 @@
-import { PencilSimple, Trash, X } from '@phosphor-icons/react'
+import { PencilSimple, Trash, X, Receipt } from '@phosphor-icons/react'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -48,7 +48,7 @@ const emptyForm = {
   direction: 'income' as 'income' | 'expense',
   amount: '',
   date: new Date().toISOString().slice(0, 10),
-  category: INCOME_CATEGORIES[0],
+  category: INCOME_CATEGORIES[0] as string,
   description: '',
   payment_method: '',
 }

@@ -11,7 +11,7 @@ const REPAIR_CATEGORY = 'תיקונים ותחזוקה'
 
 const emptyForm = {
   title: '',
-  category: TASK_CATEGORIES[0],
+  category: TASK_CATEGORIES[0] as string,
   due_date: '',
   status: 'open' as Task['status'],
 }
@@ -33,7 +33,7 @@ export default function Tasks() {
   const [addingTitle, setAddingTitle] = useState('')
   const [addingDue, setAddingDue] = useState('')
   const [showAddDetails, setShowAddDetails] = useState(false)
-  const [addingCategory, setAddingCategory] = useState(TASK_CATEGORIES[0])
+  const [addingCategory, setAddingCategory] = useState<string>(TASK_CATEGORIES[0])
   const [saving, setSaving] = useState(false)
   const addInputRef = useRef<HTMLInputElement>(null)
 

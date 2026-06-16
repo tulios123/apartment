@@ -28,7 +28,7 @@ export function useDocuments() {
   return { documents, loading, error, refetch: fetch }
 }
 
-export async function createDocument(doc: Omit<Document, 'id' | 'created_at'>): Promise<void> {
+export async function createDocument(doc: Omit<Document, 'created_at'>): Promise<void> {
   const { error } = await supabase.from('documents').insert(doc)
   if (error) throw error
 }
