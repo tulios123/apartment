@@ -1,4 +1,5 @@
-import { Bank, PencilSimple } from '@phosphor-icons/react'
+import { PencilSimple } from '@phosphor-icons/react'
+import { ClayIllustration } from '../components/ui/ClayIllustration'
 import { useState, useMemo, Fragment } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -289,7 +290,7 @@ export default function MortgagePage() {
   if (tracks.length === 0 && !form) {
     return (
       <div className="empty-state-cta">
-        <div className="empty-state-cta-icon"><Bank size={40} /></div>
+        <div className="empty-state-cta-icon"><ClayIllustration variant="bank" /></div>
         <p>עדיין לא הוספת משכנתא</p>
         <button className="btn-primary" onClick={() => setForm(emptyForm())}>+ הוסף מסלול משכנתא</button>
       </div>

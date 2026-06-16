@@ -1,4 +1,5 @@
-import { FileText, X } from '@phosphor-icons/react'
+import { X } from '@phosphor-icons/react'
+import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -230,7 +231,7 @@ export default function Rental() {
 
         {contracts.length === 0 && (
           <div className="empty-state-cta">
-            <div className="empty-state-cta-icon"><FileText size={40} /></div>
+            <div className="empty-state-cta-icon"><ClayIllustration variant="document" /></div>
             <p>עדיין לא נוספו חוזי שכירות</p>
             <button className="btn-primary" onClick={openNewContract}>+ חוזה חדש</button>
           </div>

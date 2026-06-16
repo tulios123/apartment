@@ -1,4 +1,4 @@
-import { Receipt, PencilSimple, Trash, X } from '@phosphor-icons/react'
+import { PencilSimple, Trash, X } from '@phosphor-icons/react'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -18,6 +18,8 @@ import type { Transaction, Contract, MortgageTrack } from '../types'
 import { SkeletonList } from '../components/ui/Skeleton'
 import { PageError } from '../components/ui/EmptyState'
 import { BarChart } from '../components/ui/BarChart'
+import { DonutChart } from '../components/ui/DonutChart'
+import { ClayIllustration } from '../components/ui/ClayIllustration'
 
 interface RepairPrefill {
   direction: 'expense'
@@ -58,6 +60,15 @@ function formatAmount(amount: number) {
 const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(
   PAYMENT_METHODS.filter(p => p.value).map(p => [p.value, p.label])
 )
+
+const DONUT_PALETTE = [
+  'var(--accent)',
+  'var(--accent-coral)',
+  'var(--accent-teal)',
+  'var(--danger)',
+  'var(--brand-navy)',
+  'var(--success)',
+]
 
 export default function Finances() {
   const { user } = useAuth()
@@ -138,6 +149,20 @@ export default function Finances() {
 
   const totalExpense = transactions.filter(t => t.direction === 'expense').reduce((sum, t) => sum + Number(t.amount), 0)
     + shownVirtual.filter(e => e.direction === 'expense').reduce((sum, e) => sum + e.amount, 0)
+
+  const expenseByCategory = useMemo(() => {
+    const map = new Map<string, number>()
+    transactions.filter(t => t.direction === 'expense').forEach(t => {
+      map.set(t.category, (map.get(t.category) ?? 0) + Number(t.amount))
+    })
+    shownVirtual.filter(e => e.direction === 'expense').forEach(e => {
+      map.set(e.category, (map.get(e.category) ?? 0) + e.amount)
+    })
+    return Array.from(map.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .map((d, i) => ({ ...d, color: DONUT_PALETTE[i % DONUT_PALETTE.length] }))
+  }, [transactions, shownVirtual])
 
   function openNew() {
     setForm(emptyForm)
@@ -311,6 +336,17 @@ export default function Finances() {
         </div>
       )}
 
+      {totalExpense > 0 && (
+        <div className="chart-card">
+          <div className="chart-card-title">פילוח הוצאות לפי קטגוריה</div>
+          <DonutChart
+            data={expenseByCategory}
+            centerLabel="הוצאות"
+            formatValue={formatCurrency}
+          />
+        </div>
+      )}
+
       {showForm && (
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -404,7 +440,7 @@ export default function Finances() {
 
       {transactions.length === 0 && shownVirtual.length === 0 && (
         <div className="empty-state-cta">
-          <div className="empty-state-cta-icon"><Receipt size={40} /></div>
+          <div className="empty-state-cta-icon"><ClayIllustration variant="receipt" /></div>
           <p>אין תנועות בתקופה זו</p>
           <button className="btn-primary" onClick={openNew}>+ תנועה חדשה</button>
         </div>

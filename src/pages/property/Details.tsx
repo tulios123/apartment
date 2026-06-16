@@ -1,4 +1,5 @@
-import { House, X } from '@phosphor-icons/react'
+import { X } from '@phosphor-icons/react'
+import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useState } from 'react'
 import {
   usePropertyData,
@@ -248,7 +249,7 @@ export default function Details() {
           </div>
         ) : (
           <div className="empty-state-cta">
-            <div className="empty-state-cta-icon"><House size={40} /></div>
+            <div className="empty-state-cta-icon"><ClayIllustration variant="house" /></div>
             <p>עדיין לא הוזנו פרטי הנכס</p>
             <button className="btn-primary" onClick={() => setShowModal(true)}>+ הוסף נכס</button>
           </div>

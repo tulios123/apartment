@@ -453,28 +453,40 @@ input[type="date"] {
   gap: 12px;
 }
 
-/* Toggle group */
+/* Toggle group — ANZ-style segmented control: white floating pill on a grey track */
 .toggle-group {
   display: flex;
-  border: 1px solid var(--border);
-  border-radius: var(--r-xs);
-  overflow: hidden;
+  gap: 2px;
+  background: var(--bg-alt);
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 3px;
   width: fit-content;
 }
 
 .toggle-btn {
   border: none;
-  background: var(--surface);
-  padding: 6px 16px;
+  background: transparent;
+  border-radius: var(--r-pill);
+  padding: 7px 18px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   color: var(--text-muted);
   font-family: inherit;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 
 .toggle-btn.active {
-  background: var(--accent);
-  color: #fff;
+  background: var(--surface);
+  color: var(--text-heading);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(14,31,42,0.12);
+}
+
+.toggle-group.small .toggle-btn {
+  padding: 5px 14px;
+  font-size: 12px;
 }
 
 /* Table */
@@ -1069,11 +1081,6 @@ input[type="date"] {
   background: var(--bg);
   color: var(--text);
   text-align: center;
-}
-
-.toggle-group.small .toggle-btn {
-  padding: 3px 10px;
-  font-size: 12px;
 }
 
 /* Documents */

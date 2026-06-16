@@ -1,4 +1,5 @@
-import { FolderOpen, FileText, Image, ShieldCheck, Receipt, File, X } from '@phosphor-icons/react'
+import { FileText, Image, ShieldCheck, Receipt, File, X } from '@phosphor-icons/react'
+import { ClayIllustration } from '../components/ui/ClayIllustration'
 import React, { useState, useRef } from 'react'
 import { useDocuments, createDocument, deleteDocument } from '../hooks/useDocuments'
 import { uploadDocument, getReceiptSignedUrl } from '../lib/storage'
@@ -106,7 +107,7 @@ export default function Documents() {
 
       {!loading && documents.length === 0 && (
         <div className="empty-state-cta">
-          <div className="empty-state-cta-icon"><FolderOpen size={40} /></div>
+          <div className="empty-state-cta-icon"><ClayIllustration variant="folder" /></div>
           <p>עדיין לא הועלו מסמכים</p>
           <button className="btn-primary" onClick={openNew}>+ העלה מסמך</button>
         </div>

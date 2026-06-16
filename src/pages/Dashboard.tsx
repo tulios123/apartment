@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { House, CheckCircle, ArrowsLeftRight, ArrowDownLeft, ArrowUpRight } from '@phosphor-icons/react'
+import { ArrowDownLeft, ArrowUpRight } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 import { useMortgageData } from '../hooks/useMortgageData'
@@ -12,6 +12,7 @@ import { activeContract as findActiveContract, monthlyVirtualEntries } from '../
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import { Skeleton, SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
 import { EmptyState, PageError } from '../components/ui/EmptyState'
+import { ClayIllustration } from '../components/ui/ClayIllustration'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -145,7 +146,7 @@ export default function Dashboard() {
         </div>
       ) : !property ? (
         <EmptyState
-          icon={<House size={40} />}
+          icon={<ClayIllustration variant="house" />}
           title="עדיין לא הוגדר נכס"
           actionLabel="הגדרת נכס"
           onAction={() => navigate('/property/details')}
@@ -254,7 +255,7 @@ export default function Dashboard() {
         {loadingStats ? (
           <SkeletonList rows={3} />
         ) : attentionItems.length === 0 ? (
-          <EmptyState icon={<CheckCircle size={40} />} title="אין משימות או חידושים קרובים" />
+          <EmptyState icon={<ClayIllustration variant="check" />} title="אין משימות או חידושים קרובים" />
         ) : (
           <ul className="dashboard-task-list">
             {attentionItems.map(item => (
@@ -289,7 +290,7 @@ export default function Dashboard() {
           <SkeletonList rows={4} />
         ) : recentItems.length === 0 ? (
           <EmptyState
-            icon={<ArrowsLeftRight size={40} />}
+            icon={<ClayIllustration variant="exchange" />}
             title="אין תנועות עדיין"
             actionLabel="הוסף תנועה"
             onAction={() => navigate('/finances')}

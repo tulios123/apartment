@@ -1,4 +1,5 @@
-import { ArrowsClockwise, PencilSimple, Trash, X } from '@phosphor-icons/react'
+import { PencilSimple, Trash, X } from '@phosphor-icons/react'
+import { ClayIllustration } from '../components/ui/ClayIllustration'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -240,7 +241,7 @@ export default function RecurringItems() {
 
       {items.length === 0 ? (
         <div className="empty-state-cta">
-          <div className="empty-state-cta-icon"><ArrowsClockwise size={40} /></div>
+          <div className="empty-state-cta-icon"><ClayIllustration variant="cycle" /></div>
           <p>עדיין לא הוספת פריטים חוזרים</p>
           <button className="btn-primary" onClick={openNew}>+ פריט חדש</button>
         </div>
