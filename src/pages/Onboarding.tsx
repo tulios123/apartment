@@ -665,7 +665,8 @@ export default function Onboarding({ onComplete }: Props) {
           {graceOn && (
             <input type="number" min="1" max="24" value={trackForm.grace_months}
               onChange={e => setTF('grace_months', e.target.value)}
-              style={{ width: 64, marginRight: 8 }}
+              dir="ltr"
+              style={{ width: 64, marginRight: 8, textAlign: 'center' }}
               placeholder="12" />
           )}
         </label>
