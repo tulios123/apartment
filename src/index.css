@@ -1,23 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Rubik:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg:#f6f8fa; --bg-alt:#eef2f5; --bg-card:#ffffff; --surface:#ffffff; --surface-raised:#f1f5f7; --hover-bg:#eef2f5;
-  --border:#dde3e9; --border-strong:#c3cdd6;
-  --text:#0e1f2a; --text-primary:#0e1f2a; --text-muted:#5b6b78; --text-secondary:#5b6b78; --text-on-accent:#ffffff;
-  --accent:#0d7d7d; --accent-hover:#0a6a6a; --accent-light:#e4f2f2; --accent-ring:rgba(13,125,125,0.30); --primary:#0d7d7d; --primary-light:#e4f2f2;
-  --success:#138a5e; --success-bg:#d8f0e4; --success-text:#0d6b48;
-  --danger:#c92a2a; --danger-bg:#fbe0e0; --danger-text:#a31616;
+  /* ── ANZ Plus–inspired palette ── */
+  --bg:#f5f6f8; --bg-alt:#eef1f4; --bg-card:#ffffff; --surface:#ffffff; --surface-raised:#f5f6f8; --hover-bg:#eef1f4;
+  --border:#e3e7ec; --border-strong:#cfd6de;
+  --text:#1a1a1a; --text-primary:#1a1a1a; --text-muted:#6e7480; --text-secondary:#6e7480; --text-on-accent:#ffffff;
+  --text-heading:#0a1f44; --brand-navy:#0a1f44;
+  --accent:#2a7de1; --accent-hover:#1f66c0; --accent-light:#e8f1fc; --accent-ring:rgba(42,125,225,0.30); --primary:#2a7de1; --primary-light:#e8f1fc;
+  --success:#1fa871; --success-bg:#dcf3ea; --success-text:#127a52;
+  --danger:#e0533d; --danger-bg:#fde6e1; --danger-text:#b23420;
   --warning:#b06a00; --warning-bg:#fdf2dc; --warning-text:#8a5200;
   --accent-2:#6d4ad6; --accent-2-bg:#ece7fb;
-  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px; --radius:12px;
+  /* Chart / decorative accents */
+  --accent-coral:#f0654e; --accent-teal:#2bb39b; --sage:#dde7e0;
+  --r-xs:6px; --r-sm:8px; --r-md:16px; --r-lg:20px; --r-pill:999px; --radius:16px;
   --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px; --s-10:40px;
-  --shadow-sm:0 1px 2px rgba(14,31,42,0.04), 0 1px 3px rgba(14,31,42,0.06);
-  --shadow-md:0 2px 6px rgba(14,31,42,0.05), 0 6px 16px rgba(14,31,42,0.08);
-  --shadow-lg:0 4px 12px rgba(14,31,42,0.07), 0 18px 40px rgba(14,31,42,0.12);
+  --shadow-sm:0 1px 2px rgba(10,31,68,0.04), 0 1px 3px rgba(10,31,68,0.05);
+  --shadow-md:0 2px 6px rgba(10,31,68,0.04), 0 6px 16px rgba(10,31,68,0.07);
+  --shadow-lg:0 4px 12px rgba(10,31,68,0.06), 0 18px 40px rgba(10,31,68,0.10);
   --shadow-focus:0 0 0 3px var(--accent-ring);
   --t-fast:150ms; --t-base:200ms; --t-slow:300ms; --ease:cubic-bezier(0.4,0,0.2,1);
-  --font-body:'Rubik','Heebo',system-ui,-apple-system,sans-serif;
-  --font-display:'Frank Ruhl Libre','Rubik',Georgia,serif;
+  --font-body:'Heebo',system-ui,-apple-system,sans-serif;
+  --font-display:'Heebo',system-ui,-apple-system,sans-serif;
   --sidebar-width:210px;
   font:400 15px/1.6 var(--font-body);
   color:var(--text); background:var(--bg);
@@ -61,7 +65,7 @@ body {
 .sidebar-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-heading);
   padding: 4px 10px 16px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 6px;
@@ -229,8 +233,9 @@ body {
 
 .page-header h1 {
   font-size: 22px;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 700;
+  color: var(--text-heading);
+  letter-spacing: -0.01em;
 }
 
 /* Buttons */
@@ -238,8 +243,8 @@ body {
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: var(--r-sm);
-  padding: 8px 18px;
+  border-radius: var(--r-pill);
+  padding: 9px 20px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -254,8 +259,8 @@ body {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 8px 18px;
+  border-radius: var(--r-pill);
+  padding: 9px 20px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1463,7 +1468,7 @@ input[type="date"] {
   gap: 10px;
   padding: 10px 20px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-pill);
   background: var(--surface);
   color: var(--text);
   font-size: 14px;
@@ -1742,7 +1747,7 @@ input[type="date"] {
   background: var(--accent);
   color: white;
   border: none;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-pill);
   padding: 11px 28px;
   font-size: 15px;
   font-weight: 600;
@@ -3316,21 +3321,21 @@ input[type="date"] {
 }
 
 .dash-hero-label {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-align: center;
   margin-bottom: 6px;
 }
 
 .dash-hero-value {
-  font-size: 34px;
-  font-weight: 700;
-  color: var(--text);
+  font-size: 38px;
+  font-weight: 800;
+  color: var(--text-heading);
   letter-spacing: -0.02em;
-  line-height: 1.15;
-  margin-bottom: 18px;
+  line-height: 1.1;
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 /* Proportion bar */
@@ -3510,7 +3515,7 @@ input[type="date"] {
 /* ── Dashboard mobile overrides (≤ 480px) ─────────────────────────────────── */
 @media (max-width: 480px) {
   .dash-hero-value {
-    font-size: 26px;
+    font-size: 32px;
   }
 
   .dashboard-metrics {
