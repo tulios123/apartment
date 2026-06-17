@@ -9,6 +9,7 @@ import {
   deleteContract,
   upsertUtilities,
 } from '../../hooks/usePropertyData'
+import { syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/useRecurringItems'
 import { useAuth } from '../../contexts/AuthContext'
 import { UTILITIES } from '../../lib/constants'
 import { formatDate, formatCurrency } from '../../lib/format'
@@ -187,13 +188,27 @@ export default function Rental() {
       requires_approval: form.requires_approval,
       renewal_alert_days: [90, 30],
     }
+    let contractId: string
     if (editingContract) {
-      const { owner_id: _oi, property_id: _pi, ...updates } = payload
+      const { owner_id, property_id, ...updates } = payload
+      void owner_id; void property_id
       await updateContract(editingContract.id, updates)
+      contractId = editingContract.id
     } else {
       const contract = await createContract(payload)
+      contractId = contract.id
       await upsertUtilities(contract.id, UTILITIES.map(u => ({ utility: u, payer: 'tenant' as UtilityPayer })))
     }
+    // Keep the rent-collection recurring item in sync with requires_approval.
+    await syncRentRecurringItem({
+      id: contractId,
+      monthly_rent: payload.monthly_rent,
+      start_date: payload.start_date,
+      end_date: payload.end_date,
+      company_name: payload.company_name,
+      payment_method: payload.payment_method,
+      requires_approval: payload.requires_approval,
+    })
     setShowContractModal(false)
     setEditingContract(null)
     refetch()
@@ -201,6 +216,9 @@ export default function Rental() {
 
   async function handleDeleteContract(id: string) {
     if (!confirm('למחוק חוזה זה?')) return
+    // FK is ON DELETE SET NULL, so remove the linked rent item explicitly,
+    // otherwise it orphans and keeps generating rent tasks.
+    await deleteRentRecurringItems(id)
     await deleteContract(id)
     refetch()
   }

@@ -3,13 +3,13 @@ import { useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadDocument } from '../lib/storage'
 import { createProperty, createContract } from '../hooks/usePropertyData'
-import { createRecurringItem } from '../hooks/useRecurringItems'
+import { syncRentRecurringItem } from '../hooks/useRecurringItems'
 import { ensureMortgage, upsertMortgageTrack } from '../hooks/useMortgageData'
 import { upsertInvestmentCost } from '../hooks/useInvestmentData'
 import { createInsurancePolicy } from '../hooks/useInsurance'
 import { supabase } from '../lib/supabase'
 import { monthlyPayment } from '../lib/mortgage'
-import { MORTGAGE_TRACK_TYPES, RENT_CATEGORIES } from '../lib/constants'
+import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
 import type { TrackType } from '../types'
 
 // ── Step types ────────────────────────────────────────────────────────────────
@@ -289,8 +289,8 @@ export default function Onboarding({ onComplete }: Props) {
             end_date: endDate,
             monthly_rent: parseFloat(monthlyRent),
             deposit: null,
-            payment_method: null,
-            requires_approval: false,
+            payment_method: rentPaymentMethod,
+            requires_approval: addRentReminder,
             renewal_alert_days: [90, 30],
           })
         }
@@ -357,22 +357,22 @@ export default function Onboarding({ onComplete }: Props) {
         }
       }
 
-      // Recurring rent reminder — non-fatal
-      if (addRentReminder && contract && monthlyRent) {
+      // Rent-collection recurring item, derived from the contract's requires_approval
+      // flag (set above from addRentReminder) — single source of truth. Non-fatal.
+      if (contract && monthlyRent) {
         try {
-          await createRecurringItem({
-            contract_id: contract.id,
-            direction: 'income',
-            amount: parseFloat(monthlyRent),
-            category: RENT_CATEGORIES[0],
-            day_of_month: parseInt(rentPaymentDay, 10) || 1,
-            start_date: startDate || new Date().toISOString().slice(0, 10),
-            end_date: endDate || null,
-            payee: companyName.trim() || null,
-            execution_type: 'requires_approval',
-            payment_method: rentPaymentMethod,
-            renewal_alert_days: [90, 30],
-          })
+          await syncRentRecurringItem(
+            {
+              id: contract.id,
+              monthly_rent: parseFloat(monthlyRent),
+              start_date: startDate || new Date().toISOString().slice(0, 10),
+              end_date: endDate || null,
+              company_name: companyName.trim(),
+              payment_method: rentPaymentMethod,
+              requires_approval: addRentReminder,
+            },
+            { dayOfMonth: parseInt(rentPaymentDay, 10) || 1 },
+          )
         } catch {
           failures.push('תזכורת שכירות')
         }
