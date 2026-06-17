@@ -37,7 +37,7 @@ export default function PropertyHub() {
   const [open, setOpen] = useState(() => resolveSection(section))
 
   const { property, contracts, loading: loadingProp } = usePropertyData()
-  const { summary, tracks, loading: loadingMortgage } = useMortgageData()
+  const { summary, loading: loadingMortgage } = useMortgageData()
   const { totalInvested, loading: loadingInv } = useInvestmentData()
   const { policies, loading: loadingIns } = useInsurance()
 

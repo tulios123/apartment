@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { loanBalance, loanInterestToDate } from '../lib/loans'
+import { loanBalance, loanInterestToDate, loanMonthlyPayment } from '../lib/loans'
 import type { Loan, LoanRepaymentType } from '../types'
 
 export interface LoansSummary {
   /** Outstanding balance across monthly_fixed loans (Shpitzer). */
   monthlyBalance: number
+  /** Derived (never shown in the loan card) combined Shpitzer monthly payment. */
+  monthlyPayment: number
   /** Interest paid to date across monthly_fixed loans. */
   interestPaidToDate: number
   /** Outstanding balloon principal (repaid on sale). */
@@ -55,6 +57,7 @@ export function useLoansData(): LoansData {
 
   const summary: LoansSummary = {
     monthlyBalance: monthlyLoans.reduce((s, l) => s + loanBalance(l), 0),
+    monthlyPayment: monthlyLoans.reduce((s, l) => s + loanMonthlyPayment(l), 0),
     interestPaidToDate: monthlyLoans.reduce((s, l) => s + loanInterestToDate(l), 0),
     balloonOutstanding: balloonLoans.reduce((s, l) => s + l.principal, 0),
   }

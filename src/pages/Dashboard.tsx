@@ -5,12 +5,13 @@ import { useDashboardStats } from '../hooks/useDashboardStats'
 import { useMortgageData } from '../hooks/useMortgageData'
 import { usePropertyData } from '../hooks/usePropertyData'
 import { useInvestmentData } from '../hooks/useInvestmentData'
+import { useLoansData } from '../hooks/useLoansData'
 import { useInsurance } from '../hooks/useInsurance'
 import { formatCurrency, formatDate } from '../lib/format'
 import { gracePeriodPayment } from '../lib/mortgage'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
-import { Skeleton, SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
+import { Skeleton, SkeletonList } from '../components/ui/Skeleton'
 import { EmptyState, PageError } from '../components/ui/EmptyState'
 import { ClayIllustration } from '../components/ui/ClayIllustration'
 import { DonutChart } from '../components/ui/DonutChart'
@@ -40,9 +41,10 @@ export default function Dashboard() {
   const { summary, tracks, loading: loadingMortgage } = useMortgageData()
   const { property, contracts, utilities, loading: loadingProperty } = usePropertyData()
   const { totalInvested, rentReceived, loading: loadingInvestment } = useInvestmentData()
+  const { summary: loansSummary, loading: loadingLoans } = useLoansData()
   const { policies, loading: loadingInsurance } = useInsurance()
 
-  const summaryLoading = loadingProperty || loadingMortgage || loadingInvestment
+  const summaryLoading = loadingProperty || loadingMortgage || loadingInvestment || loadingLoans
   const flowLoading = loadingProperty || loadingMortgage || loadingInsurance || loadingStats
   const recentLoading = loadingStats || loadingProperty || loadingMortgage
 
@@ -51,12 +53,16 @@ export default function Dashboard() {
   // ── Computations ──────────────────────────────────────────────────────────
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
   const mortgageBalance = summary.currentBalance || 0
-  const equity = propertyValue - mortgageBalance
+  const loanBalance = loansSummary.monthlyBalance || 0
+  const balloonBalance = loansSummary.balloonOutstanding || 0
+  const totalDebt = mortgageBalance + loanBalance + balloonBalance
+  const equity = propertyValue - totalDebt
 
   const now = new Date()
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
   const monthlyMortgage = summary.monthlyPayment || 0
+  const monthlyLoan = loansSummary.monthlyPayment || 0
   const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
 
   const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
@@ -70,12 +76,16 @@ export default function Dashboard() {
   )
   const monthlyOwnerUtilities = ownerUtilities.reduce((s, u) => s + (u.amount ?? 0), 0)
 
-  const monthlyNet = monthlyRent - selectedMortgage - monthlyInsurance - monthlyOwnerUtilities
+  const monthlyNet = monthlyRent - selectedMortgage - monthlyLoan - monthlyInsurance - monthlyOwnerUtilities
   const grossYield =
     propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
 
-  const equityPct = propertyValue > 0 ? Math.max(0, Math.min(100, (equity / propertyValue) * 100)) : 0
-  const debtPct = 100 - equityPct
+  // Equity bar — each liability gets its own segment (and colour).
+  const barPct = (v: number) => propertyValue > 0 ? Math.max(0, Math.min(100, (v / propertyValue) * 100)) : 0
+  const equityPct = barPct(equity)
+  const mortgagePct = barPct(mortgageBalance)
+  const loanPct = barPct(loanBalance)
+  const balloonPct = barPct(balloonBalance)
 
   // ── Attention items ──────────────────────────────────────────────────────
   type AttentionItem = {
@@ -144,6 +154,7 @@ export default function Dashboard() {
   const dashExpenseBreakdown = (() => {
     const map = new Map<string, number>()
     if (selectedMortgage > 0) map.set('משכנתא', selectedMortgage)
+    if (monthlyLoan > 0) map.set('הלוואה', monthlyLoan)
     if (monthlyInsurance > 0) map.set('ביטוח', monthlyInsurance)
     if (monthlyOwnerUtilities > 0) map.set('חשבונות', monthlyOwnerUtilities)
     extraExpenseTxs.forEach(t => {
@@ -155,7 +166,7 @@ export default function Dashboard() {
       .map((d, i) => ({ ...d, color: DONUT_PALETTE[i % DONUT_PALETTE.length] }))
   })()
 
-  const dashTotalExpense = selectedMortgage + monthlyInsurance + monthlyOwnerUtilities + extraExpense
+  const dashTotalExpense = selectedMortgage + monthlyLoan + monthlyInsurance + monthlyOwnerUtilities + extraExpense
   const dashTotalIncome = monthlyRent + extraIncome
 
   return (
@@ -204,11 +215,21 @@ export default function Dashboard() {
 
               <div className="dash-equity-bar">
                 <div className="dash-equity-bar-own" style={{ width: `${equityPct}%` }} />
-                <div className="dash-equity-bar-debt" style={{ width: `${debtPct}%` }} />
+                {mortgageBalance > 0 && <div className="dash-equity-bar-debt" style={{ width: `${mortgagePct}%` }} />}
+                {loanBalance > 0 && <div className="dash-equity-bar-loan" style={{ width: `${loanPct}%` }} />}
+                {balloonBalance > 0 && <div className="dash-equity-bar-balloon" style={{ width: `${balloonPct}%` }} />}
               </div>
               <div className="dash-equity-legend">
-                <span>שווי נכס {formatCurrency(propertyValue)}</span>
-                <span>יתרת משכנתא {formatCurrency(mortgageBalance)}</span>
+                <span className="dash-legend-item"><i className="dash-legend-dot own" />שווי נכס {formatCurrency(propertyValue)}</span>
+                {mortgageBalance > 0 && (
+                  <span className="dash-legend-item"><i className="dash-legend-dot debt" />משכנתא {formatCurrency(mortgageBalance)}</span>
+                )}
+                {loanBalance > 0 && (
+                  <span className="dash-legend-item"><i className="dash-legend-dot loan" />הלוואות {formatCurrency(loanBalance)}</span>
+                )}
+                {balloonBalance > 0 && (
+                  <span className="dash-legend-item"><i className="dash-legend-dot balloon" />בלון {formatCurrency(balloonBalance)}</span>
+                )}
               </div>
               {(grossYield != null || totalInvested > 0 || rentReceived > 0) && (
                 <div className="dash-hero-metrics">
@@ -279,6 +300,13 @@ export default function Dashboard() {
                     {selectedMortgage > 0 ? formatCurrency(selectedMortgage) : <span className="text-muted">—</span>}
                   </span>
                 </div>
+                {monthlyLoan > 0 && (
+                  <div className="inv-flow-row">
+                    <span className="inv-flow-sign negative">−</span>
+                    <span className="inv-flow-label">הלוואה</span>
+                    <span className="inv-flow-amount negative">{formatCurrency(monthlyLoan)}</span>
+                  </div>
+                )}
                 {monthlyInsurance > 0 && (
                   <div className="inv-flow-row">
                     <span className="inv-flow-sign negative">−</span>
@@ -339,7 +367,7 @@ export default function Dashboard() {
             <div className="dash-upcoming-subtitle">משכנתא, ביטוח ועוד</div>
           </div>
           <div className="dash-upcoming-amount negative">
-            {formatCurrency(selectedMortgage + monthlyInsurance + monthlyOwnerUtilities)}
+            {formatCurrency(selectedMortgage + monthlyLoan + monthlyInsurance + monthlyOwnerUtilities)}
           </div>
         </div>
       )}

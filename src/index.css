@@ -3376,14 +3376,43 @@ input[type="date"] {
   display: none;
 }
 
+/* Supplementary loan + balloon segments — distinct colours from the mortgage */
+.dash-equity-bar-loan {
+  background: #c4b5fd; /* muted violet */
+  min-width: 4px;
+  transition: width 0.4s ease;
+}
+.dash-equity-bar-balloon {
+  background: #fcd34d; /* muted amber */
+  min-width: 4px;
+  transition: width 0.4s ease;
+}
+
 .dash-equity-legend {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
   color: var(--text-muted);
-  gap: 8px;
+  gap: 8px 12px;
   flex-wrap: wrap;
 }
+
+.dash-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dash-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dash-legend-dot.own { background: var(--success); }
+.dash-legend-dot.debt { background: #fca5a5; }
+.dash-legend-dot.loan { background: #c4b5fd; }
+.dash-legend-dot.balloon { background: #fcd34d; }
 
 /* Investment metrics row inside hero */
 .dash-hero-metrics {
