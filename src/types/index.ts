@@ -153,6 +153,7 @@ export interface Loan {
   principal: number
   annual_rate: number | null       // monthly_fixed only — drives Shpitzer schedule
   term_months: number | null       // monthly_fixed only
+  grace_months: number | null      // monthly_fixed only — interest-only months at start
   start_date: string | null
   notes: string | null
   created_at: string

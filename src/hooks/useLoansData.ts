@@ -75,6 +75,7 @@ export async function upsertLoan(data: {
   principal: number
   annual_rate?: number | null
   term_months?: number | null
+  grace_months?: number | null
   start_date?: string | null
   notes?: string | null
 }): Promise<Loan> {
@@ -85,6 +86,7 @@ export async function upsertLoan(data: {
     principal: data.principal,
     annual_rate: data.annual_rate ?? null,
     term_months: data.term_months ?? null,
+    grace_months: data.grace_months ?? null,
     start_date: data.start_date ?? null,
     notes: data.notes ?? null,
   }

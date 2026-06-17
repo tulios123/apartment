@@ -47,8 +47,11 @@ type LoanDraft = {
   principal: string
   annual_rate: string
   term_months: string
+  grace_months: string
   start_date: string
 }
+
+type ExtraCost = { name: string; amount: string }
 
 function emptyTrack(startDate?: string): TrackDraft {
   return {
@@ -75,6 +78,7 @@ function emptyLoan(startDate?: string): LoanDraft {
     principal: '',
     annual_rate: '',
     term_months: '',
+    grace_months: '',
     start_date: startDate || new Date().toISOString().slice(0, 10),
   }
 }
@@ -138,6 +142,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('percent')
   const [equityValue, setEquityValue] = useState('')
   const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '' })
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([])
 
   // ── Focused input tracking (for grey-placeholder UX) ──
   const [focusedInput, setFocusedInput] = useState<string | null>(null)
@@ -161,6 +166,7 @@ export default function Onboarding({ onComplete }: Props) {
   // ── Loans ──
   const [loans, setLoans] = useState<LoanDraft[]>([])
   const [loanForm, setLoanForm] = useState<LoanDraft>(emptyLoan())
+  const [loanGraceOn, setLoanGraceOn] = useState(false)
   const [showLoanForm, setShowLoanForm] = useState(true)
   const [editingLoanIdx, setEditingLoanIdx] = useState<number | null>(null)
 
@@ -168,13 +174,20 @@ export default function Onboarding({ onComplete }: Props) {
   const rentalInputRef = useRef<HTMLInputElement>(null)
 
   // ── Navigation ──────────────────────────────────────────────────────────────
+  function dismissKeyboardAndScrollTop() {
+    ;(document.activeElement as HTMLElement)?.blur()
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }
+
   function back() {
+    dismissKeyboardAndScrollTop()
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
     else setStep('welcome')
   }
 
   function advance(next: Step) {
+    dismissKeyboardAndScrollTop()
     setError(null)
     setStep(next)
   }
@@ -193,6 +206,7 @@ export default function Onboarding({ onComplete }: Props) {
   const equityPercent = price > 0 ? equityAmount / price * 100 : 0
   const costsTotal = (parseFloat(effLawyer) || 0) + (parseFloat(effBrokerage) || 0)
     + (parseFloat(costs.mortgage_advisor) || 0) + (parseFloat(costs.investment_company) || 0)
+    + extraCosts.reduce((s, ec) => s + (parseFloat(ec.amount) || 0), 0)
 
   // ── Derived: mortgage track live preview ─────────────────────────────────────
   function trackEffectiveRate(d: TrackDraft): number {
@@ -235,14 +249,10 @@ export default function Onboarding({ onComplete }: Props) {
         key_delivery_date: keyDeliveryDate || null,
         property_size_sqm: propertySizeSqm ? parseFloat(propertySizeSqm) : null,
         floor: floorNumber !== '' ? parseInt(floorNumber, 10) : null,
-        // NOTE: the DB `rooms` column is currently `integer` (migration 008), so a
-        // half-room like 4.5 can't be stored yet. Apply migration 015_rooms_numeric.sql
-        // (npx supabase db push) then change this to parseFloat(rooms) for true 4.5.
         rooms: rooms !== '' ? parseInt(rooms, 10) : null,
       })
 
-      // 2. Mortgage tracks — non-fatal
-      // Fix 3: only include the inline pending form if the user actually typed a principal
+      // Normalise track/loan data once before fanning out
       const normTrack = (d: TrackDraft): TrackDraft => ({
         ...d,
         annual_rate: d.annual_rate || '5.000',
@@ -257,184 +267,207 @@ export default function Onboarding({ onComplete }: Props) {
         else if (showTrackForm) allTracks.push(normTrack(trackForm))
       }
       const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0)
-      if (validTracks.length > 0) {
-        try {
-          const m = await ensureMortgage(user.id, property.id)
-          for (const d of validTracks) {
-            const effRate = trackEffectiveRate(d)
-            const isAnchored = d.track_type === 'prime' || d.track_type === 'variable'
-            const primeDefault = d.track_type === 'prime' ? 6.25 : 0
-            const marginDefault = d.track_type === 'prime' ? -0.5 : 0
-            await upsertMortgageTrack({
-              mortgage_id: m.id,
-              owner_id: user.id,
-              label: null,
-              track_type: d.track_type,
-              principal: parseFloat(d.principal) || 0,
-              annual_rate: effRate,
-              prime_rate: isAnchored ? (parseFloat(d.prime_rate) || primeDefault) : null,
-              margin: isAnchored ? (parseFloat(d.margin) || marginDefault) : null,
-              term_months: parseInt(d.term_months) || 360,
-              grace_months: parseInt(d.grace_months) || 0,
-              start_date: d.start_date,
-            })
+
+      const pendingLoanValid = (parseFloat(loanForm.principal) || 0) > 0
+      const allLoans = [...loans]
+      if (pendingLoanValid) {
+        if (editingLoanIdx !== null) allLoans[editingLoanIdx] = normalizeLoanDraft()
+        else if (showLoanForm) allLoans.push(normalizeLoanDraft())
+      }
+
+      const pendingPolicyValid = policyForm.company.trim() !== '' || policyForm.monthly_premium !== ''
+      const allPolicies = [...policies]
+      if (pendingPolicyValid) {
+        if (editingPolicyIdx !== null) allPolicies[editingPolicyIdx] = policyForm
+        else if (showPolicyForm) allPolicies.push(policyForm)
+      }
+
+      // 2-6. Fan out all non-fatal operations in parallel after property is created
+      let contract: Awaited<ReturnType<typeof createContract>> | null = null
+
+      await Promise.all([
+        // Mortgage tracks
+        (async () => {
+          if (validTracks.length === 0) return
+          try {
+            const m = await ensureMortgage(user.id, property.id)
+            await Promise.all(validTracks.map(d => {
+              const effRate = trackEffectiveRate(d)
+              const isAnchored = d.track_type === 'prime' || d.track_type === 'variable'
+              const primeDefault = d.track_type === 'prime' ? 6.25 : 0
+              const marginDefault = d.track_type === 'prime' ? -0.5 : 0
+              return upsertMortgageTrack({
+                mortgage_id: m.id,
+                owner_id: user.id,
+                label: null,
+                track_type: d.track_type,
+                principal: parseFloat(d.principal) || 0,
+                annual_rate: effRate,
+                prime_rate: isAnchored ? (parseFloat(d.prime_rate) || primeDefault) : null,
+                margin: isAnchored ? (parseFloat(d.margin) || marginDefault) : null,
+                term_months: parseInt(d.term_months) || 360,
+                grace_months: parseInt(d.grace_months) || 0,
+                start_date: d.start_date,
+              })
+            }))
+          } catch {
+            failures.push('משכנתא')
           }
-        } catch {
-          failures.push('משכנתא')
-        }
-      }
+        })(),
 
-      // 2.5 Loans — non-fatal
-      try {
-        const pendingLoanValid = (parseFloat(loanForm.principal) || 0) > 0
-        const allLoans = [...loans]
-        if (pendingLoanValid) {
-          if (editingLoanIdx !== null) allLoans[editingLoanIdx] = normalizeLoanDraft()
-          else if (showLoanForm) allLoans.push(normalizeLoanDraft())
-        }
-        for (const d of allLoans) {
-          if ((parseFloat(d.principal) || 0) <= 0) continue
-          const isMonthly = d.repayment_type === 'monthly_fixed'
-          await upsertLoan({
-            owner_id: user.id,
-            property_id: property.id,
-            label: d.label.trim() || null,
-            lender: d.lender.trim() || null,
-            repayment_type: d.repayment_type,
-            principal: parseFloat(d.principal) || 0,
-            annual_rate: isMonthly ? (parseFloat(d.annual_rate) || 0) : null,
-            term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
-            start_date: isMonthly ? (d.start_date || null) : (d.start_date || keyDeliveryDate || null),
-          })
-        }
-      } catch {
-        failures.push('הלוואות')
-      }
-
-      // 3. Investment costs — non-fatal
-      try {
-        if (equityAmount > 0) {
-          await upsertInvestmentCost({ owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount })
-        }
-        const effectiveCosts = {
-          lawyer: parseFloat(effLawyer) || 0,
-          brokerage: parseFloat(effBrokerage) || 0,
-          mortgage_advisor: parseFloat(costs.mortgage_advisor) || 0,
-          investment_company: parseFloat(costs.investment_company) || 0,
-        }
-        for (const [key, val] of Object.entries(effectiveCosts) as [keyof typeof costs, number][]) {
-          if (val > 0) {
-            await upsertInvestmentCost({ owner_id: user.id, category: key, label: null, amount: val })
+        // Loans
+        (async () => {
+          try {
+            await Promise.all(allLoans
+              .filter(d => (parseFloat(d.principal) || 0) > 0)
+              .map(d => {
+                const isMonthly = d.repayment_type === 'monthly_fixed'
+                return upsertLoan({
+                  owner_id: user.id,
+                  property_id: property.id,
+                  label: d.label.trim() || null,
+                  lender: d.lender.trim() || null,
+                  repayment_type: d.repayment_type,
+                  principal: parseFloat(d.principal) || 0,
+                  annual_rate: isMonthly ? (parseFloat(d.annual_rate) || 0) : null,
+                  term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
+                  grace_months: isMonthly ? (parseInt(d.grace_months) || null) : null,
+                  start_date: isMonthly ? (d.start_date || null) : (d.start_date || keyDeliveryDate || null),
+                })
+              })
+            )
+          } catch {
+            failures.push('הלוואות')
           }
-        }
-      } catch {
-        failures.push('עלויות השקעה')
-      }
+        })(),
 
-      // 4. Rental contract — non-fatal
-      let contract = null
-      try {
-        if (companyName.trim() && startDate && endDate && monthlyRent) {
-          contract = await createContract({
-            owner_id: user.id,
-            property_id: property.id,
-            company_name: companyName.trim(),
-            contact_name: null,
-            contact_phone: null,
-            start_date: startDate,
-            end_date: endDate,
-            monthly_rent: parseFloat(monthlyRent),
-            deposit: null,
-            payment_method: rentPaymentMethod,
-            requires_approval: addRentReminder,
-            renewal_alert_days: [90, 30],
-          })
-        }
-      } catch {
-        failures.push('שכירות')
-      }
+        // Investment costs
+        (async () => {
+          try {
+            const tasks = []
+            if (equityAmount > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount }))
+            const fixedCosts: [string, number][] = [
+              ['lawyer', parseFloat(effLawyer) || 0],
+              ['brokerage', parseFloat(effBrokerage) || 0],
+              ['mortgage_advisor', parseFloat(costs.mortgage_advisor) || 0],
+              ['investment_company', parseFloat(costs.investment_company) || 0],
+            ]
+            for (const [key, val] of fixedCosts) {
+              if (val > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: key, label: null, amount: val }))
+            }
+            for (const ec of extraCosts) {
+              const val = parseFloat(ec.amount) || 0
+              if (val > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: 'other', label: ec.name.trim() || null, amount: val }))
+            }
+            await Promise.all(tasks)
+          } catch {
+            failures.push('עלויות השקעה')
+          }
+        })(),
 
-      // 5. Insurance policies — non-fatal
-      try {
-        const pendingPolicyValid = policyForm.company.trim() !== '' || policyForm.monthly_premium !== ''
-        const allPolicies = [...policies]
-        if (pendingPolicyValid) {
-          if (editingPolicyIdx !== null) allPolicies[editingPolicyIdx] = policyForm
-          else if (showPolicyForm) allPolicies.push(policyForm)
-        }
-        for (const p of allPolicies) {
-          if (p.company.trim() || p.monthly_premium) {
-            await createInsurancePolicy({
+        // Rental contract
+        (async () => {
+          if (!companyName.trim() || !startDate || !endDate || !monthlyRent) return
+          try {
+            contract = await createContract({
               owner_id: user.id,
               property_id: property.id,
-              type: p.type,
-              company: p.company.trim() || null,
-              policy_number: null,
-              monthly_premium: p.monthly_premium ? parseFloat(p.monthly_premium) : null,
-              start_date: p.start_date || keyDeliveryDate || null,
-              end_date: p.end_date || null,
-              notes: null,
-            })
-          }
-        }
-      } catch {
-        failures.push('ביטוח')
-      }
-
-      // 6. Purchase file — non-fatal
-      if (purchaseFile) {
-        try {
-          const docId = crypto.randomUUID()
-          const path = await uploadDocument(purchaseFile, docId)
-          await supabase.from('documents').insert({
-            id: docId, owner_id: user.id, property_id: property.id,
-            contract_id: null, transaction_id: null,
-            type: 'purchase_contract', name: purchaseFile.name,
-            storage_path: path, date: signingDate || null,
-          })
-        } catch {
-          failures.push('קובץ חוזה רכישה')
-        }
-      }
-
-      // Rental file — non-fatal
-      if (rentalFile && contract) {
-        try {
-          const docId = crypto.randomUUID()
-          const path = await uploadDocument(rentalFile, docId)
-          await supabase.from('documents').insert({
-            id: docId, owner_id: user.id, property_id: property.id,
-            contract_id: contract.id, transaction_id: null,
-            type: 'rental_contract', name: rentalFile.name,
-            storage_path: path, date: startDate || null,
-          })
-        } catch {
-          failures.push('קובץ חוזה שכירות')
-        }
-      }
-
-      // Rent-collection recurring item, derived from the contract's requires_approval
-      // flag (set above from addRentReminder) — single source of truth. Non-fatal.
-      if (contract && monthlyRent) {
-        try {
-          await syncRentRecurringItem(
-            {
-              id: contract.id,
-              monthly_rent: parseFloat(monthlyRent),
-              start_date: startDate || new Date().toISOString().slice(0, 10),
-              end_date: endDate || null,
               company_name: companyName.trim(),
+              contact_name: null,
+              contact_phone: null,
+              start_date: startDate,
+              end_date: endDate,
+              monthly_rent: parseFloat(monthlyRent),
+              deposit: null,
               payment_method: rentPaymentMethod,
               requires_approval: addRentReminder,
-            },
-            { dayOfMonth: parseInt(rentPaymentDay, 10) || 1 },
-          )
-        } catch {
-          failures.push('תזכורת שכירות')
-        }
+              renewal_alert_days: [90, 30],
+            })
+          } catch {
+            failures.push('שכירות')
+          }
+        })(),
+
+        // Insurance policies
+        (async () => {
+          try {
+            await Promise.all(allPolicies
+              .filter(p => p.company.trim() || p.monthly_premium)
+              .map(p => createInsurancePolicy({
+                owner_id: user.id,
+                property_id: property.id,
+                type: p.type,
+                company: p.company.trim() || null,
+                policy_number: null,
+                monthly_premium: p.monthly_premium ? parseFloat(p.monthly_premium) : null,
+                start_date: p.start_date || keyDeliveryDate || null,
+                end_date: p.end_date || null,
+                notes: null,
+              }))
+            )
+          } catch {
+            failures.push('ביטוח')
+          }
+        })(),
+
+        // Purchase file
+        (async () => {
+          if (!purchaseFile) return
+          try {
+            const docId = crypto.randomUUID()
+            const path = await uploadDocument(purchaseFile, docId)
+            await supabase.from('documents').insert({
+              id: docId, owner_id: user.id, property_id: property.id,
+              contract_id: null, transaction_id: null,
+              type: 'purchase_contract', name: purchaseFile.name,
+              storage_path: path, date: signingDate || null,
+            })
+          } catch {
+            failures.push('קובץ חוזה רכישה')
+          }
+        })(),
+      ])
+
+      // Rental file + recurring — depend on contract being created above
+      if (contract) {
+        await Promise.all([
+          (async () => {
+            if (!rentalFile) return
+            try {
+              const docId = crypto.randomUUID()
+              const path = await uploadDocument(rentalFile, docId)
+              await supabase.from('documents').insert({
+                id: docId, owner_id: user.id, property_id: property.id,
+                contract_id: (contract as NonNullable<typeof contract>).id, transaction_id: null,
+                type: 'rental_contract', name: rentalFile.name,
+                storage_path: path, date: startDate || null,
+              })
+            } catch {
+              failures.push('קובץ חוזה שכירות')
+            }
+          })(),
+          (async () => {
+            if (!monthlyRent) return
+            try {
+              await syncRentRecurringItem(
+                {
+                  id: (contract as NonNullable<typeof contract>).id,
+                  monthly_rent: parseFloat(monthlyRent),
+                  start_date: startDate || new Date().toISOString().slice(0, 10),
+                  end_date: endDate || null,
+                  company_name: companyName.trim(),
+                  payment_method: rentPaymentMethod,
+                  requires_approval: addRentReminder,
+                },
+                { dayOfMonth: parseInt(rentPaymentDay, 10) || 1 },
+              )
+            } catch {
+              failures.push('תזכורת שכירות')
+            }
+          })(),
+        ])
       }
 
-      // Surface partial-save notice if needed, then always complete
       if (failures.length > 0) {
         setError(`חלק מהפרטים לא נשמרו: ${failures.join(', ')} — ניתן להוסיף אותם מתוך האפליקציה`)
       }
@@ -635,6 +668,7 @@ export default function Onboarding({ onComplete }: Props) {
     if (!loanIsValid(loanForm)) return
     setLoans(prev => [...prev, normalizeLoanDraft()])
     setLoanForm(emptyLoan(keyDeliveryDate || undefined))
+    setLoanGraceOn(false)
     setShowLoanForm(false)
   }
 
@@ -653,6 +687,7 @@ export default function Onboarding({ onComplete }: Props) {
     }
     setEditingLoanIdx(null)
     setLoanForm(emptyLoan(keyDeliveryDate || undefined))
+    setLoanGraceOn(false)
     setShowLoanForm(true)
   }
 
@@ -858,23 +893,31 @@ export default function Onboarding({ onComplete }: Props) {
           <label>סוג הלוואה</label>
           <div className="toggle-group">
             <button type="button" className={`toggle-btn${isMonthly ? ' active' : ''}`}
-              onClick={() => setLF('repayment_type', 'monthly_fixed')}>הלוואה משלימה</button>
+              onClick={() => { setLF('repayment_type', 'monthly_fixed'); setLoanGraceOn(false) }}>הלוואה משלימה</button>
             <button type="button" className={`toggle-btn${!isMonthly ? ' active' : ''}`}
-              onClick={() => setLF('repayment_type', 'balloon')}>בלון</button>
+              onClick={() => { setLF('repayment_type', 'balloon'); setLoanGraceOn(false) }}>בלון</button>
           </div>
         </div>
-        <div className="onboarding-row">
-          <div className="onboarding-field">
-            <label>תיאור</label>
-            <input type="text" placeholder={isMonthly ? 'הלוואה משלימה' : 'הלוואת בלון'} value={loanForm.label}
-              onChange={e => setLF('label', e.target.value)} />
+        {isMonthly ? (
+          <div className="onboarding-row">
+            <div className="onboarding-field">
+              <label>תיאור</label>
+              <input type="text" placeholder="הלוואה משלימה" value={loanForm.label}
+                onChange={e => setLF('label', e.target.value)} />
+            </div>
+            <div className="onboarding-field">
+              <label>נותן ההלוואה</label>
+              <input type="text" placeholder="בנק" value={loanForm.lender}
+                onChange={e => setLF('lender', e.target.value)} />
+            </div>
           </div>
+        ) : (
           <div className="onboarding-field">
-            <label>נותן ההלוואה</label>
-            <input type="text" placeholder={isMonthly ? 'בנק' : 'הורים'} value={loanForm.lender}
+            <label>שם</label>
+            <input type="text" placeholder="הורים" value={loanForm.lender}
               onChange={e => setLF('lender', e.target.value)} />
           </div>
-        </div>
+        )}
         <div className="onboarding-field">
           <label>סכום ההלוואה (₪)</label>
           <input type="text" inputMode="numeric" placeholder="0"
@@ -900,6 +943,21 @@ export default function Onboarding({ onComplete }: Props) {
               <input type="date" value={loanForm.start_date}
                 onChange={e => setLF('start_date', e.target.value)} />
             </div>
+            <label className="onboarding-checkbox-row">
+              <input type="checkbox" checked={loanGraceOn}
+                onChange={e => {
+                  setLoanGraceOn(e.target.checked)
+                  setLF('grace_months', e.target.checked ? '12' : '')
+                }} />
+              <span>גרייס (חודשי ריבית בלבד)</span>
+              {loanGraceOn && (
+                <input type="number" min="1" max="24" value={loanForm.grace_months}
+                  onChange={e => setLF('grace_months', e.target.value)}
+                  dir="ltr"
+                  style={{ width: 64, marginRight: 8, textAlign: 'center' }}
+                  placeholder="12" />
+              )}
+            </label>
           </>
         ) : (
           <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
@@ -1354,6 +1412,32 @@ export default function Onboarding({ onComplete }: Props) {
                           onChange={e => setCosts(c => ({ ...c, investment_company: e.target.value.replace(/[^\d]/g, '') }))} />
                       </div>
                     </div>
+                    {/* Extra custom costs */}
+                    {extraCosts.map((ec, i) => (
+                      <div className="onboarding-row" key={i}>
+                        <div className="onboarding-field">
+                          <label>שם עלות</label>
+                          <input type="text" placeholder="תיאור" value={ec.name}
+                            onChange={e => setExtraCosts(prev => prev.map((c, j) => j === i ? { ...c, name: e.target.value } : c))} />
+                        </div>
+                        <div className="onboarding-field">
+                          <label>סכום (₪)</label>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <input type="text" inputMode="numeric" placeholder="0"
+                              value={formatNum(ec.amount)}
+                              onChange={e => setExtraCosts(prev => prev.map((c, j) => j === i ? { ...c, amount: e.target.value.replace(/[^\d]/g, '') } : c))} />
+                            <button type="button" onClick={() => setExtraCosts(prev => prev.filter((_, j) => j !== i))}
+                              style={{ flexShrink: 0, padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', cursor: 'pointer' }}>
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button type="button" className="btn-onboard-skip onboarding-add-btn"
+                      onClick={() => setExtraCosts(prev => [...prev, { name: '', amount: '' }])}>
+                      + הוסף עלות
+                    </button>
                   </>
                 )
               })()}
@@ -1391,7 +1475,17 @@ export default function Onboarding({ onComplete }: Props) {
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label>תאריך התחלה</label>
-                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                  <input type="date" value={startDate}
+                    onChange={e => {
+                      const val = e.target.value
+                      setStartDate(val)
+                      if (!endDate && val) {
+                        const d = new Date(val)
+                        d.setFullYear(d.getFullYear() + 1)
+                        d.setDate(d.getDate() - 1)
+                        setEndDate(d.toISOString().slice(0, 10))
+                      }
+                    }} />
                 </div>
                 <div className="onboarding-field">
                   <label>תאריך סיום</label>

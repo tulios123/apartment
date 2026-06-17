@@ -1635,6 +1635,7 @@ input[type="date"] {
 
 .onboarding-field input {
   width: 100%;
+  box-sizing: border-box;
   padding: 10px 14px;
   border: 1.5px solid var(--border);
   border-radius: var(--r-sm);
@@ -1643,6 +1644,12 @@ input[type="date"] {
   background: var(--surface);
   transition: border-color 0.15s, box-shadow 0.15s;
   font-family: inherit;
+}
+
+.onboarding-field input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: normal;
 }
 
 .onboarding-field input:focus {
