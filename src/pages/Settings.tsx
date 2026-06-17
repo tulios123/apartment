@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { resetListCache } from '../lib/googleTasks'
 
 const GENERATION_KEY = 'monthly_generation'
+const MANAGER_EMAIL = 'dev@test.local'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
@@ -95,7 +96,7 @@ export default function Settings() {
           </div>
         </section>
 
-        {import.meta.env.DEV && (
+        {(import.meta.env.DEV || user?.email === MANAGER_EMAIL) && (
         <section className="settings-section">
           <h2>פיתוח ובדיקה</h2>
           <p className="settings-note">
