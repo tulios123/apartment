@@ -12,12 +12,14 @@ export function DonutChart({
   thickness = 24,
   centerLabel,
   formatValue,
+  showLegend = true,
 }: {
   data: DonutDatum[]
   size?: number
   thickness?: number
   centerLabel?: string
   formatValue?: (n: number) => string
+  showLegend?: boolean
 }) {
   const fmt = formatValue ?? String
   const total = data.reduce((sum, d) => sum + d.value, 0)
@@ -41,7 +43,7 @@ export function DonutChart({
   const ariaLabel = data.map(d => `${d.label}: ${fmt(d.value)}`).join(', ')
 
   return (
-    <div className="donut-chart-wrap">
+    <div className={`donut-chart-wrap${showLegend ? '' : ' donut-chart-mini'}`}>
       <div className="donut-svg-container" style={{ width: size, height: size }} role="img" aria-label={ariaLabel}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--bg-alt)" strokeWidth={thickness} />
@@ -66,15 +68,16 @@ export function DonutChart({
           {centerLabel && <span className="donut-center-label">{centerLabel}</span>}
         </div>
       </div>
-      <ul className="donut-legend">
+      {showLegend && <ul className="donut-legend">
         {data.map((d, i) => (
           <li key={i} className="donut-legend-item">
             <span className="donut-legend-dot" style={{ background: d.color }} />
             <span className="donut-legend-label">{d.label}</span>
+            <span className="donut-legend-pct">{Math.round(d.value / total * 100)}%</span>
             <span className="donut-legend-value">{fmt(d.value)}</span>
           </li>
         ))}
-      </ul>
+      </ul>}
     </div>
   )
 }

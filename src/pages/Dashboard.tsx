@@ -1,4 +1,5 @@
-import { ArrowDownLeft, ArrowUpRight } from '@phosphor-icons/react'
+import { useState } from 'react'
+import { ArrowDownLeft, ArrowUpRight, Coins } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 import { useMortgageData } from '../hooks/useMortgageData'
@@ -12,9 +13,22 @@ import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import { Skeleton, SkeletonStats, SkeletonList } from '../components/ui/Skeleton'
 import { EmptyState, PageError } from '../components/ui/EmptyState'
 import { ClayIllustration } from '../components/ui/ClayIllustration'
+import { DonutChart } from '../components/ui/DonutChart'
+import { BarChart } from '../components/ui/BarChart'
+
+const DONUT_PALETTE = [
+  'var(--accent)',
+  'var(--accent-coral)',
+  'var(--accent-teal)',
+  'var(--danger)',
+  'var(--brand-navy)',
+  'var(--success)',
+]
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const [dashView, setDashView] = useState<'equity' | 'cashflow'>('equity')
+
   const {
     recentTransactions,
     openTasks,
@@ -28,8 +42,6 @@ export default function Dashboard() {
   const { totalInvested, rentReceived, loading: loadingInvestment } = useInvestmentData()
   const { policies, loading: loadingInsurance } = useInsurance()
 
-  // Per-section loading — each region reveals as soon as its own data is ready,
-  // instead of blocking the whole screen on the slowest hook.
   const summaryLoading = loadingProperty || loadingMortgage || loadingInvestment
   const flowLoading = loadingProperty || loadingMortgage || loadingInsurance || loadingStats
   const recentLoading = loadingStats || loadingProperty || loadingMortgage
@@ -51,7 +63,6 @@ export default function Dashboard() {
   const gracePeriodPaymentAmount = gracePeriodPayment(tracks)
   const selectedMortgage = hasGrace ? gracePeriodPaymentAmount : monthlyMortgage
 
-  // Owner-paid utilities with a specified amount
   const activeContractId = activeContract?.id
   const ownerUtilities = utilities.filter(u =>
     u.payer === 'owner' && u.amount != null && u.amount > 0 &&
@@ -63,11 +74,10 @@ export default function Dashboard() {
   const grossYield =
     propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
 
-  // Equity bar widths (%)
   const equityPct = propertyValue > 0 ? Math.max(0, Math.min(100, (equity / propertyValue) * 100)) : 0
   const debtPct = 100 - equityPct
 
-  // ── "דורש תשומת לב" — merged list ──────────────────────────────────────
+  // ── Attention items ──────────────────────────────────────────────────────
   type AttentionItem = {
     key: string
     title: string
@@ -79,6 +89,9 @@ export default function Dashboard() {
   }
 
   const todayStr = now.toISOString().slice(0, 10)
+  const monthPrefix = todayStr.slice(0, 7)
+  const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
+  const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
 
   const taskItems: AttentionItem[] = openTasks.map(task => ({
     key: `task-${task.id}`,
@@ -108,11 +121,7 @@ export default function Dashboard() {
     })
     .slice(0, 5)
 
-  // ── תנועות החודש הנוכחי — הכנסות/הוצאות נוספות מעבר לקבועים ──
-  const monthPrefix = todayStr.slice(0, 7) // "YYYY-MM"
-  const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
-  const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
-
+  // ── Cash-flow extra transactions this month ──────────────────────────────
   const thisMonthTxs = recentTransactions.filter(t => t.date.startsWith(monthPrefix))
   const extraIncomeTxs = thisMonthTxs.filter(t => t.direction === 'income' && !rentCatSet.has(t.category))
   const extraExpenseTxs = thisMonthTxs.filter(t => t.direction === 'expense' && !mortCatSet.has(t.category))
@@ -120,6 +129,7 @@ export default function Dashboard() {
   const extraExpense = extraExpenseTxs.reduce((s, t) => s + t.amount, 0)
   const adjustedNet = monthlyNet + extraIncome - extraExpense
 
+  // ── Recent transactions ──────────────────────────────────────────────────
   const realRecent = recentTransactions
     .filter(t => !(t.direction === 'income' && rentCatSet.has(t.category)))
     .filter(t => !(t.direction === 'expense' && mortCatSet.has(t.category)))
@@ -130,13 +140,47 @@ export default function Dashboard() {
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 5)
 
+  // ── Expense breakdown for mini donut (תזרים view) ────────────────────────
+  const dashExpenseBreakdown = (() => {
+    const map = new Map<string, number>()
+    if (selectedMortgage > 0) map.set('משכנתא', selectedMortgage)
+    if (monthlyInsurance > 0) map.set('ביטוח', monthlyInsurance)
+    if (monthlyOwnerUtilities > 0) map.set('חשבונות', monthlyOwnerUtilities)
+    extraExpenseTxs.forEach(t => {
+      map.set(t.category, (map.get(t.category) ?? 0) + t.amount)
+    })
+    return Array.from(map.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .map((d, i) => ({ ...d, color: DONUT_PALETTE[i % DONUT_PALETTE.length] }))
+  })()
+
+  const dashTotalExpense = selectedMortgage + monthlyInsurance + monthlyOwnerUtilities + extraExpense
+  const dashTotalIncome = monthlyRent + extraIncome
+
   return (
     <div className="page dashboard-page">
       <div className="page-header">
         <h1>ראשי</h1>
       </div>
 
-      {/* ── 1. Hero — equity + investment summary ────────────────────────── */}
+      {/* ── View toggle (הון / תזרים) ─────────────────────────────────────── */}
+      {property && !summaryLoading && (
+        <div className="dash-view-toggle">
+          <div className="toggle-group">
+            <button
+              className={`toggle-btn${dashView === 'equity' ? ' active' : ''}`}
+              onClick={() => setDashView('equity')}
+            >הון</button>
+            <button
+              className={`toggle-btn${dashView === 'cashflow' ? ' active' : ''}`}
+              onClick={() => setDashView('cashflow')}
+            >תזרים</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── 1. Hero card ─────────────────────────────────────────────────── */}
       {summaryLoading ? (
         <div className="dash-hero dash-hero-skeleton">
           <Skeleton width="40%" height={14} />
@@ -151,98 +195,153 @@ export default function Dashboard() {
           onAction={() => navigate('/property/details')}
         />
       ) : (
-        <div className="dash-hero" onClick={() => navigate('/property')} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate('/property')}>
-          <div className="dash-hero-label">ההון שלי בנכס</div>
-          <div className="dash-hero-value">{formatCurrency(equity)}</div>
+        <div className="dash-hero">
 
-          <div className="dash-equity-bar">
-            <div
-              className="dash-equity-bar-own"
-              style={{ width: `${equityPct}%` }}
-            />
-            <div
-              className="dash-equity-bar-debt"
-              style={{ width: `${debtPct}%` }}
-            />
-          </div>
+          {dashView === 'equity' ? (
+            <>
+              <div className="dash-hero-label">ההון שלי בנכס</div>
+              <div className="dash-hero-value">{formatCurrency(equity)}</div>
 
-          <div className="dash-equity-legend">
-            <span>שווי נכס {formatCurrency(propertyValue)}</span>
-            <span>יתרת משכנתא {formatCurrency(mortgageBalance)}</span>
-          </div>
-          {(grossYield != null || totalInvested > 0 || rentReceived > 0) && (
-            <div className="dash-hero-metrics">
-              {grossYield != null && (
-                <div className="dash-hero-metric"><span>תשואה ברוטו</span><strong>{grossYield.toFixed(1)}%</strong></div>
+              <div className="dash-equity-bar">
+                <div className="dash-equity-bar-own" style={{ width: `${equityPct}%` }} />
+                <div className="dash-equity-bar-debt" style={{ width: `${debtPct}%` }} />
+              </div>
+              <div className="dash-equity-legend">
+                <span>שווי נכס {formatCurrency(propertyValue)}</span>
+                <span>יתרת משכנתא {formatCurrency(mortgageBalance)}</span>
+              </div>
+              {(grossYield != null || totalInvested > 0 || rentReceived > 0) && (
+                <div className="dash-hero-metrics">
+                  {grossYield != null && (
+                    <div className="dash-hero-metric"><span>תשואה ברוטו</span><strong>{grossYield.toFixed(1)}%</strong></div>
+                  )}
+                  {totalInvested > 0 && (
+                    <div className="dash-hero-metric"><span>הושקע</span><strong>{formatCurrency(totalInvested)}</strong></div>
+                  )}
+                  {rentReceived > 0 && (
+                    <div className="dash-hero-metric"><span>שנגבה</span><strong>{formatCurrency(rentReceived)}</strong></div>
+                  )}
+                </div>
               )}
-              {totalInvested > 0 && (
-                <div className="dash-hero-metric"><span>הושקע</span><strong>{formatCurrency(totalInvested)}</strong></div>
+            </>
+          ) : (
+            <>
+              <div className="dash-hero-label">תזרים החודש</div>
+              <div
+                className="dash-hero-value"
+                style={{ color: adjustedNet >= 0 ? 'var(--success)' : 'var(--danger)' }}
+              >
+                {formatCurrency(adjustedNet)}
+              </div>
+
+              {/* Two mini-chart cards */}
+              {!flowLoading && (
+                <div className="dash-mini-cards">
+                  <div className="dash-mini-card">
+                    <div className="dash-mini-card-label">הוצאות</div>
+                    <div className="dash-mini-card-value">{formatCurrency(dashTotalExpense)}</div>
+                    <DonutChart
+                      data={dashExpenseBreakdown}
+                      size={110}
+                      thickness={18}
+                      formatValue={formatCurrency}
+                      showLegend={false}
+                    />
+                  </div>
+                  <div className="dash-mini-card">
+                    <div className="dash-mini-card-label">כניסות / יציאות</div>
+                    <div className="dash-mini-card-value">{formatCurrency(dashTotalIncome)}</div>
+                    <BarChart
+                      data={[
+                        { label: 'הכנסה', value: dashTotalIncome, color: 'var(--success)' },
+                        { label: 'הוצאה', value: dashTotalExpense, color: 'var(--danger)' },
+                      ]}
+                      height={90}
+                      formatValue={formatCurrency}
+                    />
+                  </div>
+                </div>
               )}
-              {rentReceived > 0 && (
-                <div className="dash-hero-metric"><span>שנגבה</span><strong>{formatCurrency(rentReceived)}</strong></div>
-              )}
-            </div>
+
+              {/* Cashflow detail rows */}
+              <div className="dash-cashflow-rows">
+                <div className="inv-flow-row">
+                  <span className="inv-flow-sign positive">+</span>
+                  <span className="inv-flow-label">שכ״ד</span>
+                  <span className="inv-flow-amount positive">
+                    {monthlyRent > 0 ? formatCurrency(monthlyRent) : <span className="text-muted">אין חוזה פעיל</span>}
+                  </span>
+                </div>
+                <div className="inv-flow-row">
+                  <span className="inv-flow-sign negative">−</span>
+                  <span className="inv-flow-label">משכנתא</span>
+                  <span className="inv-flow-amount negative">
+                    {selectedMortgage > 0 ? formatCurrency(selectedMortgage) : <span className="text-muted">—</span>}
+                  </span>
+                </div>
+                {monthlyInsurance > 0 && (
+                  <div className="inv-flow-row">
+                    <span className="inv-flow-sign negative">−</span>
+                    <span className="inv-flow-label">ביטוח</span>
+                    <span className="inv-flow-amount negative">{formatCurrency(monthlyInsurance)}</span>
+                  </div>
+                )}
+                {monthlyOwnerUtilities > 0 && (
+                  <div className="inv-flow-row">
+                    <span className="inv-flow-sign negative">−</span>
+                    <span className="inv-flow-label">חשבונות</span>
+                    <span className="inv-flow-amount negative">{formatCurrency(monthlyOwnerUtilities)}</span>
+                  </div>
+                )}
+                {extraIncomeTxs.map(t => (
+                  <div key={t.id} className="inv-flow-row">
+                    <span className="inv-flow-sign positive">+</span>
+                    <span className="inv-flow-label">{t.category}</span>
+                    <span className="inv-flow-amount positive">{formatCurrency(t.amount)}</span>
+                  </div>
+                ))}
+                {extraExpenseTxs.map(t => (
+                  <div key={t.id} className="inv-flow-row">
+                    <span className="inv-flow-sign negative">−</span>
+                    <span className="inv-flow-label">{t.category}</span>
+                    <span className="inv-flow-amount negative">{formatCurrency(t.amount)}</span>
+                  </div>
+                ))}
+                <div className="inv-flow-divider" />
+                <div className="inv-flow-row inv-flow-total">
+                  <span className="inv-flow-sign">=</span>
+                  <span className="inv-flow-label">נטו חודשי</span>
+                  <span className={`inv-flow-amount ${adjustedNet >= 0 ? 'positive' : 'negative'}`}>
+                    {formatCurrency(adjustedNet)}
+                  </span>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {/* ── 2. תזרים החודש — one cash-flow card ───────────────────────────── */}
-      <div className="dash-section-title-row">
-        <div className="dash-section-title">תזרים החודש</div>
-      </div>
-      {flowLoading ? <SkeletonStats count={3} /> : (
-      <div className="prop-card">
-        <div className="inv-flow-row">
-          <span className="inv-flow-sign positive">+</span>
-          <span className="inv-flow-label">שכר דירה</span>
-          <span className="inv-flow-amount positive">
-            {monthlyRent > 0 ? formatCurrency(monthlyRent) : <span className="text-muted">אין חוזה פעיל</span>}
-          </span>
-        </div>
-        <div className="inv-flow-row">
-          <span className="inv-flow-sign negative">−</span>
-          <span className="inv-flow-label">משכנתא</span>
-          <span className="inv-flow-amount negative">
-            {selectedMortgage > 0 ? formatCurrency(selectedMortgage) : <span className="text-muted">—</span>}
-          </span>
-        </div>
-        <div className="inv-flow-row">
-          <span className="inv-flow-sign negative">−</span>
-          <span className="inv-flow-label">ביטוח</span>
-          <span className="inv-flow-amount negative">
-            {monthlyInsurance > 0 ? formatCurrency(monthlyInsurance) : <span className="text-muted">—</span>}
-          </span>
-        </div>
-        {monthlyOwnerUtilities > 0 && (
-          <div className="inv-flow-row">
-            <span className="inv-flow-sign negative">−</span>
-            <span className="inv-flow-label">חשבונות</span>
-            <span className="inv-flow-amount negative">{formatCurrency(monthlyOwnerUtilities)}</span>
+      {/* ── 2. Upcoming expenses row (ANZ-style) ─────────────────────────── */}
+      {!summaryLoading && property && dashView === 'equity' && (
+        <div
+          className="dash-upcoming-row"
+          onClick={() => setDashView('cashflow')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => e.key === 'Enter' && setDashView('cashflow')}
+          aria-label="עבור לתזרים"
+        >
+          <div className="dash-upcoming-icon">
+            <Coins size={22} weight="duotone" color="var(--accent)" />
           </div>
-        )}
-        {extraIncomeTxs.map(t => (
-          <div key={t.id} className="inv-flow-row">
-            <span className="inv-flow-sign positive">+</span>
-            <span className="inv-flow-label">{t.category}</span>
-            <span className="inv-flow-amount positive">{formatCurrency(t.amount)}</span>
+          <div className="dash-upcoming-info">
+            <div className="dash-upcoming-title">הוצאות קבועות חודשיות</div>
+            <div className="dash-upcoming-subtitle">משכנתא, ביטוח ועוד</div>
           </div>
-        ))}
-        {extraExpenseTxs.map(t => (
-          <div key={t.id} className="inv-flow-row">
-            <span className="inv-flow-sign negative">−</span>
-            <span className="inv-flow-label">{t.category}</span>
-            <span className="inv-flow-amount negative">{formatCurrency(t.amount)}</span>
+          <div className="dash-upcoming-amount negative">
+            {formatCurrency(selectedMortgage + monthlyInsurance + monthlyOwnerUtilities)}
           </div>
-        ))}
-        <div className="inv-flow-divider" />
-        <div className="inv-flow-row inv-flow-total">
-          <span className="inv-flow-sign">=</span>
-          <span className="inv-flow-label">נטו חודשי</span>
-          <span className={`inv-flow-amount ${adjustedNet >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency(adjustedNet)}
-          </span>
         </div>
-      </div>
       )}
 
       {/* ── 3. דורש תשומת לב ─────────────────────────────────────────────── */}
@@ -279,7 +378,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* ── 5. תנועות אחרונות ─────────────────────────────────────────────── */}
+      {/* ── 4. תנועות אחרונות ─────────────────────────────────────────────── */}
       <section className="dashboard-section">
         <div className="dashboard-section-header">
           <h2>תנועות אחרונות</h2>
@@ -316,7 +415,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* ── 6. Quick actions ─────────────────────────────────────────────── */}
+      {/* ── 5. Quick actions ─────────────────────────────────────────────── */}
       <div className="dashboard-quick-actions">
         <button className="btn-secondary" onClick={() => navigate('/finances', { state: { openForm: true } })}>+ תנועה</button>
         <button className="btn-secondary" onClick={() => navigate('/tasks')}>+ משימה</button>

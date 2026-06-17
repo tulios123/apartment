@@ -5,6 +5,12 @@ import Details from './Details'
 import Rental from './Rental'
 import Insurance from './Insurance'
 import InvestmentCosts from './InvestmentCosts'
+import { usePropertyData } from '../../hooks/usePropertyData'
+import { useMortgageData } from '../../hooks/useMortgageData'
+import { useInvestmentData } from '../../hooks/useInvestmentData'
+import { useInsurance } from '../../hooks/useInsurance'
+import { formatCurrency } from '../../lib/format'
+import { activeContract as findActiveContract } from '../../lib/projections'
 
 const SECTIONS = [
   { id: 'details', label: 'נכס', Icon: House, Comp: Details },
@@ -30,6 +36,22 @@ export default function PropertyHub() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(() => resolveSection(section))
 
+  const { property, contracts, loading: loadingProp } = usePropertyData()
+  const { summary, tracks, loading: loadingMortgage } = useMortgageData()
+  const { totalInvested, loading: loadingInv } = useInvestmentData()
+  const { policies, loading: loadingIns } = useInsurance()
+
+  const statsLoading = loadingProp || loadingMortgage || loadingInv || loadingIns
+
+  const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
+  const mortgageBalance = summary.currentBalance || 0
+  const equity = propertyValue - mortgageBalance
+  const activeContract = findActiveContract(contracts)
+  const monthlyRent = activeContract?.monthly_rent ?? 0
+  const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
+  const grossYield =
+    propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
+
   // Keep the open panel in sync when navigated via a deep link / external nav
   useEffect(() => {
     if (section) setOpen(resolveSection(section))
@@ -50,6 +72,38 @@ export default function PropertyHub() {
       <div className="page-header">
         <h1>הנכס</h1>
       </div>
+
+      {/* ── Quick-stats 2×2 grid (ANZ goal-cards style) ────────────────── */}
+      {!statsLoading && property && (
+        <div className="prop-stats-grid">
+          <div className="prop-stat-card" onClick={() => navigate('/property/details')} role="button" tabIndex={0} style={{ cursor: 'pointer' }}>
+            <div className="prop-stat-label">שווי נכס</div>
+            <div className="prop-stat-value">{formatCurrency(propertyValue)}</div>
+            <div className="prop-stat-sub">הון עצמי {formatCurrency(equity)}</div>
+          </div>
+          <div className="prop-stat-card" onClick={() => navigate('/property/mortgage')} role="button" tabIndex={0} style={{ cursor: 'pointer' }}>
+            <div className="prop-stat-label">יתרת משכנתא</div>
+            <div className="prop-stat-value">{formatCurrency(mortgageBalance)}</div>
+            {summary.monthlyPayment > 0 && (
+              <div className="prop-stat-sub">תשלום חודשי {formatCurrency(summary.monthlyPayment)}</div>
+            )}
+          </div>
+          <div className="prop-stat-card" onClick={() => navigate('/property/rental')} role="button" tabIndex={0} style={{ cursor: 'pointer' }}>
+            <div className="prop-stat-label">תשואה ברוטו</div>
+            <div className="prop-stat-value">{grossYield != null ? `${grossYield.toFixed(1)}%` : '—'}</div>
+            {monthlyRent > 0 && (
+              <div className="prop-stat-sub">שכ״ד {formatCurrency(monthlyRent)}/חודש</div>
+            )}
+          </div>
+          <div className="prop-stat-card" onClick={() => navigate('/property/costs')} role="button" tabIndex={0} style={{ cursor: 'pointer' }}>
+            <div className="prop-stat-label">הושקע</div>
+            <div className="prop-stat-value">{totalInvested > 0 ? formatCurrency(totalInvested) : '—'}</div>
+            {monthlyInsurance > 0 && (
+              <div className="prop-stat-sub">ביטוח {formatCurrency(monthlyInsurance)}/חודש</div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="prop-accordion">
         {SECTIONS.map(({ id, label, Icon, Comp }) => {

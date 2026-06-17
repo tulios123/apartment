@@ -3417,6 +3417,143 @@ input[type="date"] {
   color: var(--text-primary);
 }
 
+/* ── Dashboard view toggle (הון / תזרים) ─────────────────────────────────── */
+.dash-view-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+/* ── Two mini-chart cards (ANZ "Spending / Money In & Out" pair) ──────────── */
+.dash-mini-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.dash-mini-card {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dash-mini-card-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.dash-mini-card-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 6px;
+}
+
+/* ── Cashflow detail rows inside hero (ANZ account rows) ─────────────────── */
+.dash-cashflow-rows {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── ANZ-style "Upcoming" summary row ────────────────────────────────────── */
+.dash-upcoming-row {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dash-upcoming-row:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.dash-upcoming-row:active { transform: translateY(0); }
+
+.dash-upcoming-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dash-upcoming-info { flex: 1; min-width: 0; }
+
+.dash-upcoming-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dash-upcoming-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.dash-upcoming-amount {
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Property quick-stats 2×2 grid (ANZ goal-cards style) ────────────────── */
+.prop-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.prop-stat-card {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  padding: 16px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prop-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.prop-stat-value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-heading);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.prop-stat-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 /* Section title row with optional toggle on the side */
 .dash-section-title-row {
   display: flex;
