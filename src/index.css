@@ -1489,6 +1489,65 @@ input[type="date"] {
   border-color: #aaa;
 }
 
+.login-manager-link {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px;
+  text-decoration: underline;
+}
+
+.login-manager-link:hover {
+  color: var(--text);
+}
+
+.login-manager-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+
+.login-manager-form input {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  font-size: 15px;
+  text-align: center;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.login-manager-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn-manager {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-manager:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.login-error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
 /* Sidebar footer */
 .sidebar-footer {
   margin-top: auto;

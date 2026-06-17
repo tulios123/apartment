@@ -11,7 +11,7 @@ import { createInsurancePolicy } from '../hooks/useInsurance'
 import { supabase } from '../lib/supabase'
 import { monthlyPayment } from '../lib/mortgage'
 import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
-import type { TrackType, LoanRepaymentType } from '../types'
+import type { TrackType, LoanRepaymentType, Contract } from '../types'
 
 // ── Step types ────────────────────────────────────────────────────────────────
 type Step = 'welcome' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
@@ -430,6 +430,9 @@ export default function Onboarding({ onComplete }: Props) {
 
       // Rental file + recurring — depend on contract being created above
       if (contract) {
+        // TS can't track that `contract` is assigned inside the awaited closure
+        // above, so it narrows to `never` here; the cast restores the real type.
+        const createdContract = contract as Contract
         await Promise.all([
           (async () => {
             if (!rentalFile) return
@@ -438,7 +441,7 @@ export default function Onboarding({ onComplete }: Props) {
               const path = await uploadDocument(rentalFile, docId)
               await supabase.from('documents').insert({
                 id: docId, owner_id: user.id, property_id: property.id,
-                contract_id: (contract as NonNullable<typeof contract>).id, transaction_id: null,
+                contract_id: createdContract.id, transaction_id: null,
                 type: 'rental_contract', name: rentalFile.name,
                 storage_path: path, date: startDate || null,
               })
@@ -451,7 +454,7 @@ export default function Onboarding({ onComplete }: Props) {
             try {
               await syncRentRecurringItem(
                 {
-                  id: (contract as NonNullable<typeof contract>).id,
+                  id: createdContract.id,
                   monthly_rent: parseFloat(monthlyRent),
                   start_date: startDate || new Date().toISOString().slice(0, 10),
                   end_date: endDate || null,
@@ -550,8 +553,8 @@ export default function Onboarding({ onComplete }: Props) {
 
   function fillTestLoans() {
     setLoans([
-      { repayment_type: 'monthly_fixed', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6.000', term_months: '60', start_date: '2026-03-11' },
-      { repayment_type: 'balloon', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', annual_rate: '', term_months: '', start_date: '2026-03-11' },
+      { repayment_type: 'monthly_fixed', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6.000', term_months: '60', start_date: '2026-03-11', grace_months: '' },
+      { repayment_type: 'balloon', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', annual_rate: '', term_months: '', start_date: '2026-03-11', grace_months: '' },
     ])
     setShowLoanForm(false)
   }

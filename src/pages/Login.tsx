@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { House } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
+
+const MANAGER_EMAIL = 'dev@test.local'
 
 export default function Login() {
   const { signInWithGoogle } = useAuth()
   const [busy, setBusy] = useState(false)
+  const [showManager, setShowManager] = useState(false)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
 
   const handleSignIn = async () => {
     setBusy(true)
@@ -13,6 +19,21 @@ export default function Login() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const handleManagerLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithPassword({
+      email: MANAGER_EMAIL,
+      password,
+    })
+    if (error) {
+      setError('סיסמה שגויה')
+      setBusy(false)
+    }
+    // On success, AuthContext's onAuthStateChange updates the session and routes in.
   }
 
   return (
@@ -30,6 +51,28 @@ export default function Login() {
           </svg>
           {busy ? 'מתחבר...' : 'התחברות עם Google'}
         </button>
+
+        {!showManager ? (
+          <button className="login-manager-link" onClick={() => setShowManager(true)}>
+            כניסת מנהל
+          </button>
+        ) : (
+          <form className="login-manager-form" onSubmit={handleManagerLogin}>
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="current-password"
+              placeholder="סיסמת מנהל"
+              value={password}
+              onChange={e => { setPassword(e.target.value); setError('') }}
+              autoFocus
+            />
+            <button type="submit" className="btn-manager" disabled={busy || !password}>
+              {busy ? 'מתחבר...' : 'כניסה'}
+            </button>
+            {error && <p className="login-error">{error}</p>}
+          </form>
+        )}
       </div>
     </div>
   )
