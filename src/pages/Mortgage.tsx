@@ -153,7 +153,8 @@ export default function MortgagePage() {
   function toggleYear(y: number) {
     setExpandedYears(prev => {
       const next = new Set(prev)
-      next.has(y) ? next.delete(y) : next.add(y)
+      if (next.has(y)) next.delete(y)
+      else next.add(y)
       return next
     })
   }

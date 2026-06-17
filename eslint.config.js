@@ -18,5 +18,15 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // eslint-plugin-react-hooks v7's "recommended" set turns on the experimental
+      // React Compiler rules as errors. They flag idiomatic, correct patterns in this
+      // hand-written (non-compiler) codebase — e.g. setLoading(true) before an async
+      // fetch in an effect, or Date.now() in a render-time display calc. Keep them as
+      // warnings (visible for a future Compiler migration) rather than build-blocking errors.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-hooks/immutability': 'warn',
+    },
   },
 ])

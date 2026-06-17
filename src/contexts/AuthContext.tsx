@@ -101,6 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Co-locating the hook with its provider is standard; Fast Refresh still works here.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext)
 }

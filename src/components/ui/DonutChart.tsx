@@ -28,7 +28,15 @@ export function DonutChart({
 
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius
-  let acc = 0
+
+  // Precompute each arc's length and its starting offset (cumulative prior arcs),
+  // so the JSX below stays free of render-time mutation.
+  const dashes = data.map(d => (d.value / total) * circumference)
+  const segments = data.map((d, i) => ({
+    ...d,
+    dash: dashes[i],
+    offset: -dashes.slice(0, i).reduce((sum, n) => sum + n, 0),
+  }))
 
   const ariaLabel = data.map(d => `${d.label}: ${fmt(d.value)}`).join(', ')
 
@@ -38,24 +46,19 @@ export function DonutChart({
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--bg-alt)" strokeWidth={thickness} />
           <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-            {data.map((d, i) => {
-              const dash = (d.value / total) * circumference
-              const offset = -acc
-              acc += dash
-              return (
-                <circle
-                  key={i}
-                  cx={size / 2}
-                  cy={size / 2}
-                  r={radius}
-                  fill="none"
-                  stroke={d.color}
-                  strokeWidth={thickness}
-                  strokeDasharray={`${dash} ${circumference - dash}`}
-                  strokeDashoffset={offset}
-                />
-              )
-            })}
+            {segments.map((s, i) => (
+              <circle
+                key={i}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={thickness}
+                strokeDasharray={`${s.dash} ${circumference - s.dash}`}
+                strokeDashoffset={s.offset}
+              />
+            ))}
           </g>
         </svg>
         <div className="donut-center">

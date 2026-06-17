@@ -194,7 +194,7 @@ export default function Dashboard() {
       <div className="prop-card">
         <div className="inv-flow-row">
           <span className="inv-flow-sign positive">+</span>
-          <span className="inv-flow-label">שכ״ד</span>
+          <span className="inv-flow-label">שכר דירה</span>
           <span className="inv-flow-amount positive">
             {monthlyRent > 0 ? formatCurrency(monthlyRent) : <span className="text-muted">אין חוזה פעיל</span>}
           </span>
