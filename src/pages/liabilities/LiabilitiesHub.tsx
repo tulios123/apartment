@@ -1,36 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { House, FileText, ShieldCheck, Coins, CaretDown } from '@phosphor-icons/react'
-import Details from './Details'
-import Rental from './Rental'
-import Insurance from './Insurance'
-import InvestmentCosts from './InvestmentCosts'
+import { Bank, HandCoins, CaretDown } from '@phosphor-icons/react'
+import Mortgage from '../Mortgage'
+import Loans from './Loans'
 
 const SECTIONS = [
-  { id: 'details', label: 'נכס', Icon: House, Comp: Details },
-  { id: 'rental', label: 'שכירות', Icon: FileText, Comp: Rental },
-  { id: 'insurance', label: 'ביטוח', Icon: ShieldCheck, Comp: Insurance },
-  { id: 'costs', label: 'עלויות השקעה', Icon: Coins, Comp: InvestmentCosts },
+  { id: 'mortgage', label: 'משכנתא', Icon: Bank, Comp: Mortgage },
+  { id: 'loans', label: 'הלוואות', Icon: HandCoins, Comp: Loans },
 ] as const
 
-// Legacy deep-link aliases → section ids (so old /property/* links don't 404)
-const ALIASES: Record<string, string> = {
-  overview: 'details',
-  investment: 'costs',
-}
-
 function resolveSection(raw: string | undefined): string {
-  if (!raw) return 'details'
-  const id = ALIASES[raw] ?? raw
-  return SECTIONS.some(s => s.id === id) ? id : 'details'
+  if (!raw) return 'mortgage'
+  return SECTIONS.some(s => s.id === raw) ? raw : 'mortgage'
 }
 
-export default function PropertyHub() {
+export default function LiabilitiesHub() {
   const { section } = useParams()
   const navigate = useNavigate()
   const [open, setOpen] = useState(() => resolveSection(section))
 
-  // Keep the open panel in sync when navigated via a deep link / external nav
   useEffect(() => {
     if (section) setOpen(resolveSection(section))
   }, [section])
@@ -38,17 +26,17 @@ export default function PropertyHub() {
   function toggle(id: string) {
     if (open === id) {
       setOpen('')
-      navigate('/property', { replace: true })
+      navigate('/liabilities', { replace: true })
     } else {
       setOpen(id)
-      navigate(`/property/${id}`, { replace: true })
+      navigate(`/liabilities/${id}`, { replace: true })
     }
   }
 
   return (
     <div className="page">
       <div className="page-header">
-        <h1>הנכס</h1>
+        <h1>התחייבויות</h1>
       </div>
 
       <div className="prop-accordion">

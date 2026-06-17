@@ -141,6 +141,23 @@ export interface MortgageTrack {
   created_at: string
 }
 
+export type LoanRepaymentType = 'monthly_fixed' | 'balloon'
+
+export interface Loan {
+  id: string
+  owner_id: string
+  property_id: string | null
+  label: string | null
+  lender: string | null
+  repayment_type: LoanRepaymentType
+  principal: number
+  monthly_payment: number | null   // monthly_fixed only
+  term_months: number | null       // monthly_fixed only
+  start_date: string | null
+  notes: string | null
+  created_at: string
+}
+
 export interface InsurancePolicy {
   id: string
   owner_id: string

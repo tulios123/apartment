@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { X } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useInvestmentData, upsertInvestmentCost, deleteInvestmentCost } from '../../hooks/useInvestmentData'
+import { useLoansData } from '../../hooks/useLoansData'
 import { INVESTMENT_COST_CATEGORIES } from '../../lib/constants'
 import { formatCurrency } from '../../lib/format'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
+import BalloonFinancing from './BalloonFinancing'
 
 type CostRow = {
   id?: string
@@ -23,6 +25,7 @@ function fmtInput(raw: string): string {
 export default function InvestmentCosts() {
   const { user } = useAuth()
   const { costs, loading, error, refetch } = useInvestmentData()
+  const { balloonLoans, summary: loansSummary, refetch: refetchLoans } = useLoansData()
 
   const [rows, setRows] = useState<CostRow[]>([])
   const [deletedIds, setDeletedIds] = useState<string[]>([])
@@ -137,6 +140,12 @@ export default function InvestmentCosts() {
           <span>סה״כ הושקע</span>
           <span className="inv-cost-total-amount">{formatCurrency(localTotal)}</span>
         </div>
+        {loansSummary.balloonOutstanding > 0 && (
+          <div className="inv-cost-net">
+            <span>הון עצמי נטו (בניכוי מימון בלון)</span>
+            <span className="inv-cost-total-amount">{formatCurrency(localTotal - loansSummary.balloonOutstanding)}</span>
+          </div>
+        )}
       </div>
 
       <div className="inv-add-row">
@@ -159,6 +168,15 @@ export default function InvestmentCosts() {
         <button className="btn-primary" onClick={handleSave} disabled={saving}>
           {saving ? 'שומר...' : 'שמור'}
         </button>
+      </div>
+
+      <div className="inv-balloon-block">
+        <h3 className="inv-balloon-title">מימון בלון</h3>
+        <BalloonFinancing
+          balloonLoans={balloonLoans}
+          balloonTotal={loansSummary.balloonOutstanding}
+          onChanged={refetchLoans}
+        />
       </div>
     </section>
   )

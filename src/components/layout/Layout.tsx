@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   House,
   Buildings,
+  Bank,
   Wallet,
   ListChecks,
   FileText,
@@ -16,6 +17,7 @@ type NavItem = { to: string; label: string; icon: Icon; end?: boolean }
 const navItems: NavItem[] = [
   { to: '/', label: 'ראשי', icon: House, end: true },
   { to: '/property', label: 'הנכס', icon: Buildings },
+  { to: '/liabilities', label: 'התחייבויות', icon: Bank },
   { to: '/finances', label: 'כספים', icon: Wallet },
   { to: '/tasks', label: 'משימות', icon: ListChecks },
   { to: '/documents', label: 'מסמכים', icon: FileText },
