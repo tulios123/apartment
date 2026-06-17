@@ -8,6 +8,7 @@ import InvestmentCosts from './InvestmentCosts'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
+import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { formatCurrency } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
@@ -39,13 +40,17 @@ export default function PropertyHub() {
   const { property, contracts, loading: loadingProp } = usePropertyData()
   const { summary, loading: loadingMortgage } = useMortgageData()
   const { totalInvested, loading: loadingInv } = useInvestmentData()
+  const { summary: loansSummary, loading: loadingLoans } = useLoansData()
   const { policies, loading: loadingIns } = useInsurance()
 
-  const statsLoading = loadingProp || loadingMortgage || loadingInv || loadingIns
+  const statsLoading = loadingProp || loadingMortgage || loadingInv || loadingLoans || loadingIns
 
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
   const mortgageBalance = summary.currentBalance || 0
-  const equity = propertyValue - mortgageBalance
+  // Net equity nets out every liability — mortgage + supplementary loans + balloon —
+  // consistent with the dashboard hero.
+  const totalDebt = mortgageBalance + (loansSummary.monthlyBalance || 0) + (loansSummary.balloonOutstanding || 0)
+  const equity = propertyValue - totalDebt
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
   const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
