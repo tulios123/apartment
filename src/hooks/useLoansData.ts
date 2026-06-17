@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { loanBalance } from '../lib/loans'
+import { loanBalance, loanInterestToDate } from '../lib/loans'
 import type { Loan, LoanRepaymentType } from '../types'
 
 export interface LoansSummary {
-  /** Outstanding balance across monthly_fixed loans. */
+  /** Outstanding balance across monthly_fixed loans (Shpitzer). */
   monthlyBalance: number
-  /** Combined fixed monthly repayment across monthly_fixed loans. */
-  monthlyPayment: number
+  /** Interest paid to date across monthly_fixed loans. */
+  interestPaidToDate: number
   /** Outstanding balloon principal (repaid on sale). */
   balloonOutstanding: number
 }
@@ -55,7 +55,7 @@ export function useLoansData(): LoansData {
 
   const summary: LoansSummary = {
     monthlyBalance: monthlyLoans.reduce((s, l) => s + loanBalance(l), 0),
-    monthlyPayment: monthlyLoans.reduce((s, l) => s + (l.monthly_payment ?? 0), 0),
+    interestPaidToDate: monthlyLoans.reduce((s, l) => s + loanInterestToDate(l), 0),
     balloonOutstanding: balloonLoans.reduce((s, l) => s + l.principal, 0),
   }
 
@@ -70,7 +70,7 @@ export async function upsertLoan(data: {
   lender: string | null
   repayment_type: LoanRepaymentType
   principal: number
-  monthly_payment?: number | null
+  annual_rate?: number | null
   term_months?: number | null
   start_date?: string | null
   notes?: string | null
@@ -80,7 +80,7 @@ export async function upsertLoan(data: {
     lender: data.lender,
     repayment_type: data.repayment_type,
     principal: data.principal,
-    monthly_payment: data.monthly_payment ?? null,
+    annual_rate: data.annual_rate ?? null,
     term_months: data.term_months ?? null,
     start_date: data.start_date ?? null,
     notes: data.notes ?? null,

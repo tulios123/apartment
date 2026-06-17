@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { interestToDate } from '../lib/mortgage'
+import { loanInterestToDate } from '../lib/loans'
 import { rentReceivedToDate } from '../lib/projections'
 import { INTEREST_CATEGORY, MAINTENANCE_CATEGORY } from '../lib/constants'
-import type { InvestmentCost, MortgageTrack, Contract } from '../types'
+import type { InvestmentCost, MortgageTrack, Contract, Loan } from '../types'
 
 export interface InvestmentData {
   costs: InvestmentCost[]
@@ -31,11 +32,12 @@ export function useInvestmentData(): InvestmentData {
     setLoading(true)
     setError(null)
     try {
-      const [costsRes, txRes, tracksRes, contractsRes] = await Promise.all([
+      const [costsRes, txRes, tracksRes, contractsRes, loansRes] = await Promise.all([
         supabase.from('investment_costs').select('*').eq('owner_id', user.id).order('created_at'),
         supabase.from('transactions').select('direction, amount, category').eq('owner_id', user.id),
         supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id),
         supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', user.id),
+        supabase.from('loans').select('*').eq('owner_id', user.id),
       ])
       if (costsRes.error) throw costsRes.error
       if (txRes.error) throw txRes.error
@@ -45,10 +47,12 @@ export function useInvestmentData(): InvestmentData {
       const txs = txRes.data ?? []
       const mortgageTracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
       const contracts = (contractsRes.error ? [] : (contractsRes.data ?? [])) as Contract[]
+      const loans = (loansRes.error ? [] : (loansRes.data ?? [])) as Loan[]
 
       setRentReceived(rentReceivedToDate(contracts))
       const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === INTEREST_CATEGORY).reduce((s, t) => s + t.amount, 0)
-      setInterestPaid(manualInterest + interestToDate(mortgageTracks))
+      const loansInterest = loans.reduce((s, l) => s + loanInterestToDate(l), 0)
+      setInterestPaid(manualInterest + interestToDate(mortgageTracks) + loansInterest)
       setMaintenance(txs.filter(t => t.direction === 'expense' && t.category === MAINTENANCE_CATEGORY).reduce((s, t) => s + t.amount, 0))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')

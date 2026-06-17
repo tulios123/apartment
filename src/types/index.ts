@@ -151,7 +151,7 @@ export interface Loan {
   lender: string | null
   repayment_type: LoanRepaymentType
   principal: number
-  monthly_payment: number | null   // monthly_fixed only
+  annual_rate: number | null       // monthly_fixed only — drives Shpitzer schedule
   term_months: number | null       // monthly_fixed only
   start_date: string | null
   notes: string | null

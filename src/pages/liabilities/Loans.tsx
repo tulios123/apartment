@@ -15,15 +15,15 @@ interface LoanForm {
   id?: string
   label: string
   lender: string
-  principal: string       // raw digits
-  monthly_payment: string // raw digits
+  principal: string    // raw digits
+  annual_rate: string  // percent
   term_months: string
   start_date: string
   notes: string
 }
 
 function emptyForm(): LoanForm {
-  return { label: '', lender: '', principal: '', monthly_payment: '', term_months: '', start_date: TODAY, notes: '' }
+  return { label: '', lender: '', principal: '', annual_rate: '', term_months: '', start_date: TODAY, notes: '' }
 }
 
 function formFromLoan(l: Loan): LoanForm {
@@ -32,7 +32,7 @@ function formFromLoan(l: Loan): LoanForm {
     label: l.label ?? '',
     lender: l.lender ?? '',
     principal: String(Math.round(l.principal)),
-    monthly_payment: l.monthly_payment != null ? String(Math.round(l.monthly_payment)) : '',
+    annual_rate: l.annual_rate != null ? l.annual_rate.toFixed(3) : '',
     term_months: l.term_months != null ? String(l.term_months) : '',
     start_date: l.start_date ?? TODAY,
     notes: l.notes ?? '',
@@ -66,7 +66,7 @@ export default function Loans() {
         lender: form.lender.trim() || null,
         repayment_type: 'monthly_fixed',
         principal,
-        monthly_payment: parseFloat(form.monthly_payment) || 0,
+        annual_rate: parseFloat(form.annual_rate) || 0,
         term_months: parseInt(form.term_months) || null,
         start_date: form.start_date || null,
         notes: form.notes.trim() || null,
@@ -113,8 +113,8 @@ export default function Loans() {
             <div className="summary-amount">{formatCurrency(summary.monthlyBalance)}</div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">החזר חודשי</div>
-            <div className="summary-amount">{formatCurrency(summary.monthlyPayment)}</div>
+            <div className="summary-label">ריבית ששולמה עד היום</div>
+            <div className="summary-amount">{formatCurrency(summary.interestPaidToDate)}</div>
           </div>
         </div>
       )}
@@ -153,7 +153,7 @@ export default function Loans() {
             </div>
             <div className="loan-card-numbers">
               <span>קרן: <strong>{formatCurrency(loan.principal)}</strong></span>
-              <span>החזר חודשי: <strong>{formatCurrency(loan.monthly_payment ?? 0)}</strong></span>
+              <span>ריבית: <strong>{(loan.annual_rate ?? 0).toFixed(2)}%</strong></span>
               <span>יתרה: <strong>{formatCurrency(balance)}</strong></span>
               {loan.term_months ? <span>נותרו: <strong>{remaining} חודשים</strong></span> : null}
             </div>
@@ -198,9 +198,9 @@ export default function Loans() {
 
           <div className="form-2col">
             <div className="form-row">
-              <label>החזר חודשי (₪)</label>
-              <input type="text" inputMode="numeric" className="form-input" value={formatNum(form.monthly_payment)}
-                onChange={e => setField('monthly_payment', e.target.value.replace(/[^\d]/g, ''))} placeholder="2,500" />
+              <label>ריבית שנתית (%)</label>
+              <input type="number" className="form-input" value={form.annual_rate}
+                onChange={e => setField('annual_rate', e.target.value)} placeholder="5.000" step="0.001" min="0" />
             </div>
             <div className="form-row">
               <label>תקופה (חודשים)</label>

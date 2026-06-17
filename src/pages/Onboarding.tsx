@@ -45,7 +45,7 @@ type LoanDraft = {
   label: string
   lender: string
   principal: string
-  monthly_payment: string
+  annual_rate: string
   term_months: string
   start_date: string
 }
@@ -73,7 +73,7 @@ function emptyLoan(startDate?: string): LoanDraft {
     label: '',
     lender: '',
     principal: '',
-    monthly_payment: '',
+    annual_rate: '',
     term_months: '',
     start_date: startDate || new Date().toISOString().slice(0, 10),
   }
@@ -302,7 +302,7 @@ export default function Onboarding({ onComplete }: Props) {
             lender: d.lender.trim() || null,
             repayment_type: d.repayment_type,
             principal: parseFloat(d.principal) || 0,
-            monthly_payment: isMonthly ? (parseFloat(d.monthly_payment) || 0) : null,
+            annual_rate: isMonthly ? (parseFloat(d.annual_rate) || 0) : null,
             term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
             start_date: isMonthly ? (d.start_date || null) : (d.start_date || keyDeliveryDate || null),
           })
@@ -517,8 +517,8 @@ export default function Onboarding({ onComplete }: Props) {
 
   function fillTestLoans() {
     setLoans([
-      { repayment_type: 'monthly_fixed', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', monthly_payment: '2500', term_months: '60', start_date: '2026-03-11' },
-      { repayment_type: 'balloon', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', monthly_payment: '', term_months: '', start_date: '2026-03-11' },
+      { repayment_type: 'monthly_fixed', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6.000', term_months: '60', start_date: '2026-03-11' },
+      { repayment_type: 'balloon', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', annual_rate: '', term_months: '', start_date: '2026-03-11' },
     ])
     setShowLoanForm(false)
   }
@@ -885,10 +885,9 @@ export default function Onboarding({ onComplete }: Props) {
           <>
             <div className="onboarding-row">
               <div className="onboarding-field">
-                <label>החזר חודשי (₪)</label>
-                <input type="text" inputMode="numeric" placeholder="0"
-                  value={formatNum(loanForm.monthly_payment)}
-                  onChange={e => setLF('monthly_payment', e.target.value.replace(/[^\d]/g, ''))} />
+                <label>ריבית שנתית (%)</label>
+                <input type="number" step="0.01" min="0" placeholder="5.000" value={loanForm.annual_rate}
+                  onChange={e => setLF('annual_rate', e.target.value)} />
               </div>
               <div className="onboarding-field">
                 <label>תקופה (חודשים)</label>
@@ -916,9 +915,9 @@ export default function Onboarding({ onComplete }: Props) {
   }
 
   // ── Loan totals ───────────────────────────────────────────────────────────────
-  const loansMonthlyTotal = loans
+  const loansMonthlyPrincipal = loans
     .filter(l => l.repayment_type === 'monthly_fixed')
-    .reduce((s, l) => s + (parseFloat(l.monthly_payment) || 0), 0)
+    .reduce((s, l) => s + (parseFloat(l.principal) || 0), 0)
   const loansBalloonTotal = loans
     .filter(l => l.repayment_type === 'balloon')
     .reduce((s, l) => s + (parseFloat(l.principal) || 0), 0)
@@ -1156,7 +1155,7 @@ export default function Onboarding({ onComplete }: Props) {
               <div className="onboarding-list">
                 {loans.map((d, i) => {
                   const isMonthly = d.repayment_type === 'monthly_fixed'
-                  const monthly = parseFloat(d.monthly_payment) || 0
+                  const rate = parseFloat(d.annual_rate) || 0
                   const isEditing = editingLoanIdx === i
                   return (
                     <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
@@ -1176,7 +1175,7 @@ export default function Onboarding({ onComplete }: Props) {
                             <span className="onboarding-list-row-type">{d.label.trim() || loanTypeLabel(d.repayment_type)}</span>
                             <span className="onboarding-track-payment">
                               {isMonthly
-                                ? <>{monthly > 0 ? formatCurrency(monthly) : <span className="text-muted">—</span>}<span className="text-muted"> / חודש</span></>
+                                ? <>{rate > 0 ? <>{rate.toFixed(2)}%<span className="text-muted"> ריבית</span></> : <span className="text-muted">—</span>}</>
                                 : <span className="text-muted">נפרע במכירה</span>
                               }
                             </span>
@@ -1219,12 +1218,12 @@ export default function Onboarding({ onComplete }: Props) {
             </button>
 
             {/* Conclusion totals */}
-            {loans.length > 0 && (loansMonthlyTotal > 0 || loansBalloonTotal > 0) && (
+            {loans.length > 0 && (loansMonthlyPrincipal > 0 || loansBalloonTotal > 0) && (
               <div className="onboarding-mortgage-summary">
-                {loansMonthlyTotal > 0 && (
+                {loansMonthlyPrincipal > 0 && (
                   <div className="onboarding-list-total">
-                    <span>החזר חודשי</span>
-                    <strong>{formatCurrency(loansMonthlyTotal)}</strong>
+                    <span>סך הלוואות (קרן)</span>
+                    <strong>{formatCurrency(loansMonthlyPrincipal)}</strong>
                   </div>
                 )}
                 {loansBalloonTotal > 0 && (

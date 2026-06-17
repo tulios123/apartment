@@ -65,7 +65,7 @@ export default function BalloonFinancing({ balloonLoans, balloonTotal, onChanged
         lender: form.lender.trim() || null,
         repayment_type: 'balloon',
         principal,
-        monthly_payment: null,
+        annual_rate: null,
         term_months: null,
         start_date: form.id ? undefined : TODAY,
         notes: form.notes.trim() || null,

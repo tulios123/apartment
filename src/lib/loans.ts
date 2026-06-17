@@ -1,4 +1,5 @@
 import type { Loan } from '../types'
+import { monthlyPayment } from './mortgage'
 
 /** Whole months elapsed from start up to and including asOf (0 before/at start). */
 export function monthsElapsed(startDate: string | null, asOf: Date = new Date()): number {
@@ -10,18 +11,77 @@ export function monthsElapsed(startDate: string | null, asOf: Date = new Date())
   return Math.max(0, months)
 }
 
+function addMonths(iso: string, months: number): string {
+  const d = new Date(iso + 'T00:00:00')
+  d.setMonth(d.getMonth() + months)
+  return d.toISOString().slice(0, 10)
+}
+
+interface LoanRow {
+  date: string
+  interest: number
+  principal: number
+  balance: number
+}
+
 /**
- * Outstanding balance of a loan as of `asOf`.
- * - monthly_fixed: straight-line — principal shrinks proportionally to the months
- *   remaining out of the full term (no interest/Shpitzer breakdown).
+ * Month-by-month Shpitzer schedule for a monthly_fixed loan (empty for balloon).
+ * Internal — we never render this; it only feeds balance/interest calculations.
+ */
+function loanSchedule(loan: Loan): LoanRow[] {
+  if (loan.repayment_type !== 'monthly_fixed') return []
+  const principal = loan.principal
+  const rate = loan.annual_rate ?? 0
+  const term = loan.term_months ?? 0
+  const start = loan.start_date
+  if (principal <= 0 || term <= 0 || !start) return []
+  const r = rate / 100 / 12
+  const pay = monthlyPayment(principal, rate, term)
+  const rows: LoanRow[] = []
+  let balance = principal
+  for (let i = 1; i <= term; i++) {
+    const interest = r === 0 ? 0 : balance * r
+    let prin = pay - interest
+    if (i === term) prin = balance // absorb rounding drift
+    balance = Math.max(0, balance - prin)
+    rows.push({ date: addMonths(start, i), interest, principal: prin, balance })
+  }
+  return rows
+}
+
+/**
+ * Outstanding balance as of `asOf`.
  * - balloon: principal stays outstanding until repaid on sale.
+ * - monthly_fixed: Shpitzer balance carried forward to the latest paid month.
  */
 export function loanBalance(loan: Loan, asOf: Date = new Date()): number {
   if (loan.repayment_type === 'balloon') return loan.principal
-  const term = loan.term_months ?? 0
-  if (term <= 0) return loan.principal
-  const elapsed = Math.min(term, monthsElapsed(loan.start_date, asOf))
-  return Math.max(0, loan.principal * (term - elapsed) / term)
+  const rows = loanSchedule(loan)
+  if (rows.length === 0) return loan.principal
+  const cutoff = asOf.toISOString().slice(0, 10)
+  let balance = loan.principal
+  for (const row of rows) {
+    if (row.date <= cutoff) balance = row.balance
+    else break
+  }
+  return balance
+}
+
+/** Derived (never shown) Shpitzer monthly payment; 0 for balloon. */
+export function loanMonthlyPayment(loan: Loan): number {
+  if (loan.repayment_type !== 'monthly_fixed') return 0
+  return monthlyPayment(loan.principal, loan.annual_rate ?? 0, loan.term_months ?? 0)
+}
+
+/** Interest accrued up to and including asOf — feeds investment interest expenses. */
+export function loanInterestToDate(loan: Loan, asOf: Date = new Date()): number {
+  const cutoff = asOf.toISOString().slice(0, 10)
+  return loanSchedule(loan).reduce((s, row) => (row.date <= cutoff ? s + row.interest : s), 0)
+}
+
+/** Total interest over the life of the loan. */
+export function loanTotalInterest(loan: Loan): number {
+  return loanSchedule(loan).reduce((s, row) => s + row.interest, 0)
 }
 
 /** Whole months of repayment remaining for a monthly_fixed loan (0 for balloon). */
@@ -34,7 +94,5 @@ export function monthsRemaining(loan: Loan, asOf: Date = new Date()): number {
 /** End date (ISO yyyy-mm-dd) of a monthly_fixed loan, or null if not derivable. */
 export function loanEndDate(loan: Loan): string | null {
   if (loan.repayment_type !== 'monthly_fixed' || !loan.start_date || !loan.term_months) return null
-  const d = new Date(loan.start_date + 'T00:00:00')
-  d.setMonth(d.getMonth() + loan.term_months)
-  return d.toISOString().slice(0, 10)
+  return addMonths(loan.start_date, loan.term_months)
 }
