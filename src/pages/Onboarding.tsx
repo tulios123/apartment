@@ -1,21 +1,22 @@
-import { House, Tag, Bank, Coins, FileText, ShieldCheck, CheckCircle, Check, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
+import { House, Tag, Bank, HandCoins, Coins, FileText, ShieldCheck, CheckCircle, Check, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadDocument } from '../lib/storage'
 import { createProperty, createContract } from '../hooks/usePropertyData'
 import { syncRentRecurringItem } from '../hooks/useRecurringItems'
 import { ensureMortgage, upsertMortgageTrack } from '../hooks/useMortgageData'
+import { upsertLoan } from '../hooks/useLoansData'
 import { upsertInvestmentCost } from '../hooks/useInvestmentData'
 import { createInsurancePolicy } from '../hooks/useInsurance'
 import { supabase } from '../lib/supabase'
 import { monthlyPayment } from '../lib/mortgage'
 import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
-import type { TrackType } from '../types'
+import type { TrackType, LoanRepaymentType } from '../types'
 
 // ── Step types ────────────────────────────────────────────────────────────────
-type Step = 'welcome' | 'purchase' | 'mortgage' | 'investment' | 'rental' | 'insurance' | 'done'
+type Step = 'welcome' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
 
-const STEP_ORDER: Step[] = ['purchase', 'mortgage', 'investment', 'rental', 'insurance']
+const STEP_ORDER: Step[] = ['purchase', 'mortgage', 'loans', 'investment', 'rental', 'insurance']
 
 interface Props { onComplete: () => void }
 
@@ -39,6 +40,16 @@ type PolicyDraft = {
   end_date: string
 }
 
+type LoanDraft = {
+  repayment_type: LoanRepaymentType
+  label: string
+  lender: string
+  principal: string
+  monthly_payment: string
+  term_months: string
+  start_date: string
+}
+
 function emptyTrack(startDate?: string): TrackDraft {
   return {
     track_type: 'fixed_unlinked',
@@ -54,6 +65,18 @@ function emptyTrack(startDate?: string): TrackDraft {
 
 function emptyPolicy(): PolicyDraft {
   return { type: 'חיים', company: '', monthly_premium: '', start_date: '', end_date: '' }
+}
+
+function emptyLoan(startDate?: string): LoanDraft {
+  return {
+    repayment_type: 'monthly_fixed',
+    label: '',
+    lender: '',
+    principal: '',
+    monthly_payment: '',
+    term_months: '',
+    start_date: startDate || new Date().toISOString().slice(0, 10),
+  }
 }
 
 const INS_TYPES = ['מבנה', 'חיים', 'משכנתא', 'תכולה', 'אחר']
@@ -134,6 +157,12 @@ export default function Onboarding({ onComplete }: Props) {
   const [policyForm, setPolicyForm] = useState<PolicyDraft>(emptyPolicy())
   const [showPolicyForm, setShowPolicyForm] = useState(true)
   const [editingPolicyIdx, setEditingPolicyIdx] = useState<number | null>(null)
+
+  // ── Loans ──
+  const [loans, setLoans] = useState<LoanDraft[]>([])
+  const [loanForm, setLoanForm] = useState<LoanDraft>(emptyLoan())
+  const [showLoanForm, setShowLoanForm] = useState(true)
+  const [editingLoanIdx, setEditingLoanIdx] = useState<number | null>(null)
 
   const purchaseInputRef = useRef<HTMLInputElement>(null)
   const rentalInputRef = useRef<HTMLInputElement>(null)
@@ -253,6 +282,33 @@ export default function Onboarding({ onComplete }: Props) {
         } catch {
           failures.push('משכנתא')
         }
+      }
+
+      // 2.5 Loans — non-fatal
+      try {
+        const pendingLoanValid = (parseFloat(loanForm.principal) || 0) > 0
+        const allLoans = [...loans]
+        if (pendingLoanValid) {
+          if (editingLoanIdx !== null) allLoans[editingLoanIdx] = normalizeLoanDraft()
+          else if (showLoanForm) allLoans.push(normalizeLoanDraft())
+        }
+        for (const d of allLoans) {
+          if ((parseFloat(d.principal) || 0) <= 0) continue
+          const isMonthly = d.repayment_type === 'monthly_fixed'
+          await upsertLoan({
+            owner_id: user.id,
+            property_id: property.id,
+            label: d.label.trim() || null,
+            lender: d.lender.trim() || null,
+            repayment_type: d.repayment_type,
+            principal: parseFloat(d.principal) || 0,
+            monthly_payment: isMonthly ? (parseFloat(d.monthly_payment) || 0) : null,
+            term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
+            start_date: isMonthly ? (d.start_date || null) : (d.start_date || keyDeliveryDate || null),
+          })
+        }
+      } catch {
+        failures.push('הלוואות')
       }
 
       // 3. Investment costs — non-fatal
@@ -459,6 +515,14 @@ export default function Onboarding({ onComplete }: Props) {
     ])
   }
 
+  function fillTestLoans() {
+    setLoans([
+      { repayment_type: 'monthly_fixed', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', monthly_payment: '2500', term_months: '60', start_date: '2026-03-11' },
+      { repayment_type: 'balloon', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', monthly_payment: '', term_months: '', start_date: '2026-03-11' },
+    ])
+    setShowLoanForm(false)
+  }
+
   // ── Dots renderer ─────────────────────────────────────────────────────────────
   function dots(current: Step) {
     return STEP_ORDER.map((s, i) => {
@@ -556,6 +620,52 @@ export default function Onboarding({ onComplete }: Props) {
 
   function setPF<K extends keyof PolicyDraft>(key: K, val: PolicyDraft[K]) {
     setPolicyForm(prev => ({ ...prev, [key]: val }))
+  }
+
+  // ── Loan helpers ──────────────────────────────────────────────────────────────
+  function normalizeLoanDraft(): LoanDraft {
+    return { ...loanForm, start_date: loanForm.start_date || keyDeliveryDate }
+  }
+
+  function loanIsValid(d: LoanDraft) {
+    return (parseFloat(d.principal) || 0) > 0
+  }
+
+  function addLoan() {
+    if (!loanIsValid(loanForm)) return
+    setLoans(prev => [...prev, normalizeLoanDraft()])
+    setLoanForm(emptyLoan(keyDeliveryDate || undefined))
+    setShowLoanForm(false)
+  }
+
+  function saveLoanEdit(idx: number) {
+    setLoans(prev => prev.map((l, i) => i === idx ? normalizeLoanDraft() : l))
+    setEditingLoanIdx(null)
+  }
+
+  function saveLoanAndOpenNew() {
+    if (loanIsValid(loanForm)) {
+      if (editingLoanIdx !== null) {
+        setLoans(prev => prev.map((l, i) => i === editingLoanIdx ? normalizeLoanDraft() : l))
+      } else {
+        setLoans(prev => [...prev, normalizeLoanDraft()])
+      }
+    }
+    setEditingLoanIdx(null)
+    setLoanForm(emptyLoan(keyDeliveryDate || undefined))
+    setShowLoanForm(true)
+  }
+
+  function removeLoan(idx: number) {
+    setLoans(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function setLF<K extends keyof LoanDraft>(key: K, val: LoanDraft[K]) {
+    setLoanForm(prev => ({ ...prev, [key]: val }))
+  }
+
+  function loanTypeLabel(t: LoanRepaymentType) {
+    return t === 'balloon' ? 'בלון' : 'הלוואה משלימה'
   }
 
   // ── Track label lookup ────────────────────────────────────────────────────────
@@ -739,6 +849,80 @@ export default function Onboarding({ onComplete }: Props) {
     )
   }
 
+  // ── Loan form renderer ────────────────────────────────────────────────────────
+  function renderLoanForm(onSave: () => void, onCancel: () => void) {
+    const isMonthly = loanForm.repayment_type === 'monthly_fixed'
+    return (
+      <div className="onboarding-inline-form">
+        <div className="onboarding-field">
+          <label>סוג הלוואה</label>
+          <div className="toggle-group">
+            <button type="button" className={`toggle-btn${isMonthly ? ' active' : ''}`}
+              onClick={() => setLF('repayment_type', 'monthly_fixed')}>הלוואה משלימה</button>
+            <button type="button" className={`toggle-btn${!isMonthly ? ' active' : ''}`}
+              onClick={() => setLF('repayment_type', 'balloon')}>בלון</button>
+          </div>
+        </div>
+        <div className="onboarding-row">
+          <div className="onboarding-field">
+            <label>תיאור</label>
+            <input type="text" placeholder={isMonthly ? 'הלוואה משלימה' : 'הלוואת בלון'} value={loanForm.label}
+              onChange={e => setLF('label', e.target.value)} />
+          </div>
+          <div className="onboarding-field">
+            <label>נותן ההלוואה</label>
+            <input type="text" placeholder={isMonthly ? 'בנק' : 'הורים'} value={loanForm.lender}
+              onChange={e => setLF('lender', e.target.value)} />
+          </div>
+        </div>
+        <div className="onboarding-field">
+          <label>סכום ההלוואה (₪)</label>
+          <input type="text" inputMode="numeric" placeholder="0"
+            value={formatNum(loanForm.principal)}
+            onChange={e => setLF('principal', e.target.value.replace(/[^\d]/g, ''))} />
+        </div>
+        {isMonthly ? (
+          <>
+            <div className="onboarding-row">
+              <div className="onboarding-field">
+                <label>החזר חודשי (₪)</label>
+                <input type="text" inputMode="numeric" placeholder="0"
+                  value={formatNum(loanForm.monthly_payment)}
+                  onChange={e => setLF('monthly_payment', e.target.value.replace(/[^\d]/g, ''))} />
+              </div>
+              <div className="onboarding-field">
+                <label>תקופה (חודשים)</label>
+                <input type="number" min="1" placeholder="60" value={loanForm.term_months}
+                  onChange={e => setLF('term_months', e.target.value)} />
+              </div>
+            </div>
+            <div className="onboarding-field">
+              <label>תאריך התחלה</label>
+              <input type="date" value={loanForm.start_date}
+                onChange={e => setLF('start_date', e.target.value)} />
+            </div>
+          </>
+        ) : (
+          <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
+            הלוואת בלון ללא ריבית — נפרעת במכירה. תופיע בהיבט ההשקעה ומקטינה את ההון העצמי נטו.
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
+          <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור הלוואה <Check size={14} weight="bold" /></button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Loan totals ───────────────────────────────────────────────────────────────
+  const loansMonthlyTotal = loans
+    .filter(l => l.repayment_type === 'monthly_fixed')
+    .reduce((s, l) => s + (parseFloat(l.monthly_payment) || 0), 0)
+  const loansBalloonTotal = loans
+    .filter(l => l.repayment_type === 'balloon')
+    .reduce((s, l) => s + (parseFloat(l.principal) || 0), 0)
+
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="onboarding-wrap">
@@ -842,7 +1026,11 @@ export default function Onboarding({ onComplete }: Props) {
 
         {/* ── Step 2: Mortgage ── */}
         {step === 'mortgage' && (
-          <form onSubmit={e => { e.preventDefault(); advance('investment') }}>
+          <form onSubmit={e => {
+            e.preventDefault()
+            setLoanForm(emptyLoan(keyDeliveryDate || undefined))
+            advance('loans')
+          }}>
             <div className="onboarding-dots">{dots('mortgage')}</div>
             <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
             <div className="onboarding-icon"><Bank size={44} color="var(--accent)" /></div>
@@ -954,7 +1142,111 @@ export default function Onboarding({ onComplete }: Props) {
           </form>
         )}
 
-        {/* ── Step 3: Investment / Equity ── */}
+        {/* ── Step 3: Loans ── */}
+        {step === 'loans' && (
+          <form onSubmit={e => { e.preventDefault(); advance('investment') }}>
+            <div className="onboarding-dots">{dots('loans')}</div>
+            <p className="onboarding-step-count">שלב {currentStepIndex + 1} מתוך {stepTotal}</p>
+            <div className="onboarding-icon"><HandCoins size={44} color="var(--accent)" /></div>
+            <h2 className="onboarding-title">הלוואות</h2>
+            <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
+
+            {/* Saved loans list — click header to toggle edit in-place */}
+            {loans.length > 0 && (
+              <div className="onboarding-list">
+                {loans.map((d, i) => {
+                  const isMonthly = d.repayment_type === 'monthly_fixed'
+                  const monthly = parseFloat(d.monthly_payment) || 0
+                  const isEditing = editingLoanIdx === i
+                  return (
+                    <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
+                      <div className="onboarding-list-row-header"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (isEditing) {
+                            setEditingLoanIdx(null)
+                          } else {
+                            setEditingLoanIdx(i)
+                            setLoanForm({ ...d })
+                            setShowLoanForm(false)
+                          }
+                        }}>
+                        <div className="onboarding-track-summary">
+                          <div className="onboarding-track-summary-top">
+                            <span className="onboarding-list-row-type">{d.label.trim() || loanTypeLabel(d.repayment_type)}</span>
+                            <span className="onboarding-track-payment">
+                              {isMonthly
+                                ? <>{monthly > 0 ? formatCurrency(monthly) : <span className="text-muted">—</span>}<span className="text-muted"> / חודש</span></>
+                                : <span className="text-muted">נפרע במכירה</span>
+                              }
+                            </span>
+                          </div>
+                          <div className="onboarding-track-summary-sub">
+                            <span>{loanTypeLabel(d.repayment_type)}</span>
+                            <span>·</span>
+                            <span>קרן {formatCurrency(parseFloat(d.principal) || 0)}</span>
+                            {isMonthly && d.term_months && <><span>·</span><span>{d.term_months} ח׳</span></>}
+                            {d.lender.trim() && <><span>·</span><span>{d.lender.trim()}</span></>}
+                          </div>
+                        </div>
+                        <div className="onboarding-list-row-actions">
+                          <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeLoan(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>
+                        </div>
+                      </div>
+                      {isEditing && renderLoanForm(() => saveLoanEdit(i), () => setEditingLoanIdx(null))}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Inline form for new loan */}
+            {showLoanForm && renderLoanForm(addLoan, () => setShowLoanForm(false))}
+
+            {/* Add loan button — always shown */}
+            <button type="button" className="btn-onboard-skip onboarding-add-btn"
+              style={{ marginBottom: 16 }}
+              onClick={() => {
+                if (showLoanForm || editingLoanIdx !== null) {
+                  saveLoanAndOpenNew()
+                } else {
+                  setLoanForm(emptyLoan(keyDeliveryDate || undefined))
+                  setShowLoanForm(true)
+                  setEditingLoanIdx(null)
+                }
+              }}>
+              + הוסף הלוואה
+            </button>
+
+            {/* Conclusion totals */}
+            {loans.length > 0 && (loansMonthlyTotal > 0 || loansBalloonTotal > 0) && (
+              <div className="onboarding-mortgage-summary">
+                {loansMonthlyTotal > 0 && (
+                  <div className="onboarding-list-total">
+                    <span>החזר חודשי</span>
+                    <strong>{formatCurrency(loansMonthlyTotal)}</strong>
+                  </div>
+                )}
+                {loansBalloonTotal > 0 && (
+                  <div className="onboarding-list-total">
+                    <span>מימון בלון (נפרע במכירה)</span>
+                    <strong>{formatCurrency(loansBalloonTotal)}</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="onboarding-actions">
+              <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
+              {import.meta.env.DEV && (
+                <button type="button" className="btn-onboard-skip" onClick={fillTestLoans}>מלא דוגמה</button>
+              )}
+              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
+            </div>
+          </form>
+        )}
+
+        {/* ── Step 4: Investment / Equity ── */}
         {step === 'investment' && (
           <form onSubmit={e => { e.preventDefault(); advance('rental') }}>
             <div className="onboarding-dots">{dots('investment')}</div>
@@ -1083,7 +1375,7 @@ export default function Onboarding({ onComplete }: Props) {
           </form>
         )}
 
-        {/* ── Step 4: Rental ── */}
+        {/* ── Step 5: Rental ── */}
         {step === 'rental' && (
           <form onSubmit={e => { e.preventDefault(); advance('insurance') }}>
             <div className="onboarding-dots">{dots('rental')}</div>
@@ -1154,7 +1446,7 @@ export default function Onboarding({ onComplete }: Props) {
           </form>
         )}
 
-        {/* ── Step 5: Insurance ── */}
+        {/* ── Step 6: Insurance ── */}
         {step === 'insurance' && (
           <form onSubmit={e => { e.preventDefault(); handleFinish() }}>
             <div className="onboarding-dots">{dots('insurance')}</div>
