@@ -1,9 +1,35 @@
+import { useState } from 'react'
 import './sandbox-tokens.css'
 import './sandbox-layout.css'
 import {
   House, ChartPie, SquaresFour, Gear,
   TrendUp, ArrowDownLeft, ArrowUpRight,
 } from '@phosphor-icons/react'
+
+type Lens = 'equity' | 'cashflow'
+
+const LENS: Record<Lens, {
+  label: string
+  figure: string
+  growth: string
+  primary: { label: string; value: string }
+  secondary: { label: string; value: string }
+}> = {
+  equity: {
+    label: 'ההון שלי בנכס',
+    figure: '₪2,450,000',
+    growth: '4.2%',
+    primary: { label: 'שווי נכס', value: '₪3,200,000' },
+    secondary: { label: 'סך התחייבויות', value: '₪750,000' },
+  },
+  cashflow: {
+    label: 'תזרים חודשי נטו',
+    figure: '₪8,400',
+    growth: '2.1%',
+    primary: { label: 'הכנסות שכירות', value: '₪12,000' },
+    secondary: { label: 'יציאות ומשכנתא', value: '₪3,600' },
+  },
+}
 
 const NAV_ITEMS = [
   { icon: House, label: 'Overview', active: true },
@@ -20,6 +46,9 @@ const ACTIVITY = [
 ] as const
 
 export default function SandboxContainer() {
+  const [activeLens, setActiveLens] = useState<Lens>('equity')
+  const lens = LENS[activeLens]
+
   return (
     <div className="sandbox-root">
       <main className="sb-layout-grid">
@@ -41,29 +70,37 @@ export default function SandboxContainer() {
           {/* ── Hero Lens: a single grand element, two fluid lenses ───────── */}
           <div className="sb-hero-lens">
             <div className="sb-lens-toggle">
-              <button className="is-active">הון (Equity)</button>
-              <button>תזרים (Cash Flow)</button>
+              <button
+                className={activeLens === 'equity' ? 'is-active' : ''}
+                onClick={() => setActiveLens('equity')}
+              >הון (Equity)</button>
+              <button
+                className={activeLens === 'cashflow' ? 'is-active' : ''}
+                onClick={() => setActiveLens('cashflow')}
+              >תזרים (Cash Flow)</button>
             </div>
 
-            <div className="sb-hero-readout">
-              <span className="sb-hero-label">ההון שלי בנכס</span>
-              <div className="sb-hero-figure-row">
-                <span className="sb-hero-figure">₪2,450,000</span>
-                <span className="sb-growth-badge is-up">
-                  <TrendUp size={14} weight="bold" />
-                  4.2%
-                </span>
+            <div key={activeLens} className="sb-lens-content-wrapper">
+              <div className="sb-hero-readout">
+                <span className="sb-hero-label">{lens.label}</span>
+                <div className="sb-hero-figure-row">
+                  <span className="sb-hero-figure">{lens.figure}</span>
+                  <span className="sb-growth-badge is-up">
+                    <TrendUp size={14} weight="bold" />
+                    {lens.growth}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div className="sb-hero-subgrid">
-              <div className="sb-hero-stat">
-                <span className="sb-hero-stat-label">שווי נכס</span>
-                <span className="sb-hero-stat-value">₪3,200,000</span>
-              </div>
-              <div className="sb-hero-stat is-debt">
-                <span className="sb-hero-stat-label">סך התחייבויות</span>
-                <span className="sb-hero-stat-value">₪750,000</span>
+              <div className="sb-hero-subgrid">
+                <div className="sb-hero-stat">
+                  <span className="sb-hero-stat-label">{lens.primary.label}</span>
+                  <span className="sb-hero-stat-value">{lens.primary.value}</span>
+                </div>
+                <div className="sb-hero-stat is-debt">
+                  <span className="sb-hero-stat-label">{lens.secondary.label}</span>
+                  <span className="sb-hero-stat-value">{lens.secondary.value}</span>
+                </div>
               </div>
             </div>
           </div>
