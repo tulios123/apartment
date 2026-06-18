@@ -248,7 +248,10 @@ export default function Dashboard() {
           ) : (
             <>
               <div className="dash-hero-label">תזרים החודש</div>
-              <div className={`dash-hero-value ${adjustedNet >= 0 ? 'pos' : 'neg'}`}>
+              <div
+                className="dash-hero-value"
+                style={{ color: adjustedNet >= 0 ? 'var(--success)' : 'var(--danger)' }}
+              >
                 {formatCurrency(adjustedNet)}
               </div>
 
@@ -346,7 +349,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="dash-grid">
       {/* ── 2. Upcoming expenses row (ANZ-style) ─────────────────────────── */}
       {!summaryLoading && property && dashView === 'equity' && (
         <div
@@ -440,7 +442,6 @@ export default function Dashboard() {
           </ul>
         )}
       </section>
-      </div>
 
       {/* ── 5. Quick actions ─────────────────────────────────────────────── */}
       <div className="dashboard-quick-actions">
