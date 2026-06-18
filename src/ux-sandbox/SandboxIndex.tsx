@@ -1,4 +1,5 @@
 const VARIANTS = [
+  { href: '/ux-sandbox/dual-mode', title: 'Dual Mode ★', desc: 'תפעול · השקעה — refined existing direction w/ full mode toggle' },
   { href: '/ux-sandbox/anz-fluid', title: 'ANZ Fluid', desc: 'Mobile app translation · sliding lens viewport' },
   { href: '/ux-sandbox/anz-clean', title: 'ANZ Clean', desc: 'Premium desktop web portal · bento + side drawer' },
   { href: '/ux-sandbox/anz-expressive', title: 'ANZ Expressive', desc: 'Micro-motion · dynamic color scales' },
