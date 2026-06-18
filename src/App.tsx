@@ -20,6 +20,7 @@ import CleanView from './ux-sandbox/variants/anz-clean/CleanView'
 import ExpressiveView from './ux-sandbox/variants/anz-expressive/ExpressiveView'
 import HybridView from './ux-sandbox/variants/anz-hybrid/HybridView'
 import DualModeView from './ux-sandbox/variants/dual-mode/DualModeView'
+import FinancesView from './ux-sandbox/variants/finances/FinancesView'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -43,6 +44,7 @@ function AppRoutes() {
     if (sandboxPath === '/ux-sandbox/anz-expressive') return <ExpressiveView />
     if (sandboxPath === '/ux-sandbox/anz-hybrid') return <HybridView />
     if (sandboxPath === '/ux-sandbox/dual-mode') return <DualModeView />
+    if (sandboxPath === '/ux-sandbox/finances') return <FinancesView />
     return <SandboxIndex />
   }
 

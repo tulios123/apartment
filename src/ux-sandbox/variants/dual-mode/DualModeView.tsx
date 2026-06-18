@@ -111,8 +111,8 @@ export default function DualModeView() {
     <div className="dm-root">
       <aside className="dm-sidebar">
         <div className="dm-sidebar-title">הנכס שלי</div>
-        <button className="dm-nav-link active"><House size={18} weight="fill" /> ראשי</button>
-        <button className="dm-nav-link"><ChartLineUp size={18} /> פיננסים</button>
+        <a className="dm-nav-link active" href="/ux-sandbox/dual-mode"><House size={18} weight="fill" /> ראשי</a>
+        <a className="dm-nav-link" href="/ux-sandbox/finances"><ChartLineUp size={18} /> פיננסים</a>
         <button className="dm-nav-link"><ListChecks size={18} /> משימות</button>
         <button className="dm-nav-link"><FileText size={18} /> מסמכים</button>
         <button className="dm-nav-link"><Bank size={18} /> התחייבויות</button>
