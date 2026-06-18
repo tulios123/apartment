@@ -1,6 +1,7 @@
 const VARIANTS = [
   { href: '/ux-sandbox/dual-mode', title: 'Dual Mode ★', desc: 'תפעול · השקעה — refined home w/ full mode toggle' },
   { href: '/ux-sandbox/finances', title: 'Finances ★', desc: 'תנועות — month navigator + natural-language quick entry' },
+  { href: '/ux-sandbox/liabilities', title: 'Liabilities ★', desc: 'משכנתא + הלוואות — debt overview, track mix, balloon' },
   { href: '/ux-sandbox/anz-fluid', title: 'ANZ Fluid', desc: 'Mobile app translation · sliding lens viewport' },
   { href: '/ux-sandbox/anz-clean', title: 'ANZ Clean', desc: 'Premium desktop web portal · bento + side drawer' },
   { href: '/ux-sandbox/anz-expressive', title: 'ANZ Expressive', desc: 'Micro-motion · dynamic color scales' },

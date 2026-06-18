@@ -115,7 +115,7 @@ export default function DualModeView() {
         <a className="dm-nav-link" href="/ux-sandbox/finances"><ChartLineUp size={18} /> פיננסים</a>
         <button className="dm-nav-link"><ListChecks size={18} /> משימות</button>
         <button className="dm-nav-link"><FileText size={18} /> מסמכים</button>
-        <button className="dm-nav-link"><Bank size={18} /> התחייבויות</button>
+        <a className="dm-nav-link" href="/ux-sandbox/liabilities"><Bank size={18} /> התחייבויות</a>
         <button className="dm-nav-link"><Gear size={18} /> הגדרות</button>
       </aside>
 

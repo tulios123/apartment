@@ -117,7 +117,7 @@ export default function FinancesView() {
         <a className="fin-nav-link active" href="/ux-sandbox/finances"><ChartLineUp size={18} weight="fill" /> פיננסים</a>
         <button className="fin-nav-link"><ListChecks size={18} /> משימות</button>
         <button className="fin-nav-link"><FileText size={18} /> מסמכים</button>
-        <button className="fin-nav-link"><Bank size={18} /> התחייבויות</button>
+        <a className="fin-nav-link" href="/ux-sandbox/liabilities"><Bank size={18} /> התחייבויות</a>
         <button className="fin-nav-link"><Gear size={18} /> הגדרות</button>
       </aside>
 
