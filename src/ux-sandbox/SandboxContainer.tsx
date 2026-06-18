@@ -47,6 +47,7 @@ const ACTIVITY = [
 
 export default function SandboxContainer() {
   const [activeLens, setActiveLens] = useState<Lens>('equity')
+  const [isActionPanelOpen, setIsActionPanelOpen] = useState(false)
   const lens = LENS[activeLens]
 
   return (
@@ -59,6 +60,13 @@ export default function SandboxContainer() {
               <span>{label}</span>
             </div>
           ))}
+
+          <button
+            className="sb-btn-quick-add"
+            onClick={() => setIsActionPanelOpen(open => !open)}
+          >
+            + תנועה
+          </button>
         </aside>
 
         <section className="sb-content-area">
@@ -152,6 +160,39 @@ export default function SandboxContainer() {
           </div>
         </section>
       </main>
+
+      {isActionPanelOpen && (
+        <div className="sb-floating-action-panel">
+          <h4>רישום תנועה חדשה</h4>
+
+          <div className="sb-form-group">
+            <label htmlFor="sb-amount">סכום ₪</label>
+            <input id="sb-amount" type="number" inputMode="decimal" placeholder="0.00" autoFocus />
+          </div>
+
+          <div className="sb-form-group">
+            <label htmlFor="sb-desc">תיאור</label>
+            <input id="sb-desc" type="text" placeholder="לדוגמה: תיקון דוד שמש" />
+          </div>
+
+          <div className="sb-form-group">
+            <label htmlFor="sb-category">קטגוריה</label>
+            <select id="sb-category" defaultValue="">
+              <option value="" disabled>בחר קטגוריה</option>
+              <option value="rent">שכר דירה</option>
+              <option value="maintenance">תחזוקה</option>
+              <option value="insurance">ביטוח</option>
+              <option value="utilities">חשבונות</option>
+              <option value="other">אחר</option>
+            </select>
+          </div>
+
+          <div className="sb-panel-actions">
+            <button onClick={() => setIsActionPanelOpen(false)}>ביטול</button>
+            <button className="sb-btn-save" onClick={() => setIsActionPanelOpen(false)}>שמירה</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

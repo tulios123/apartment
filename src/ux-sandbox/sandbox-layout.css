@@ -100,6 +100,8 @@
     gap: var(--sb-space-md);
     position: relative;
     overflow: hidden;
+    /* Spatial rigidity — freeze rows below during the lens cross-fade remount */
+    min-height: 220px;
   }
 
   .sb-lens-toggle {
@@ -343,6 +345,99 @@
     &.income { color: #4ade80; }
     &.expense { color: var(--sb-text-main); }
   }
+
+  /* ── Quick Add Action Control ───────────────────────────────────────── */
+  .sb-btn-quick-add {
+    background: var(--sb-accent);
+    color: var(--sb-text-main);
+    border: none;
+    padding: var(--sb-space-sm);
+    border-radius: var(--sb-radius-interactive);
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: var(--sb-space-sm);
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s ease;
+
+    &:hover {
+      background: #2563eb;
+    }
+
+    &:active {
+      transform: scale(0.96);
+    }
+  }
+
+  /* ── Immersive Micro-Dialog Panel ───────────────────────────────────── */
+  .sb-floating-action-panel {
+    position: fixed;
+    bottom: var(--sb-space-xl);
+    left: var(--sb-space-xl);
+    width: 360px;
+    background: var(--sb-bg-surface);
+    border: 1px solid var(--sb-border);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    border-radius: var(--sb-radius-card);
+    padding: var(--sb-space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sb-space-md);
+    z-index: 100;
+    animation: sbSlideUp 0.3s cubic-bezier(0.25, 1, 0.5, 1) both;
+
+    h4 {
+      font-size: var(--sb-text-body);
+      font-weight: 600;
+    }
+
+    .sb-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sb-space-xs);
+
+      label {
+        font-size: var(--sb-text-sm);
+        color: var(--sb-text-muted);
+      }
+
+      input, select {
+        background: var(--sb-bg-base);
+        border: 1px solid var(--sb-border);
+        color: var(--sb-text-main);
+        padding: var(--sb-space-sm);
+        border-radius: var(--sb-radius-interactive);
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s ease;
+
+        &:focus {
+          border-color: var(--sb-accent);
+        }
+      }
+    }
+
+    .sb-panel-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--sb-space-sm);
+      margin-top: var(--sb-space-xs);
+
+      button {
+        padding: var(--sb-space-sm) var(--sb-space-md);
+        border-radius: var(--sb-radius-interactive);
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: var(--sb-text-muted);
+
+        &.sb-btn-save {
+          background: var(--sb-bg-elevated);
+          color: var(--sb-text-main);
+          border: 1px solid var(--sb-border);
+        }
+      }
+    }
+  }
 }
 
 /* Keyframe transition to cleanly animate content mounting on state change */
@@ -350,6 +445,17 @@
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sbSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
