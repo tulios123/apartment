@@ -14,6 +14,10 @@ import Documents from './pages/Documents'
 import PropertyHub from './pages/property/PropertyHub'
 import LiabilitiesHub from './pages/liabilities/LiabilitiesHub'
 import Settings from './pages/Settings'
+import SandboxContainer from './ux-sandbox/SandboxContainer'
+import MinimalView from './ux-sandbox/variants/minimal/MinimalView'
+import BentoView from './ux-sandbox/variants/bento/BentoView'
+import EditorialView from './ux-sandbox/variants/editorial/EditorialView'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -28,6 +32,15 @@ function AppRoutes() {
       .limit(1)
       .then(({ data }) => setHasProperty((data?.length ?? 0) > 0))
   }, [user])
+
+  // Isolated UX sandbox — bypasses auth/onboarding gates so it loads standalone.
+  const sandboxPath = window.location.pathname
+  if (sandboxPath.startsWith('/ux-sandbox')) {
+    if (sandboxPath === '/ux-sandbox/minimal') return <MinimalView />
+    if (sandboxPath === '/ux-sandbox/bento') return <BentoView />
+    if (sandboxPath === '/ux-sandbox/editorial') return <EditorialView />
+    return <SandboxContainer />
+  }
 
   if (loading || (user && hasProperty === null)) return <div className="app-loading">טוען...</div>
   if (!user) return <Login />

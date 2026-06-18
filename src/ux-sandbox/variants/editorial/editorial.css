@@ -1,0 +1,161 @@
+.edit-root {
+  --ed-bg: #0a0907;
+  --ed-ink: #f5f1e8;
+  --ed-muted: #8c857a;
+  --ed-hair: #211e18;
+  --ed-accent: #e0a449;     /* deep amber */
+  --ed-accent-soft: #e0a44922;
+  --ed-up: #8fbf8a;
+  --ed-down: #cf8b6b;
+
+  direction: rtl;
+  text-align: right;
+  background: var(--ed-bg);
+  color: var(--ed-ink);
+  min-height: 100vh;
+  font-family: 'Georgia', 'Times New Roman', system-ui, serif;
+  -webkit-font-smoothing: antialiased;
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .edit-canvas { max-width: 1080px; margin: 0 auto; padding: 4rem 2.5rem 6rem; }
+
+  /* ── Masthead ──────────────────────────────────────────────── */
+  .edit-masthead {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding-bottom: 1.5rem; border-bottom: 2px solid var(--ed-ink);
+    margin-bottom: 3.5rem;
+  }
+  .edit-kicker {
+    display: block; font-family: system-ui, sans-serif;
+    font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ed-accent); margin-bottom: 0.6rem;
+  }
+  .edit-mast-title { font-size: 2rem; font-weight: 700; letter-spacing: -0.01em; }
+  .edit-add {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: system-ui, sans-serif; font-size: 0.85rem; font-weight: 600;
+    background: var(--ed-ink); color: var(--ed-bg);
+    border: none; padding: 0.6rem 1.1rem; border-radius: 2px; cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.25,1,0.5,1), background 0.2s ease;
+  }
+  .edit-add:hover { background: var(--ed-accent); }
+  .edit-add:active { transform: scale(0.96); }
+
+  /* ── Lead / oversized hero ─────────────────────────────────── */
+  .edit-lead {
+    display: grid; grid-template-columns: 1.5fr 1fr; gap: 3rem;
+    align-items: end;
+    padding-bottom: 3.5rem; margin-bottom: 3.5rem;
+    border-bottom: 1px solid var(--ed-hair);
+  }
+  .edit-lead-label {
+    display: block; font-family: system-ui, sans-serif;
+    font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ed-muted); margin-bottom: 0.5rem;
+  }
+  .edit-lead-figure {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 700; line-height: 0.9; letter-spacing: -0.04em;
+    color: var(--ed-accent);
+  }
+  .edit-lead-trend {
+    display: inline-block; margin-top: 1rem;
+    font-family: system-ui, sans-serif; font-size: 0.85rem; color: var(--ed-up);
+  }
+  .edit-lead-aside {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem;
+  }
+  .edit-stat { display: flex; flex-direction: column; gap: 0.35rem; border-top: 1px solid var(--ed-hair); padding-top: 0.65rem; }
+  .edit-stat-k { font-family: system-ui, sans-serif; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ed-muted); }
+  .edit-stat-v { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .edit-stat-v.accent { color: var(--ed-accent); }
+
+  /* ── Multi-column reading blocks ───────────────────────────── */
+  .edit-columns { display: grid; grid-template-columns: 1fr 1.1fr; gap: 4rem; }
+  .edit-col-head {
+    font-family: system-ui, sans-serif;
+    font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ed-muted); padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--ed-hair); margin-bottom: 1.5rem;
+  }
+
+  .edit-attention {
+    display: flex; gap: 1rem; align-items: baseline;
+    padding: 1.1rem 0; border-bottom: 1px solid var(--ed-hair);
+  }
+  .edit-attention-num {
+    font-size: 0.9rem; color: var(--ed-accent); font-variant-numeric: tabular-nums;
+    font-family: system-ui, sans-serif;
+  }
+  .edit-attention-body { flex: 1; min-width: 0; }
+  .edit-attention-title { font-size: 1.15rem; font-weight: 700; line-height: 1.3; }
+  .edit-attention-meta { display: block; margin-top: 0.3rem; font-family: system-ui, sans-serif; font-size: 0.8rem; color: var(--ed-muted); }
+  .edit-attention-flag {
+    font-family: system-ui, sans-serif; font-size: 0.72rem; font-weight: 600;
+    color: var(--ed-accent); background: var(--ed-accent-soft);
+    padding: 0.2rem 0.55rem; border-radius: 2px; white-space: nowrap;
+  }
+
+  .edit-feed-row {
+    display: grid; grid-template-columns: auto auto 1fr auto;
+    align-items: center; gap: 0.85rem;
+    padding: 0.85rem 0; border-bottom: 1px solid var(--ed-hair);
+    font-family: system-ui, sans-serif;
+  }
+  .edit-feed-date { font-size: 0.78rem; color: var(--ed-muted); font-variant-numeric: tabular-nums; }
+  .edit-feed-glyph {
+    display: inline-flex;
+    &.income { color: var(--ed-up); }
+    &.expense { color: var(--ed-down); }
+  }
+  .edit-feed-desc { font-size: 0.95rem; }
+  .edit-feed-amount {
+    font-size: 0.95rem; font-weight: 600; font-variant-numeric: tabular-nums;
+    &.income { color: var(--ed-up); }
+    &.expense { color: var(--ed-ink); }
+  }
+
+  /* ── Liquid overlay sheet ──────────────────────────────────── */
+  .edit-sheet-scrim {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    opacity: 0; pointer-events: none; transition: opacity 0.4s ease; z-index: 90;
+    &.is-open { opacity: 1; pointer-events: auto; }
+  }
+  .edit-sheet {
+    position: fixed; top: 0; bottom: 0; left: 0; width: min(420px, 88vw);
+    background: #0f0e0b; border-left: 1px solid var(--ed-hair);
+    padding: 3rem 2.25rem; z-index: 100;
+    display: flex; flex-direction: column; gap: 1.5rem;
+    transform: translateX(-100%);
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    &.is-open { transform: translateX(0); }
+  }
+  .edit-sheet-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 1rem; border-bottom: 1px solid var(--ed-hair);
+    h2 { font-size: 1.6rem; font-weight: 700; }
+    button { background: none; border: none; color: var(--ed-muted); cursor: pointer; }
+  }
+  .edit-field {
+    display: flex; flex-direction: column; gap: 0.5rem;
+    font-family: system-ui, sans-serif;
+    span { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ed-muted); }
+    input, select {
+      background: transparent; border: none; border-bottom: 1px solid var(--ed-hair);
+      color: var(--ed-ink); font-family: 'Georgia', serif; font-size: 1.4rem;
+      padding: 0.5rem 0; outline: none; transition: border-color 0.25s ease;
+    }
+    input::placeholder { color: var(--ed-muted); }
+    input:focus, select:focus { border-bottom-color: var(--ed-accent); }
+  }
+  .edit-sheet-save {
+    margin-top: auto;
+    font-family: system-ui, sans-serif; font-size: 0.9rem; font-weight: 600;
+    background: var(--ed-accent); color: var(--ed-bg);
+    border: none; padding: 0.95rem; border-radius: 2px; cursor: pointer;
+    transition: transform 0.15s ease, filter 0.2s ease;
+  }
+  .edit-sheet-save:hover { filter: brightness(1.08); }
+  .edit-sheet-save:active { transform: scale(0.98); }
+}

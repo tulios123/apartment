@@ -1,0 +1,182 @@
+.mnml-root {
+  --mn-bg: #0c0c0e;
+  --mn-text: #ededf0;
+  --mn-muted: #76767f;
+  --mn-hair: #1a1a22;
+  --mn-up: #6ee7a8;
+  --mn-down: #f4a4a4;
+
+  direction: rtl;
+  text-align: right;
+  background: var(--mn-bg);
+  color: var(--mn-text);
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .mnml-page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 7rem 2rem 6rem;
+  }
+
+  .mnml-header { margin-bottom: 5rem; }
+
+  .mnml-eyebrow {
+    display: block;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    color: var(--mn-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .mnml-title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Hero: pure type, no container ─────────────────────────── */
+  .mnml-hero {
+    padding-bottom: 4rem;
+    margin-bottom: 4rem;
+    border-bottom: 1px solid var(--mn-hair);
+  }
+
+  .mnml-hero-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--mn-muted);
+    margin-bottom: 1.25rem;
+  }
+
+  .mnml-hero-figure {
+    font-size: clamp(2.75rem, 7vw, 4.5rem);
+    font-weight: 300;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .mnml-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+    margin-top: 1.75rem;
+    font-size: 0.9rem;
+    color: var(--mn-muted);
+  }
+
+  .mnml-divider-dot {
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--mn-hair);
+  }
+
+  .mnml-up { color: var(--mn-up); }
+
+  /* ── Sections divided by whitespace + hairlines ────────────── */
+  .mnml-section { margin-bottom: 4rem; }
+
+  .mnml-section-head {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--mn-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .mnml-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.15rem 0;
+    border-bottom: 1px solid var(--mn-hair);
+  }
+
+  .mnml-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .mnml-row-title { font-size: 1rem; font-weight: 400; }
+  .mnml-row-meta { font-size: 0.82rem; color: var(--mn-muted); }
+
+  .mnml-row-flag {
+    font-size: 0.8rem;
+    color: var(--mn-muted);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .mnml-row:hover .mnml-row-flag { opacity: 1; transform: none; }
+
+  /* Hidden micro-control revealed on hover */
+  .mnml-row-action {
+    background: none; border: none; cursor: pointer;
+    color: var(--mn-muted);
+    font-size: 0.95rem;
+    width: 1.6rem; height: 1.6rem;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.25s ease, transform 0.25s ease, color 0.2s ease;
+  }
+  .mnml-row:hover .mnml-row-action { opacity: 1; transform: none; }
+  .mnml-row-action:hover { color: var(--mn-up); }
+
+  .mnml-tx-glyph {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.6rem; flex-shrink: 0;
+    &.income { color: var(--mn-up); }
+    &.expense { color: var(--mn-down); }
+  }
+  .mnml-tx-amount {
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+    &.income { color: var(--mn-up); }
+    &.expense { color: var(--mn-text); }
+  }
+
+  /* ── Inline-expanding add node ─────────────────────────────── */
+  .mnml-add { padding-top: 1.35rem; }
+
+  .mnml-add-trigger {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: none; border: none; cursor: pointer;
+    color: var(--mn-muted);
+    font-size: 0.95rem; font-family: inherit;
+    transition: color 0.2s ease, letter-spacing 0.2s ease;
+  }
+  .mnml-add-trigger:hover { color: var(--mn-text); letter-spacing: 0.02em; }
+
+  .mnml-add-form {
+    display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+    animation: mnmlExpand 0.3s ease both;
+  }
+
+  .mnml-add-input {
+    background: none; border: none;
+    border-bottom: 1px solid var(--mn-hair);
+    color: var(--mn-text);
+    font-family: inherit; font-size: 1rem;
+    padding: 0.35rem 0;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+  .mnml-add-input::placeholder { color: var(--mn-muted); }
+  .mnml-add-input:focus { border-bottom-color: var(--mn-text); }
+  .mnml-add-amount { width: 6rem; font-size: 1.4rem; font-weight: 300; }
+
+  .mnml-add-submit {
+    background: none; border: none; cursor: pointer;
+    color: var(--mn-up); font-family: inherit; font-size: 0.95rem;
+  }
+  .mnml-add-cancel {
+    background: none; border: none; cursor: pointer;
+    color: var(--mn-muted); font-family: inherit; font-size: 0.95rem;
+  }
+}
+
+@keyframes mnmlExpand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
