@@ -18,6 +18,7 @@ import SandboxIndex from './ux-sandbox/SandboxIndex'
 import FluidView from './ux-sandbox/variants/anz-fluid/FluidView'
 import CleanView from './ux-sandbox/variants/anz-clean/CleanView'
 import ExpressiveView from './ux-sandbox/variants/anz-expressive/ExpressiveView'
+import HybridView from './ux-sandbox/variants/anz-hybrid/HybridView'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -39,6 +40,7 @@ function AppRoutes() {
     if (sandboxPath === '/ux-sandbox/anz-fluid') return <FluidView />
     if (sandboxPath === '/ux-sandbox/anz-clean') return <CleanView />
     if (sandboxPath === '/ux-sandbox/anz-expressive') return <ExpressiveView />
+    if (sandboxPath === '/ux-sandbox/anz-hybrid') return <HybridView />
     return <SandboxIndex />
   }
 

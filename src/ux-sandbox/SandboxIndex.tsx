@@ -2,6 +2,7 @@ const VARIANTS = [
   { href: '/ux-sandbox/anz-fluid', title: 'ANZ Fluid', desc: 'Mobile app translation · sliding lens viewport' },
   { href: '/ux-sandbox/anz-clean', title: 'ANZ Clean', desc: 'Premium desktop web portal · bento + side drawer' },
   { href: '/ux-sandbox/anz-expressive', title: 'ANZ Expressive', desc: 'Micro-motion · dynamic color scales' },
+  { href: '/ux-sandbox/anz-hybrid', title: 'ANZ Hybrid ✦', desc: 'Fluid + Clean fused · light web portal w/ sliding lens' },
 ]
 
 export default function SandboxIndex() {
