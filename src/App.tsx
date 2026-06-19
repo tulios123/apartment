@@ -14,7 +14,6 @@ import TasksV2 from './pages/tasks/TasksV2'
 import DocumentsV2 from './pages/documents/DocumentsV2'
 import FinancesHub from './pages/finances/FinancesHub'
 import Finances from './pages/Finances'
-import RecurringItems from './pages/RecurringItems'
 import Tasks from './pages/Tasks'
 import Documents from './pages/Documents'
 import PropertyHub from './pages/property/PropertyHub'
@@ -70,9 +69,9 @@ function AppRoutes() {
           <Route index element={uxV2 ? <DashboardV2 /> : <Dashboard />} />
           <Route path="finances" element={<FinancesHub />}>
             <Route index element={uxV2 ? <FinancesV2 /> : <Finances />} />
-            <Route path="recurring" element={<RecurringItems />} />
+            <Route path="recurring" element={<Navigate to="/finances" replace />} />
           </Route>
-          <Route path="recurring" element={<Navigate to="/finances/recurring" replace />} />
+          <Route path="recurring" element={<Navigate to="/finances" replace />} />
           <Route path="tasks" element={uxV2 ? <TasksV2 /> : <Tasks />} />
           <Route path="documents" element={uxV2 ? <DocumentsV2 /> : <Documents />} />
           <Route path="property" element={uxV2 ? <PropertyV2 /> : <PropertyHub />} />
