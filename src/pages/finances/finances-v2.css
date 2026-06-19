@@ -1,8 +1,15 @@
 /* Finances V2 — sandbox design ported to production, wired to real data.
    Scoped to .finv; renders inside FinancesHub (which provides the כספים header + tabs). */
 .finv {
-  /* Month navigator */
-  .finv-monthnav { display: flex; align-items: center; gap: 8px; margin: 4px 0 16px; }
+  /* Period bar: view toggle + navigator */
+  .finv-periodbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 16px; }
+  .finv-viewtoggle { display: inline-flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: var(--r-pill); box-shadow: var(--shadow-sm); }
+  .finv-viewtoggle button { border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: var(--r-pill); cursor: pointer; transition: background var(--t-fast), color var(--t-fast); }
+  .finv-viewtoggle button:hover { color: var(--brand-navy); }
+  .finv-viewtoggle button.on { background: var(--accent); color: #fff; }
+
+  /* Month/year navigator */
+  .finv-monthnav { display: flex; align-items: center; gap: 8px; }
   .finv-monthnav-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: var(--brand-navy); cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), border-color var(--t-fast), transform 0.1s var(--ease); }
   .finv-monthnav-btn:hover { background: var(--accent-light); border-color: var(--accent-light); color: var(--accent); }
   .finv-monthnav-btn:active { transform: scale(0.9); }
@@ -41,6 +48,29 @@
   .finv-chip.dir-expense { background: var(--danger-bg); color: var(--danger-text); }
   .finv-capture-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
   .finv-capture-structured { background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 0; }
+
+  /* Annual bar chart */
+  .finv-yearchart { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 18px 18px 14px; margin-bottom: 16px; }
+  .finv-yearchart-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .finv-yearchart-head h3 { font-size: 14px; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px; }
+  .finv-yearchart-legend { display: flex; gap: 14px; }
+  .finv-yearchart-legend span { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
+  .finv-yearchart-legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .finv-yearchart-legend i.in { background: var(--success); }
+  .finv-yearchart-legend i.out { background: var(--danger); }
+  .finv-yearbars { display: flex; align-items: flex-end; gap: 4px; height: 150px; }
+  .finv-yearbar-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; border: none; background: none; cursor: pointer; padding: 0; border-radius: var(--r-sm); transition: background var(--t-fast) var(--ease); }
+  .finv-yearbar-col:hover { background: var(--bg-alt); }
+  .finv-yearbar-stack { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
+  .finv-yearbar { width: 7px; min-height: 2px; border-radius: 3px 3px 0 0; transition: height var(--t-slow) var(--ease); }
+  .finv-yearbar.in { background: var(--success); }
+  .finv-yearbar.out { background: var(--danger); }
+  .finv-yearbar-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+  .finv-yearbar-col.current .finv-yearbar-label { color: var(--accent); }
+  .finv-yearbar-col.current { background: var(--accent-light); }
+  .finv-yearchart-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted); }
+  .finv-yearchart-foot strong { color: var(--brand-navy); font-weight: 700; }
+  .finv-yearchart-hint { color: var(--accent); }
 
   /* Breakdown */
   .finv-breakdown { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); margin-bottom: 22px; overflow: hidden; }
