@@ -109,19 +109,23 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         <div className="liav-empty">עדיין לא הוגדרו משכנתא או הלוואות. הוסף בעזרת הכפתור למטה.</div>
       ) : (
         <>
-          <div className="liav-hero">
-            <div className="liav-hero-label">סך התחייבויות</div>
-            <div className="liav-hero-value">{fmt(total)}</div>
-            <div className="liav-comp-bar">
-              {mortgageBalance > 0 && <div className="mortgage" style={{ width: `${pct(mortgageBalance)}%` }} />}
-              {loanBal > 0 && <div className="loan" style={{ width: `${pct(loanBal)}%` }} />}
-              {balloonBal > 0 && <div className="balloon" style={{ width: `${pct(balloonBal)}%` }} />}
-            </div>
-            <div className="liav-comp-legend">
-              {mortgageBalance > 0 && <span><i className="liav-comp-dot" style={{ background: '#5aa0ec' }} /> משכנתא {fmt(mortgageBalance)}</span>}
-              {loanBal > 0 && <span><i className="liav-comp-dot" style={{ background: 'var(--accent-teal)' }} /> הלוואה {fmt(loanBal)}</span>}
-              {balloonBal > 0 && <span><i className="liav-comp-dot" style={{ background: '#f0b24e' }} /> בלון {fmt(balloonBal)}</span>}
-            </div>
+          <div className={`liav-hero${embedded ? ' slim' : ''}`}>
+            {!embedded && (
+              <>
+                <div className="liav-hero-label">סך התחייבויות</div>
+                <div className="liav-hero-value">{fmt(total)}</div>
+                <div className="liav-comp-bar">
+                  {mortgageBalance > 0 && <div className="mortgage" style={{ width: `${pct(mortgageBalance)}%` }} />}
+                  {loanBal > 0 && <div className="loan" style={{ width: `${pct(loanBal)}%` }} />}
+                  {balloonBal > 0 && <div className="balloon" style={{ width: `${pct(balloonBal)}%` }} />}
+                </div>
+                <div className="liav-comp-legend">
+                  {mortgageBalance > 0 && <span><i className="liav-comp-dot" style={{ background: '#5aa0ec' }} /> משכנתא {fmt(mortgageBalance)}</span>}
+                  {loanBal > 0 && <span><i className="liav-comp-dot" style={{ background: 'var(--accent-teal)' }} /> הלוואה {fmt(loanBal)}</span>}
+                  {balloonBal > 0 && <span><i className="liav-comp-dot" style={{ background: '#f0b24e' }} /> בלון {fmt(balloonBal)}</span>}
+                </div>
+              </>
+            )}
             <div className="liav-hero-foot">
               <div><span>תשלום חודשי</span><strong>{fmt(monthly)}</strong></div>
               <div><span>ריבית שנותרה לתשלום</span><strong>{fmt(Math.max(0, summary.totalInterestLife - summary.interestPaidToDate))}</strong></div>

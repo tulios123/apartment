@@ -2,6 +2,9 @@
    Scoped to .liav; renders as the full התחייבויות page (replaces the accordion when flagged). */
 .liav {
   .liav-hero { background: linear-gradient(150deg, var(--brand-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 24px; }
+  /* Embedded in the Wealth hub: equity hero above already shows the debt total, so show only the payment/interest detail */
+  .liav-hero.slim { padding: 18px 24px; }
+  .liav-hero.slim .liav-hero-foot { margin-top: 0; padding-top: 0; border-top: none; }
   .liav-hero-label { font-size: 13px; opacity: 0.8; margin-bottom: 6px; }
   .liav-hero-value { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
   .liav-comp-bar { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 18px 0 12px; }
