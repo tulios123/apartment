@@ -27,7 +27,7 @@ function isOverdue(t: Task) {
 
 type Bucket = { key: string; label: string; tone: string; tasks: Task[] }
 
-export default function TasksV2() {
+export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState<'open' | 'done' | 'all'>('open')
   const { tasks, loading, error, syncError, refetch } = useTasks({ status: statusFilter })
@@ -120,9 +120,9 @@ export default function TasksV2() {
   }
 
   return (
-    <div className="page tav">
+    <div className={embedded ? 'tav tav-embedded' : 'page tav'}>
       <div className="page-header">
-        <h1>משימות</h1>
+        {!embedded && <h1>משימות</h1>}
         <div className="tav-filter">
           <button className={statusFilter === 'open' ? 'on' : ''} onClick={() => setStatusFilter('open')}>פתוחות{openCount > 0 && statusFilter === 'open' ? ` · ${openCount}` : ''}</button>
           <button className={statusFilter === 'done' ? 'on' : ''} onClick={() => setStatusFilter('done')}>הושלמו</button>

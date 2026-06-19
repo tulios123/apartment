@@ -1168,6 +1168,28 @@ input[type="date"] {
   max-width: 600px;
 }
 
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-back {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+
+.settings-back:hover {
+  color: var(--accent);
+  background: var(--hover-bg);
+}
+
 .settings-sections {
   display: flex;
   flex-direction: column;

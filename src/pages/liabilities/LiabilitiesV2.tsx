@@ -20,7 +20,7 @@ const yearOf = (d: string | null) => d ? new Date(d).getFullYear() : null
 const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '', annual_rate: '', term_months: '', grace_months: '0', start_date: new Date().toISOString().slice(0, 10) }
 const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, label: '', lender: '', principal: '', annual_rate: '', term_months: '', start_date: new Date().toISOString().slice(0, 10) }
 
-export default function LiabilitiesV2() {
+export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth()
   const { mortgage, tracks, summary, loading: loadingM, error: errorM, refetch: refetchM } = useMortgageData()
   const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingL, error: errorL, refetch: refetchL } = useLoansData()
@@ -102,8 +102,8 @@ export default function LiabilitiesV2() {
   if (errorM || errorL) return <PageError message={errorM || errorL || 'שגיאה'} />
 
   return (
-    <div className="page liav">
-      <div className="page-header"><h1>התחייבויות</h1></div>
+    <div className={embedded ? 'liav liav-embedded' : 'page liav'}>
+      {!embedded && <div className="page-header"><h1>התחייבויות</h1></div>}
 
       {(loadingM || loadingL) ? <SkeletonList rows={4} /> : total === 0 ? (
         <div className="liav-empty">עדיין לא הוגדרו משכנתא או הלוואות. הוסף בעזרת הכפתור למטה.</div>

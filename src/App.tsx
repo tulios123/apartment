@@ -7,10 +7,8 @@ import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import HomeScreen from './pages/dashboard/HomeScreen'
 import FinancesV2 from './pages/finances/FinancesV2'
-import LiabilitiesV2 from './pages/liabilities/LiabilitiesV2'
-import PropertyV2 from './pages/property/PropertyV2'
-import TasksV2 from './pages/tasks/TasksV2'
-import DocumentsV2 from './pages/documents/DocumentsV2'
+import WealthHub from './pages/wealth/WealthHub'
+import PropertyAdminHub from './pages/property/PropertyAdminHub'
 import FinancesHub from './pages/finances/FinancesHub'
 import Settings from './pages/Settings'
 
@@ -42,15 +40,26 @@ function AppRoutes() {
             <Route path="recurring" element={<Navigate to="/finances" replace />} />
           </Route>
           <Route path="recurring" element={<Navigate to="/finances" replace />} />
-          <Route path="tasks" element={<TasksV2 />} />
-          <Route path="documents" element={<DocumentsV2 />} />
-          <Route path="property" element={<PropertyV2 />} />
-          <Route path="property/mortgage" element={<Navigate to="/liabilities/mortgage" replace />} />
-          <Route path="property/:section" element={<PropertyV2 />} />
-          <Route path="liabilities" element={<LiabilitiesV2 />} />
-          <Route path="liabilities/:section" element={<LiabilitiesV2 />} />
-          <Route path="mortgage" element={<Navigate to="/liabilities/mortgage" replace />} />
-          <Route path="investment" element={<Navigate to="/property/investment" replace />} />
+
+          {/* Wealth (Investment) pillar */}
+          <Route path="wealth" element={<WealthHub />} />
+          <Route path="wealth/:section" element={<WealthHub />} />
+
+          {/* Property Admin pillar */}
+          <Route path="property" element={<PropertyAdminHub />} />
+          <Route path="property/:section" element={<PropertyAdminHub />} />
+
+          {/* Legacy deep-link redirects → new pillars */}
+          <Route path="property/mortgage" element={<Navigate to="/wealth/liabilities" replace />} />
+          <Route path="property/costs" element={<Navigate to="/wealth" replace />} />
+          <Route path="property/investment" element={<Navigate to="/wealth" replace />} />
+          <Route path="liabilities" element={<Navigate to="/wealth/liabilities" replace />} />
+          <Route path="liabilities/:section" element={<Navigate to="/wealth/liabilities" replace />} />
+          <Route path="mortgage" element={<Navigate to="/wealth/liabilities" replace />} />
+          <Route path="investment" element={<Navigate to="/wealth" replace />} />
+          <Route path="tasks" element={<Navigate to="/property/tasks" replace />} />
+          <Route path="documents" element={<Navigate to="/property/documents" replace />} />
+
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { resetListCache } from '../lib/googleTasks'
@@ -52,7 +54,8 @@ export default function Settings() {
 
   return (
     <div className="page settings-page">
-      <div className="page-header">
+      <div className="page-header settings-header">
+        <Link to="/" className="settings-back" aria-label="חזרה למסך הראשי"><ArrowRight size={20} /></Link>
         <h1>הגדרות</h1>
       </div>
 

@@ -30,7 +30,7 @@ const TYPE_TONE: Record<DocumentType, string> = {
 
 const emptyForm = { type: 'other' as DocumentType, name: '', date: '' }
 
-export default function DocumentsV2() {
+export default function DocumentsV2({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth()
   const { documents, loading, error, refetch } = useDocuments()
   const [filter, setFilter] = useState<DocumentType | 'all'>('all')
@@ -85,8 +85,8 @@ export default function DocumentsV2() {
   }
 
   return (
-    <div className="page docv">
-      <div className="page-header"><h1>מסמכים</h1></div>
+    <div className={embedded ? 'docv docv-embedded' : 'page docv'}>
+      {!embedded && <div className="page-header"><h1>מסמכים</h1></div>}
 
       {loading && <SkeletonList rows={4} />}
       {error && <div className="form-error" role="alert">{error}</div>}

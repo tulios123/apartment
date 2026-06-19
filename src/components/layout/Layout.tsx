@@ -1,12 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   House,
-  Buildings,
-  Bank,
   Wallet,
-  ListChecks,
-  FileText,
-  GearSix,
+  TrendUp,
+  FolderOpen,
 } from '@phosphor-icons/react'
 import type { Icon } from '@phosphor-icons/react'
 import { useMonthlyGeneration } from '../../hooks/useMonthlyGeneration'
@@ -14,14 +11,12 @@ import { useAuth } from '../../contexts/AuthContext'
 
 type NavItem = { to: string; label: string; icon: Icon; end?: boolean }
 
+// 4-Pillar Model: Home (operations) · Ledger (cashflow) · Wealth (investment) · Property Admin (archive)
 const navItems: NavItem[] = [
   { to: '/', label: 'ראשי', icon: House, end: true },
-  { to: '/property', label: 'הנכס', icon: Buildings },
-  { to: '/liabilities', label: 'התחייבויות', icon: Bank },
-  { to: '/finances', label: 'כספים', icon: Wallet },
-  { to: '/tasks', label: 'משימות', icon: ListChecks },
-  { to: '/documents', label: 'מסמכים', icon: FileText },
-  { to: '/settings', label: 'הגדרות', icon: GearSix },
+  { to: '/finances', label: 'תזרים', icon: Wallet },
+  { to: '/wealth', label: 'הון', icon: TrendUp },
+  { to: '/property', label: 'ניהול', icon: FolderOpen },
 ]
 
 export default function Layout() {

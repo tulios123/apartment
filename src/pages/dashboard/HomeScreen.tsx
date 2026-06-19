@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, Sun, CloudSun, MoonStars,
-  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check,
+  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, GearSix,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
@@ -217,6 +217,7 @@ export default function HomeScreen() {
     <div className="page hs">
       {/* ── Humanized status header ── */}
       <header className="hs-header">
+        <Link to="/settings" className="hs-gear" aria-label="הגדרות"><GearSix size={22} /></Link>
         <div className="hs-greet">
           <span className="hs-greet-icon"><HelloIcon size={20} weight="fill" /></span>
           <h1>{hello}</h1>
@@ -312,7 +313,7 @@ export default function HomeScreen() {
               <button onClick={() => navigate('/finances', { state: { openForm: true } })}>
                 <Plus size={16} weight="bold" /> הוצאה
               </button>
-              <button onClick={() => navigate('/tasks', { state: { openForm: true } })}>
+              <button onClick={() => navigate('/property/tasks', { state: { openForm: true } })}>
                 <ListPlus size={16} weight="bold" /> משימה
               </button>
             </div>
