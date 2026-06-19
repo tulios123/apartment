@@ -1,0 +1,93 @@
+/* Liabilities V2 — sandbox design ported to production, wired to real data.
+   Scoped to .liav; renders as the full התחייבויות page (replaces the accordion when flagged). */
+.liav {
+  .liav-hero { background: linear-gradient(150deg, var(--brand-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 24px; }
+  .liav-hero-label { font-size: 13px; opacity: 0.8; margin-bottom: 6px; }
+  .liav-hero-value { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .liav-comp-bar { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 18px 0 12px; }
+  .liav-comp-bar .mortgage { background: #5aa0ec; }
+  .liav-comp-bar .loan { background: var(--accent-teal); }
+  .liav-comp-bar .balloon { background: #f0b24e; }
+  .liav-comp-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .liav-comp-legend span { font-size: 12px; opacity: 0.92; display: inline-flex; align-items: center; gap: 6px; }
+  .liav-comp-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .liav-hero-foot { display: flex; gap: 28px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.16); }
+  .liav-hero-foot div span { font-size: 12px; opacity: 0.8; display: block; margin-bottom: 3px; }
+  .liav-hero-foot div strong { font-size: 18px; font-weight: 700; }
+
+  .liav-section { margin-bottom: 24px; }
+  .liav-section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .liav-section-head h2 { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
+  .liav-section-head .count { font-size: 12px; color: var(--text-muted); }
+
+  .liav-card { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); margin-bottom: 10px; overflow: hidden; }
+  .liav-card-head { display: flex; align-items: center; gap: 12px; padding: 16px; cursor: pointer; border: none; background: none; width: 100%; font-family: inherit; text-align: right; }
+  .liav-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--r-pill); white-space: nowrap; flex-shrink: 0; }
+  .liav-badge.blue { background: var(--accent-light); color: var(--accent); }
+  .liav-badge.teal { background: #d8f0eb; color: #0c7a66; }
+  .liav-badge.purple { background: var(--accent-2-bg); color: var(--accent-2); }
+  .liav-badge.amber { background: var(--warning-bg); color: var(--warning-text); }
+  .liav-card-main { flex: 1; min-width: 0; }
+  .liav-card-title { font-size: 14px; font-weight: 600; color: var(--brand-navy); }
+  .liav-card-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .liav-card-balance { text-align: left; flex-shrink: 0; }
+  .liav-card-balance b { font-size: 16px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+  .liav-card-balance span { display: block; font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .liav-card-caret { color: var(--text-muted); transition: transform 0.25s var(--ease); flex-shrink: 0; }
+  .liav-card.open .liav-card-caret { transform: rotate(180deg); }
+
+  .liav-progress { padding: 0 16px 14px; }
+  .liav-progress-track { height: 7px; border-radius: var(--r-pill); background: var(--bg-alt); overflow: hidden; }
+  .liav-progress-fill { height: 100%; border-radius: var(--r-pill); }
+  .liav-progress-fill.blue { background: var(--accent); }
+  .liav-progress-fill.teal { background: var(--accent-teal); }
+  .liav-progress-fill.purple { background: var(--accent-2); }
+  .liav-progress-fill.amber { background: var(--warning); }
+  .liav-progress-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+
+  .liav-detail { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.35s var(--ease), opacity 0.3s var(--ease); }
+  .liav-card.open .liav-detail { max-height: 320px; opacity: 1; }
+  .liav-detail-inner { padding: 14px 16px 18px; border-top: 1px solid var(--border); }
+  .liav-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+  .liav-detail-item span { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 2px; }
+  .liav-detail-item strong { font-size: 14px; font-weight: 600; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+  .liav-detail-item strong.interest { color: var(--danger-text); }
+  .liav-detail-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .liav-detail-btn { border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: var(--r-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all var(--t-fast) var(--ease); }
+  .liav-detail-btn:hover { background: var(--bg-alt); color: var(--brand-navy); }
+  .liav-detail-btn.danger:hover { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-bg); }
+
+  .liav-balloon { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; border-right: 3px solid var(--warning); }
+  .liav-balloon-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--warning-bg); color: var(--warning-text); display: grid; place-items: center; flex-shrink: 0; }
+  .liav-balloon-main { flex: 1; min-width: 0; }
+  .liav-balloon-title { font-size: 14px; font-weight: 600; color: var(--brand-navy); }
+  .liav-balloon-note { font-size: 12px; color: var(--warning-text); margin-top: 2px; }
+  .liav-balloon-amount { font-size: 16px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+
+  .liav-empty { text-align: center; padding: 28px 20px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); color: var(--text-muted); font-size: 13px; }
+
+  .liav-fab { position: fixed; bottom: 28px; left: 28px; width: 58px; height: 58px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; display: grid; place-items: center; box-shadow: var(--shadow-lg); transition: transform 0.18s var(--ease), background var(--t-base) var(--ease); z-index: 80; }
+  .liav-fab:hover { transform: translateY(-2px) scale(1.05); background: var(--accent-hover); }
+  .liav-fab:active { transform: scale(0.92); }
+  .liav-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
+  .liav-scrim.open { opacity: 1; pointer-events: auto; }
+  .liav-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; }
+  .liav-drawer.open { transform: translateX(0); }
+  .liav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .liav-drawer-head h2 { font-size: 18px; font-weight: 700; color: var(--brand-navy); }
+  .liav-drawer-head button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+  .liav-seg { display: flex; gap: 8px; }
+  .liav-seg button { flex: 1; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-size: 13px; font-weight: 600; padding: 9px; border-radius: var(--r-sm); cursor: pointer; transition: all var(--t-fast) var(--ease); }
+  .liav-seg button.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+  .liav-seg button:disabled { opacity: 0.5; cursor: default; }
+  .liav-field { display: flex; flex-direction: column; gap: 6px; }
+  .liav-field span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .liav-field input, .liav-field select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 12px; border-radius: var(--r-sm); outline: none; transition: border-color var(--t-base), box-shadow var(--t-base); }
+  .liav-field input:focus, .liav-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .liav-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .liav-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
+  .liav-save:hover { background: var(--accent-hover); }
+  .liav-save:active { transform: scale(0.98); }
+  .liav-save:disabled { opacity: 0.5; cursor: default; }
+  .liav-form-err { font-size: 13px; color: var(--danger-text); }
+}

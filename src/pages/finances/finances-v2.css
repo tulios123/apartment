@@ -1,0 +1,107 @@
+/* Finances V2 — sandbox design ported to production, wired to real data.
+   Scoped to .finv; renders inside FinancesHub (which provides the כספים header + tabs). */
+.finv {
+  /* Month navigator */
+  .finv-monthnav { display: flex; align-items: center; gap: 8px; margin: 4px 0 16px; }
+  .finv-monthnav-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: var(--brand-navy); cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), border-color var(--t-fast), transform 0.1s var(--ease); }
+  .finv-monthnav-btn:hover { background: var(--accent-light); border-color: var(--accent-light); color: var(--accent); }
+  .finv-monthnav-btn:active { transform: scale(0.9); }
+  .finv-monthnav-label { font-size: 16px; font-weight: 700; color: var(--brand-navy); min-width: 120px; text-align: center; }
+
+  /* Summary */
+  .finv-summary { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 22px 24px; margin-bottom: 16px; }
+  .finv-summary-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .finv-summary-net { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .finv-summary-net.pos { color: var(--success-text); }
+  .finv-summary-net.neg { color: var(--danger-text); }
+  .finv-summary-bar { display: flex; height: 8px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 18px 0 14px; background: var(--bg-alt); }
+  .finv-summary-bar .in { background: var(--success); }
+  .finv-summary-bar .out { background: var(--danger); }
+  .finv-summary-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .finv-summary-tile { background: var(--bg); border-radius: var(--r-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .finv-summary-tile-label { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
+  .finv-summary-tile-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .finv-summary-tile.in .finv-summary-tile-value { color: var(--success-text); }
+  .finv-summary-tile.out .finv-summary-tile-value { color: var(--danger-text); }
+
+  /* NL capture */
+  .finv-capture { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 16px; }
+  .finv-capture-row { display: flex; align-items: center; gap: 10px; }
+  .finv-capture-icon { color: var(--accent); flex-shrink: 0; }
+  .finv-capture-input { flex: 1; border: none; background: transparent; outline: none; font-family: inherit; font-size: 15px; color: var(--text); }
+  .finv-capture-input::placeholder { color: var(--text-muted); }
+  .finv-capture-send { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--accent); color: #fff; cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), transform 0.1s var(--ease), opacity var(--t-fast); }
+  .finv-capture-send:hover { background: var(--accent-hover); }
+  .finv-capture-send:active { transform: scale(0.9); }
+  .finv-capture-send:disabled { opacity: 0.35; cursor: default; }
+  .finv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .finv-chip { font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: var(--r-pill); display: inline-flex; align-items: center; gap: 5px; background: var(--bg-alt); color: var(--brand-navy); }
+  .finv-chip.amount { background: var(--brand-navy); color: #fff; }
+  .finv-chip.dir-income { background: var(--success-bg); color: var(--success-text); }
+  .finv-chip.dir-expense { background: var(--danger-bg); color: var(--danger-text); }
+  .finv-capture-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .finv-capture-structured { background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 0; }
+
+  /* Breakdown */
+  .finv-breakdown { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); margin-bottom: 22px; overflow: hidden; }
+  .finv-breakdown-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; border: none; background: none; width: 100%; font-family: inherit; }
+  .finv-breakdown-head h3 { font-size: 14px; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px; }
+  .finv-breakdown-caret { color: var(--text-muted); transition: transform 0.25s var(--ease); }
+  .finv-breakdown.open .finv-breakdown-caret { transform: rotate(180deg); }
+  .finv-breakdown-body { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.35s var(--ease), opacity 0.3s var(--ease); }
+  .finv-breakdown.open .finv-breakdown-body { max-height: 420px; opacity: 1; }
+  .finv-breakdown-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 11px; }
+  .finv-bd-row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; }
+  .finv-bd-label { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .finv-bd-track { height: 8px; border-radius: var(--r-pill); background: var(--bg-alt); overflow: hidden; }
+  .finv-bd-fill { height: 100%; border-radius: var(--r-pill); }
+  .finv-bd-amount { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand-navy); }
+
+  /* List */
+  .finv-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .finv-section-head h2 { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
+  .finv-legend { font-size: 12px; color: var(--text-muted); }
+  .finv-tx { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 12px 14px; margin-bottom: 8px; transition: box-shadow var(--t-base) var(--ease); }
+  .finv-tx:hover { box-shadow: var(--shadow-md); }
+  .finv-tx:hover .finv-tx-actions { opacity: 1; }
+  .finv-tx.projected { background: transparent; box-shadow: none; border: 1.5px dashed var(--border-strong); }
+  .finv-cat-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; color: #fff; }
+  .finv-tx-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .finv-tx-top { display: flex; align-items: center; gap: 8px; }
+  .finv-tx-cat { font-size: 14px; font-weight: 600; }
+  .finv-tx-tag { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: var(--r-pill); background: var(--bg-alt); color: var(--text-muted); }
+  .finv-tx-meta { font-size: 12px; color: var(--text-muted); }
+  .finv-tx-side { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .finv-tx-amount { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .finv-tx-amount.income { color: var(--success-text); }
+  .finv-tx-amount.expense { color: var(--brand-navy); }
+  .finv-tx-actions { display: flex; gap: 2px; opacity: 0; transition: opacity var(--t-base) var(--ease); }
+  .finv-icon-btn { width: 30px; height: 30px; border-radius: 8px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), color var(--t-fast); }
+  .finv-icon-btn:hover { background: var(--bg-alt); color: var(--brand-navy); }
+  .finv-icon-btn.danger:hover { background: var(--danger-bg); color: var(--danger-text); }
+  .finv-empty { text-align: center; padding: 40px 20px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); }
+
+  /* FAB + drawer */
+  .finv-fab { position: fixed; bottom: 28px; left: 28px; width: 58px; height: 58px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; display: grid; place-items: center; box-shadow: var(--shadow-lg); transition: transform 0.18s var(--ease), background var(--t-base) var(--ease); z-index: 80; }
+  .finv-fab:hover { transform: translateY(-2px) scale(1.05); background: var(--accent-hover); }
+  .finv-fab:active { transform: scale(0.92); }
+  .finv-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
+  .finv-scrim.open { opacity: 1; pointer-events: auto; }
+  .finv-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; }
+  .finv-drawer.open { transform: translateX(0); }
+  .finv-drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .finv-drawer-head h2 { font-size: 18px; font-weight: 700; color: var(--brand-navy); }
+  .finv-drawer-head button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+  .finv-seg { display: flex; gap: 8px; }
+  .finv-seg button { flex: 1; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-size: 14px; font-weight: 600; padding: 9px; border-radius: var(--r-sm); cursor: pointer; transition: all var(--t-fast) var(--ease); }
+  .finv-seg button.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+  .finv-field { display: flex; flex-direction: column; gap: 6px; }
+  .finv-field span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .finv-field input, .finv-field select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 12px; border-radius: var(--r-sm); outline: none; transition: border-color var(--t-base), box-shadow var(--t-base); }
+  .finv-field input:focus, .finv-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .finv-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
+  .finv-save:hover { background: var(--accent-hover); }
+  .finv-save:active { transform: scale(0.98); }
+  .finv-save:disabled { opacity: 0.5; cursor: default; }
+  .finv-form-err { font-size: 13px; color: var(--danger-text); }
+}

@@ -7,6 +7,8 @@ import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import DashboardV2 from './pages/dashboard/DashboardV2'
+import FinancesV2 from './pages/finances/FinancesV2'
+import LiabilitiesV2 from './pages/liabilities/LiabilitiesV2'
 import FinancesHub from './pages/finances/FinancesHub'
 import Finances from './pages/Finances'
 import RecurringItems from './pages/RecurringItems'
@@ -55,13 +57,15 @@ function AppRoutes() {
   if (!user) return <Login />
   if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
 
+  const uxV2 = localStorage.getItem('ux_v2') === '1'
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={localStorage.getItem('ux_v2') === '1' ? <DashboardV2 /> : <Dashboard />} />
+          <Route index element={uxV2 ? <DashboardV2 /> : <Dashboard />} />
           <Route path="finances" element={<FinancesHub />}>
-            <Route index element={<Finances />} />
+            <Route index element={uxV2 ? <FinancesV2 /> : <Finances />} />
             <Route path="recurring" element={<RecurringItems />} />
           </Route>
           <Route path="recurring" element={<Navigate to="/finances/recurring" replace />} />
@@ -70,8 +74,8 @@ function AppRoutes() {
           <Route path="property" element={<PropertyHub />} />
           <Route path="property/mortgage" element={<Navigate to="/liabilities/mortgage" replace />} />
           <Route path="property/:section" element={<PropertyHub />} />
-          <Route path="liabilities" element={<LiabilitiesHub />} />
-          <Route path="liabilities/:section" element={<LiabilitiesHub />} />
+          <Route path="liabilities" element={uxV2 ? <LiabilitiesV2 /> : <LiabilitiesHub />} />
+          <Route path="liabilities/:section" element={uxV2 ? <LiabilitiesV2 /> : <LiabilitiesHub />} />
           <Route path="mortgage" element={<Navigate to="/liabilities/mortgage" replace />} />
           <Route path="investment" element={<Navigate to="/property/investment" replace />} />
           <Route path="settings" element={<Settings />} />
