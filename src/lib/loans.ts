@@ -84,6 +84,17 @@ export function loanPaymentForMonth(loan: Loan, monthStr: string): { amount: num
   return row ? { amount: row.interest + row.principal, date: row.date } : null
 }
 
+/**
+ * Principal/interest split of the Shpitzer payment falling in a given `YYYY-MM`
+ * month. Returns null for balloon loans or months outside the schedule.
+ * Feeds the Wealth "accelerator" equity-vs-interest breakdown.
+ */
+export function loanSplitForMonth(loan: Loan, monthStr: string): { principal: number; interest: number } | null {
+  if (loan.repayment_type !== 'monthly_fixed') return null
+  const row = loanSchedule(loan).find(r => r.date.slice(0, 7) === monthStr)
+  return row ? { principal: row.principal, interest: row.interest } : null
+}
+
 /** Interest accrued up to and including asOf — feeds investment interest expenses. */
 export function loanInterestToDate(loan: Loan, asOf: Date = new Date()): number {
   const cutoff = asOf.toISOString().slice(0, 10)

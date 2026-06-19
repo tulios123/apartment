@@ -1,0 +1,102 @@
+/* Wealth (הון) — read-only analytical dashboard.
+   Three layers: Ownership Score (hero) · Wealth Accelerator · Financing Structure.
+   Scoped to .wlth. */
+.wlth {
+  .wlth-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .wlth-edit-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer; transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+  .wlth-edit-btn:hover { color: var(--brand-navy); border-color: var(--brand-navy); }
+
+  .wlth-empty { background: var(--bg-card); border-radius: var(--r-md); padding: 40px 24px; text-align: center; color: var(--text-muted); box-shadow: var(--shadow-sm); }
+
+  /* ── Layer 1: Ownership Score hero ─────────────────────────── */
+  .wlth-hero { background: linear-gradient(150deg, var(--brand-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 16px; }
+  .wlth-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .wlth-hero-label { font-size: 13px; opacity: 0.8; margin-bottom: 6px; }
+  .wlth-hero-value { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .wlth-hero-sub { font-size: 13px; opacity: 0.8; margin-top: 8px; }
+  .wlth-delta { display: inline-flex; align-items: center; gap: 6px; background: rgba(43,179,155,0.22); color: #8ff0db; border: 1px solid rgba(43,179,155,0.45); padding: 6px 12px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+
+  .wlth-own-pct { font-size: 15px; font-weight: 700; margin: 22px 0 10px; }
+  .wlth-ladder { display: flex; height: 14px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; background: rgba(255,255,255,0.12); }
+  .wlth-ladder .seg.yours { background: var(--accent-teal); }
+  .wlth-ladder .seg.banks { background: #5aa0ec; }
+  .wlth-ladder .seg.family { background: rgba(240,178,78,0.55); }
+  .wlth-ladder-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+  .wlth-ladder-legend span { font-size: 12px; opacity: 0.92; display: inline-flex; align-items: center; gap: 6px; }
+  .wlth-ladder-legend b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .wlth-ladder-legend .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .wlth-ladder-legend .dot.yours { background: var(--accent-teal); }
+  .wlth-ladder-legend .dot.banks { background: #5aa0ec; }
+  .wlth-ladder-legend .dot.family { background: rgba(240,178,78,0.75); }
+
+  /* ── Shared card ───────────────────────────────────────────── */
+  .wlth-card { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 18px 18px 20px; margin-bottom: 16px; }
+  .wlth-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .wlth-card-head h2 { font-size: 15px; font-weight: 700; color: var(--brand-navy); margin: 0; }
+  .wlth-card-note { font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; margin-inline-start: auto; }
+  .wlth-edit-icon { border: none; background: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: var(--r-xs); display: inline-flex; }
+  .wlth-edit-icon:hover { color: var(--brand-navy); background: var(--bg-alt); }
+
+  /* ── Layer 2: Wealth Accelerator ───────────────────────────── */
+  .wlth-split-bar { display: flex; height: 16px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin-bottom: 14px; }
+  .wlth-split-bar .seg.build { background: var(--accent-teal); }
+  .wlth-split-bar .seg.interest { background: var(--bg-alt); border: 1px solid var(--border); }
+  .wlth-split-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .wlth-split-col { padding: 12px 14px; border-radius: var(--r-sm); }
+  .wlth-split-col.build { background: var(--success-bg); }
+  .wlth-split-col.interest { background: var(--bg-alt); }
+  .wlth-split-col .amt { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); }
+  .wlth-split-col.build .amt { color: var(--success-text); }
+  .wlth-split-col .lbl { font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .wlth-split-col .hint { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .wlth-accel-notes { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .wlth-accel-notes li { font-size: 13px; color: var(--text-secondary); padding-inline-start: 16px; position: relative; line-height: 1.5; }
+  .wlth-accel-notes li::before { content: '▸'; position: absolute; inset-inline-start: 0; color: var(--accent-teal); }
+  .wlth-accel-notes li b { color: var(--brand-navy); font-weight: 700; }
+  .wlth-accel-notes li.muted { color: var(--text-muted); }
+  .wlth-accel-notes li.muted::before { color: var(--text-muted); }
+
+  /* ── Layer 3: Financing Structure ──────────────────────────── */
+  .wlth-vehicle { border: 1px solid var(--border); border-radius: var(--r-sm); margin-bottom: 10px; overflow: hidden; }
+  .wlth-vehicle:last-child { margin-bottom: 0; }
+  .wlth-vehicle.balloon { border-style: dashed; background: var(--bg-alt); }
+  .wlth-vehicle-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; border: none; background: none; font-family: inherit; text-align: start; cursor: default; }
+  button.wlth-vehicle-head { cursor: pointer; }
+  .wlth-vehicle-icon { display: inline-flex; color: var(--brand-navy); flex-shrink: 0; }
+  .wlth-vehicle.balloon .wlth-vehicle-icon { color: var(--warning); }
+  .wlth-vehicle-main { flex: 1; min-width: 0; }
+  .wlth-vehicle-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .wlth-vehicle-meta { font-weight: 400; color: var(--text-muted); font-size: 13px; }
+  .wlth-vehicle-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .wlth-vehicle-bal { text-align: end; flex-shrink: 0; }
+  .wlth-vehicle-bal b { display: block; font-size: 15px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+  .wlth-vehicle-bal span { font-size: 11px; color: var(--text-muted); }
+  .wlth-vehicle-caret { color: var(--text-muted); transition: transform var(--t-base) var(--ease); flex-shrink: 0; }
+  .wlth-vehicle.open .wlth-vehicle-caret { transform: rotate(180deg); }
+
+  .wlth-mix { display: flex; height: 6px; gap: 2px; margin: 0 14px 12px; border-radius: var(--r-pill); overflow: hidden; }
+  .wlth-mix .seg { height: 100%; }
+
+  .wlth-tracks { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .wlth-track-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .wlth-track-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .wlth-track-name { flex: 1; color: var(--text); }
+  .wlth-track-rate { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .wlth-track-bal { font-weight: 600; color: var(--brand-navy); font-variant-numeric: tabular-nums; min-width: 90px; text-align: end; }
+
+  /* ── Secondary metrics strip ───────────────────────────────── */
+  .wlth-secondary { display: flex; gap: 28px; flex-wrap: wrap; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 16px 18px; }
+  .wlth-secondary div span { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 3px; }
+  .wlth-secondary div strong { font-size: 17px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+
+  /* ── Edit overlay (reuses existing form components) ────────── */
+  .wlth-editor { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; animation: wlthEditorIn 0.25s var(--ease); }
+  .wlth-editor-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
+  .wlth-editor-head h2 { font-size: 17px; font-weight: 700; color: var(--brand-navy); margin: 0; }
+  .wlth-editor-head button { border: none; background: var(--bg-alt); color: var(--text); width: 36px; height: 36px; border-radius: var(--r-pill); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .wlth-editor-body { flex: 1; overflow-y: auto; padding: 20px; max-width: 760px; width: 100%; margin: 0 auto; }
+  .wlth-editor-section { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: none; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .wlth-editor-section:first-child { margin-top: 0; }
+}
+
+@keyframes wlthEditorIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
