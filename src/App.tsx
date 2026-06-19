@@ -19,14 +19,6 @@ import Documents from './pages/Documents'
 import PropertyHub from './pages/property/PropertyHub'
 import LiabilitiesHub from './pages/liabilities/LiabilitiesHub'
 import Settings from './pages/Settings'
-import SandboxIndex from './ux-sandbox/SandboxIndex'
-import FluidView from './ux-sandbox/variants/anz-fluid/FluidView'
-import CleanView from './ux-sandbox/variants/anz-clean/CleanView'
-import ExpressiveView from './ux-sandbox/variants/anz-expressive/ExpressiveView'
-import HybridView from './ux-sandbox/variants/anz-hybrid/HybridView'
-import DualModeView from './ux-sandbox/variants/dual-mode/DualModeView'
-import FinancesView from './ux-sandbox/variants/finances/FinancesView'
-import LiabilitiesView from './ux-sandbox/variants/liabilities/LiabilitiesView'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -41,19 +33,6 @@ function AppRoutes() {
       .limit(1)
       .then(({ data }) => setHasProperty((data?.length ?? 0) > 0))
   }, [user])
-
-  // Isolated UX sandbox — bypasses auth/onboarding gates so it loads standalone.
-  const sandboxPath = window.location.pathname
-  if (sandboxPath.startsWith('/ux-sandbox')) {
-    if (sandboxPath === '/ux-sandbox/anz-fluid') return <FluidView />
-    if (sandboxPath === '/ux-sandbox/anz-clean') return <CleanView />
-    if (sandboxPath === '/ux-sandbox/anz-expressive') return <ExpressiveView />
-    if (sandboxPath === '/ux-sandbox/anz-hybrid') return <HybridView />
-    if (sandboxPath === '/ux-sandbox/dual-mode') return <DualModeView />
-    if (sandboxPath === '/ux-sandbox/finances') return <FinancesView />
-    if (sandboxPath === '/ux-sandbox/liabilities') return <LiabilitiesView />
-    return <SandboxIndex />
-  }
 
   if (loading || (user && hasProperty === null)) return <div className="app-loading">טוען...</div>
   if (!user) return <Login />
