@@ -5,7 +5,7 @@ import { supabase } from './lib/supabase'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
-import DashboardV2 from './pages/dashboard/DashboardV2'
+import HomeScreen from './pages/dashboard/HomeScreen'
 import FinancesV2 from './pages/finances/FinancesV2'
 import LiabilitiesV2 from './pages/liabilities/LiabilitiesV2'
 import PropertyV2 from './pages/property/PropertyV2'
@@ -36,7 +36,7 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<DashboardV2 />} />
+          <Route index element={<HomeScreen />} />
           <Route path="finances" element={<FinancesHub />}>
             <Route index element={<FinancesV2 />} />
             <Route path="recurring" element={<Navigate to="/finances" replace />} />

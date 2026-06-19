@@ -1,0 +1,94 @@
+/* Home Screen (Operational View) — task & insight-driven dashboard.
+   Scoped to .hs. Calm by default: red is reserved for real problems, never
+   for planned outflows or rent that simply hasn't cleared yet. */
+.hs {
+  --hs-gap: 18px;
+
+  /* ── Humanized header ── */
+  .hs-header { margin-bottom: 20px; animation: hsFade 0.4s var(--ease) both; }
+  .hs-greet { display: flex; align-items: center; gap: 10px; }
+  .hs-greet-icon { width: 34px; height: 34px; border-radius: 11px; background: var(--accent-light); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+  .hs-greet h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-navy); }
+  .hs-status { font-size: 14px; color: var(--text-muted); margin-top: 8px; }
+
+  .hs-flash { background: var(--success-bg); color: var(--success-text); font-size: 13.5px; font-weight: 600; padding: 11px 16px; border-radius: var(--r-md); margin-bottom: 14px; animation: hsFlash 0.3s var(--ease) both; }
+
+  /* ── Action Center ── */
+  .hs-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+
+  .hs-card { display: flex; align-items: center; gap: 13px; background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 16px; animation: hsRise 0.35s var(--ease) both; transition: opacity 0.35s var(--ease), transform 0.35s var(--ease), max-height 0.35s var(--ease); }
+  .hs-card.resolved { opacity: 0; transform: translateX(24px); max-height: 0; padding-top: 0; padding-bottom: 0; pointer-events: none; }
+  .hs-card-icon { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0; }
+  .hs-card-icon.rent { background: var(--success-bg); color: var(--success-text); }
+  .hs-card-icon.task { background: var(--accent-light); color: var(--accent); }
+  .hs-card-icon.renewal { background: var(--accent-2-bg); color: var(--accent-2); }
+  .hs-card-body { flex: 1; min-width: 0; }
+  .hs-card-title { font-size: 14.5px; font-weight: 700; color: var(--brand-navy); line-height: 1.35; }
+  .hs-card-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+  .hs-card-cta { flex-shrink: 0; }
+
+  .hs-btn { display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 16px; border-radius: var(--r-pill); transition: transform 0.1s var(--ease), box-shadow var(--t-base) var(--ease), background var(--t-base) var(--ease); white-space: nowrap; }
+  .hs-btn:active { transform: scale(0.96); }
+  .hs-btn:disabled { opacity: 0.7; cursor: default; }
+  .hs-btn.primary { background: var(--success); color: #fff; box-shadow: var(--shadow-sm); }
+  .hs-btn.primary:hover:not(:disabled) { box-shadow: var(--shadow-md); }
+  .hs-btn.ghost { background: var(--bg-alt); color: var(--text); }
+  .hs-btn.ghost:hover:not(:disabled) { background: var(--border); }
+
+  .hs-clear { display: flex; align-items: center; gap: 14px; background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); padding: 22px; animation: hsRise 0.35s var(--ease) both; }
+  .hs-clear-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--success-bg); color: var(--success-text); display: grid; place-items: center; flex-shrink: 0; }
+  .hs-clear-title { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
+  .hs-clear-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+
+  /* ── Quick capture ── */
+  .hs-quick { margin-bottom: 26px; }
+  .hs-quick-input { display: flex; align-items: center; gap: 10px; background: var(--bg-card); border-radius: var(--r-pill); box-shadow: var(--shadow-sm); padding: 6px 6px 6px 16px; transition: box-shadow var(--t-base) var(--ease); }
+  .hs-quick-input:focus-within { box-shadow: var(--shadow-md); }
+  .hs-quick-spark { color: var(--accent); flex-shrink: 0; }
+  .hs-quick-input input { flex: 1; border: none; background: transparent; font-family: inherit; font-size: 14.5px; color: var(--text); outline: none; min-width: 0; }
+  .hs-quick-input input::placeholder { color: var(--text-muted); }
+  .hs-quick-go { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; flex-shrink: 0; transition: transform 0.1s var(--ease), background var(--t-base) var(--ease); }
+  .hs-quick-go:hover { background: var(--accent-hover); }
+  .hs-quick-go:active { transform: scale(0.92); }
+  .hs-fabs { display: flex; gap: 10px; margin-top: 12px; }
+  .hs-fabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px dashed var(--border-strong); background: transparent; color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 11px; border-radius: var(--r-md); cursor: pointer; transition: background var(--t-base) var(--ease), border-color var(--t-base) var(--ease); }
+  .hs-fabs button:hover { background: var(--bg-alt); border-color: var(--accent); color: var(--accent); }
+
+  /* ── Calm cash flow ── */
+  .hs-flow-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .hs-flow-head h2 { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
+  .hs-link { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  .hs-flow-card { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 20px; animation: hsRise 0.35s var(--ease) both; }
+  .hs-flow-headline { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .hs-flow-headline-label { font-size: 13px; color: var(--text-muted); }
+  .hs-flow-headline-value { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+  /* even a negative projection stays calm — muted ink, not alarm-red */
+  .hs-flow-headline-value.soft-neg { color: var(--text-muted); }
+
+  .hs-flow-line { padding: 10px 0; }
+  .hs-flow-line:last-of-type { padding-bottom: 4px; }
+  .hs-flow-line-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .hs-flow-name { font-size: 14px; font-weight: 600; color: var(--text); display: inline-flex; align-items: center; gap: 7px; }
+  .hs-flow-name svg { color: var(--text-muted); }
+  .hs-flow-amt { font-size: 14px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hs-flow-amt.muted { color: var(--text-muted); }
+  .hs-flow-of { color: var(--text-muted); font-weight: 500; }
+
+  .hs-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--r-pill); display: inline-flex; align-items: center; gap: 3px; }
+  .hs-chip.ok { background: var(--success-bg); color: var(--success-text); }
+  .hs-chip.auto { background: var(--bg-alt); color: var(--text-muted); }
+
+  .hs-track { height: 6px; border-radius: var(--r-pill); background: var(--bg-alt); overflow: hidden; margin-top: 9px; }
+  .hs-track-fill { height: 100%; border-radius: var(--r-pill); background: var(--border-strong); transition: width 0.6s var(--ease); }
+  .hs-track-fill.ok { background: var(--success); }
+
+  .hs-flow-note { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  .spin { animation: hsSpin 0.8s linear infinite; }
+}
+
+@keyframes hsFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes hsRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes hsFlash { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes hsSpin { to { transform: rotate(360deg); } }
