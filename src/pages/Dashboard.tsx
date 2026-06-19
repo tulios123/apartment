@@ -171,8 +171,14 @@ export default function Dashboard() {
 
   return (
     <div className="page dashboard-page">
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <h1>ראשי</h1>
+        <button
+          onClick={() => { localStorage.setItem('ux_v2', '1'); window.location.reload() }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', font: 'inherit', fontSize: 13, fontWeight: 600, padding: '4px 0' }}
+        >
+          ✨ נסה עיצוב חדש (בטא)
+        </button>
       </div>
 
       {/* ── View toggle (הון / תזרים) ─────────────────────────────────────── */}

@@ -1,0 +1,145 @@
+/* Dual-mode dashboard (V2) — design ported from the UX sandbox, wired to real data.
+   Scoped to .dmv; renders inside the existing Layout (no sidebar here). */
+.dmv {
+  --dmv-up: var(--success); --dmv-up-bg: var(--success-bg); --dmv-up-text: var(--success-text);
+  --dmv-down: var(--danger); --dmv-down-bg: var(--danger-bg); --dmv-down-text: var(--danger-text);
+
+  /* Mode toggle */
+  .dmv-toggle { display: inline-flex; background: var(--bg-alt); border-radius: var(--r-pill); padding: 4px; box-shadow: inset 0 0 0 1px var(--border); }
+  .dmv-toggle button { border: none; background: transparent; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text-muted); padding: 7px 20px; border-radius: var(--r-pill); display: inline-flex; align-items: center; gap: 6px; transition: color var(--t-base) var(--ease); }
+  .dmv-toggle button.on { color: #fff; }
+  .dmv-toggle button.on.ops { background: var(--accent); box-shadow: var(--shadow-sm); }
+  .dmv-toggle button.on.inv { background: var(--brand-navy); box-shadow: var(--shadow-sm); }
+
+  .dmv-view { animation: dmvFade 0.4s var(--ease) both; }
+
+  /* Hero */
+  .dmv-hero { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 24px; margin-bottom: 16px; }
+  .dmv-hero-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .dmv-hero-value { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--brand-navy); }
+  .dmv-hero-value.pos { color: var(--success-text); }
+  .dmv-hero-value.neg { color: var(--danger-text); }
+
+  .dmv-flow-bar { display: flex; height: 8px; border-radius: var(--r-pill); overflow: hidden; margin: 18px 0 14px; background: var(--success-bg); gap: 2px; }
+  .dmv-flow-bar .seg-in { background: var(--success); }
+  .dmv-flow-bar .seg-out { background: var(--danger); }
+  .dmv-flow-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .dmv-flow-tile { background: var(--bg); border-radius: var(--r-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .dmv-flow-tile-label { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
+  .dmv-flow-tile-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dmv-flow-tile.in .dmv-flow-tile-value { color: var(--success-text); }
+  .dmv-flow-tile.out .dmv-flow-tile-value { color: var(--danger-text); }
+
+  .dmv-fixed-row { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 22px; cursor: pointer; transition: box-shadow var(--t-base) var(--ease), transform 0.1s var(--ease); }
+  .dmv-fixed-row:hover { box-shadow: var(--shadow-md); }
+  .dmv-fixed-row:active { transform: scale(0.995); }
+  .dmv-fixed-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-light); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+  .dmv-fixed-info { flex: 1; min-width: 0; }
+  .dmv-fixed-title { font-size: 14px; font-weight: 600; }
+  .dmv-fixed-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .dmv-fixed-amount { font-size: 16px; font-weight: 700; color: var(--danger-text); font-variant-numeric: tabular-nums; }
+
+  /* Cashflow detail rows */
+  .dmv-flow-rows { margin-top: 14px; }
+  .dmv-flow-line { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .dmv-flow-line:last-child { border-bottom: none; }
+  .dmv-flow-sign { width: 18px; text-align: center; font-weight: 700; flex-shrink: 0; }
+  .dmv-flow-sign.pos { color: var(--success-text); }
+  .dmv-flow-sign.neg { color: var(--danger-text); }
+  .dmv-flow-name { flex: 1; font-size: 14px; }
+  .dmv-flow-val { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Section */
+  .dmv-section { margin-bottom: 24px; }
+  .dmv-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .dmv-section-head h2 { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
+  .dmv-link { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  /* Attention */
+  .dmv-att { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 13px 15px; margin-bottom: 8px; cursor: pointer; transition: box-shadow var(--t-base) var(--ease); }
+  .dmv-att:hover { box-shadow: var(--shadow-md); }
+  .dmv-att.overdue { background: var(--danger-bg); box-shadow: none; }
+  .dmv-att-glyph { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0; background: var(--bg-alt); color: var(--text-muted); }
+  .dmv-att.overdue .dmv-att-glyph { background: rgba(224,83,61,0.16); color: var(--danger-text); }
+  .dmv-att-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .dmv-att-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .dmv-att-sub { font-size: 12px; color: var(--text-muted); }
+  .dmv-badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: var(--r-pill); white-space: nowrap; }
+  .dmv-badge.danger { background: rgba(224,83,61,0.16); color: var(--danger-text); }
+  .dmv-badge.renewal { background: var(--accent-2-bg); color: var(--accent-2); }
+
+  .dmv-calm { text-align: center; padding: 32px 20px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); }
+  .dmv-calm-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--success-bg); color: var(--success-text); display: grid; place-items: center; margin: 0 auto 12px; }
+  .dmv-calm-title { font-size: 15px; font-weight: 700; color: var(--brand-navy); }
+  .dmv-calm-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Transactions */
+  .dmv-tx { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .dmv-tx:last-child { border-bottom: none; }
+  .dmv-tx-tile { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0; }
+  .dmv-tx-tile.income { background: var(--success-bg); color: var(--success-text); }
+  .dmv-tx-tile.expense { background: var(--danger-bg); color: var(--danger-text); }
+  .dmv-tx-cat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .dmv-tx-name { font-size: 14px; font-weight: 600; }
+  .dmv-tx-date { font-size: 12px; color: var(--text-muted); }
+  .dmv-tx-amount { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dmv-tx-amount.income { color: var(--success-text); }
+  .dmv-tx-amount.expense { color: var(--brand-navy); }
+
+  /* Investor */
+  .dmv-eq-bar { display: flex; height: 12px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 16px 0 12px; }
+  .dmv-eq-bar .own { background: var(--accent); }
+  .dmv-eq-bar .debt { background: var(--border-strong); }
+  .dmv-eq-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .dmv-eq-legend span { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
+  .dmv-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .dmv-dot.own { background: var(--accent); }
+  .dmv-dot.debt { background: var(--border-strong); }
+
+  .dmv-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; align-items: start; }
+  .dmv-metric { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 14px 16px; text-align: right; border: none; cursor: pointer; width: 100%; transition: box-shadow var(--t-base) var(--ease); }
+  .dmv-metric:hover { box-shadow: var(--shadow-md); }
+  .dmv-metric-top { display: flex; align-items: center; justify-content: space-between; }
+  .dmv-metric-label { font-size: 12px; color: var(--text-muted); }
+  .dmv-metric-caret { color: var(--text-muted); transition: transform 0.25s var(--ease); }
+  .dmv-metric.open .dmv-metric-caret { transform: rotate(180deg); }
+  .dmv-metric-value { font-size: 20px; font-weight: 700; color: var(--brand-navy); margin-top: 3px; }
+  .dmv-metric-formula { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s var(--ease), opacity 0.3s var(--ease), margin-top 0.3s var(--ease); }
+  .dmv-metric.open .dmv-metric-formula { max-height: 96px; opacity: 1; margin-top: 8px; }
+
+  .dmv-card { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 20px; margin-bottom: 16px; }
+  .dmv-card-head { font-size: 15px; font-weight: 700; color: var(--brand-navy); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .dmv-card-text { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+  .dmv-card-text b { color: var(--success-text); font-weight: 700; }
+
+  .dmv-chart svg { width: 100%; height: auto; display: block; }
+  .dmv-chart-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+  .dmv-chart-legend span { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
+  .dmv-crossover { display: flex; align-items: center; gap: 9px; margin-top: 14px; background: var(--accent-light); color: var(--accent); border-radius: var(--r-md); padding: 11px 14px; font-size: 12.5px; line-height: 1.5; }
+  .dmv-crossover svg { flex-shrink: 0; }
+  .dmv-crossover b { color: var(--accent-hover); font-weight: 700; }
+
+  .dmv-whatif-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .dmv-slider { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
+  .dmv-whatif-amount { font-size: 17px; font-weight: 700; color: var(--brand-navy); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .dmv-whatif-amount small { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-right: 2px; }
+  .dmv-whatif-hint { font-size: 12.5px; color: var(--text-muted); }
+  .dmv-whatif-result { display: flex; flex-direction: column; gap: 8px; }
+  .dmv-whatif-stat { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+  .dmv-whatif-stat svg { color: var(--text-muted); flex-shrink: 0; }
+  .dmv-whatif-stat b { color: var(--brand-navy); font-weight: 700; }
+  .dmv-whatif-stat.saved svg { color: var(--success-text); }
+  .dmv-whatif-stat.saved b { color: var(--success-text); }
+
+  .dmv-insight { display: flex; align-items: center; gap: 10px; background: var(--success-bg); border-radius: var(--r-md); padding: 14px 16px; }
+  .dmv-insight-icon { color: var(--success-text); flex-shrink: 0; }
+  .dmv-insight-text { font-size: 13px; color: var(--success-text); font-weight: 500; }
+
+  /* Quick actions */
+  .dmv-quick { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+}
+
+/* Beta toggle pill (shared, outside .dmv scope) */
+.ux-beta-pill { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600; padding: 4px 0; }
+
+@keyframes dmvFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

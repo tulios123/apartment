@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
+import DashboardV2 from './pages/dashboard/DashboardV2'
 import FinancesHub from './pages/finances/FinancesHub'
 import Finances from './pages/Finances'
 import RecurringItems from './pages/RecurringItems'
@@ -58,7 +59,7 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
+          <Route index element={localStorage.getItem('ux_v2') === '1' ? <DashboardV2 /> : <Dashboard />} />
           <Route path="finances" element={<FinancesHub />}>
             <Route index element={<Finances />} />
             <Route path="recurring" element={<RecurringItems />} />
