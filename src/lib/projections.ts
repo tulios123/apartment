@@ -1,6 +1,7 @@
 import { trackSchedule } from './mortgage'
+import { loanPaymentForMonth } from './loans'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
-import type { Contract, MortgageTrack } from '../types'
+import type { Contract, MortgageTrack, Loan } from '../types'
 
 /** Number of months elapsed between startStr and endStr (or now if endStr is null/future). */
 export function elapsedMonths(startStr: string | null, endStr: string | null): number {
@@ -65,6 +66,7 @@ export function mortgagePaidToDate(tracks: MortgageTrack[], todayStr: string): n
  * Computed "virtual" ledger rows for a given year (and optionally month).
  * - One rent income row per active contract per month.
  * - One combined mortgage expense row (all tracks summed) per month.
+ * - One expense row per monthly_fixed loan per month it is active.
  * When month is undefined, generates rows for all elapsed months of the year.
  */
 export function monthlyVirtualEntries(
@@ -72,6 +74,7 @@ export function monthlyVirtualEntries(
   tracks: MortgageTrack[],
   year: number,
   month?: number,
+  loans: Loan[] = [],
 ): VirtualEntry[] {
   const todayStr = new Date().toISOString().slice(0, 10)
 
@@ -117,6 +120,20 @@ export function monthlyVirtualEntries(
         category: MORTGAGE_CATEGORIES[0],
         description: 'תשלום משכנתא',
       })
+    }
+
+    for (const l of loans) {
+      const p = loanPaymentForMonth(l, monthStr)
+      if (p) {
+        entries.push({
+          id: `v-loan-${l.id}-${monthStr}`,
+          direction: 'expense',
+          amount: p.amount,
+          date: p.date,
+          category: 'הלוואה',
+          description: l.label || l.lender || 'תשלום הלוואה',
+        })
+      }
     }
   }
 

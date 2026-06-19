@@ -33,7 +33,7 @@ export default function DashboardV2() {
   const { summary, tracks, combined, loading: loadingMortgage } = useMortgageData()
   const { property, contracts, utilities, loading: loadingProperty } = usePropertyData()
   const { totalInvested, rentReceived, loading: loadingInvestment } = useInvestmentData()
-  const { summary: loansSummary, loading: loadingLoans } = useLoansData()
+  const { monthlyLoans, summary: loansSummary, loading: loadingLoans } = useLoansData()
   const { policies, loading: loadingInsurance } = useInsurance()
 
   const summaryLoading = loadingProperty || loadingMortgage || loadingInvestment || loadingLoans
@@ -107,7 +107,7 @@ export default function DashboardV2() {
     .filter(t => !(t.direction === 'income' && rentCatSet.has(t.category)))
     .filter(t => !(t.direction === 'expense' && mortCatSet.has(t.category)))
     .map(t => ({ id: t.id, date: t.date, category: t.category, direction: t.direction, amount: t.amount }))
-  const virtualRecent = monthlyVirtualEntries(contracts, tracks, now.getFullYear())
+  const virtualRecent = monthlyVirtualEntries(contracts, tracks, now.getFullYear(), undefined, monthlyLoans)
     .map(v => ({ id: v.id, date: v.date, category: v.category, direction: v.direction, amount: v.amount }))
   const recentItems = [...realRecent, ...virtualRecent].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
 

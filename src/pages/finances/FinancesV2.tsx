@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase'
 import { getReceiptSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/format'
-import type { Transaction, Contract, MortgageTrack } from '../../types'
+import type { Transaction, Contract, MortgageTrack, Loan } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
 import './finances-v2.css'
@@ -55,15 +55,17 @@ export default function FinancesV2() {
 
   const [contracts, setContracts] = useState<Contract[]>([])
   const [mortgageTracks, setMortgageTracks] = useState<MortgageTrack[]>([])
+  const [loans, setLoans] = useState<Loan[]>([])
   useEffect(() => {
     if (!user) return
     Promise.all([
       supabase.from('contracts').select('*').eq('owner_id', user.id),
       supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id),
-    ]).then(([c, t]) => { setContracts((c.data ?? []) as Contract[]); setMortgageTracks((t.data ?? []) as MortgageTrack[]) })
+      supabase.from('loans').select('*').eq('owner_id', user.id),
+    ]).then(([c, t, l]) => { setContracts((c.data ?? []) as Contract[]); setMortgageTracks((t.data ?? []) as MortgageTrack[]); setLoans((l.data ?? []) as Loan[]) })
   }, [user?.id])
 
-  const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month), [year, month, contracts, mortgageTracks])
+  const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month, loans), [year, month, contracts, mortgageTracks, loans])
 
   const [capture, setCapture] = useState('')
   const [breakdownOpen, setBreakdownOpen] = useState(false)
@@ -101,7 +103,7 @@ export default function FinancesV2() {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1
       const mtx = transactions.filter(t => Number(t.date.slice(5, 7)) === m)
-      const v = monthlyVirtualEntries(contracts, mortgageTracks, year, m)
+      const v = monthlyVirtualEntries(contracts, mortgageTracks, year, m, loans)
       const rRent = mtx.some(t => t.direction === 'income' && RENT.includes(t.category))
       const rMort = mtx.some(t => t.direction === 'expense' && MORT.includes(t.category))
       const sv = v.filter(e => {
@@ -113,7 +115,7 @@ export default function FinancesV2() {
       const expense = mtx.filter(t => t.direction === 'expense').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'expense').reduce((s, e) => s + e.amount, 0)
       return { month: m, income, expense, net: income - expense, sv, mtx }
     })
-  }, [view, transactions, contracts, mortgageTracks, year])
+  }, [view, transactions, contracts, mortgageTracks, loans, year])
 
   const yearTotals = useMemo(() => {
     const income = monthly.reduce((s, r) => s + r.income, 0)

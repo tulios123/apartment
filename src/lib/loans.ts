@@ -73,6 +73,17 @@ export function loanMonthlyPayment(loan: Loan): number {
   return monthlyPayment(loan.principal, loan.annual_rate ?? 0, loan.term_months ?? 0)
 }
 
+/**
+ * The Shpitzer payment due in a given `YYYY-MM` month (interest + principal,
+ * absorbing last-month rounding). Returns null for balloon loans or months
+ * outside the repayment schedule — feeds the cash-flow forecast.
+ */
+export function loanPaymentForMonth(loan: Loan, monthStr: string): { amount: number; date: string } | null {
+  if (loan.repayment_type !== 'monthly_fixed') return null
+  const row = loanSchedule(loan).find(r => r.date.slice(0, 7) === monthStr)
+  return row ? { amount: row.interest + row.principal, date: row.date } : null
+}
+
 /** Interest accrued up to and including asOf — feeds investment interest expenses. */
 export function loanInterestToDate(loan: Loan, asOf: Date = new Date()): number {
   const cutoff = asOf.toISOString().slice(0, 10)
