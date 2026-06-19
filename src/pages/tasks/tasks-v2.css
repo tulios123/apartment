@@ -1,0 +1,86 @@
+/* Tasks V2 — due-bucketed list, inline quick-add, edit drawer.
+   Scoped to .tav; uses app tokens directly. */
+.tav {
+  .tav-filter { display: inline-flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: var(--r-pill); box-shadow: var(--shadow-sm); }
+  .tav-filter button { border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer; transition: background var(--t-fast), color var(--t-fast); white-space: nowrap; }
+  .tav-filter button:hover { color: var(--brand-navy); }
+  .tav-filter button.on { background: var(--accent); color: #fff; }
+
+  .tav-sync-warn { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--warning-text); background: var(--warning-bg); padding: 10px 14px; border-radius: var(--r-md); margin-bottom: 14px; }
+
+  /* Quick-add */
+  .tav-quickadd { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 12px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tav-quickadd-icon { color: var(--accent); flex-shrink: 0; }
+  .tav-quickadd-input { flex: 1; min-width: 160px; border: none; background: transparent; outline: none; font-family: inherit; font-size: 15px; color: var(--text); }
+  .tav-quickadd-input::placeholder { color: var(--text-muted); }
+  .tav-quickadd-extra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding-top: 10px; margin-top: 2px; border-top: 1px dashed var(--border); }
+  .tav-quickadd-extra input, .tav-quickadd-extra select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: var(--r-sm); outline: none; }
+  .tav-quickadd-extra input:focus, .tav-quickadd-extra select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .tav-quickadd-go { margin-inline-start: auto; background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 18px; border-radius: var(--r-sm); transition: background var(--t-fast); }
+  .tav-quickadd-go:hover { background: var(--accent-hover); }
+  .tav-quickadd-go:disabled { opacity: 0.5; cursor: default; }
+
+  /* Buckets */
+  .tav-bucket { margin-bottom: 20px; }
+  .tav-bucket-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .tav-bucket-head h2 { font-size: 14px; font-weight: 700; color: var(--brand-navy); }
+  .tav-bucket-count { font-size: 12px; color: var(--text-muted); background: var(--bg-alt); border-radius: var(--r-pill); padding: 1px 8px; font-weight: 600; }
+  .tav-bucket-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .tav-bucket-dot.danger { background: var(--danger); }
+  .tav-bucket-dot.accent { background: var(--accent); }
+  .tav-bucket-dot.warning { background: var(--warning); }
+  .tav-bucket-dot.success { background: var(--success); }
+  .tav-bucket-dot.muted { background: var(--text-muted); }
+
+  /* Task rows */
+  .tav-task { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 12px 14px; margin-bottom: 8px; transition: box-shadow var(--t-base) var(--ease); }
+  .tav-task:hover { box-shadow: var(--shadow-md); }
+  .tav-task:hover .tav-task-actions { opacity: 1; }
+  .tav-task.done { opacity: 0.6; }
+  .tav-task.done .tav-task-title { text-decoration: line-through; }
+
+  .tav-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border-strong); background: var(--bg); cursor: pointer; flex-shrink: 0; display: grid; place-items: center; color: #fff; transition: background var(--t-fast), border-color var(--t-fast), transform 0.1s var(--ease); }
+  .tav-check:hover { border-color: var(--accent); }
+  .tav-check:active { transform: scale(0.88); }
+  .tav-check.on { background: var(--success); border-color: var(--success); }
+
+  .tav-task-body { flex: 1; min-width: 0; cursor: pointer; }
+  .tav-task-title { font-size: 14.5px; font-weight: 600; color: var(--brand-navy); }
+  .tav-task-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 3px; }
+  .tav-task-cat { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; }
+  .tav-task-due { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .tav-task-due.overdue { color: var(--danger-text); font-weight: 600; }
+  .tav-task-badge { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: var(--r-pill); background: var(--accent-2-bg); color: var(--accent-2); }
+
+  .tav-task-actions { display: flex; gap: 2px; opacity: 0; transition: opacity var(--t-base) var(--ease); flex-shrink: 0; }
+  .tav-icon-btn { width: 30px; height: 30px; border-radius: 8px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), color var(--t-fast); }
+  .tav-icon-btn:hover { background: var(--bg-alt); color: var(--brand-navy); }
+  .tav-icon-btn.danger:hover { background: var(--danger-bg); color: var(--danger-text); }
+  .tav-confirm { display: inline-flex; gap: 6px; flex-shrink: 0; }
+  .tav-confirm-yes { background: var(--danger); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: var(--r-sm); }
+  .tav-confirm-no { background: var(--bg-alt); color: var(--text-muted); border: none; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: var(--r-sm); }
+
+  .tav-empty { text-align: center; padding: 48px 20px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); color: var(--text-muted); }
+  .tav-empty svg { color: var(--success); margin-bottom: 10px; }
+  .tav-empty p { font-size: 14px; }
+
+  /* Edit drawer */
+  .tav-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
+  .tav-scrim.open { opacity: 1; pointer-events: auto; }
+  .tav-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; }
+  .tav-drawer.open { transform: translateX(0); }
+  .tav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .tav-drawer-head h2 { font-size: 18px; font-weight: 700; color: var(--brand-navy); }
+  .tav-drawer-head button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+  .tav-field { display: flex; flex-direction: column; gap: 6px; }
+  .tav-field > span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .tav-field input, .tav-field select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 12px; border-radius: var(--r-sm); outline: none; transition: border-color var(--t-base), box-shadow var(--t-base); }
+  .tav-field input:focus, .tav-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .tav-seg { display: flex; gap: 8px; }
+  .tav-seg button { flex: 1; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px; border-radius: var(--r-sm); cursor: pointer; transition: all var(--t-fast) var(--ease); }
+  .tav-seg button.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+  .tav-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
+  .tav-save:hover { background: var(--accent-hover); }
+  .tav-save:active { transform: scale(0.98); }
+  .tav-save:disabled { opacity: 0.5; cursor: default; }
+}

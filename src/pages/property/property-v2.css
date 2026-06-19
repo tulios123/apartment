@@ -1,0 +1,31 @@
+/* Property V2 — navy hero + equity composition + tabbed hub.
+   Scoped to .prov; reuses the proven Details/Rental/Insurance/InvestmentCosts
+   sub-components inside the panel (they keep their .prop-* styling). */
+.prov {
+  .prov-hero { background: linear-gradient(150deg, var(--brand-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 18px; }
+  .prov-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .prov-hero-label { font-size: 13px; opacity: 0.8; margin-bottom: 6px; }
+  .prov-hero-value { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .prov-hero-addr { font-size: 13px; opacity: 0.85; text-align: left; max-width: 45%; line-height: 1.4; }
+
+  .prov-comp-bar { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 18px 0 12px; background: rgba(255,255,255,0.12); }
+  .prov-comp-bar .equity { background: var(--accent-teal); }
+  .prov-comp-bar .debt { background: #5aa0ec; }
+  .prov-comp-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .prov-comp-legend span { font-size: 12px; opacity: 0.92; display: inline-flex; align-items: center; gap: 6px; }
+  .prov-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+  .prov-hero-foot { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.16); }
+  .prov-hero-foot div span { font-size: 12px; opacity: 0.8; display: block; margin-bottom: 3px; }
+  .prov-hero-foot div strong { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Tab navigation */
+  .prov-tabs { display: flex; gap: 6px; background: var(--bg-card); padding: 5px; border-radius: var(--r-pill); box-shadow: var(--shadow-sm); margin-bottom: 18px; overflow-x: auto; }
+  .prov-tab { flex: 1; min-width: max-content; border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 14px; border-radius: var(--r-pill); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  .prov-tab:hover { color: var(--brand-navy); }
+  .prov-tab.on { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(42,125,225,0.35); }
+
+  .prov-panel { animation: provFade 0.25s var(--ease); }
+}
+
+@keyframes provFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

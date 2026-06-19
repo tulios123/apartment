@@ -9,6 +9,9 @@ import Dashboard from './pages/Dashboard'
 import DashboardV2 from './pages/dashboard/DashboardV2'
 import FinancesV2 from './pages/finances/FinancesV2'
 import LiabilitiesV2 from './pages/liabilities/LiabilitiesV2'
+import PropertyV2 from './pages/property/PropertyV2'
+import TasksV2 from './pages/tasks/TasksV2'
+import DocumentsV2 from './pages/documents/DocumentsV2'
 import FinancesHub from './pages/finances/FinancesHub'
 import Finances from './pages/Finances'
 import RecurringItems from './pages/RecurringItems'
@@ -70,11 +73,11 @@ function AppRoutes() {
             <Route path="recurring" element={<RecurringItems />} />
           </Route>
           <Route path="recurring" element={<Navigate to="/finances/recurring" replace />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="property" element={<PropertyHub />} />
+          <Route path="tasks" element={uxV2 ? <TasksV2 /> : <Tasks />} />
+          <Route path="documents" element={uxV2 ? <DocumentsV2 /> : <Documents />} />
+          <Route path="property" element={uxV2 ? <PropertyV2 /> : <PropertyHub />} />
           <Route path="property/mortgage" element={<Navigate to="/liabilities/mortgage" replace />} />
-          <Route path="property/:section" element={<PropertyHub />} />
+          <Route path="property/:section" element={uxV2 ? <PropertyV2 /> : <PropertyHub />} />
           <Route path="liabilities" element={uxV2 ? <LiabilitiesV2 /> : <LiabilitiesHub />} />
           <Route path="liabilities/:section" element={uxV2 ? <LiabilitiesV2 /> : <LiabilitiesHub />} />
           <Route path="mortgage" element={<Navigate to="/liabilities/mortgage" replace />} />
