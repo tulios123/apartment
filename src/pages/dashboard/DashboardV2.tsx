@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   ListChecks, ChartLineUp, ArrowDown, ArrowUp, ArrowDownLeft, ArrowUpRight,
   Coins, CheckCircle, Warning, FileText, CalendarCheck, CaretDown, Flag, Faders,
-  MapPin, TrendUp, ChartPieSlice, Sparkle,
+  MapPin, TrendUp, ChartPieSlice,
 } from '@phosphor-icons/react'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
 import { useMortgageData } from '../../hooks/useMortgageData'
@@ -160,8 +160,6 @@ export default function DashboardV2() {
     totalInvested > 0 ? { id: 'roe', label: 'תשואה על ההון', value: `${(propertyValue > 0 && totalInvested > 0 ? (adjustedNet * 12 / totalInvested) * 100 : 0).toFixed(1)}%`, formula: `${fmt(adjustedNet * 12)} תזרים שנתי ÷ ${fmt(totalInvested)} שהושקע` } : null,
     rentReceived > 0 ? { id: 'collected', label: 'שכ״ד שנגבה', value: fmt(rentReceived), formula: 'סך שכר הדירה שנגבה עד היום' } : null,
   ].filter(Boolean) as { id: string; label: string; value: string; formula: string }[]
-
-  function disableBeta() { localStorage.setItem('ux_v2', '0'); window.location.reload() }
 
   return (
     <div className="page dmv">
@@ -321,10 +319,6 @@ export default function DashboardV2() {
           )}
         </div>
       )}
-
-      <button className="ux-beta-pill" style={{ marginTop: 20 }} onClick={disableBeta}>
-        <Sparkle size={15} /> חזרה לעיצוב הקודם
-      </button>
     </div>
   )
 }

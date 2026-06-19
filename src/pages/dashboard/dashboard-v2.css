@@ -139,7 +139,4 @@
   .dmv-quick { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
 }
 
-/* Beta toggle pill (shared, outside .dmv scope) */
-.ux-beta-pill { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600; padding: 4px 0; }
-
 @keyframes dmvFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

@@ -5,7 +5,6 @@ import { supabase } from './lib/supabase'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
-import Dashboard from './pages/Dashboard'
 import DashboardV2 from './pages/dashboard/DashboardV2'
 import FinancesV2 from './pages/finances/FinancesV2'
 import LiabilitiesV2 from './pages/liabilities/LiabilitiesV2'
@@ -13,11 +12,6 @@ import PropertyV2 from './pages/property/PropertyV2'
 import TasksV2 from './pages/tasks/TasksV2'
 import DocumentsV2 from './pages/documents/DocumentsV2'
 import FinancesHub from './pages/finances/FinancesHub'
-import Finances from './pages/Finances'
-import Tasks from './pages/Tasks'
-import Documents from './pages/Documents'
-import PropertyHub from './pages/property/PropertyHub'
-import LiabilitiesHub from './pages/liabilities/LiabilitiesHub'
 import Settings from './pages/Settings'
 
 function AppRoutes() {
@@ -38,26 +32,23 @@ function AppRoutes() {
   if (!user) return <Login />
   if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
 
-  // New UX is the default; users can opt out (sets ux_v2 = '0') as an escape hatch.
-  const uxV2 = localStorage.getItem('ux_v2') !== '0'
-
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={uxV2 ? <DashboardV2 /> : <Dashboard />} />
+          <Route index element={<DashboardV2 />} />
           <Route path="finances" element={<FinancesHub />}>
-            <Route index element={uxV2 ? <FinancesV2 /> : <Finances />} />
+            <Route index element={<FinancesV2 />} />
             <Route path="recurring" element={<Navigate to="/finances" replace />} />
           </Route>
           <Route path="recurring" element={<Navigate to="/finances" replace />} />
-          <Route path="tasks" element={uxV2 ? <TasksV2 /> : <Tasks />} />
-          <Route path="documents" element={uxV2 ? <DocumentsV2 /> : <Documents />} />
-          <Route path="property" element={uxV2 ? <PropertyV2 /> : <PropertyHub />} />
+          <Route path="tasks" element={<TasksV2 />} />
+          <Route path="documents" element={<DocumentsV2 />} />
+          <Route path="property" element={<PropertyV2 />} />
           <Route path="property/mortgage" element={<Navigate to="/liabilities/mortgage" replace />} />
-          <Route path="property/:section" element={uxV2 ? <PropertyV2 /> : <PropertyHub />} />
-          <Route path="liabilities" element={uxV2 ? <LiabilitiesV2 /> : <LiabilitiesHub />} />
-          <Route path="liabilities/:section" element={uxV2 ? <LiabilitiesV2 /> : <LiabilitiesHub />} />
+          <Route path="property/:section" element={<PropertyV2 />} />
+          <Route path="liabilities" element={<LiabilitiesV2 />} />
+          <Route path="liabilities/:section" element={<LiabilitiesV2 />} />
           <Route path="mortgage" element={<Navigate to="/liabilities/mortgage" replace />} />
           <Route path="investment" element={<Navigate to="/property/investment" replace />} />
           <Route path="settings" element={<Settings />} />
