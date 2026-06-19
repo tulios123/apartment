@@ -57,7 +57,8 @@ function AppRoutes() {
   if (!user) return <Login />
   if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
 
-  const uxV2 = localStorage.getItem('ux_v2') === '1'
+  // New UX is the default; users can opt out (sets ux_v2 = '0') as an escape hatch.
+  const uxV2 = localStorage.getItem('ux_v2') !== '0'
 
   return (
     <BrowserRouter>

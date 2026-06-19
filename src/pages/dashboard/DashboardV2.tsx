@@ -161,7 +161,7 @@ export default function DashboardV2() {
     rentReceived > 0 ? { id: 'collected', label: 'שכ״ד שנגבה', value: fmt(rentReceived), formula: 'סך שכר הדירה שנגבה עד היום' } : null,
   ].filter(Boolean) as { id: string; label: string; value: string; formula: string }[]
 
-  function disableBeta() { localStorage.removeItem('ux_v2'); window.location.reload() }
+  function disableBeta() { localStorage.setItem('ux_v2', '0'); window.location.reload() }
 
   return (
     <div className="page dmv">
