@@ -17,7 +17,7 @@ const DocumentsPanel = () => <DocumentsV2 embedded />
 
 const TABS = [
   { id: 'details', label: 'נכס', Icon: House, Comp: Details },
-  { id: 'rental', label: 'חוזה ושוכר', Icon: FileText, Comp: Rental },
+  { id: 'rental', label: 'חוזה', Icon: FileText, Comp: Rental },
   { id: 'insurance', label: 'ביטוח', Icon: ShieldCheck, Comp: Insurance },
   { id: 'tasks', label: 'משימות', Icon: CheckSquare, Comp: TasksPanel },
   { id: 'documents', label: 'מסמכים', Icon: FolderOpen, Comp: DocumentsPanel },

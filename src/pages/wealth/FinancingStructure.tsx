@@ -39,6 +39,13 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
   const balloonBal = balloonLoans.reduce((s, l) => s + l.principal, 0)
   const totalDebt = mortgageBalance + loanBal + balloonBal
 
+  // Latest payoff year across all mortgage tracks — "how much is left" in time.
+  const mortgageEndYear = tracks.reduce((max, t) => {
+    const sched = trackSchedule(t)
+    const y = sched.length ? new Date(sched[sched.length - 1].date).getFullYear() : 0
+    return Math.max(max, y)
+  }, 0)
+
   function trackBalance(t: MortgageTrack): number {
     const today = new Date().toISOString().slice(0, 10)
     const sched = trackSchedule(t)
@@ -61,7 +68,7 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
             <span className="wlth-vehicle-icon"><Bank size={20} weight="duotone" /></span>
             <div className="wlth-vehicle-main">
               <div className="wlth-vehicle-title">משכנתא ראשית <span className="wlth-vehicle-meta">· {tracks.length} מסלולים</span></div>
-              <div className="wlth-vehicle-sub">בלנדד {blendedRate.toFixed(1)}% · {fmt(summary.monthlyPayment)}/חודש · נפרעו {Math.round(mortgagePaidPct)}%</div>
+              <div className="wlth-vehicle-sub">בלנדד {blendedRate.toFixed(1)}% · {fmt(summary.monthlyPayment)}/חודש · נפרעו {Math.round(mortgagePaidPct)}%{mortgageEndYear > 0 ? ` · עד ${mortgageEndYear}` : ''}</div>
             </div>
             <div className="wlth-vehicle-bal"><b>{fmt(mortgageBalance)}</b><span>יתרה</span></div>
             <CaretDown className="wlth-vehicle-caret" size={16} weight="bold" />

@@ -44,11 +44,18 @@
   .padm-util-edit-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .padm-util-edit-name { font-size: 13px; color: var(--text); min-width: 64px; }
 
-  /* Tab navigation */
-  .prov-tabs { display: flex; gap: 6px; background: var(--bg-card); padding: 5px; border-radius: var(--r-pill); box-shadow: var(--shadow-sm); margin-bottom: 18px; overflow-x: auto; }
-  .prov-tab { flex: 1; min-width: max-content; border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 14px; border-radius: var(--r-pill); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  /* Tab navigation — fixed 5-column grid, never scrolls horizontally */
+  .prov-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: var(--bg-card); padding: 5px; border-radius: var(--r-lg); box-shadow: var(--shadow-sm); margin-bottom: 18px; }
+  .prov-tab { border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 12px; font-weight: 600; padding: 8px 4px; border-radius: var(--r-md); cursor: pointer; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  .prov-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .prov-tab:hover { color: var(--brand-navy); }
   .prov-tab.on { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(42,125,225,0.35); }
+
+  /* On wider screens, lay the icon + label side by side again */
+  @media (min-width: 560px) {
+    .prov-tabs { border-radius: var(--r-pill); gap: 6px; }
+    .prov-tab { flex-direction: row; gap: 6px; font-size: 13.5px; padding: 9px 14px; border-radius: var(--r-pill); }
+  }
 
   .prov-panel { animation: provFade 0.25s var(--ease); }
 }

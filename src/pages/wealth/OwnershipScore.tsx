@@ -43,14 +43,14 @@ export default function OwnershipScore({ propertyValue, bankDebt, balloon, month
 
       <div className="wlth-ladder" role="img" aria-label={`בבעלותך ${ownPct.toFixed(0)} אחוז`}>
         {netEquity > 0 && <div className="seg yours" style={{ width: `${pct(netEquity)}%` }} />}
-        {bankDebt > 0 && <div className="seg banks" style={{ width: `${pct(bankDebt)}%` }} />}
         {balloon > 0 && <div className="seg family" style={{ width: `${pct(balloon)}%` }} />}
+        {bankDebt > 0 && <div className="seg banks" style={{ width: `${pct(bankDebt)}%` }} />}
       </div>
 
       <div className="wlth-ladder-legend">
         <span><i className="dot yours" /> בבעלותך <b>{fmt(Math.max(0, netEquity))}</b></span>
-        {bankDebt > 0 && <span><i className="dot banks" /> נותר לבעלות · בנקים <b>{fmt(bankDebt)}</b></span>}
         {balloon > 0 && <span><i className="dot family" /> מימון משפחה <b>{fmt(balloon)}</b></span>}
+        {bankDebt > 0 && <span><i className="dot banks" /> נותר לבעלות · בנקים <b>{fmt(bankDebt)}</b></span>}
       </div>
     </section>
   )

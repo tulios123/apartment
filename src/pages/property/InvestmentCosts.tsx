@@ -7,7 +7,6 @@ import { INVESTMENT_COST_CATEGORIES } from '../../lib/constants'
 import { formatCurrency } from '../../lib/format'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
-import BalloonFinancing from './BalloonFinancing'
 
 type CostRow = {
   id?: string
@@ -25,7 +24,7 @@ function fmtInput(raw: string): string {
 export default function InvestmentCosts() {
   const { user } = useAuth()
   const { costs, loading, error, refetch } = useInvestmentData()
-  const { balloonLoans, summary: loansSummary, refetch: refetchLoans } = useLoansData()
+  const { summary: loansSummary } = useLoansData()
 
   const [rows, setRows] = useState<CostRow[]>([])
   const [deletedIds, setDeletedIds] = useState<string[]>([])
@@ -170,14 +169,11 @@ export default function InvestmentCosts() {
         </button>
       </div>
 
-      <div className="inv-balloon-block">
-        <h3 className="inv-balloon-title">מימון בלון</h3>
-        <BalloonFinancing
-          balloonLoans={balloonLoans}
-          balloonTotal={loansSummary.balloonOutstanding}
-          onChanged={refetchLoans}
-        />
-      </div>
+      {loansSummary.balloonOutstanding > 0 && (
+        <p className="prop-section-hint" style={{ marginTop: 12 }}>
+          מימון בלון מנוהל יחד עם ההלוואות, בקטע "משכנתא והלוואות" שמעל.
+        </p>
+      )}
     </section>
   )
 }

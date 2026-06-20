@@ -22,7 +22,7 @@ export default function WealthHub() {
 
   const { property, contracts, loading: loadingProp, refetch: refetchProp } = usePropertyData()
   const { tracks, summary, loading: loadingMortgage, refetch: refetchMortgage } = useMortgageData()
-  const { totalInvested, loading: loadingInv, refetch: refetchInv } = useInvestmentData()
+  const { totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, refetch: refetchInv } = useInvestmentData()
   const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingLoans, refetch: refetchLoans } = useLoansData()
 
   const statsLoading = loadingProp || loadingMortgage || loadingInv || loadingLoans
@@ -39,6 +39,12 @@ export default function WealthHub() {
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
   const grossYield = propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
+
+  // Cumulative cash view: everything that went out (equity + costs + interest +
+  // maintenance) vs. rent collected so far. Net is pure cash, ignoring property value.
+  const totalOut = totalInvested + interestPaid + maintenance
+  const cashNet = rentReceived - totalOut
+  const hasCashflow = totalOut > 0 || rentReceived > 0
 
   const hasData = propertyValue > 0 || mortgageBalance > 0 || balloon > 0
 
@@ -73,7 +79,6 @@ export default function WealthHub() {
             current={split}
             future5yPrincipal={future5y.principal}
             annualPrincipal={annualPrincipal}
-            hasBalloon={balloonLoans.length > 0}
           />
 
           <FinancingStructure
@@ -83,6 +88,41 @@ export default function WealthHub() {
             balloonLoans={balloonLoans}
             onEdit={() => setEditing(true)}
           />
+
+          {hasCashflow && (
+            <section className="wlth-card wlth-cashflow">
+              <div className="wlth-card-head">
+                <h2>הכנסות מול הוצאות</h2>
+                <span className="wlth-card-note">מצטבר · כולל הון עצמי</span>
+              </div>
+              <div className="wlth-cf-rows">
+                <div className="wlth-cf-row">
+                  <span><i className="wlth-cf-dot in" /> שכר דירה שהתקבל</span>
+                  <strong className="in">{fmt(rentReceived)}</strong>
+                </div>
+                <div className="wlth-cf-row">
+                  <span><i className="wlth-cf-dot out" /> הון עצמי ועלויות רכישה</span>
+                  <strong>{fmt(totalInvested)}</strong>
+                </div>
+                {interestPaid > 0 && (
+                  <div className="wlth-cf-row">
+                    <span><i className="wlth-cf-dot out" /> ריבית ששולמה</span>
+                    <strong>{fmt(interestPaid)}</strong>
+                  </div>
+                )}
+                {maintenance > 0 && (
+                  <div className="wlth-cf-row">
+                    <span><i className="wlth-cf-dot out" /> אחזקה ותיקונים</span>
+                    <strong>{fmt(maintenance)}</strong>
+                  </div>
+                )}
+              </div>
+              <div className="wlth-cf-net">
+                <span>{cashNet >= 0 ? 'נטו חיובי' : 'הושקע נטו (טרם הוחזר)'}</span>
+                <strong className={cashNet >= 0 ? 'in' : 'out'}>{fmt(Math.abs(cashNet))}</strong>
+              </div>
+            </section>
+          )}
 
           {(grossYield != null || monthlyRent > 0 || totalInvested > 0) && (
             <section className="wlth-secondary">

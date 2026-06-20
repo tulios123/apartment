@@ -11,8 +11,6 @@ interface Props {
   future5yPrincipal: number
   /** Total principal repaid over the next 12 months. */
   annualPrincipal: number
-  /** Whether a balloon (no-monthly-payment) loan exists. */
-  hasBalloon: boolean
 }
 
 /**
@@ -20,7 +18,7 @@ interface Props {
  * savings + a fee: how much builds equity (principal) vs how much is the bank's
  * interest, with the Spitzer trajectory and an annualized framing.
  */
-export default function WealthAccelerator({ current, future5yPrincipal, annualPrincipal, hasBalloon }: Props) {
+export default function WealthAccelerator({ current, future5yPrincipal, annualPrincipal }: Props) {
   if (current.total <= 0) return null
   const buildPct = (current.principal / current.total) * 100
   const interestPct = 100 - buildPct
@@ -57,9 +55,6 @@ export default function WealthAccelerator({ current, future5yPrincipal, annualPr
         )}
         {annualPrincipal > 0 && (
           <li>השנה תמיר <b>{fmt(annualPrincipal)}</b> מתשלומים להון עצמי.</li>
-        )}
-        {hasBalloon && (
-          <li className="muted">הלוואת המשפחה (בלון): ללא תשלום חודשי · נפרעת במכירה.</li>
         )}
       </ul>
     </section>

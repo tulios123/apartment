@@ -28,11 +28,22 @@
   border-radius: var(--r-md); cursor: pointer; transition: border-color var(--t-fast), color var(--t-fast);
 }
 .cap-datechip:hover { border-color: var(--accent); color: var(--accent); }
+.cap-datechip.on { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
 /* Native input is present only to host showPicker(); the chip handles the click. */
 .cap-datechip input {
   position: absolute; inset: 0; width: 1px; height: 1px; opacity: 0; border: none;
   background: none; pointer-events: none; -webkit-appearance: none; appearance: none;
 }
+
+/* Date + receipt chips share one row */
+.cap-row-chips { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.cap-row-chips .cap-datechip { width: auto; flex: 1; margin-top: 0; }
+.cap-receipt-clear {
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: var(--r-md); border: 1px solid var(--border);
+  background: var(--bg-alt); color: var(--text-muted); cursor: pointer;
+}
+.cap-receipt-clear:hover { border-color: var(--accent-coral); color: var(--accent-coral); }
 
 
 /* Hero amount display */

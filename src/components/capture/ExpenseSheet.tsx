@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Backspace, CircleNotch, Check, ArrowRight, CalendarBlank } from '@phosphor-icons/react'
+import { Backspace, CircleNotch, Check, ArrowRight, CalendarBlank, Paperclip, X } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { createTransaction } from '../../hooks/useTransactions'
+import { uploadDocument } from '../../lib/storage'
+import { supabase } from '../../lib/supabase'
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../../lib/constants'
 import { predictCategory } from '../../lib/quickParse'
 import { formatDate } from '../../lib/format'
@@ -34,9 +36,11 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const [payMethod, setPayMethod] = useState('')
   const [date, setDate] = useState(isoOffset(0))
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
+  const [receipt, setReceipt] = useState<File | null>(null)
 
   const [calOpen, setCalOpen] = useState(false)
   const descRef = useRef<HTMLInputElement>(null)
+  const receiptRef = useRef<HTMLInputElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const [trackH, setTrackH] = useState<number>()
 
@@ -54,6 +58,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
       setPayMethod('')
       setDate(today)
       setState('idle')
+      setReceipt(null)
     }
   }, [open, initialDesc, initialAmount, today])
 
@@ -90,12 +95,28 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   async function save() {
     if (numeric <= 0 || state !== 'idle') return
     setState('saving')
-    const { error } = await createTransaction({
+    const { data: tx, error } = await createTransaction({
       contract_id: null, recurring_item_id: null, document_id: null,
       direction: 'expense', amount: numeric, date,
       category, description: desc.trim() || null, payment_method: payMethod || null,
     })
     if (error) { setState('idle'); return }
+
+    // Attach the receipt (non-fatal): upload, create a document row, link it.
+    if (receipt && tx) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        const docId = crypto.randomUUID()
+        const path = await uploadDocument(receipt, docId)
+        await supabase.from('documents').insert({
+          id: docId, owner_id: user?.id, property_id: null,
+          contract_id: null, transaction_id: tx.id,
+          type: 'receipt', name: receipt.name, storage_path: path, date,
+        })
+        await supabase.from('transactions').update({ document_id: docId }).eq('id', tx.id)
+      } catch { /* receipt failed — the expense itself was saved */ }
+    }
+
     setState('done')
     onDone(`נרשמה הוצאה · ₪${numeric.toLocaleString()}${desc.trim() ? ` · ${desc.trim()}` : ''}`)
     setTimeout(onClose, 480)
@@ -158,9 +179,22 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
               ))}
             </div>
 
-            <button type="button" className="cap-datechip" onClick={() => setCalOpen(true)}>
-              <CalendarBlank size={18} weight="duotone" /> {dateLabel}
-            </button>
+            <div className="cap-row-chips">
+              <button type="button" className="cap-datechip" onClick={() => setCalOpen(true)}>
+                <CalendarBlank size={18} weight="duotone" /> {dateLabel}
+              </button>
+              <button type="button" className={`cap-datechip${receipt ? ' on' : ''}`} onClick={() => receiptRef.current?.click()}>
+                <Paperclip size={17} weight="bold" /> {receipt ? 'קבלה צורפה' : 'צרף קבלה'}
+              </button>
+              {receipt && (
+                <button type="button" className="cap-receipt-clear" onClick={() => setReceipt(null)} aria-label="הסר קבלה">
+                  <X size={15} weight="bold" />
+                </button>
+              )}
+              <input ref={receiptRef} type="file" accept="image/*,.pdf,.heic" capture="environment"
+                style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) setReceipt(f); e.target.value = '' }} />
+            </div>
             <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={state !== 'idle'} onClick={save}>
               {state === 'saving' ? <CircleNotch className="spin" size={20} weight="bold" />
                 : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>

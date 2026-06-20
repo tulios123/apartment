@@ -18,16 +18,16 @@
 
   .wlth-own-pct { font-size: 15px; font-weight: 700; margin: 22px 0 10px; }
   .wlth-ladder { display: flex; height: 14px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; background: rgba(255,255,255,0.12); }
-  .wlth-ladder .seg.yours { background: var(--accent-teal); }
+  .wlth-ladder .seg.yours { background: #34e3b0; }
   .wlth-ladder .seg.banks { background: #5aa0ec; }
-  .wlth-ladder .seg.family { background: rgba(240,178,78,0.55); }
+  .wlth-ladder .seg.family { background: #f0b24e; }
   .wlth-ladder-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
   .wlth-ladder-legend span { font-size: 12px; opacity: 0.92; display: inline-flex; align-items: center; gap: 6px; }
   .wlth-ladder-legend b { font-weight: 700; font-variant-numeric: tabular-nums; }
   .wlth-ladder-legend .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
-  .wlth-ladder-legend .dot.yours { background: var(--accent-teal); }
+  .wlth-ladder-legend .dot.yours { background: #34e3b0; }
   .wlth-ladder-legend .dot.banks { background: #5aa0ec; }
-  .wlth-ladder-legend .dot.family { background: rgba(240,178,78,0.75); }
+  .wlth-ladder-legend .dot.family { background: #f0b24e; }
 
   /* ── Shared card ───────────────────────────────────────────── */
   .wlth-card { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 18px 18px 20px; margin-bottom: 16px; }
@@ -88,6 +88,21 @@
   .wlth-secondary { display: flex; gap: 28px; flex-wrap: wrap; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 16px 18px; }
   .wlth-secondary div span { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 3px; }
   .wlth-secondary div strong { font-size: 17px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+
+  /* ── Cashflow: income vs expenses (incl. equity) ───────────── */
+  .wlth-cf-rows { display: flex; flex-direction: column; gap: 10px; }
+  .wlth-cf-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+  .wlth-cf-row span { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); }
+  .wlth-cf-row strong { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+  .wlth-cf-row strong.in { color: var(--success-text); }
+  .wlth-cf-dot { width: 8px; height: 8px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+  .wlth-cf-dot.in { background: var(--accent-teal); }
+  .wlth-cf-dot.out { background: var(--accent-coral); }
+  .wlth-cf-net { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .wlth-cf-net span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .wlth-cf-net strong { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .wlth-cf-net strong.in { color: var(--success-text); }
+  .wlth-cf-net strong.out { color: var(--brand-navy); }
 
   /* ── Edit overlay (reuses existing form components) ────────── */
   .wlth-editor { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; animation: wlthEditorIn 0.25s var(--ease); }
