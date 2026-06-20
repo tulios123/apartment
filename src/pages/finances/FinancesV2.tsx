@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Sparkle, Plus, X, CaretDown, CaretLeft, CaretRight, ArrowUp, ArrowDown,
   ArrowDownLeft, ArrowUpRight, PencilSimple, Trash, Receipt, ChartPie, ChartBar,
@@ -45,8 +46,12 @@ function parseNL(text: string): { amount: number | null; dir: Dir; cat: string; 
 
 const emptyForm = { direction: 'expense' as Dir, amount: '', date: new Date().toISOString().slice(0, 10), category: EXPENSE_CATEGORIES[0] as string, description: '', payment_method: '' }
 
+type Prefill = { direction?: Dir; category?: string; description?: string; amount?: number }
+
 export default function FinancesV2() {
   const { user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const today = new Date()
   const [view, setView] = useState<'month' | 'year'>('month')
   const [year, setYear] = useState(today.getFullYear())
@@ -75,6 +80,26 @@ export default function FinancesV2() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  // Open the form pre-filled when navigated here with a prefill (e.g. from a
+  // completed repair/rent task). Clear the history state so it fires only once.
+  useEffect(() => {
+    const pf = (location.state as { prefill?: Prefill } | null)?.prefill
+    if (!pf) return
+    const direction: Dir = pf.direction ?? 'expense'
+    const validCats = (direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES) as readonly string[]
+    setForm({
+      ...emptyForm,
+      direction,
+      category: pf.category && validCats.includes(pf.category) ? pf.category : validCats[0],
+      description: pf.description ?? '',
+      amount: pf.amount != null ? String(pf.amount) : '',
+    })
+    setEditingId(null)
+    setFormError(null)
+    setDrawerOpen(true)
+    navigate(location.pathname, { replace: true })
+  }, [location.state, location.pathname, navigate])
 
   // ── Month-scoped figures (used when view === 'month') ──────────────
   const realRentExists = transactions.some(t => t.direction === 'income' && RENT.includes(t.category))

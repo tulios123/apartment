@@ -15,7 +15,7 @@ import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { gracePeriodPayment } from '../../lib/mortgage'
 import { activeContract as findActiveContract } from '../../lib/projections'
-import { RENT_CATEGORIES } from '../../lib/constants'
+import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { parseQuick } from '../../lib/quickParse'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
@@ -68,6 +68,9 @@ export default function HomeScreen() {
 
   const todayStr = now.toISOString().slice(0, 10)
   const rentCatSet = useMemo(() => new Set(RENT_CATEGORIES as readonly string[]), [])
+  // Categories already represented in fixedExpenses (mortgage + insurance auto-post
+  // as real transactions via the generator) — exclude them so they aren't counted twice.
+  const fixedCatSet = useMemo(() => new Set([...MORTGAGE_CATEGORIES, 'ביטוח'] as string[]), [])
 
   // ── Fixed (expected) monthly expenses — calm, never red ──
   const activeContract = findActiveContract(contracts)
@@ -87,7 +90,7 @@ export default function HomeScreen() {
     .filter(t => t.direction === 'income' && rentCatSet.has(t.category))
     .reduce((s, t) => s + t.amount, 0)
   const extraExpenses = transactions
-    .filter(t => t.direction === 'expense')
+    .filter(t => t.direction === 'expense' && !fixedCatSet.has(t.category))
     .reduce((s, t) => s + t.amount, 0)
   const rentCleared = monthlyRent > 0 && rentReceived >= monthlyRent
   const rentPct = monthlyRent > 0 ? Math.min(100, (rentReceived / monthlyRent) * 100) : 0
