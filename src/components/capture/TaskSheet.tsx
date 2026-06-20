@@ -64,7 +64,7 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
         </button>
       )}
 
-      <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={!canSave && state === 'idle'} onClick={save}>
+      <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={!canSave} onClick={save}>
         {state === 'saving' ? <CircleNotch className="spin" size={20} weight="bold" />
           : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>
           : 'הוספת משימה'}
