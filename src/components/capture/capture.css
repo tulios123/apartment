@@ -1,0 +1,73 @@
+/* Quick-capture sheets — amount numpad (expense) + task. */
+
+/* Hero amount display */
+.cap-amount {
+  display: flex; align-items: baseline; justify-content: center; gap: 6px;
+  padding: 18px 0 14px; color: var(--brand-navy);
+}
+.cap-amount-cur { font-size: 26px; font-weight: 700; color: var(--text-muted); }
+.cap-amount-val { font-size: 52px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.cap-amount-val.ph { color: var(--border-strong); }
+
+/* Text inputs */
+.cap-desc, .cap-title, .cap-date {
+  width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font-family: inherit; padding: 13px 14px; border-radius: var(--r-sm); outline: none;
+  transition: border-color var(--t-base), box-shadow var(--t-base);
+}
+.cap-desc { font-size: 15px; text-align: center; }
+.cap-title { font-size: 17px; font-weight: 600; }
+.cap-desc:focus, .cap-title:focus, .cap-date:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+
+/* Category + date chips */
+.cap-chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin: 12px 0 4px; }
+.cap-chip {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text-muted);
+  font-family: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px;
+  border-radius: var(--r-pill); cursor: pointer; transition: all var(--t-fast) var(--ease);
+}
+.cap-chip.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+.cap-chip.date { cursor: default; background: var(--bg-alt); border-color: transparent; }
+
+/* Numpad */
+.numpad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 4px;
+}
+.numkey {
+  border: none; background: var(--bg-alt); color: var(--brand-navy);
+  font-family: inherit; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums;
+  padding: 16px 0; border-radius: var(--r-md); cursor: pointer;
+  display: grid; place-items: center;
+  transition: background var(--t-fast), transform 0.08s var(--ease);
+}
+.numkey:hover { background: var(--border); }
+.numkey:active { transform: scale(0.94); background: var(--accent-light); }
+.numkey.fn { color: var(--text-muted); }
+
+/* Task: ghost date affordance */
+.cap-ghost-date {
+  display: inline-flex; align-items: center; gap: 8px; width: 100%; justify-content: center;
+  margin-top: 12px; border: 1px dashed var(--border-strong); background: transparent;
+  color: var(--text-muted); font-family: inherit; font-size: 13.5px; font-weight: 600;
+  padding: 12px; border-radius: var(--r-sm); cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.cap-ghost-date:hover { border-color: var(--accent); color: var(--accent); }
+.cap-date-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.cap-date { flex: 1; }
+.cap-date-clear {
+  background: var(--bg-alt); border: none; color: var(--text-muted); cursor: pointer;
+  width: 40px; height: 40px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0;
+}
+
+/* Primary save */
+.cap-save {
+  margin-top: 16px; width: 100%; background: var(--accent); color: #fff; border: none; cursor: pointer;
+  font-family: inherit; font-size: 16px; font-weight: 700; padding: 15px; border-radius: var(--r-md);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background var(--t-base), transform 0.1s var(--ease);
+}
+.cap-save:hover { background: var(--accent-hover); }
+.cap-save:active { transform: scale(0.99); }
+.cap-save:disabled { opacity: 0.45; cursor: default; }
+.cap-save.ok { background: var(--success); }

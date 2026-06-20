@@ -16,9 +16,12 @@ import { formatCurrency, formatDate } from '../../lib/format'
 import { gracePeriodPayment } from '../../lib/mortgage'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { RENT_CATEGORIES } from '../../lib/constants'
+import { parseQuick } from '../../lib/quickParse'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
+import ExpenseSheet from '../../components/capture/ExpenseSheet'
+import TaskSheet from '../../components/capture/TaskSheet'
 import './home-screen.css'
 
 const fmt = (v: number) => formatCurrency(v)
@@ -33,24 +36,6 @@ function greeting(name: string): { text: string; Icon: typeof Sun } {
   if (h < 12) return { text: `בוקר טוב, ${name}`, Icon: Sun }
   if (h < 18) return { text: `צהריים טובים, ${name}`, Icon: CloudSun }
   return { text: `ערב טוב, ${name}`, Icon: MoonStars }
-}
-
-// Light natural-language parse: "שילמתי 350 ₪ על תיקון ברז" → {amount:350, desc:"תיקון ברז", income:false}
-function parseQuick(raw: string): { amount: number; desc: string; income: boolean } | null {
-  const text = raw.trim()
-  if (!text) return null
-  const numMatch = text.replace(/,/g, '').match(/\d+(\.\d+)?/)
-  if (!numMatch) return null
-  const amount = Number(numMatch[0])
-  if (!amount) return null
-  const income = /קיבלתי|התקבל|הכנס|נכנס/.test(text)
-  const desc = text
-    .replace(/\d+(\.\d+)?/, '')
-    .replace(/[₪שח"']/g, '')
-    .replace(/^\s*(שילמתי|קיבלתי|הוצאתי|עבור|על|בעבור)\s*/g, '')
-    .replace(/\s+(עבור|על)\s+/g, ' ')
-    .trim()
-  return { amount, desc: desc || 'אחר', income }
 }
 
 export default function HomeScreen() {
@@ -72,6 +57,8 @@ export default function HomeScreen() {
   const [done, setDone] = useState<Set<string>>(new Set())
   const [flash, setFlash] = useState<string | null>(null)
   const [quick, setQuick] = useState('')
+  const [sheet, setSheet] = useState<null | 'expense' | 'task'>(null)
+  const [sheetSeed, setSheetSeed] = useState('')
 
   const firstName =
     (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ||
@@ -189,26 +176,34 @@ export default function HomeScreen() {
     }
   }
 
-  function submitQuick(e: React.FormEvent) {
+  function showFlash(msg: string) {
+    setFlash(msg)
+    setTimeout(() => setFlash(null), 2600)
+  }
+
+  async function submitQuick(e: React.FormEvent) {
     e.preventDefault()
     const parsed = parseQuick(quick)
+    // No amount detected → open the expense sheet pre-filled with the typed text.
     if (!parsed) {
-      navigate('/finances', { state: { openForm: true } })
+      setSheetSeed(quick.trim())
+      setSheet('expense')
       return
     }
-    navigate('/finances', {
-      state: {
-        openForm: true,
-        prefill: {
-          amount: parsed.amount,
-          direction: parsed.income ? 'income' : 'expense',
-          category: 'אחר',
-          description: parsed.desc,
-          date: todayStr,
-        },
-      },
-    })
+    // AI "magic" path: classify + write inline, never leave the dashboard.
+    const text = quick
     setQuick('')
+    const { error } = await createTransaction({
+      contract_id: parsed.income ? (activeContractId ?? null) : null,
+      recurring_item_id: null, document_id: null,
+      direction: parsed.income ? 'income' : 'expense',
+      amount: parsed.amount, date: todayStr,
+      category: parsed.income ? 'שכר דירה' : 'אחר',
+      description: parsed.desc, payment_method: null,
+    })
+    if (error) { setQuick(text); showFlash('לא הצלחנו לרשום, נסה שוב'); return }
+    showFlash(`נרשם ✓ ${fmt(parsed.amount)} · ${parsed.desc}`)
+    await refetchTx()
   }
 
   if (error) return <PageError message={error} />
@@ -310,10 +305,10 @@ export default function HomeScreen() {
               </button>
             </form>
             <div className="hs-fabs">
-              <button onClick={() => navigate('/finances', { state: { openForm: true } })}>
+              <button onClick={() => { setSheetSeed(''); setSheet('expense') }}>
                 <Plus size={16} weight="bold" /> הוצאה
               </button>
-              <button onClick={() => navigate('/property/tasks', { state: { openForm: true } })}>
+              <button onClick={() => setSheet('task')}>
                 <ListPlus size={16} weight="bold" /> משימה
               </button>
             </div>
@@ -380,6 +375,18 @@ export default function HomeScreen() {
           </section>
         </>
       )}
+
+      <ExpenseSheet
+        open={sheet === 'expense'}
+        onClose={() => setSheet(null)}
+        initialDesc={sheetSeed}
+        onDone={async (label) => { showFlash(label); await refetchTx() }}
+      />
+      <TaskSheet
+        open={sheet === 'task'}
+        onClose={() => setSheet(null)}
+        onDone={async (label) => { showFlash(label); await refetchTasks() }}
+      />
     </div>
   )
 }

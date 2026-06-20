@@ -1,0 +1,47 @@
+/* Premium mobile bottom sheet — portaled to <body>. */
+.bsheet-root { position: fixed; inset: 0; z-index: 120; }
+
+.bsheet-scrim {
+  position: absolute; inset: 0; background: rgba(10,31,68,0.32);
+  opacity: 0; transition: opacity 0.35s var(--ease);
+}
+.bsheet-root.open .bsheet-scrim { opacity: 1; }
+
+.bsheet {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: var(--bg-card);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: 0 -12px 40px rgba(10,31,68,0.22);
+  max-height: 90dvh; display: flex; flex-direction: column;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 520px; margin-inline: auto;
+}
+.bsheet-root.open .bsheet { transform: translateY(0); }
+
+/* Grab handle — own touch-action so the swipe never fights inner scroll. */
+.bsheet-grab {
+  display: grid; place-items: center; padding: 10px 0 6px;
+  touch-action: none; cursor: grab; flex-shrink: 0;
+}
+.bsheet-handle {
+  width: 40px; height: 5px; border-radius: var(--r-pill);
+  background: var(--border-strong);
+}
+
+.bsheet-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 20px 12px; flex-shrink: 0;
+}
+.bsheet-head h2 { font-size: 17px; font-weight: 700; color: var(--brand-navy); }
+.bsheet-close {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.bsheet-close:hover { background: var(--bg-alt); color: var(--brand-navy); }
+
+.bsheet-body {
+  padding: 0 20px 8px; overflow-y: auto; overscroll-behavior: contain;
+}
