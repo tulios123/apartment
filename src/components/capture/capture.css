@@ -35,10 +35,10 @@
 /* Hero amount display */
 .cap-amount {
   display: flex; align-items: baseline; justify-content: center; gap: 6px;
-  padding: 18px 0 14px; color: var(--brand-navy);
+  padding: 8px 0 10px; color: var(--brand-navy);
 }
-.cap-amount-cur { font-size: 26px; font-weight: 700; color: var(--text-muted); }
-.cap-amount-val { font-size: 52px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.cap-amount-cur { font-size: 22px; font-weight: 700; color: var(--text-muted); }
+.cap-amount-val { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .cap-amount-val.ph { color: var(--border-strong); }
 
 /* Text inputs */
@@ -63,12 +63,12 @@
 
 /* Numpad */
 .numpad {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 4px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 8px 0 4px;
 }
 .numkey {
   border: none; background: var(--bg-alt); color: var(--brand-navy);
-  font-family: inherit; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums;
-  padding: 16px 0; border-radius: var(--r-md); cursor: pointer;
+  font-family: inherit; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums;
+  padding: 10px 0; border-radius: var(--r-md); cursor: pointer;
   display: grid; place-items: center;
   transition: background var(--t-fast), transform 0.08s var(--ease);
 }
@@ -94,8 +94,8 @@
 
 /* Primary save */
 .cap-save {
-  margin-top: 16px; width: 100%; background: var(--accent); color: #fff; border: none; cursor: pointer;
-  font-family: inherit; font-size: 16px; font-weight: 700; padding: 15px; border-radius: var(--r-md);
+  margin-top: 12px; width: 100%; background: var(--accent); color: #fff; border: none; cursor: pointer;
+  font-family: inherit; font-size: 16px; font-weight: 700; padding: 13px; border-radius: var(--r-md);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   transition: background var(--t-base), transform 0.1s var(--ease);
 }

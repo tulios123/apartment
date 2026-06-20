@@ -18,24 +18,25 @@ type Props = {
 export default function BottomSheet({ open, onClose, title, children }: Props) {
   // Keep mounted through the slide-out, then unmount to keep the DOM clean.
   const [mounted, setMounted] = useState(open)
+  const [minimized, setMinimized] = useState(false)
   const [dragY, setDragY] = useState(0)
   const startY = useRef<number | null>(null)
 
   useEffect(() => {
-    if (open) setMounted(true)
+    if (open) { setMounted(true); setMinimized(false) }
     else {
       const t = setTimeout(() => setMounted(false), 360)
       return () => clearTimeout(t)
     }
   }, [open])
 
-  // Lock background scroll while open.
+  // Lock background scroll only while expanded (minimized leaves the page usable).
   useEffect(() => {
-    if (!open) return
+    if (!open || minimized) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = prev }
-  }, [open])
+  }, [open, minimized])
 
   // Esc to close.
   useEffect(() => {
@@ -51,26 +52,33 @@ export default function BottomSheet({ open, onClose, title, children }: Props) {
   function onTouchMove(e: React.TouchEvent) {
     if (startY.current == null) return
     const delta = e.touches[0].clientY - startY.current
-    if (delta > 0) setDragY(delta)
+    // Expanded: track downward drag. Minimized: track upward drag (to restore).
+    if (!minimized && delta > 0) setDragY(delta)
+    else if (minimized && delta < 0) setDragY(delta)
   }
   function onTouchEnd() {
-    if (dragY > 90) onClose()
+    if (!minimized && dragY > 90) setMinimized(true)
+    else if (minimized && dragY < -40) setMinimized(false)
     setDragY(0)
     startY.current = null
   }
 
+  // While dragging, follow the finger; otherwise let CSS classes drive the transform.
+  const dragStyle = dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined
+
   return createPortal(
-    <div className={`bsheet-root${open ? ' open' : ''}`}>
+    <div className={`bsheet-root${open ? ' open' : ''}${minimized ? ' minimized' : ''}`}>
       <div className="bsheet-scrim" onClick={onClose} />
       <div
         className="bsheet"
-        style={dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined}
+        style={minimized ? undefined : dragStyle}
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
         <div
           className="bsheet-grab"
+          onClick={() => minimized && setMinimized(false)}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
@@ -78,9 +86,9 @@ export default function BottomSheet({ open, onClose, title, children }: Props) {
           <span className="bsheet-handle" />
         </div>
         {title && (
-          <div className="bsheet-head">
+          <div className="bsheet-head" onClick={() => minimized && setMinimized(false)}>
             <h2>{title}</h2>
-            <button className="bsheet-close" onClick={onClose} aria-label="סגור"><X size={20} /></button>
+            <button className="bsheet-close" onClick={e => { e.stopPropagation(); onClose() }} aria-label="סגור"><X size={20} /></button>
           </div>
         )}
         <div className="bsheet-body">{children}</div>

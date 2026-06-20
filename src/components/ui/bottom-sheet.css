@@ -20,6 +20,13 @@
 }
 .bsheet-root.open .bsheet { transform: translateY(0); }
 
+/* Minimized dock — only the handle + title peek; the page behind is usable. */
+.bsheet-root.minimized { pointer-events: none; }
+.bsheet-root.minimized .bsheet { pointer-events: auto; cursor: pointer; }
+.bsheet-root.minimized .bsheet-scrim { opacity: 0; pointer-events: none; }
+.bsheet-root.open.minimized .bsheet { transform: translateY(calc(100% - 60px)); }
+.bsheet-root.minimized .bsheet-body { opacity: 0; transition: opacity 0.2s var(--ease); }
+
 /* Grab handle — own touch-action so the swipe never fights inner scroll. */
 .bsheet-grab {
   display: grid; place-items: center; padding: 10px 0 6px;
