@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Note, X, CaretDown, Trash } from '@phosphor-icons/react'
+import { createPortal } from 'react-dom'
+import { Note, CaretDown, Trash } from '@phosphor-icons/react'
 
 const STORAGE_KEY = 'dev-notes-v1'
 
@@ -72,7 +73,7 @@ export default function DevNotes() {
   const others = Object.entries(notes).filter(([k, v]) => k !== pathname && v.trim())
   const totalScreens = Object.values(notes).filter(v => v.trim()).length
 
-  return (
+  const ui = (
     <>
       {/* Floating trigger button */}
       <button
@@ -80,8 +81,8 @@ export default function DevNotes() {
         title="הערות פיתוח"
         style={{
           position: 'fixed',
-          bottom: 80,
-          right: 16,
+          bottom: 110,
+          left: 16,
           zIndex: 9998,
           width: 38,
           height: 38,
@@ -249,4 +250,6 @@ export default function DevNotes() {
       )}
     </>
   )
+
+  return createPortal(ui, document.body)
 }
