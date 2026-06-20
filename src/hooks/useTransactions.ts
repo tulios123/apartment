@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { monthEndISO } from '../lib/format'
 import type { Transaction } from '../types'
 
 interface Filters {
@@ -27,9 +28,7 @@ export function useTransactions(filters: Filters = {}) {
 
     if (filters.year && filters.month) {
       const from = `${filters.year}-${String(filters.month).padStart(2, '0')}-01`
-      const to = new Date(filters.year, filters.month, 0)
-        .toISOString()
-        .slice(0, 10)
+      const to = monthEndISO(filters.year, filters.month)
       query = query.gte('date', from).lte('date', to)
     } else if (filters.year) {
       query = query

@@ -1,5 +1,6 @@
 import { trackSchedule } from './mortgage'
 import { loanPaymentForMonth } from './loans'
+import { monthEndISO } from './format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
 import type { Contract, MortgageTrack, Loan } from '../types'
 
@@ -90,7 +91,7 @@ export function monthlyVirtualEntries(
     const monthPad = String(m).padStart(2, '0')
     const monthStr = `${year}-${monthPad}`
     const monthStart = `${monthStr}-01`
-    const monthEnd = new Date(year, m, 0).toISOString().slice(0, 10)
+    const monthEnd = monthEndISO(year, m)
 
     for (const c of contracts) {
       if (c.start_date <= monthEnd && c.end_date >= monthStart) {

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { monthEndISO } from '../lib/format'
 
 const GENERATION_KEY = 'monthly_generation'
 
@@ -41,7 +42,7 @@ async function runGeneration() {
   const year = now.getFullYear()
   const month = now.getMonth() + 1
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
-  const monthEnd = new Date(year, month, 0).toISOString().slice(0, 10)
+  const monthEnd = monthEndISO(year, month)
 
   const { data: items } = await supabase
     .from('recurring_items')
