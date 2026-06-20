@@ -24,7 +24,9 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0', '.'] as 
 function isoOffset(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
+  // Local date components (NOT toISOString, which is UTC and would roll back a
+  // day during the post-midnight hours in timezones ahead of UTC, e.g. Israel).
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export default function ExpenseSheet({ open, onClose, initialDesc = '', initialAmount, onDone }: Props) {
