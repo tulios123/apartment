@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Backspace, CircleNotch, Check, ArrowRight, CalendarBlank } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
+import CalendarPopover from '../ui/CalendarPopover'
 import { createTransaction } from '../../hooks/useTransactions'
 import { EXPENSE_CATEGORIES } from '../../lib/constants'
 import { predictCategory } from '../../lib/quickParse'
@@ -33,8 +34,8 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const [date, setDate] = useState(isoOffset(0))
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
 
+  const [calOpen, setCalOpen] = useState(false)
   const descRef = useRef<HTMLInputElement>(null)
-  const dateRef = useRef<HTMLInputElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const [trackH, setTrackH] = useState<number>()
 
@@ -83,13 +84,6 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const numeric = Number(amount)
   const canContinue = numeric > 0
   const dateLabel = date === today ? 'היום' : date === yesterday ? 'אתמול' : formatDate(date)
-
-  function openCalendar() {
-    const el = dateRef.current
-    if (!el) return
-    if (el.showPicker) el.showPicker()
-    else { el.focus(); el.click() }
-  }
 
   async function save() {
     if (numeric <= 0 || state !== 'idle') return
@@ -150,10 +144,9 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
                 >{c}</button>
               ))}
             </div>
-            <div className="cap-datechip" role="button" tabIndex={0} onClick={openCalendar}>
+            <button type="button" className="cap-datechip" onClick={() => setCalOpen(true)}>
               <CalendarBlank size={18} weight="duotone" /> {dateLabel}
-              <input ref={dateRef} type="date" value={date} max={today} tabIndex={-1} onChange={e => setDate(e.target.value)} />
-            </div>
+            </button>
             <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={state !== 'idle'} onClick={save}>
               {state === 'saving' ? <CircleNotch className="spin" size={20} weight="bold" />
                 : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>
@@ -163,6 +156,8 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
         </div>
       </div>
+
+      <CalendarPopover open={calOpen} value={date} max={today} onSelect={setDate} onClose={() => setCalOpen(false)} />
     </BottomSheet>
   )
 }

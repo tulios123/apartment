@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { CircleNotch, Check, CalendarPlus, X } from '@phosphor-icons/react'
+import { CircleNotch, Check, CalendarPlus, CalendarBlank, X } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
+import CalendarPopover from '../ui/CalendarPopover'
 import { createTask } from '../../hooks/useTasks'
+import { formatDate } from '../../lib/format'
 import './capture.css'
 
 type Props = {
@@ -13,11 +15,11 @@ type Props = {
 export default function TaskSheet({ open, onClose, onDone }: Props) {
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
-  const [showDate, setShowDate] = useState(false)
+  const [calOpen, setCalOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
 
   useEffect(() => {
-    if (open) { setTitle(''); setDue(''); setShowDate(false); setState('idle') }
+    if (open) { setTitle(''); setDue(''); setCalOpen(false); setState('idle') }
   }, [open])
 
   const canSave = title.trim().length > 0 && state === 'idle'
@@ -48,13 +50,15 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
         autoFocus
       />
 
-      {showDate ? (
+      {due ? (
         <div className="cap-date-row">
-          <input className="cap-date" type="date" value={due} onChange={e => setDue(e.target.value)} autoFocus />
-          <button className="cap-date-clear" onClick={() => { setDue(''); setShowDate(false) }} aria-label="הסר תאריך"><X size={18} /></button>
+          <button className="cap-datechip" type="button" onClick={() => setCalOpen(true)}>
+            <CalendarBlank size={18} weight="duotone" /> {formatDate(due)}
+          </button>
+          <button className="cap-date-clear" onClick={() => setDue('')} aria-label="הסר תאריך"><X size={18} /></button>
         </div>
       ) : (
-        <button className="cap-ghost-date" onClick={() => setShowDate(true)}>
+        <button className="cap-ghost-date" onClick={() => setCalOpen(true)}>
           <CalendarPlus size={18} weight="duotone" />
           ללא תאריך יעד · ייכנס לתוכנית העבודה
         </button>
@@ -65,6 +69,8 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
           : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>
           : 'הוספת משימה'}
       </button>
+
+      <CalendarPopover open={calOpen} value={due} onSelect={setDue} onClose={() => setCalOpen(false)} />
     </BottomSheet>
   )
 }
