@@ -38,6 +38,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
   const today = isoOffset(0)
   const yesterday = isoOffset(1)
+  const dayBefore = isoOffset(2)
 
   // Reset on each open.
   useEffect(() => {
@@ -80,7 +81,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
   const numeric = Number(amount)
   const canContinue = numeric > 0
-  const dateLabel = date === today ? 'היום' : date === yesterday ? 'אתמול' : formatDate(date)
+  const dateLabel = date === today ? 'היום' : date === yesterday ? 'אתמול' : date === dayBefore ? 'שלשום' : formatDate(date)
 
   async function save() {
     if (numeric <= 0 || state !== 'idle') return
@@ -154,14 +155,19 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
           {/* ── Step 3: date fallback ── */}
           <div className="cap-step" dir="rtl" ref={el => { stepRefs.current[2] = el }} aria-hidden={step !== 3}>
             <button className="cap-back" onClick={() => setStep(2)}>
-              <ArrowRight size={16} weight="bold" /> חזרה
+              <ArrowRight size={16} weight="bold" /> מתי זה היה?
             </button>
             <div className="cap-date-opts">
               <button className={`cap-dateopt${date === today ? ' on' : ''}`} onClick={() => { setDate(today); setStep(2) }}>היום</button>
               <button className={`cap-dateopt${date === yesterday ? ' on' : ''}`} onClick={() => { setDate(yesterday); setStep(2) }}>אתמול</button>
+              <button className={`cap-dateopt${date === dayBefore ? ' on' : ''}`} onClick={() => { setDate(dayBefore); setStep(2) }}>שלשום</button>
             </div>
-            <label className="cap-date-custom">
-              <span>תאריך אחר</span>
+            <label className={`cap-date-custom${date !== today && date !== yesterday && date !== dayBefore ? ' on' : ''}`}>
+              <span className="cap-date-custom-label">
+                <CalendarBlank size={18} weight="duotone" />
+                {date !== today && date !== yesterday && date !== dayBefore ? formatDate(date) : 'תאריך אחר…'}
+              </span>
+              <ArrowRight size={16} weight="bold" className="cap-date-custom-chev" />
               <input type="date" value={date} max={today} onChange={e => { setDate(e.target.value); setStep(2) }} />
             </label>
           </div>
