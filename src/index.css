@@ -2295,6 +2295,15 @@ input[type="date"] {
     z-index: 100;
   }
 
+  /* App shell: lock to the viewport so the BODY never scrolls — only the inner
+     content scrolls. This stops iOS Safari from collapsing/expanding its top &
+     bottom toolbars on scroll, which caused them to "jump" back on every route
+     change. (Onboarding/Login render outside .app-layout, so they still scroll.) */
+  .app-layout {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   .main-content {
     margin-left: 0;
     margin-right: 0;
@@ -2303,7 +2312,11 @@ input[type="date"] {
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
+    height: 100dvh;
+    overflow-y: auto;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
 }
 

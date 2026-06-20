@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   House,
   Wallet,
@@ -22,6 +23,14 @@ const navItems: NavItem[] = [
 export default function Layout() {
   useMonthlyGeneration()
   const { user, signOut } = useAuth()
+  const { pathname } = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
+
+  // .main-content is a persistent scroll container on mobile, so reset it to the
+  // top on each route change (otherwise a new screen inherits the previous scroll).
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0)
+  }, [pathname])
 
   return (
     <div className="app-layout">
@@ -49,7 +58,7 @@ export default function Layout() {
         </div>
       </nav>
 
-      <main className="main-content">
+      <main className="main-content" ref={mainRef}>
         <Outlet />
       </main>
 
