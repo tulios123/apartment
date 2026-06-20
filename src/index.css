@@ -26,6 +26,14 @@
   font:400 15px/1.6 var(--font-body);
   color:var(--text); background:var(--bg);
   -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  /* Kill the rubber-band overscroll bounce that exposes the black area behind the
+     document in standalone PWA mode (and in Safari). */
+  overscroll-behavior: none;
+}
+
+html, body {
+  overscroll-behavior: none;
+  background: var(--bg);
 }
 
 *, *::before, *::after {
@@ -2330,7 +2338,7 @@ input[type="date"] {
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    overscroll-behavior: none;
   }
 }
 
