@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10294F"/>
+      <stop offset="1" stop-color="#0A1F44"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- roof -->
+  <path d="M120 250 L246 130 a14 14 0 0 1 20 0 L392 250 Z" fill="#FFFFFF"/>
+  <!-- body -->
+  <rect x="158" y="236" width="196" height="160" rx="18" fill="#FFFFFF"/>
+  <!-- door (brand blue) -->
+  <rect x="230" y="312" width="52" height="84" rx="12" fill="#2A7DE1"/>
+  <!-- window -->
+  <rect x="196" y="284" width="38" height="38" rx="9" fill="#2A7DE1"/>
+</svg>
