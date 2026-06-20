@@ -68,11 +68,19 @@ function AppRoutes() {
   )
 }
 
+const ADMIN_EMAIL = 'itai.shubi@gmail.com'
+
+function DevNotesGate() {
+  const { user } = useAuth()
+  if (user?.email !== ADMIN_EMAIL) return null
+  return <DevNotes />
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <AppRoutes />
-      {import.meta.env.DEV && <DevNotes />}
+      <DevNotesGate />
     </AuthProvider>
   )
 }
