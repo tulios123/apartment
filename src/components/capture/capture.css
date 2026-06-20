@@ -16,38 +16,17 @@
 .cap-back:hover { background: var(--border); color: var(--brand-navy); }
 .cap-back svg { transform: scaleX(-1); }
 
-/* Date chip (step 2) */
+/* Date chip (step 2) — full-width row; native picker overlaid invisibly so a
+   tap anywhere opens the OS calendar directly (no extra step). */
 .cap-datechip {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; margin-top: 12px;
   background: var(--bg-alt); border: 1px solid var(--border); color: var(--text);
-  font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 16px;
-  border-radius: var(--r-pill); cursor: pointer; transition: border-color var(--t-fast), color var(--t-fast);
+  font-family: inherit; font-size: 14.5px; font-weight: 600; padding: 14px 16px;
+  border-radius: var(--r-md); cursor: pointer; transition: border-color var(--t-fast), color var(--t-fast);
 }
 .cap-datechip:hover { border-color: var(--accent); color: var(--accent); }
-
-/* Date fallback (step 3) — RTL, large touch targets */
-.cap-date-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 8px 0 12px; }
-.cap-dateopt {
-  border: 1px solid var(--border); background: var(--bg); color: var(--text);
-  font-family: inherit; font-size: 15px; font-weight: 600; padding: 18px 0; border-radius: var(--r-md);
-  cursor: pointer; transition: all var(--t-fast) var(--ease);
-}
-.cap-dateopt:active { transform: scale(0.96); }
-.cap-dateopt.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
-
-/* Custom-date row: full-width, label on the inline-start, chevron on the inline-end,
-   native date input overlaid invisibly so a tap anywhere opens the picker. */
-.cap-date-custom {
-  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  border: 1px solid var(--border); background: var(--bg); border-radius: var(--r-md);
-  padding: 15px 16px; cursor: pointer; transition: border-color var(--t-fast), background var(--t-fast);
-}
-.cap-date-custom:hover { border-color: var(--accent); }
-.cap-date-custom.on { border-color: var(--accent); background: var(--accent-light); }
-.cap-date-custom-label { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text); }
-.cap-date-custom.on .cap-date-custom-label { color: var(--accent); }
-.cap-date-custom-chev { color: var(--text-muted); transform: scaleX(-1); }
-.cap-date-custom input {
+.cap-datechip input {
   position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: none;
   background: none; cursor: pointer; -webkit-appearance: none; appearance: none;
 }

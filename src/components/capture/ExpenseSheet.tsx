@@ -15,7 +15,8 @@ type Props = {
   onDone: (label: string) => void
 }
 
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'] as const
+// RTL grid → bottom row reads: [⌫ right] [0 mid] [. left]
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0', '.'] as const
 
 function isoOffset(days: number): string {
   const d = new Date()
@@ -24,7 +25,7 @@ function isoOffset(days: number): string {
 }
 
 export default function ExpenseSheet({ open, onClose, initialDesc = '', initialAmount, onDone }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2>(1)
   const [amount, setAmount] = useState('')
   const [desc, setDesc] = useState('')
   const [category, setCategory] = useState('אחר')
@@ -38,7 +39,6 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
   const today = isoOffset(0)
   const yesterday = isoOffset(1)
-  const dayBefore = isoOffset(2)
 
   // Reset on each open.
   useEffect(() => {
@@ -58,11 +58,11 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
     if (!touchedCat) setCategory(predictCategory(desc))
   }, [desc, touchedCat])
 
-  // Morph the sheet height to the active step (keeps the keyboard's space honest).
+  // Fix the sheet height to the TALLEST step so the slide never changes height.
   useLayoutEffect(() => {
-    const el = stepRefs.current[step - 1]
-    if (el) setTrackH(el.scrollHeight)
-  }, [step, amount, desc, category, open])
+    const h = stepRefs.current.reduce((m, el) => Math.max(m, el?.scrollHeight ?? 0), 0)
+    if (h) setTrackH(h)
+  }, [amount, desc, category, open])
 
   // Focus the description input only after the slide settles → no keyboard/layout thrash.
   useEffect(() => {
@@ -81,7 +81,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
   const numeric = Number(amount)
   const canContinue = numeric > 0
-  const dateLabel = date === today ? 'היום' : date === yesterday ? 'אתמול' : date === dayBefore ? 'שלשום' : formatDate(date)
+  const dateLabel = date === today ? 'היום' : date === yesterday ? 'אתמול' : formatDate(date)
 
   async function save() {
     if (numeric <= 0 || state !== 'idle') return
@@ -116,7 +116,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
               ))}
             </div>
             <button className="cap-save" disabled={!canContinue} onClick={() => setStep(2)}>
-              המשך <ArrowRight size={18} weight="bold" />
+              המשך
             </button>
           </div>
 
@@ -142,34 +142,15 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
                 >{c}</button>
               ))}
             </div>
-            <button className="cap-datechip" onClick={() => setStep(3)}>
-              <CalendarBlank size={16} weight="duotone" /> {dateLabel}
-            </button>
+            <label className="cap-datechip">
+              <CalendarBlank size={18} weight="duotone" /> {dateLabel}
+              <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)} />
+            </label>
             <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={state !== 'idle'} onClick={save}>
               {state === 'saving' ? <CircleNotch className="spin" size={20} weight="bold" />
                 : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>
                 : 'שמירת הוצאה'}
             </button>
-          </div>
-
-          {/* ── Step 3: date fallback ── */}
-          <div className="cap-step" dir="rtl" ref={el => { stepRefs.current[2] = el }} aria-hidden={step !== 3}>
-            <button className="cap-back" onClick={() => setStep(2)}>
-              <ArrowRight size={16} weight="bold" /> מתי זה היה?
-            </button>
-            <div className="cap-date-opts">
-              <button className={`cap-dateopt${date === today ? ' on' : ''}`} onClick={() => { setDate(today); setStep(2) }}>היום</button>
-              <button className={`cap-dateopt${date === yesterday ? ' on' : ''}`} onClick={() => { setDate(yesterday); setStep(2) }}>אתמול</button>
-              <button className={`cap-dateopt${date === dayBefore ? ' on' : ''}`} onClick={() => { setDate(dayBefore); setStep(2) }}>שלשום</button>
-            </div>
-            <label className={`cap-date-custom${date !== today && date !== yesterday && date !== dayBefore ? ' on' : ''}`}>
-              <span className="cap-date-custom-label">
-                <CalendarBlank size={18} weight="duotone" />
-                {date !== today && date !== yesterday && date !== dayBefore ? formatDate(date) : 'תאריך אחר…'}
-              </span>
-              <ArrowRight size={16} weight="bold" className="cap-date-custom-chev" />
-              <input type="date" value={date} max={today} onChange={e => { setDate(e.target.value); setStep(2) }} />
-            </label>
           </div>
 
         </div>
