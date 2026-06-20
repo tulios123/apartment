@@ -11,6 +11,7 @@ import WealthHub from './pages/wealth/WealthHub'
 import PropertyAdminHub from './pages/property/PropertyAdminHub'
 import FinancesHub from './pages/finances/FinancesHub'
 import Settings from './pages/Settings'
+import DevNotes from './components/DevNotes'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -71,6 +72,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppRoutes />
+      {import.meta.env.DEV && <DevNotes />}
     </AuthProvider>
   )
 }
