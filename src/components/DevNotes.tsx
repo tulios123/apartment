@@ -80,8 +80,8 @@ export default function DevNotes() {
         title="הערות פיתוח"
         style={{
           position: 'fixed',
-          bottom: 76,
-          left: 12,
+          bottom: 80,
+          right: 16,
           zIndex: 9998,
           width: 38,
           height: 38,
