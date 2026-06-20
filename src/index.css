@@ -2299,8 +2299,22 @@ input[type="date"] {
      content scrolls. This stops iOS Safari from collapsing/expanding its top &
      bottom toolbars on scroll, which caused them to "jump" back on every route
      change. (Onboarding/Login render outside .app-layout, so they still scroll.) */
+  /* Hard-lock the body so iOS Safari can't scroll it (which is what collapses &
+     re-expands its toolbars). Scoped to .app-locked, which Layout sets only on
+     app screens — Onboarding/Login leave it off and keep their normal body scroll.
+     100svh (the *small*, stable viewport) is used everywhere: unlike 100dvh it does
+     NOT grow when the toolbars hide, so the shell never exceeds the visible area. */
+  body.app-locked {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100svh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   .app-layout {
-    height: 100dvh;
+    height: 100svh;
     overflow: hidden;
   }
 
@@ -2312,7 +2326,7 @@ input[type="date"] {
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
-    height: 100dvh;
+    height: 100svh;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;

@@ -26,6 +26,14 @@ export default function Layout() {
   const { pathname } = useLocation()
   const mainRef = useRef<HTMLElement>(null)
 
+  // Lock the body to the viewport while inside the app shell (mobile), so iOS
+  // Safari can't scroll the body and toggle its toolbars. Removed on unmount so
+  // Onboarding/Login keep normal body scrolling.
+  useEffect(() => {
+    document.body.classList.add('app-locked')
+    return () => document.body.classList.remove('app-locked')
+  }, [])
+
   // .main-content is a persistent scroll container on mobile, so reset it to the
   // top on each route change (otherwise a new screen inherits the previous scroll).
   useEffect(() => {
