@@ -54,6 +54,9 @@
 .cap-title { font-size: 17px; font-weight: 600; }
 .cap-desc:focus, .cap-title:focus, .cap-date:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 
+/* Field label (e.g. payment method) */
+.cap-fieldlabel { display: block; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-top: 10px; }
+
 /* Category + date chips */
 .cap-chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin: 12px 0 4px; }
 .cap-chip {

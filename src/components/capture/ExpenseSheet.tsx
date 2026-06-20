@@ -3,7 +3,7 @@ import { Backspace, CircleNotch, Check, ArrowRight, CalendarBlank } from '@phosp
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { createTransaction } from '../../hooks/useTransactions'
-import { EXPENSE_CATEGORIES } from '../../lib/constants'
+import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../../lib/constants'
 import { predictCategory } from '../../lib/quickParse'
 import { formatDate } from '../../lib/format'
 import './capture.css'
@@ -31,6 +31,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const [desc, setDesc] = useState('')
   const [category, setCategory] = useState('אחר')
   const [touchedCat, setTouchedCat] = useState(false)
+  const [payMethod, setPayMethod] = useState('')
   const [date, setDate] = useState(isoOffset(0))
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
 
@@ -50,6 +51,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
       setDesc(initialDesc)
       setCategory(predictCategory(initialDesc))
       setTouchedCat(false)
+      setPayMethod('')
       setDate(today)
       setState('idle')
     }
@@ -91,7 +93,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
     const { error } = await createTransaction({
       contract_id: null, recurring_item_id: null, document_id: null,
       direction: 'expense', amount: numeric, date,
-      category, description: desc.trim() || null, payment_method: null,
+      category, description: desc.trim() || null, payment_method: payMethod || null,
     })
     if (error) { setState('idle'); return }
     setState('done')
@@ -144,6 +146,18 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
                 >{c}</button>
               ))}
             </div>
+
+            <span className="cap-fieldlabel">אופן תשלום</span>
+            <div className="cap-chips">
+              {PAYMENT_METHODS.filter(p => p.value).map(p => (
+                <button
+                  key={p.value}
+                  className={`cap-chip${payMethod === p.value ? ' on' : ''}`}
+                  onClick={() => setPayMethod(m => (m === p.value ? '' : p.value))}
+                >{p.label}</button>
+              ))}
+            </div>
+
             <button type="button" className="cap-datechip" onClick={() => setCalOpen(true)}>
               <CalendarBlank size={18} weight="duotone" /> {dateLabel}
             </button>
