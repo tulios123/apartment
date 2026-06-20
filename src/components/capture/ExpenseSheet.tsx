@@ -34,6 +34,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
 
   const descRef = useRef<HTMLInputElement>(null)
+  const dateRef = useRef<HTMLInputElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const [trackH, setTrackH] = useState<number>()
 
@@ -82,6 +83,13 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const numeric = Number(amount)
   const canContinue = numeric > 0
   const dateLabel = date === today ? 'היום' : date === yesterday ? 'אתמול' : formatDate(date)
+
+  function openCalendar() {
+    const el = dateRef.current
+    if (!el) return
+    if (el.showPicker) el.showPicker()
+    else { el.focus(); el.click() }
+  }
 
   async function save() {
     if (numeric <= 0 || state !== 'idle') return
@@ -142,10 +150,10 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
                 >{c}</button>
               ))}
             </div>
-            <label className="cap-datechip">
+            <div className="cap-datechip" role="button" tabIndex={0} onClick={openCalendar}>
               <CalendarBlank size={18} weight="duotone" /> {dateLabel}
-              <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)} />
-            </label>
+              <input ref={dateRef} type="date" value={date} max={today} tabIndex={-1} onChange={e => setDate(e.target.value)} />
+            </div>
             <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={state !== 'idle'} onClick={save}>
               {state === 'saving' ? <CircleNotch className="spin" size={20} weight="bold" />
                 : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>
