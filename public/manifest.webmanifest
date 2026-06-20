@@ -1,0 +1,15 @@
+{
+  "name": "ניהול דירה",
+  "short_name": "דירה",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F6F8",
+  "theme_color": "#0A1F44",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
+  ]
+}
