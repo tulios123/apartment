@@ -13,7 +13,8 @@ export function parseQuick(raw: string): ParsedQuick | null {
   const income = /קיבלתי|התקבל|הכנס|נכנס/.test(text)
   const desc = text
     .replace(/\d+(\.\d+)?/, '')
-    .replace(/[₪שח"']/g, '')
+    .replace(/₪/g, '')
+    .replace(/(^|\s)ש["']?ח(?=\s|$)/g, ' ') // shekel abbreviation as a standalone token, not the letters ש/ח inside words
     .replace(/^\s*(שילמתי|קיבלתי|הוצאתי|עבור|על|בעבור)\s*/g, '')
     .replace(/\s+(עבור|על)\s+/g, ' ')
     .trim()

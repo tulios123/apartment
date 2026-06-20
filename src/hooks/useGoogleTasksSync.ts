@@ -49,7 +49,11 @@ export async function syncGoogleTasks(ownerId: string): Promise<{ error: string 
       const newStatus = toOurStatus(gt.status)
       const newDue = parseGoogleDue(gt.due)
       if (existing.title !== gt.title || existing.status !== newStatus || existing.due_date !== newDue) {
-        toUpdate.push({ id: existing.id, changes: { title: gt.title, status: newStatus, due_date: newDue } })
+        // Stamp completion time when a task is closed in Google, so the logbook
+        // shows the real close date (not the creation date) — mirrors updateTask.
+        const changes: Record<string, unknown> = { title: gt.title, status: newStatus, due_date: newDue }
+        if (existing.status !== newStatus) changes.completed_at = newStatus === 'done' ? new Date().toISOString() : null
+        toUpdate.push({ id: existing.id, changes })
       }
     } else {
       toInsert.push({

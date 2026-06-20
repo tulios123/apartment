@@ -127,7 +127,7 @@ export default function WealthHub() {
           {(grossYield != null || monthlyRent > 0 || totalInvested > 0) && (
             <section className="wlth-secondary">
               {grossYield != null && <div><span>תשואה ברוטו</span><strong>{grossYield.toFixed(1)}%</strong></div>}
-              {monthlyRent > 0 && <div><span>שכ״ד חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
+              {monthlyRent > 0 && <div><span>שכר דירה חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
               {totalInvested > 0 && <div><span>הון שהושקע</span><strong>{fmt(totalInvested)}</strong></div>}
             </section>
           )}
