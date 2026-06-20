@@ -1,5 +1,43 @@
 /* Quick-capture sheets — amount numpad (expense) + task. */
 
+/* Linear step flow (expense) — hardware-accelerated horizontal slide + height morph */
+.cap-steps-wrap { overflow: hidden; transition: height 0.34s cubic-bezier(0.16, 1, 0.3, 1); }
+.cap-steps { display: flex; align-items: flex-start; transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1); will-change: transform; }
+.cap-step { flex: 0 0 100%; min-width: 0; }
+.cap-step[aria-hidden="true"] { pointer-events: none; }
+
+/* Back-to-amount affordance */
+.cap-back {
+  display: inline-flex; align-items: center; gap: 5px; background: var(--bg-alt); border: none;
+  color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+  padding: 6px 12px; border-radius: var(--r-pill); cursor: pointer; margin-bottom: 12px;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.cap-back:hover { background: var(--border); color: var(--brand-navy); }
+.cap-back svg { transform: scaleX(-1); }
+
+/* Date chip (step 2) */
+.cap-datechip {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+  background: var(--bg-alt); border: 1px solid var(--border); color: var(--text);
+  font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 16px;
+  border-radius: var(--r-pill); cursor: pointer; transition: border-color var(--t-fast), color var(--t-fast);
+}
+.cap-datechip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Date fallback (step 3) */
+.cap-date-opts { display: flex; gap: 10px; margin: 8px 0 14px; }
+.cap-dateopt {
+  flex: 1; border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-family: inherit; font-size: 15px; font-weight: 600; padding: 16px; border-radius: var(--r-md);
+  cursor: pointer; transition: all var(--t-fast) var(--ease);
+}
+.cap-dateopt.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+.cap-date-custom { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 2px; }
+.cap-date-custom > span { font-size: 14px; color: var(--text-muted); font-weight: 600; }
+.cap-date-custom input { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 12px; border-radius: var(--r-sm); outline: none; }
+
+
 /* Hero amount display */
 .cap-amount {
   display: flex; align-items: baseline; justify-content: center; gap: 6px;
