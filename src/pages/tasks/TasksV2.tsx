@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, X, Check, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText } from '@phosphor-icons/react'
 import { useTasks, createTask, updateTask, deleteTask } from '../../hooks/useTasks'
 import { TASK_CATEGORIES, RENT_CATEGORIES } from '../../lib/constants'
-import { formatDate } from '../../lib/format'
+import { formatDate, todayISO } from '../../lib/format'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import './tasks-v2.css'
@@ -18,7 +18,7 @@ const CAT_ICON: Record<string, typeof Wrench> = {
 
 const emptyEdit = { title: '', category: TASK_CATEGORIES[0] as string, due_date: '', status: 'open' as Task['status'] }
 
-const todayStr = () => new Date().toISOString().slice(0, 10)
+const todayStr = () => todayISO()
 
 function isOverdue(t: Task) {
   if (!t.due_date || t.status === 'done') return false

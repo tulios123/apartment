@@ -7,6 +7,16 @@ export function formatDate(date: string | null): string {
   return new Date(date).toLocaleDateString('he-IL')
 }
 
+/** Today as a LOCAL `YYYY-MM-DD` string (avoids the UTC roll-back of toISOString). */
+export function todayISO(): string {
+  return monthDayISO(new Date())
+}
+
+/** A Date as a LOCAL `YYYY-MM-DD` string. */
+export function monthDayISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 /**
  * Last calendar day of a month as a LOCAL `YYYY-MM-DD` string (month is 1-12).
  * Avoids the UTC roll-back that `new Date(y, m, 0).toISOString().slice(0,10)`

@@ -12,7 +12,7 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency, formatDate, todayISO } from '../../lib/format'
 import { gracePeriodPayment } from '../../lib/mortgage'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
@@ -66,7 +66,7 @@ export default function HomeScreen() {
     'שלום'
   const { text: hello, Icon: HelloIcon } = greeting(firstName)
 
-  const todayStr = now.toISOString().slice(0, 10)
+  const todayStr = todayISO()
   const rentCatSet = useMemo(() => new Set(RENT_CATEGORIES as readonly string[]), [])
   // Categories already represented in fixedExpenses (mortgage + insurance auto-post
   // as real transactions via the generator) — exclude them so they aren't counted twice.

@@ -11,7 +11,7 @@ import type { VirtualEntry } from '../../lib/projections'
 import { supabase } from '../../lib/supabase'
 import { getReceiptSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency, formatDate, todayISO } from '../../lib/format'
 import type { Transaction, Contract, MortgageTrack, Loan } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -44,7 +44,7 @@ function parseNL(text: string): { amount: number | null; dir: Dir; cat: string; 
   return { amount, dir, cat, desc }
 }
 
-const emptyForm = { direction: 'expense' as Dir, amount: '', date: new Date().toISOString().slice(0, 10), category: EXPENSE_CATEGORIES[0] as string, description: '', payment_method: '' }
+const emptyForm = { direction: 'expense' as Dir, amount: '', date: todayISO(), category: EXPENSE_CATEGORIES[0] as string, description: '', payment_method: '' }
 
 type Prefill = { direction?: Dir; category?: string; description?: string; amount?: number }
 
@@ -174,7 +174,7 @@ export default function FinancesV2() {
   async function addFromCapture() {
     if (parsed.amount == null || !user) return
     const payload: Partial<Transaction> = {
-      direction: parsed.dir, amount: parsed.amount, date: new Date().toISOString().slice(0, 10),
+      direction: parsed.dir, amount: parsed.amount, date: todayISO(),
       category: parsed.cat, description: parsed.desc || null, payment_method: null, contract_id: null, recurring_item_id: null,
     }
     await createTransaction(payload as Omit<Transaction, 'id' | 'owner_id' | 'created_at'>)

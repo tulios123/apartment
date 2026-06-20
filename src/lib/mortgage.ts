@@ -25,7 +25,9 @@ export function monthlyPayment(principal: number, annualRate: number, termMonths
 function addMonths(iso: string, months: number): string {
   const d = new Date(iso + 'T00:00:00')
   d.setMonth(d.getMonth() + months)
-  return d.toISOString().slice(0, 10)
+  // Local Y-M-D — NOT toISOString (UTC), which rolls back a day in timezones
+  // ahead of UTC and would misattribute a 1st-of-month payment to the prior month.
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 /** Full month-by-month schedule for a single track, including any grace period. */
