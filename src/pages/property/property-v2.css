@@ -24,6 +24,26 @@
   .prov-ident-addr { font-size: 15px; font-weight: 600; color: var(--brand-navy); }
   .prov-ident-value { font-size: 14px; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
+  /* Binder header card (the "cover" of the digital folder) */
+  .padm-binder { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 16px 18px; margin-bottom: 16px; }
+  .padm-binder-addr { font-size: 17px; font-weight: 700; color: var(--brand-navy); }
+  .padm-binder-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+  .padm-binder-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .padm-binder-value { font-size: 14px; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .padm-binder-tenant { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--success-text); background: var(--success-bg); padding: 4px 10px; border-radius: var(--r-pill); white-space: nowrap; }
+
+  /* Read-only utility responsibility chips (contract card) */
+  .padm-util-chips-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .padm-util-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .padm-util-chip { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: var(--r-pill); white-space: nowrap; }
+  .padm-util-chip.tenant { background: var(--bg-alt); color: var(--text-muted); }
+  .padm-util-chip.owner { background: var(--accent-light); color: var(--accent); }
+
+  /* Utility editor inside the contract drawer/modal */
+  .padm-util-edit { display: flex; flex-direction: column; gap: 8px; }
+  .padm-util-edit-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .padm-util-edit-name { font-size: 13px; color: var(--text); min-width: 64px; }
+
   /* Tab navigation */
   .prov-tabs { display: flex; gap: 6px; background: var(--bg-card); padding: 5px; border-radius: var(--r-pill); box-shadow: var(--shadow-sm); margin-bottom: 18px; overflow-x: auto; }
   .prov-tab { flex: 1; min-width: max-content; border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 14px; border-radius: var(--r-pill); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }

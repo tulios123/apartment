@@ -101,6 +101,7 @@ export interface Task {
   source: TaskSource
   is_recurring: boolean
   recurrence_days: number | null
+  completed_at: string | null
   created_at: string
 }
 

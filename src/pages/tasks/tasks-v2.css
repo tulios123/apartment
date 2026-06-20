@@ -20,6 +20,19 @@
   .tav-quickadd-go:hover { background: var(--accent-hover); }
   .tav-quickadd-go:disabled { opacity: 0.5; cursor: default; }
 
+  /* Backlog / logbook sections */
+  .tav-section { margin-bottom: 22px; }
+  .tav-section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .tav-section-head h2 { font-size: 15px; font-weight: 700; color: var(--brand-navy); }
+
+  /* Larger, more satisfying backlog checkbox */
+  .tav-task-lg .tav-check { width: 28px; height: 28px; }
+
+  /* Maintenance logbook — read-only ledger feel */
+  .tav-logbook .tav-task { background: var(--bg-alt); box-shadow: none; }
+  .tav-log-row .tav-task-title { color: var(--text-muted); text-decoration: line-through; }
+  .tav-log-stamp { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
+
   /* Buckets */
   .tav-bucket { margin-bottom: 20px; }
   .tav-bucket-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }

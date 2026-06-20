@@ -59,7 +59,7 @@ async function getOwnerId(): Promise<string> {
   return user.id
 }
 
-export async function createTask(data: Omit<Task, 'id' | 'owner_id' | 'created_at' | 'google_task_id'>) {
+export async function createTask(data: Omit<Task, 'id' | 'owner_id' | 'created_at' | 'google_task_id' | 'completed_at'>) {
   const ownerId = await getOwnerId()
 
   const { data: created, error } = await supabase
@@ -92,7 +92,12 @@ export async function updateTask(
     .eq('id', id)
     .single()
 
-  const result = await supabase.from('tasks').update(data).eq('id', id).eq('owner_id', ownerId)
+  // Stamp/clear the completion time alongside any status change (powers the logbook).
+  const payload = data.status !== undefined
+    ? { ...data, completed_at: data.status === 'done' ? new Date().toISOString() : null }
+    : data
+
+  const result = await supabase.from('tasks').update(payload).eq('id', id).eq('owner_id', ownerId)
 
   if (current?.google_task_id) {
     try {

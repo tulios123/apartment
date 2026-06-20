@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { House, FileText, ShieldCheck, ListChecks, FolderOpen } from '@phosphor-icons/react'
+import { House, FileText, ShieldCheck, CheckSquare, FolderOpen, UserCircle } from '@phosphor-icons/react'
 import Details from './Details'
 import Rental from './Rental'
 import Insurance from './Insurance'
 import TasksV2 from '../tasks/TasksV2'
 import DocumentsV2 from '../documents/DocumentsV2'
 import { usePropertyData } from '../../hooks/usePropertyData'
+import { activeContract as findActiveContract } from '../../lib/projections'
 import { formatCurrency } from '../../lib/format'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import './property-v2.css'
@@ -16,9 +17,9 @@ const DocumentsPanel = () => <DocumentsV2 embedded />
 
 const TABS = [
   { id: 'details', label: 'נכס', Icon: House, Comp: Details },
-  { id: 'rental', label: 'חוזים', Icon: FileText, Comp: Rental },
+  { id: 'rental', label: 'חוזה ושוכר', Icon: FileText, Comp: Rental },
   { id: 'insurance', label: 'ביטוח', Icon: ShieldCheck, Comp: Insurance },
-  { id: 'tasks', label: 'משימות', Icon: ListChecks, Comp: TasksPanel },
+  { id: 'tasks', label: 'משימות', Icon: CheckSquare, Comp: TasksPanel },
   { id: 'documents', label: 'מסמכים', Icon: FolderOpen, Comp: DocumentsPanel },
 ] as const
 
@@ -38,8 +39,15 @@ export default function PropertyAdminHub() {
   const navigate = useNavigate()
   const [tab, setTab] = useState(() => resolveSection(section))
 
-  const { property, loading } = usePropertyData()
+  const { property, contracts, loading } = usePropertyData()
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
+  const activeTenant = findActiveContract(contracts)?.company_name ?? null
+
+  const subParts = property ? [
+    property.rooms != null ? `${property.rooms} חד׳` : null,
+    property.floor != null ? `קומה ${property.floor}` : null,
+    property.property_size_sqm != null ? `${property.property_size_sqm} מ״ר` : null,
+  ].filter(Boolean) : []
 
   useEffect(() => {
     if (section) setTab(resolveSection(section))
@@ -59,9 +67,17 @@ export default function PropertyAdminHub() {
       {loading ? <SkeletonList rows={2} /> : (
         <>
           {property?.address && (
-            <div className="prov-ident">
-              <div className="prov-ident-addr">{property.address}</div>
-              {propertyValue > 0 && <div className="prov-ident-value">{fmt(propertyValue)}</div>}
+            <div className="padm-binder">
+              <div className="padm-binder-main">
+                <div className="padm-binder-addr">{property.address}</div>
+                {subParts.length > 0 && <div className="padm-binder-sub">{subParts.join(' · ')}</div>}
+              </div>
+              <div className="padm-binder-side">
+                {propertyValue > 0 && <div className="padm-binder-value">{fmt(propertyValue)}</div>}
+                {activeTenant && (
+                  <div className="padm-binder-tenant"><UserCircle size={15} weight="duotone" /> {activeTenant} · חוזה פעיל</div>
+                )}
+              </div>
             </div>
           )}
 

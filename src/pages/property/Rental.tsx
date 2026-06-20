@@ -31,21 +31,34 @@ const emptyContract = {
   requires_approval: false,
 }
 
+type UtilDraft = { utility: string; payer: UtilityPayer; amount: number | null }
+
 function ContractForm({
   initial,
+  initialUtils,
   onSave,
   onCancel,
 }: {
   initial: Partial<typeof emptyContract>
-  onSave: (data: typeof emptyContract) => Promise<void>
+  initialUtils: UtilDraft[]
+  onSave: (data: typeof emptyContract, utils: UtilDraft[]) => Promise<void>
   onCancel: () => void
 }) {
   const [form, setForm] = useState({ ...emptyContract, ...initial })
+  const [utils, setUtils] = useState<UtilDraft[]>(initialUtils)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   function set(k: keyof typeof emptyContract, v: string) {
     setForm(f => ({ ...f, [k]: v }))
+  }
+
+  function setUtilPayer(utility: string, payer: UtilityPayer) {
+    setUtils(us => us.map(u => u.utility === utility ? { ...u, payer, amount: payer === 'owner' ? u.amount : null } : u))
+  }
+  function setUtilAmt(utility: string, raw: string) {
+    const val = raw.replace(/[^\d]/g, '')
+    setUtils(us => us.map(u => u.utility === utility ? { ...u, amount: val ? Number(val) : null } : u))
   }
 
   async function submit(e: React.FormEvent) {
@@ -54,7 +67,7 @@ function ContractForm({
     setSaving(true)
     setErr(null)
     try {
-      await onSave(form)
+      await onSave(form, utils)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'שגיאה')
     } finally {
@@ -111,6 +124,25 @@ function ContractForm({
           <span>דורש אישור ידני בכל תשלום</span>
         </label>
       </div>
+      <div className="form-row">
+        <label>תשלומים שוטפים</label>
+        <div className="padm-util-edit">
+          {utils.map(u => (
+            <div key={u.utility} className="padm-util-edit-row">
+              <span className="padm-util-edit-name">{u.utility}</span>
+              <div className="toggle-group small">
+                <button type="button" className={`toggle-btn${u.payer === 'tenant' ? ' active' : ''}`} onClick={() => setUtilPayer(u.utility, 'tenant')}>שוכר</button>
+                <button type="button" className={`toggle-btn${u.payer === 'owner' ? ' active' : ''}`} onClick={() => setUtilPayer(u.utility, 'owner')}>בעלים</button>
+              </div>
+              {u.payer === 'owner' && (
+                <input type="text" inputMode="numeric" className="utility-amount-input" placeholder="₪ סכום"
+                  value={u.amount != null ? u.amount.toLocaleString('he-IL') : ''}
+                  onChange={e => setUtilAmt(u.utility, e.target.value)} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
       {err && <div className="form-error" role="alert">{err}</div>}
       <div className="form-actions">
         <button type="button" className="btn-secondary" onClick={onCancel}>ביטול</button>
@@ -123,14 +155,12 @@ function ContractForm({
 export default function Rental() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { property, contracts, utilities, loading, error, refetch, patchUtility } = usePropertyData()
+  const { property, contracts, utilities, loading, error, refetch } = usePropertyData()
   const { documents } = useDocuments()
   const rentalDocs = documents.filter(d => d.type === 'rental_contract')
 
   const [showContractModal, setShowContractModal] = useState(false)
   const [editingContract, setEditingContract] = useState<Contract | null>(null)
-  const [savingUtil, setSavingUtil] = useState(false)
-  const [localAmounts, setLocalAmounts] = useState<Record<string, string>>({})
 
   function getUtilPayer(contractId: string, utility: string): UtilityPayer {
     return utilities.find(u => u.contract_id === contractId && u.utility === utility)?.payer ?? 'tenant'
@@ -140,26 +170,8 @@ export default function Rental() {
     return utilities.find(u => u.contract_id === contractId && u.utility === utility)?.amount ?? null
   }
 
-  async function toggleUtil(contractId: string, utility: string, payer: UtilityPayer) {
-    const currentAmount = getUtilAmount(contractId, utility)
-    const newAmount = payer === 'owner' ? currentAmount : null
-    patchUtility(contractId, utility, { payer, amount: newAmount })
-    setSavingUtil(true)
-    try {
-      await upsertUtilities(contractId, [{ utility, payer, amount: newAmount }])
-    } finally {
-      setSavingUtil(false)
-    }
-  }
-
-  async function setUtilAmount(contractId: string, utility: string, amount: number | null) {
-    patchUtility(contractId, utility, { amount })
-    setSavingUtil(true)
-    try {
-      await upsertUtilities(contractId, [{ utility, payer: 'owner', amount }])
-    } finally {
-      setSavingUtil(false)
-    }
+  function utilsForContract(contractId: string): UtilDraft[] {
+    return UTILITIES.map(u => ({ utility: u, payer: getUtilPayer(contractId, u), amount: getUtilAmount(contractId, u) }))
   }
 
   function openNewContract() {
@@ -172,7 +184,7 @@ export default function Rental() {
     setShowContractModal(true)
   }
 
-  async function handleContractSave(form: typeof emptyContract) {
+  async function handleContractSave(form: typeof emptyContract, utils: UtilDraft[]) {
     if (!user || !property) return
     const payload = {
       owner_id: user.id,
@@ -197,8 +209,8 @@ export default function Rental() {
     } else {
       const contract = await createContract(payload)
       contractId = contract.id
-      await upsertUtilities(contract.id, UTILITIES.map(u => ({ utility: u, payer: 'tenant' as UtilityPayer })))
     }
+    await upsertUtilities(contractId, utils.map(u => ({ utility: u.utility, payer: u.payer, amount: u.payer === 'owner' ? u.amount : null })))
     // Keep the rent-collection recurring item in sync with requires_approval.
     await syncRentRecurringItem({
       id: contractId,
@@ -258,10 +270,7 @@ export default function Rental() {
         {contracts.map(c => {
           const left = daysLeft(c.end_date)
           const isActive = new Date(c.end_date) >= new Date() && new Date(c.start_date) <= new Date()
-          const contractUtils = UTILITIES.map(u => ({
-            utility: u,
-            payer: getUtilPayer(c.id, u),
-          }))
+          const contractUtils = utilsForContract(c.id)
 
           return (
             <div key={c.id} className={`contract-card ${isActive ? 'active' : 'expired'}`}>
@@ -322,47 +331,14 @@ export default function Rental() {
                 </div>
               </div>
 
-              <div className="utilities-section">
-                <div className="utilities-title">תשלומים שוטפים</div>
-                <div className="utilities-grid">
-                  {contractUtils.map(({ utility, payer }) => {
-                    const utilAmount = getUtilAmount(c.id, utility)
-                    return (
-                      <div key={utility} className="utility-row">
-                        <span className="utility-name">{utility}</span>
-                        <div className="toggle-group small">
-                          <button
-                            type="button"
-                            className={`toggle-btn ${payer === 'tenant' ? 'active' : ''}`}
-                            onClick={() => toggleUtil(c.id, utility, 'tenant')}
-                            disabled={savingUtil}
-                          >שוכר</button>
-                          <button
-                            type="button"
-                            className={`toggle-btn ${payer === 'owner' ? 'active' : ''}`}
-                            onClick={() => toggleUtil(c.id, utility, 'owner')}
-                            disabled={savingUtil}
-                          >בעלים</button>
-                        </div>
-                        {payer === 'owner' && (
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            className="utility-amount-input"
-                            placeholder="₪ סכום"
-                            value={localAmounts[`${c.id}:${utility}`] ?? (utilAmount != null ? utilAmount.toLocaleString('he-IL') : '')}
-                            onChange={e => setLocalAmounts(prev => ({ ...prev, [`${c.id}:${utility}`]: e.target.value }))}
-                            onBlur={e => {
-                              const raw = e.target.value.replace(/[^\d]/g, '')
-                              const val = raw ? Number(raw) : null
-                              setLocalAmounts(prev => { const n = { ...prev }; delete n[`${c.id}:${utility}`]; return n })
-                              void setUtilAmount(c.id, utility, val)
-                            }}
-                          />
-                        )}
-                      </div>
-                    )
-                  })}
+              <div className="padm-util-chips-wrap">
+                <span className="prop-field-label">תשלומים שוטפים</span>
+                <div className="padm-util-chips">
+                  {contractUtils.map(({ utility, payer, amount }) => (
+                    <span key={utility} className={`padm-util-chip ${payer}`}>
+                      {utility} · {payer === 'owner' ? 'בעלים' : 'שוכר'}{payer === 'owner' && amount != null ? ` · ${formatCurrency(amount)}` : ''}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
@@ -406,6 +382,7 @@ export default function Rental() {
                 payment_method: (editingContract.payment_method as 'check' | 'bank_transfer') ?? 'check',
                 requires_approval: editingContract.requires_approval,
               } : {}}
+              initialUtils={editingContract ? utilsForContract(editingContract.id) : UTILITIES.map(u => ({ utility: u, payer: 'tenant' as UtilityPayer, amount: null }))}
               onSave={handleContractSave}
               onCancel={() => { setShowContractModal(false); setEditingContract(null) }}
             />
