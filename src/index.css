@@ -2573,8 +2573,8 @@ input[type="date"] {
     flex-direction: column;
     width: 100%;
     max-width: none;
-    height: 100dvh;
-    max-height: 100dvh;
+    height: var(--vvh, 100dvh);
+    max-height: var(--vvh, 100dvh);
     min-height: 0;
     border-radius: 0;
     overflow: hidden;
