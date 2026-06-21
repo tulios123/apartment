@@ -53,10 +53,9 @@ export default function PropertyAdminHub() {
     property.property_size_sqm != null ? `${property.property_size_sqm} מ״ר` : null,
   ].filter(Boolean) : []
 
-  // Complementary details (block/parcel, buyer, purchase, key delivery, notes).
+  // Complementary details (block/parcel, purchase, key delivery, notes).
   const extraParts = property ? [
     property.block_parcel || null,
-    property.buyer_name ? `קונה: ${property.buyer_name}` : null,
     property.purchase_price != null ? `רכישה: ${fmt(property.purchase_price)}` : null,
     property.purchase_date ? `חתימה: ${formatDate(property.purchase_date)}` : null,
     property.key_delivery_date ? `מסירה: ${formatDate(property.key_delivery_date)}` : null,

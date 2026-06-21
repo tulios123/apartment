@@ -2563,13 +2563,15 @@ input[type="date"] {
   .modal-overlay {
     display: block;
     padding: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
   .modal {
     display: block;
     max-width: none;
     max-height: none;
-    min-height: 100dvh;
+    min-height: 100%;
     border-radius: 0;
     overflow: visible;
   }
