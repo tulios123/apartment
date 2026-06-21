@@ -64,7 +64,7 @@
   .liav-balloon-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--warning-bg); color: var(--warning-text); display: grid; place-items: center; flex-shrink: 0; }
   .liav-balloon-main { flex: 1; min-width: 0; }
   .liav-balloon-title { font-size: 14px; font-weight: 600; color: var(--brand-navy); }
-  .liav-balloon-note { font-size: 12px; color: var(--warning-text); margin-top: 2px; }
+  .liav-balloon-note { display: inline-block; font-size: 11.5px; font-weight: 600; color: var(--warning-text); background: var(--warning-bg); padding: 3px 10px; border-radius: var(--r-pill); margin-top: 5px; }
   .liav-balloon-amount { font-size: 16px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
 
   .liav-empty { text-align: center; padding: 28px 20px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); color: var(--text-muted); font-size: 13px; }
@@ -74,7 +74,7 @@
   .liav-fab:active { transform: scale(0.92); }
   .liav-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
   .liav-scrim.open { opacity: 1; pointer-events: auto; }
-  .liav-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; }
+  .liav-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .liav-drawer.open { transform: translateX(0); }
   .liav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
   .liav-drawer-head h2 { font-size: 18px; font-weight: 700; color: var(--brand-navy); }
@@ -85,9 +85,13 @@
   .liav-seg button:disabled { opacity: 0.5; cursor: default; }
   .liav-field { display: flex; flex-direction: column; gap: 6px; }
   .liav-field span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
-  .liav-field input, .liav-field select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 12px; border-radius: var(--r-sm); outline: none; transition: border-color var(--t-base), box-shadow var(--t-base); }
+  .liav-field { min-width: 0; }
+  .liav-field input, .liav-field select { width: 100%; box-sizing: border-box; min-width: 0; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 12px; border-radius: var(--r-sm); outline: none; transition: border-color var(--t-base), box-shadow var(--t-base); }
   .liav-field input:focus, .liav-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
   .liav-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .liav-row2 > .liav-field { min-width: 0; }
+  .liav-add-track { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; border: 1px dashed var(--border-strong); background: transparent; color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px; border-radius: var(--r-sm); cursor: pointer; }
+  .liav-add-track:hover { border-color: var(--accent); background: var(--accent-light); }
   .liav-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
   .liav-save:hover { background: var(--accent-hover); }
   .liav-save:active { transform: scale(0.98); }

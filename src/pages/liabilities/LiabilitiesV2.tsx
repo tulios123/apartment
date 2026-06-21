@@ -152,6 +152,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                         <div className="liav-detail-item"><span>תקופה</span><strong>{Math.round(t.term_months / 12)} שנים</strong></div>
                         <div className="liav-detail-item"><span>ריבית ששולמה</span><strong className="interest">{fmt(s.interestPaid)}</strong></div>
                         <div className="liav-detail-item"><span>ריבית שנותרה</span><strong className="interest">{fmt(s.interestLeft)}</strong></div>
+                        {(t.grace_months ?? 0) > 0 && <div className="liav-detail-item"><span>גרייס</span><strong>{t.grace_months} חודשים</strong></div>}
                       </div>
                       <div className="liav-detail-actions">
                         <button className="liav-detail-btn" onClick={() => editTrack(t)}><PencilSimple size={14} /> עריכה</button>
@@ -161,6 +162,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   </div>
                 )
               })}
+              <button className="liav-add-track" onClick={openAdd}><Plus size={15} weight="bold" /> הוסף מסלול משכנתא</button>
             </section>
           )}
 
