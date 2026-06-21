@@ -1,4 +1,4 @@
-import { X } from '@phosphor-icons/react'
+import { Modal } from '../../components/ui/Modal'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -268,12 +268,7 @@ export default function Insurance() {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editing ? 'עריכת פוליסה' : 'פוליסה חדשה'}</h2>
-              <button className="btn-icon" onClick={closeModal} aria-label="סגור" title="סגור"><X size={18} /></button>
-            </div>
+        <Modal title={editing ? 'עריכת פוליסה' : 'פוליסה חדשה'} onClose={closeModal}>
             <InsuranceForm
               initial={editing ? {
                 type: editing.type,
@@ -287,8 +282,7 @@ export default function Insurance() {
               onSave={handleSave}
               onCancel={closeModal}
             />
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

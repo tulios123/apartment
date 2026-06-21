@@ -34,30 +34,6 @@ export default function Layout() {
     return () => document.body.classList.remove('app-locked')
   }, [])
 
-  // Publish the *visual* viewport height so full-screen modals can size to the
-  // area actually visible above the on-screen keyboard. iOS does not shrink
-  // dvh/svh when the keyboard opens, so a 100dvh sheet hides its footer behind
-  // the keyboard; --vvh tracks visualViewport.height instead.
-  useEffect(() => {
-    const vv = window.visualViewport
-    const root = document.documentElement
-    function sync() {
-      const h = vv ? vv.height : window.innerHeight
-      const top = vv ? vv.offsetTop : 0
-      root.style.setProperty('--vvh', `${h}px`)
-      root.style.setProperty('--vv-top', `${top}px`)
-    }
-    sync()
-    vv?.addEventListener('resize', sync)
-    vv?.addEventListener('scroll', sync)
-    window.addEventListener('resize', sync)
-    return () => {
-      vv?.removeEventListener('resize', sync)
-      vv?.removeEventListener('scroll', sync)
-      window.removeEventListener('resize', sync)
-    }
-  }, [])
-
   // .main-content is a persistent scroll container on mobile, so reset it to the
   // top on each route change (otherwise a new screen inherits the previous scroll).
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { X } from '@phosphor-icons/react'
+import { Modal } from '../../components/ui/Modal'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useState } from 'react'
 import {
@@ -257,19 +257,13 @@ export default function Details() {
       </section>
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{property ? 'עריכת נכס' : 'נכס חדש'}</h2>
-              <button className="btn-icon" onClick={() => setShowModal(false)} aria-label="סגור" title="סגור"><X size={18} /></button>
-            </div>
-            <PropertyForm
-              initial={property ?? {}}
-              onSave={handleSave}
-              onCancel={() => setShowModal(false)}
-            />
-          </div>
-        </div>
+        <Modal title={property ? 'עריכת נכס' : 'נכס חדש'} onClose={() => setShowModal(false)}>
+          <PropertyForm
+            initial={property ?? {}}
+            onSave={handleSave}
+            onCancel={() => setShowModal(false)}
+          />
+        </Modal>
       )}
     </>
   )

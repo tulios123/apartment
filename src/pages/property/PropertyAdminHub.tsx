@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { FileText, ShieldCheck, CheckSquare, FolderOpen, UserCircle, PencilSimple, X } from '@phosphor-icons/react'
+import { FileText, ShieldCheck, CheckSquare, FolderOpen, UserCircle, PencilSimple } from '@phosphor-icons/react'
 import { PropertyForm } from './Details'
+import { Modal } from '../../components/ui/Modal'
 import Rental from './Rental'
 import Insurance from './Insurance'
 import TasksV2 from '../tasks/TasksV2'
@@ -125,15 +126,9 @@ export default function PropertyAdminHub() {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{property ? 'עריכת נכס' : 'נכס חדש'}</h2>
-              <button className="btn-icon" onClick={() => setShowModal(false)} aria-label="סגור" title="סגור"><X size={18} /></button>
-            </div>
-            <PropertyForm initial={property ?? {}} onSave={handleSave} onCancel={() => setShowModal(false)} />
-          </div>
-        </div>
+        <Modal title={property ? 'עריכת נכס' : 'נכס חדש'} onClose={() => setShowModal(false)}>
+          <PropertyForm initial={property ?? {}} onSave={handleSave} onCancel={() => setShowModal(false)} />
+        </Modal>
       )}
     </div>
   )

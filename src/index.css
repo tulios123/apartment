@@ -2321,6 +2321,17 @@ input[type="date"] {
     overscroll-behavior: none;
   }
 
+  /* While a modal is open, release the body lock so the modal sheet scrolls the
+     document natively (like Onboarding) — the only thing iOS scrolls reliably,
+     keyboard included. The app shell behind stays put under the opaque sheet. */
+  body.app-locked.modal-open {
+    position: static;
+    height: auto;
+    min-height: 100svh;
+    overflow: visible;
+    overscroll-behavior: auto;
+  }
+
   .app-layout {
     height: 100svh;
     overflow: hidden;
@@ -2554,60 +2565,56 @@ input[type="date"] {
     max-width: 100%;
   }
 
-  /* Modal — full-screen sheet on mobile, scrolled the SAME way as the
-     task/document drawers (which scroll reliably on iOS): a fixed-height
-     flex column where the INNER .form is the scroll container, not the
-     position:fixed overlay. iOS Safari won't take touch-scroll on a
-     position:fixed overflow container nested inside overflow:hidden
-     ancestors (the app shell), but it scrolls a normal flex child fine.
-     The save button (.form-actions) is pinned to the bottom so it is
-     always reachable without scrolling. */
+  /* Modal — full-screen sheet that scrolls the DOCUMENT natively, exactly like
+     Onboarding (which scrolls perfectly on iOS, keyboard included). The overlay
+     is absolutely positioned over the page and grows with its content, so the
+     body (unlocked via .modal-open) scrolls it. No position:fixed internal
+     scroller, no visualViewport math — iOS auto-scrolls the focused field above
+     the keyboard for free, the same way it does on a normal web page. */
   .modal-overlay {
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
-    padding: 0;
-    /* Cover only the region actually visible above the on-screen keyboard.
-       iOS keeps the layout viewport (and dvh) full-height when the keyboard
-       opens, so we pin to the visual viewport: height + top offset come from
-       the listener in Layout. bottom:auto lets height win. */
-    top: var(--vv-top, 0);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     bottom: auto;
-    height: var(--vvh, 100dvh);
+    height: auto;
+    min-height: 100svh;
+    display: block;
+    padding: 0;
+    background: var(--surface);
   }
   .modal {
-    display: flex;
-    flex-direction: column;
+    display: block;
     width: 100%;
     max-width: none;
-    height: 100%;
-    max-height: 100%;
-    min-height: 0;
+    max-height: none;
+    min-height: 100svh;
     border-radius: 0;
-    overflow: hidden;
+    overflow: visible;
+    box-shadow: none;
   }
   .modal-header {
-    flex: 0 0 auto;
+    position: sticky;
+    top: 0;
+    z-index: 2;
     background: var(--surface);
     padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
   }
   .form {
-    flex: 1 1 auto;
+    display: block;
+    overflow: visible;
     min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    /* keep a focused field clear of the sticky save bar when iOS scrolls it in */
-    scroll-padding-bottom: 76px;
-    padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
+    flex: none;
+    scroll-padding-bottom: 90px;
+    padding: 16px 18px calc(32px + env(safe-area-inset-bottom));
   }
   .form-actions {
-    position: sticky;
-    bottom: 0;
-    background: var(--surface);
-    margin: 12px -18px 0;
-    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    position: static;
+    margin: 16px -18px 0;
+    padding: 16px 18px calc(16px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
+    background: var(--surface);
   }
 
   /* Onboarding card */

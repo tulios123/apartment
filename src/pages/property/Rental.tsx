@@ -1,4 +1,4 @@
-import { X } from '@phosphor-icons/react'
+import { Modal } from '../../components/ui/Modal'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -364,12 +364,7 @@ export default function Rental() {
       )}
 
       {showContractModal && (
-        <div className="modal-overlay" onClick={() => setShowContractModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editingContract ? 'עריכת חוזה' : 'חוזה חדש'}</h2>
-              <button className="btn-icon" onClick={() => setShowContractModal(false)} aria-label="סגור" title="סגור"><X size={18} /></button>
-            </div>
+        <Modal title={editingContract ? 'עריכת חוזה' : 'חוזה חדש'} onClose={() => setShowContractModal(false)}>
             <ContractForm
               initial={editingContract ? {
                 company_name: editingContract.company_name,
@@ -386,8 +381,7 @@ export default function Rental() {
               onSave={handleContractSave}
               onCancel={() => { setShowContractModal(false); setEditingContract(null) }}
             />
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )
