@@ -180,6 +180,7 @@ export interface Document {
   property_id: string | null
   contract_id: string | null
   transaction_id: string | null
+  task_id: string | null
   type: DocumentType
   name: string
   storage_path: string

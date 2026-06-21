@@ -82,7 +82,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       const id = crypto.randomUUID()
       const path = await uploadDocument(file, id)
       await createDocument({
-        id, owner_id: user.id, property_id: null, contract_id: null, transaction_id: null,
+        id, owner_id: user.id, property_id: null, contract_id: null, transaction_id: null, task_id: null,
         type: form.type, name: form.name.trim() || file.name, storage_path: path, date: form.date || null,
       })
       setDrawerOpen(false); setFile(null)

@@ -1,7 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, X, Check, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText } from '@phosphor-icons/react'
+import { Plus, X, Check, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText, Paperclip, Eye } from '@phosphor-icons/react'
 import { useTasks, createTask, updateTask, deleteTask } from '../../hooks/useTasks'
+import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
+import { uploadDocument, getReceiptSignedUrl } from '../../lib/storage'
+import { useAuth } from '../../contexts/AuthContext'
 import { TASK_CATEGORIES, RENT_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
 import type { Task } from '../../types'
@@ -27,7 +30,9 @@ function isOverdue(t: Task) {
 
 export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { tasks, loading, error, refetch } = useTasks({ status: 'all' })
+  const { documents, refetch: refetchDocs } = useDocuments()
 
   const [editing, setEditing] = useState<Task | null>(null)
   const [editForm, setEditForm] = useState(emptyEdit)
@@ -35,6 +40,33 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const [saving, setSaving] = useState(false)
   const [addingTitle, setAddingTitle] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [attaching, setAttaching] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const taskDocs = editing ? documents.filter(d => d.task_id === editing.id) : []
+
+  async function handleAttach(file: File) {
+    if (!user || !editing) return
+    setAttaching(true)
+    try {
+      const id = crypto.randomUUID()
+      const path = await uploadDocument(file, id)
+      await createDocument({
+        id, owner_id: user.id, property_id: null, contract_id: null, transaction_id: null, task_id: editing.id,
+        type: 'other', name: file.name, storage_path: path, date: null,
+      })
+      await refetchDocs()
+    } catch { /* upload failed — leave the task untouched */ }
+    finally { setAttaching(false) }
+  }
+
+  async function openDoc(path: string) {
+    try { window.open(await getReceiptSignedUrl(path), '_blank') } catch { /* ignore */ }
+  }
+
+  async function removeDoc(id: string, path: string) {
+    await deleteDocument(id, path); refetchDocs()
+  }
 
   // Backlog = every open task (dated ones carry a quiet chip).
   // Logbook = completed tasks, most-recently-closed first.
@@ -197,6 +229,24 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
             <button className={editForm.status === 'open' ? 'on' : ''} onClick={() => setEditForm(f => ({ ...f, status: 'open' }))}>פתוחה</button>
             <button className={editForm.status === 'done' ? 'on' : ''} onClick={() => setEditForm(f => ({ ...f, status: 'done' }))}>הושלמה</button>
           </div>
+        </div>
+        <div className="tav-field">
+          <span>מסמכים ותמונות</span>
+          {taskDocs.length > 0 && (
+            <div className="tav-doclist">
+              {taskDocs.map(d => (
+                <div key={d.id} className="tav-docrow">
+                  <button type="button" className="tav-docname" onClick={() => openDoc(d.storage_path)}><Eye size={14} /> {d.name}</button>
+                  <button type="button" className="tav-docdel" onClick={() => removeDoc(d.id, d.storage_path)} aria-label="הסר"><Trash size={14} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept="image/*,.pdf,.heic" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = '' }} />
+          <button type="button" className="tav-attach" disabled={attaching} onClick={() => fileRef.current?.click()}>
+            <Paperclip size={15} /> {attaching ? 'מעלה…' : 'צרף מסמך/תמונה'}
+          </button>
         </div>
         <button className="tav-save" disabled={saving} onClick={handleEditSave}>{saving ? 'שומר…' : 'שמירה'}</button>
       </aside>

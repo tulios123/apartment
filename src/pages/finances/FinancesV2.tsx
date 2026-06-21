@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Plus, X, CaretDown, CaretLeft, CaretRight, ArrowUp, ArrowDown,
-  ArrowDownLeft, ArrowUpRight, PencilSimple, Trash, Receipt, ChartPie, ChartBar,
+  ArrowDownLeft, ArrowUpRight, PencilSimple, Receipt, ChartPie, ChartBar,
 } from '@phosphor-icons/react'
 import { useTransactions, createTransaction, updateTransaction, deleteTransaction } from '../../hooks/useTransactions'
 import { usePropertyData } from '../../hooks/usePropertyData'
@@ -76,7 +76,8 @@ export default function FinancesV2() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [swipe, setSwipe] = useState<{ id: string; dx: number } | null>(null)
+  const swipeStart = useRef<{ x: number; y: number; horiz: boolean } | null>(null)
 
   // Open the form pre-filled when navigated here with a prefill (e.g. from a
   // completed repair/rent task). Clear the history state so it fires only once.
@@ -247,7 +248,31 @@ export default function FinancesV2() {
     setSaving(false)
   }
 
-  async function handleDelete(id: string) { await deleteTransaction(id); setConfirmDeleteId(null); refetch() }
+  async function handleDelete(id: string) { await deleteTransaction(id); setSwipe(null); refetch() }
+
+  // Swipe gestures on a transaction row: left → delete, right → edit.
+  function onTxTouchStart(e: React.TouchEvent, _id: string) {
+    swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, horiz: false }
+  }
+  function onTxTouchMove(e: React.TouchEvent, id: string) {
+    const s = swipeStart.current
+    if (!s) return
+    const dx = e.touches[0].clientX - s.x
+    const dy = e.touches[0].clientY - s.y
+    if (!s.horiz) {
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) s.horiz = true
+      else if (Math.abs(dy) > 8) { swipeStart.current = null; setSwipe(null); return }
+      else return
+    }
+    setSwipe({ id, dx: Math.max(-130, Math.min(130, dx)) })
+  }
+  function onTxTouchEnd(id: string) {
+    const dx = swipe && swipe.id === id ? swipe.dx : 0
+    swipeStart.current = null
+    setSwipe(null)
+    if (dx <= -90) handleDelete(id)
+    else if (dx >= 90) { const t = transactions.find(x => x.id === id); if (t) openEdit(t) }
+  }
   async function openReceipt(t: Transaction) {
     if (!t.document_id) return
     const { data } = await supabase.from('documents').select('storage_path').eq('id', t.document_id).single()
@@ -426,8 +451,14 @@ export default function FinancesV2() {
               ))}
               {transactions.map(t => {
                 const meta = [t.description, t.payment_method ? PAYMENT_LABEL[t.payment_method] : null].filter(Boolean).join(' · ')
+                const dx = swipe?.id === t.id ? swipe.dx : 0
+                const hint = dx <= -40 ? 'del' : dx >= 40 ? 'edit' : ''
                 return (
-                  <div key={t.id} className="finv-tx">
+                  <div key={t.id} className={`finv-tx swipeable${hint ? ` swipe-${hint}` : ''}`}
+                    style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: dx ? 'none' : undefined }}
+                    onTouchStart={e => onTxTouchStart(e, t.id)}
+                    onTouchMove={e => onTxTouchMove(e, t.id)}
+                    onTouchEnd={() => onTxTouchEnd(t.id)}>
                     <span className="finv-cat-icon" style={{ background: colorFor(t.category) || 'var(--text-muted)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
                     <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span></div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
                     <div className="finv-tx-side">
@@ -435,14 +466,6 @@ export default function FinancesV2() {
                       <div className="finv-tx-actions">
                         {t.document_id && <button className="finv-icon-btn" aria-label="קבלה" onClick={() => openReceipt(t)}><Receipt size={15} /></button>}
                         <button className="finv-icon-btn" aria-label="עריכה" onClick={() => openEdit(t)}><PencilSimple size={15} /></button>
-                        {confirmDeleteId === t.id ? (
-                          <>
-                            <button className="finv-icon-btn danger" aria-label="אישור מחיקה" onClick={() => handleDelete(t.id)}><Trash size={15} weight="fill" /></button>
-                            <button className="finv-icon-btn" aria-label="ביטול" onClick={() => setConfirmDeleteId(null)}><X size={15} /></button>
-                          </>
-                        ) : (
-                          <button className="finv-icon-btn danger" aria-label="מחיקה" onClick={() => setConfirmDeleteId(t.id)}><Trash size={15} /></button>
-                        )}
                       </div>
                     </div>
                   </div>

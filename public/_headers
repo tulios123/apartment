@@ -1,0 +1,11 @@
+# Always revalidate the HTML shell + manifest so a new deploy is picked up
+# immediately (hashed JS/CSS under /assets can still be cached forever).
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

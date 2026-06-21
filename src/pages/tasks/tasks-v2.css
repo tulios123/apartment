@@ -96,4 +96,14 @@
   .tav-save:hover { background: var(--accent-hover); }
   .tav-save:active { transform: scale(0.98); }
   .tav-save:disabled { opacity: 0.5; cursor: default; }
+
+  /* Task attachments */
+  .tav-doclist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .tav-docrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg-alt); border-radius: var(--r-sm); padding: 8px 10px; }
+  .tav-docname { display: inline-flex; align-items: center; gap: 6px; border: none; background: none; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tav-docdel { border: none; background: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: inline-flex; flex-shrink: 0; }
+  .tav-docdel:hover { color: var(--danger-text); }
+  .tav-attach { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; border: 1px dashed var(--border-strong); background: transparent; color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 11px; border-radius: var(--r-sm); cursor: pointer; transition: border-color var(--t-fast), color var(--t-fast); }
+  .tav-attach:hover { border-color: var(--accent); color: var(--accent); }
+  .tav-attach:disabled { opacity: 0.6; cursor: default; }
 }
