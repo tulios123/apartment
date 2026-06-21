@@ -2597,6 +2597,8 @@ input[type="date"] {
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    /* keep a focused field clear of the sticky save bar when iOS scrolls it in */
+    scroll-padding-bottom: 76px;
     padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
   }
   .form-actions {
