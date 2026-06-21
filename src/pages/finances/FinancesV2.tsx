@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import type { ReactNode, TouchEvent as ReactTouchEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Plus, X, CaretDown, CaretLeft, CaretRight, ArrowUp, ArrowDown,
-  ArrowDownLeft, ArrowUpRight, PencilSimple, Receipt, ChartPie, ChartBar,
+  ArrowDownLeft, ArrowUpRight, PencilSimple, Trash, Receipt, ChartPie, ChartBar,
 } from '@phosphor-icons/react'
 import { useTransactions, createTransaction, updateTransaction, deleteTransaction } from '../../hooks/useTransactions'
 import { usePropertyData } from '../../hooks/usePropertyData'
@@ -10,7 +11,7 @@ import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES
 import { monthlyVirtualEntries } from '../../lib/projections'
 import type { VirtualEntry } from '../../lib/projections'
 import { supabase } from '../../lib/supabase'
-import { getReceiptSignedUrl, uploadDocument } from '../../lib/storage'
+import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatCurrency, formatDate, todayISO } from '../../lib/format'
 import type { Transaction, Contract, MortgageTrack, Loan } from '../../types'
@@ -76,9 +77,7 @@ export default function FinancesV2() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [swipe, setSwipe] = useState<{ id: string; dx: number } | null>(null)
-  const swipeStart = useRef<{ x: number; y: number; horiz: boolean } | null>(null)
-  const [editingDocId, setEditingDocId] = useState<string | null>(null)
+  const [txDocs, setTxDocs] = useState<{ id: string; name: string; storage_path: string }[]>([])
   const [receiptBusy, setReceiptBusy] = useState(false)
   const receiptRef = useRef<HTMLInputElement>(null)
 
@@ -229,16 +228,20 @@ export default function FinancesV2() {
   const inPct = income + expense > 0 ? (income / (income + expense)) * 100 : 50
   const breakdown = view === 'month' ? monthBreakdown : view === 'year' ? yearBreakdown : rangeBreakdown
 
-  function openNew() { setForm(emptyForm); setEditingId(null); setEditingDocId(null); setFormError(null); setDrawerOpen(true) }
+  function openNew() { setForm(emptyForm); setEditingId(null); setTxDocs([]); setFormError(null); setDrawerOpen(true) }
   function openEdit(t: Transaction) {
     setForm({ direction: t.direction, amount: String(t.amount), date: t.date, category: t.category, description: t.description ?? '', payment_method: t.payment_method ?? '' })
-    setEditingId(t.id); setEditingDocId(t.document_id ?? null); setFormError(null); setDrawerOpen(true)
+    setEditingId(t.id); setTxDocs([]); setFormError(null); setDrawerOpen(true)
+    loadTxDocs(t.id)
   }
 
-  async function openDrawerReceipt() {
-    if (!editingDocId) return
-    const { data } = await supabase.from('documents').select('storage_path').eq('id', editingDocId).single()
-    if (data) window.open(await getReceiptSignedUrl(data.storage_path), '_blank')
+  async function loadTxDocs(txId: string) {
+    const { data } = await supabase.from('documents').select('id,name,storage_path').eq('transaction_id', txId).order('created_at', { ascending: true })
+    setTxDocs(data ?? [])
+  }
+  function openTxDoc(path: string) {
+    const w = window.open('', '_blank')
+    redirectToSignedUrl(w, path)
   }
   async function attachReceipt(file: File) {
     if (!editingId || !user) return
@@ -247,20 +250,20 @@ export default function FinancesV2() {
       const docId = crypto.randomUUID()
       const path = await uploadDocument(file, docId)
       await supabase.from('documents').insert({ id: docId, owner_id: user.id, property_id: null, contract_id: null, transaction_id: editingId, task_id: null, type: 'receipt', name: file.name, storage_path: path, date: form.date || null })
-      await updateTransaction(editingId, { document_id: docId })
-      setEditingDocId(docId); refetch()
+      if (txDocs.length === 0) await updateTransaction(editingId, { document_id: docId }) // first → primary (row icon)
+      await loadTxDocs(editingId); refetch()
     } catch { /* upload failed — transaction untouched */ }
     finally { setReceiptBusy(false) }
   }
-  async function removeReceipt() {
-    if (!editingId || !editingDocId) return
+  async function removeReceipt(docId: string, path: string) {
+    if (!editingId) return
     setReceiptBusy(true)
     try {
-      await updateTransaction(editingId, { document_id: null })
-      const { data } = await supabase.from('documents').select('storage_path').eq('id', editingDocId).single()
-      if (data) await supabase.storage.from('documents').remove([data.storage_path])
-      await supabase.from('documents').delete().eq('id', editingDocId)
-      setEditingDocId(null); refetch()
+      await supabase.storage.from('documents').remove([path])
+      await supabase.from('documents').delete().eq('id', docId)
+      const remaining = txDocs.filter(d => d.id !== docId)
+      await updateTransaction(editingId, { document_id: remaining[0]?.id ?? null })
+      setTxDocs(remaining); refetch()
     } catch { /* ignore */ }
     finally { setReceiptBusy(false) }
   }
@@ -281,36 +284,13 @@ export default function FinancesV2() {
     setSaving(false)
   }
 
-  async function handleDelete(id: string) { await deleteTransaction(id); setSwipe(null); refetch() }
-
-  // Swipe gestures on a transaction row: left → delete, right → edit.
-  function onTxTouchStart(e: React.TouchEvent, _id: string) {
-    swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, horiz: false }
-  }
-  function onTxTouchMove(e: React.TouchEvent, id: string) {
-    const s = swipeStart.current
-    if (!s) return
-    const dx = e.touches[0].clientX - s.x
-    const dy = e.touches[0].clientY - s.y
-    if (!s.horiz) {
-      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) s.horiz = true
-      else if (Math.abs(dy) > 8) { swipeStart.current = null; setSwipe(null); return }
-      else return
-    }
-    setSwipe({ id, dx: Math.max(-130, Math.min(130, dx)) })
-  }
-  function onTxTouchEnd(id: string) {
-    const dx = swipe && swipe.id === id ? swipe.dx : 0
-    swipeStart.current = null
-    setSwipe(null)
-    if (dx <= -90) handleDelete(id)
-    else if (dx >= 90) { const t = transactions.find(x => x.id === id); if (t) openEdit(t) }
-  }
+  async function handleDelete(id: string) { await deleteTransaction(id); refetch() }
   async function openReceipt(t: Transaction) {
     if (!t.document_id) return
+    const w = window.open('', '_blank')
     const { data } = await supabase.from('documents').select('storage_path').eq('id', t.document_id).single()
-    if (!data) return
-    window.open(await getReceiptSignedUrl(data.storage_path), '_blank')
+    if (!data) { w?.close(); return }
+    await redirectToSignedUrl(w, data.storage_path)
   }
 
   function shiftPeriod(delta: number) {
@@ -484,24 +464,20 @@ export default function FinancesV2() {
               ))}
               {transactions.map(t => {
                 const meta = [t.description, t.payment_method ? PAYMENT_LABEL[t.payment_method] : null].filter(Boolean).join(' · ')
-                const dx = swipe?.id === t.id ? swipe.dx : 0
-                const hint = dx <= -40 ? 'del' : dx >= 40 ? 'edit' : ''
                 return (
-                  <div key={t.id} className={`finv-tx swipeable${hint ? ` swipe-${hint}` : ''}`}
-                    style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: dx ? 'none' : undefined }}
-                    onTouchStart={e => onTxTouchStart(e, t.id)}
-                    onTouchMove={e => onTxTouchMove(e, t.id)}
-                    onTouchEnd={() => onTxTouchEnd(t.id)}>
-                    <span className="finv-cat-icon" style={{ background: colorFor(t.category) || 'var(--text-muted)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
-                    <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span></div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
-                    <div className="finv-tx-side">
-                      <span className={`finv-tx-amount ${t.direction}`}>{t.direction === 'income' ? '+' : '−'}{fmt(Number(t.amount))}</span>
-                      <div className="finv-tx-actions">
-                        {t.document_id && <button className="finv-icon-btn" aria-label="קבלה" onClick={() => openReceipt(t)}><Receipt size={15} /></button>}
-                        <button className="finv-icon-btn" aria-label="עריכה" onClick={() => openEdit(t)}><PencilSimple size={15} /></button>
+                  <SwipeRow key={t.id} onEdit={() => openEdit(t)} onDelete={() => handleDelete(t.id)}>
+                    <div className="finv-tx">
+                      <span className="finv-cat-icon" style={{ background: colorFor(t.category) || 'var(--text-muted)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
+                      <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span></div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
+                      <div className="finv-tx-side">
+                        <span className={`finv-tx-amount ${t.direction}`}>{t.direction === 'income' ? '+' : '−'}{fmt(Number(t.amount))}</span>
+                        <div className="finv-tx-actions">
+                          {t.document_id && <button className="finv-icon-btn" aria-label="קבלה" onClick={() => openReceipt(t)}><Receipt size={15} /></button>}
+                          <button className="finv-icon-btn" aria-label="עריכה" onClick={() => openEdit(t)}><PencilSimple size={15} /></button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </SwipeRow>
                 )
               })}
             </>
@@ -525,21 +501,72 @@ export default function FinancesV2() {
         <label className="finv-field"><span>תיאור</span><input type="text" placeholder="אופציונלי" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></label>
         {editingId && (
           <div className="finv-field">
-            <span>קבלה</span>
+            <span>מסמכים מצורפים</span>
             <input ref={receiptRef} type="file" accept="image/*,.pdf,.heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) attachReceipt(f); e.target.value = '' }} />
-            {editingDocId ? (
-              <div className="finv-receipt-row">
-                <button type="button" className="finv-receipt-open" onClick={openDrawerReceipt}><Receipt size={15} /> פתח קבלה</button>
-                <button type="button" className="finv-receipt-del" onClick={removeReceipt} disabled={receiptBusy} aria-label="הסר קבלה"><X size={15} /></button>
+            {txDocs.map(d => (
+              <div key={d.id} className="finv-receipt-row">
+                <button type="button" className="finv-receipt-open" onClick={() => openTxDoc(d.storage_path)}><Receipt size={15} /> {d.name}</button>
+                <button type="button" className="finv-receipt-del" onClick={() => removeReceipt(d.id, d.storage_path)} disabled={receiptBusy} aria-label="הסר"><X size={15} /></button>
               </div>
-            ) : (
-              <button type="button" className="finv-receipt-add" onClick={() => receiptRef.current?.click()} disabled={receiptBusy}>{receiptBusy ? 'מעלה…' : 'צרף קבלה'}</button>
-            )}
+            ))}
+            <button type="button" className="finv-receipt-add" onClick={() => receiptRef.current?.click()} disabled={receiptBusy}>{receiptBusy ? 'מעלה…' : '＋ צרף מסמך'}</button>
           </div>
         )}
         {formError && <div className="finv-form-err" role="alert">{formError}</div>}
         <button className="finv-save" disabled={saving} onClick={submitForm}>{saving ? 'שומר…' : 'שמירת תנועה'}</button>
       </aside>
+    </div>
+  )
+}
+
+// Swipe-to-reveal row (Apple Music / Spotify style): drag right reveals the
+// delete panel (left edge), drag left reveals edit (right edge). Past half the
+// panel width it snaps open; tap the colored button to act, tap the row to close.
+function SwipeRow({ onEdit, onDelete, children }: { onEdit: () => void; onDelete: () => void; children: ReactNode }) {
+  const W = 88
+  const [dx, setDx] = useState(0)
+  const start = useRef<{ x: number; y: number; base: number; horiz: boolean } | null>(null)
+  const dragging = useRef(false)
+
+  function onStart(e: ReactTouchEvent) { start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, base: dx, horiz: false }; dragging.current = false }
+  function onMove(e: ReactTouchEvent) {
+    const s = start.current
+    if (!s) return
+    const mx = e.touches[0].clientX - s.x
+    const my = e.touches[0].clientY - s.y
+    if (!s.horiz) {
+      if (Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my)) s.horiz = true
+      else if (Math.abs(my) > 8) { start.current = null; return }
+      else return
+    }
+    dragging.current = true
+    setDx(Math.max(-W, Math.min(W, s.base + mx)))
+  }
+  function onEnd() {
+    const s = start.current
+    start.current = null
+    if (!s) return
+    setDx(d => (d > W / 2 ? W : d < -W / 2 ? -W : 0))
+  }
+
+  return (
+    <div className="finv-swipe">
+      <button type="button" className="finv-swipe-action del" style={{ width: W }} tabIndex={-1} onClick={() => { setDx(0); onDelete() }}>
+        <Trash size={18} weight="bold" /> מחק
+      </button>
+      <button type="button" className="finv-swipe-action edit" style={{ width: W }} tabIndex={-1} onClick={() => { setDx(0); onEdit() }}>
+        <PencilSimple size={18} weight="bold" /> עריכה
+      </button>
+      <div
+        className="finv-swipe-fg"
+        style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: start.current ? 'none' : 'transform 0.22s var(--ease)' }}
+        onTouchStart={onStart}
+        onTouchMove={onMove}
+        onTouchEnd={onEnd}
+        onClickCapture={e => { if (dx !== 0) { e.stopPropagation(); setDx(0) } }}
+      >
+        {children}
+      </div>
     </div>
   )
 }

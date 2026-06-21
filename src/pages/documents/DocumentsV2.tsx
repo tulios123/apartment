@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react'
 import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, X, Plus, Eye, Trash, UploadSimple, PencilSimple } from '@phosphor-icons/react'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
-import { uploadDocument, getReceiptSignedUrl } from '../../lib/storage'
+import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/format'
 import type { DocumentType } from '../../types'
@@ -92,9 +92,9 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
     } finally { setSaving(false) }
   }
 
-  async function handleView(path: string) {
-    try { window.open(await getReceiptSignedUrl(path), '_blank') }
-    catch { alert('שגיאה בפתיחת הקובץ') }
+  function handleView(path: string) {
+    const w = window.open('', '_blank')
+    redirectToSignedUrl(w, path)
   }
 
   async function handleDelete(id: string, path: string) {

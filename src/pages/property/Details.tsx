@@ -29,7 +29,7 @@ function formatPrice(raw: string) {
   return raw === '' || isNaN(n) ? raw : n.toLocaleString('he-IL')
 }
 
-function PropertyForm({
+export function PropertyForm({
   initial,
   onSave,
   onCancel,

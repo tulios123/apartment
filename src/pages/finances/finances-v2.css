@@ -92,17 +92,21 @@
   .finv-tx:hover .finv-tx-actions { opacity: 1; }
   /* Receipt controls in the edit drawer */
   .finv-receipt-row { display: flex; align-items: center; gap: 8px; }
-  .finv-receipt-open { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--border); background: var(--bg-alt); color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px; border-radius: var(--r-sm); cursor: pointer; }
+  .finv-receipt-open { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: flex-start; gap: 7px; border: 1px solid var(--border); background: var(--bg-alt); color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px; border-radius: var(--r-sm); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .finv-receipt-row { margin-bottom: 6px; }
   .finv-receipt-open:hover { border-color: var(--accent); }
   .finv-receipt-del { flex-shrink: 0; width: 42px; height: 42px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--bg-alt); color: var(--text-muted); cursor: pointer; display: grid; place-items: center; }
   .finv-receipt-del:hover { color: var(--danger-text); border-color: var(--danger-text); }
   .finv-receipt-add { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px dashed var(--border-strong); background: transparent; color: var(--text); font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px; border-radius: var(--r-sm); cursor: pointer; }
   .finv-receipt-add:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* Swipe: left → delete (coral tint), right → edit (teal tint) */
-  .finv-tx.swipeable { touch-action: pan-y; }
-  .finv-tx.swipe-del { box-shadow: inset 0 0 0 999px rgba(240,101,78,0.12); }
-  .finv-tx.swipe-edit { box-shadow: inset 0 0 0 999px rgba(43,179,155,0.12); }
+  /* Swipe-to-reveal (Apple Music / Spotify style) */
+  .finv-swipe { position: relative; overflow: hidden; border-radius: var(--r-md); margin-bottom: 8px; }
+  .finv-swipe-action { position: absolute; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: none; color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .finv-swipe-action.del { left: 0; background: var(--danger); }
+  .finv-swipe-action.edit { right: 0; background: var(--accent-teal); }
+  .finv-swipe-fg { position: relative; z-index: 1; touch-action: pan-y; }
+  .finv-swipe-fg .finv-tx { margin-bottom: 0; }
   .finv-tx.projected { background: transparent; box-shadow: none; border: 1.5px dashed var(--border-strong); }
   .finv-cat-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; color: #fff; }
   .finv-tx-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }

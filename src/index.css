@@ -2554,21 +2554,24 @@ input[type="date"] {
     max-width: 100%;
   }
 
-  /* Modal — full-screen sheet that is itself the scroll container. The modal
-     (not the overlay, not the inner form) scrolls, which sidesteps iOS Safari's
-     fixed-element flex-overflow quirks. Generous bottom padding gives the lower
-     fields room to scroll above the on-screen keyboard. */
+  /* Modal — plain scrolling block on mobile. The overlay is the scroll
+     container (display:block, not flex) and the modal is a block whose height
+     grows with its content (min-height fills the screen for short forms).
+     Crucially the modal is NOT a fixed-height flex column — that made .form
+     (flex:1; min-height:0) shrink to fit and clip its own overflow, so the
+     lower fields/save button were unreachable. */
   .modal-overlay {
-    align-items: stretch;
+    display: block;
     padding: 0;
+    -webkit-overflow-scrolling: touch;
   }
   .modal {
+    display: block;
     max-width: none;
     max-height: none;
-    height: 100dvh;
+    min-height: 100dvh;
     border-radius: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
   }
   .modal-header {
     position: sticky;
@@ -2578,13 +2581,13 @@ input[type="date"] {
     padding: 16px 18px 12px;
   }
   .form {
-    overflow: visible;
-    padding: 16px 18px calc(40px + env(safe-area-inset-bottom));
+    padding: 16px 18px calc(48px + env(safe-area-inset-bottom));
   }
   .form-actions {
     position: static;
     margin: 12px -18px 0;
     padding: 12px 0 0;
+    border-top: none;
   }
 
   /* Onboarding card */

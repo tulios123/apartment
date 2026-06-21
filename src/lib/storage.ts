@@ -32,3 +32,18 @@ export async function getReceiptSignedUrl(path: string): Promise<string> {
   if (error) throw error
   return data.signedUrl
 }
+
+/**
+ * Open a stored document in a new tab. Pass a window opened *synchronously*
+ * inside the click handler (`window.open('', '_blank')`) — iOS Safari blocks
+ * window.open after an await, so we must hold the tab open and then redirect it.
+ */
+export async function redirectToSignedUrl(win: Window | null, path: string): Promise<void> {
+  try {
+    const url = await getReceiptSignedUrl(path)
+    if (win) win.location.href = url
+    else window.open(url, '_blank')
+  } catch {
+    win?.close()
+  }
+}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, X, Check, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText, Paperclip, Eye } from '@phosphor-icons/react'
 import { useTasks, createTask, updateTask, deleteTask } from '../../hooks/useTasks'
 import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
-import { uploadDocument, getReceiptSignedUrl } from '../../lib/storage'
+import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { TASK_CATEGORIES, RENT_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
@@ -60,8 +60,9 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     finally { setAttaching(false) }
   }
 
-  async function openDoc(path: string) {
-    try { window.open(await getReceiptSignedUrl(path), '_blank') } catch { /* ignore */ }
+  function openDoc(path: string) {
+    const w = window.open('', '_blank')
+    redirectToSignedUrl(w, path)
   }
 
   async function removeDoc(id: string, path: string) {
