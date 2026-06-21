@@ -2330,6 +2330,9 @@ input[type="date"] {
     min-height: 100svh;
     overflow: visible;
     overscroll-behavior: auto;
+    /* surface-coloured so any area the (content-height) sheet doesn't cover
+       reads as part of the sheet, not the app behind it */
+    background: var(--surface);
   }
 
   .app-layout {
@@ -2588,7 +2591,8 @@ input[type="date"] {
     width: 100%;
     max-width: none;
     max-height: none;
-    min-height: 100svh;
+    /* content height — no svh filler that leaves white space under the actions */
+    min-height: 0;
     border-radius: 0;
     overflow: visible;
     box-shadow: none;
@@ -2607,12 +2611,12 @@ input[type="date"] {
     min-height: 0;
     flex: none;
     scroll-padding-bottom: 90px;
-    padding: 16px 18px calc(32px + env(safe-area-inset-bottom));
+    padding: 16px 18px 0;
   }
   .form-actions {
     position: static;
     margin: 16px -18px 0;
-    padding: 16px 18px calc(16px + env(safe-area-inset-bottom));
+    padding: 16px 18px calc(12px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
     background: var(--surface);
   }
