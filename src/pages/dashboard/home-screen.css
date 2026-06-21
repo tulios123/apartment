@@ -71,7 +71,7 @@
   .hs-flow-card { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 16px 18px; animation: hsRise 0.35s var(--ease) both; }
   .hs-flow-headline { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
   .hs-flow-headline-label { font-size: 13px; color: var(--text-muted); }
-  .hs-flow-headline-value { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+  .hs-flow-headline-value { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-navy); font-variant-numeric: tabular-nums; direction: ltr; }
   /* even a negative projection stays calm — muted ink, not alarm-red */
   .hs-flow-headline-value.soft-neg { color: var(--text-muted); }
 
@@ -91,6 +91,15 @@
   .hs-track { height: 6px; border-radius: var(--r-pill); background: var(--bg-alt); overflow: hidden; margin-top: 9px; }
   .hs-track-fill { height: 100%; border-radius: var(--r-pill); background: var(--border-strong); transition: width 0.6s var(--ease); }
   .hs-track-fill.ok { background: var(--success); }
+
+  /* Expandable extra-expenses */
+  .hs-flow-expand { width: 100%; background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; }
+  .hs-flow-caret { color: var(--text-muted); transition: transform var(--t-base) var(--ease); margin-inline-start: 4px; }
+  .hs-flow-caret.open { transform: rotate(180deg); }
+  .hs-flow-sublist { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; padding-inline-start: 4px; }
+  .hs-flow-subrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+  .hs-flow-subcat { color: var(--text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hs-flow-subamt { color: var(--text-muted); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; direction: ltr; }
 
   .hs-flow-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 

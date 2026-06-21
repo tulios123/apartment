@@ -169,7 +169,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
                 return (
                   <div key={t.id} className="tav-task tav-log-row">
                     <button className="tav-check on" onClick={() => toggleDone(t)} aria-label="החזר לפתוחות"><Check size={13} weight="bold" /></button>
-                    <div className="tav-task-body">
+                    <div className="tav-task-body" onClick={() => openEdit(t)} style={{ cursor: 'pointer' }}>
                       <div className="tav-task-title">{t.title}</div>
                       <div className="tav-task-meta">
                         <span className="tav-task-cat"><Icon size={13} weight="duotone" /> {t.category}</span>

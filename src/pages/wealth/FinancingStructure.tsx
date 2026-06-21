@@ -79,6 +79,11 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
               <div key={t.id} className="seg" style={{ width: `${(t.principal / summary.totalPrincipal) * 100}%`, background: TRACK_COLOR[t.track_type] }} title={`${TRACK_LABEL[t.track_type]} · ${fmt(t.principal)}`} />
             ))}
           </div>
+          {/* Payoff progress */}
+          <div className="wlth-progress">
+            <div className="wlth-progress-track"><div className="wlth-progress-fill" style={{ width: `${Math.min(100, Math.max(0, mortgagePaidPct))}%` }} /></div>
+            <span className="wlth-progress-label">נפרעו {Math.round(mortgagePaidPct)}% · נותרו {fmt(mortgageBalance)}</span>
+          </div>
           {open && (
             <div className="wlth-tracks">
               {tracks.map(t => (
@@ -95,18 +100,25 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
       )}
 
       {/* 2 — Supplementary bank loans */}
-      {monthlyLoans.map(l => (
-        <div key={l.id} className="wlth-vehicle static">
-          <div className="wlth-vehicle-head">
-            <span className="wlth-vehicle-icon"><CreditCard size={20} weight="duotone" /></span>
-            <div className="wlth-vehicle-main">
-              <div className="wlth-vehicle-title">{l.label || 'הלוואה משלימה'}{l.lender ? <span className="wlth-vehicle-meta"> · {l.lender}</span> : null}</div>
-              <div className="wlth-vehicle-sub">{[l.annual_rate != null ? `${l.annual_rate.toFixed(1)}%` : null, `${fmt(loanMonthlyPayment(l))}/חודש`, loanEndDate(l) ? `סיום ${yearOf(loanEndDate(l))}` : null].filter(Boolean).join(' · ')}</div>
+      {monthlyLoans.map(l => {
+        const paidPct = l.principal > 0 ? Math.max(0, Math.min(100, (1 - loanBalance(l) / l.principal) * 100)) : 0
+        return (
+          <div key={l.id} className="wlth-vehicle static">
+            <div className="wlth-vehicle-head">
+              <span className="wlth-vehicle-icon"><CreditCard size={20} weight="duotone" /></span>
+              <div className="wlth-vehicle-main">
+                <div className="wlth-vehicle-title">{l.label || 'הלוואה משלימה'}{l.lender ? <span className="wlth-vehicle-meta"> · {l.lender}</span> : null}</div>
+                <div className="wlth-vehicle-sub">{[l.annual_rate != null ? `${l.annual_rate.toFixed(1)}%` : null, `${fmt(loanMonthlyPayment(l))}/חודש`, loanEndDate(l) ? `סיום ${yearOf(loanEndDate(l))}` : null].filter(Boolean).join(' · ')}</div>
+              </div>
+              <div className="wlth-vehicle-bal"><b>{fmt(loanBalance(l))}</b><span>יתרה</span></div>
             </div>
-            <div className="wlth-vehicle-bal"><b>{fmt(loanBalance(l))}</b><span>יתרה</span></div>
+            <div className="wlth-progress">
+              <div className="wlth-progress-track"><div className="wlth-progress-fill" style={{ width: `${paidPct}%` }} /></div>
+              <span className="wlth-progress-label">נפרעו {Math.round(paidPct)}% · נותרו {fmt(loanBalance(l))}</span>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       {/* 3 — Family balloon (softened) */}
       {balloonLoans.map(l => (

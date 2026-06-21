@@ -10,7 +10,9 @@
 
   /* ── Layer 1: Ownership Score hero ─────────────────────────── */
   .wlth-hero { background: linear-gradient(150deg, var(--brand-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 16px; }
-  .wlth-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .wlth-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .wlth-hero-top > div:first-child { min-width: 0; }
+  .wlth-delta { max-width: 100%; }
   .wlth-hero-label { font-size: 13px; opacity: 0.8; margin-bottom: 6px; }
   .wlth-hero-value { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
   .wlth-hero-sub { font-size: 13px; opacity: 0.8; margin-top: 8px; }
@@ -76,6 +78,12 @@
 
   .wlth-mix { display: flex; height: 6px; gap: 2px; margin: 0 14px 12px; border-radius: var(--r-pill); overflow: hidden; }
   .wlth-mix .seg { height: 100%; }
+
+  /* Payoff progress line (mortgage + loans) */
+  .wlth-progress { padding: 0 14px 12px; }
+  .wlth-progress-track { height: 6px; border-radius: var(--r-pill); background: var(--bg-alt); overflow: hidden; }
+  .wlth-progress-fill { height: 100%; border-radius: var(--r-pill); background: var(--accent-teal); transition: width 0.6s var(--ease); }
+  .wlth-progress-label { display: block; margin-top: 6px; font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
   .wlth-tracks { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
   .wlth-track-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }

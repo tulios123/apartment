@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, Sun, CloudSun, MoonStars,
-  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, GearSix,
+  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, GearSix, CaretDown,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
@@ -59,6 +59,7 @@ export default function HomeScreen() {
   const [quick, setQuick] = useState('')
   const [sheet, setSheet] = useState<null | 'expense' | 'task'>(null)
   const [sheetSeed, setSheetSeed] = useState('')
+  const [extraOpen, setExtraOpen] = useState(false)
 
   const firstName =
     (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ||
@@ -89,9 +90,8 @@ export default function HomeScreen() {
   const rentReceived = transactions
     .filter(t => t.direction === 'income' && rentCatSet.has(t.category))
     .reduce((s, t) => s + t.amount, 0)
-  const extraExpenses = transactions
-    .filter(t => t.direction === 'expense' && !fixedCatSet.has(t.category))
-    .reduce((s, t) => s + t.amount, 0)
+  const extraTxs = transactions.filter(t => t.direction === 'expense' && !fixedCatSet.has(t.category))
+  const extraExpenses = extraTxs.reduce((s, t) => s + t.amount, 0)
   const rentCleared = monthlyRent > 0 && rentReceived >= monthlyRent
   const rentPct = monthlyRent > 0 ? Math.min(100, (rentReceived / monthlyRent) * 100) : 0
   const expectedNet = monthlyRent - fixedExpenses - extraExpenses
@@ -361,10 +361,23 @@ export default function HomeScreen() {
 
                 {extraExpenses > 0 && (
                   <div className="hs-flow-line">
-                    <div className="hs-flow-line-top">
-                      <span className="hs-flow-name">הוצאות נוספות החודש</span>
+                    <button className="hs-flow-line-top hs-flow-expand" onClick={() => setExtraOpen(o => !o)} aria-expanded={extraOpen}>
+                      <span className="hs-flow-name">
+                        הוצאות נוספות החודש
+                        <CaretDown className={`hs-flow-caret${extraOpen ? ' open' : ''}`} size={13} weight="bold" />
+                      </span>
                       <span className="hs-flow-amt muted">{fmt(extraExpenses)}</span>
-                    </div>
+                    </button>
+                    {extraOpen && (
+                      <div className="hs-flow-sublist">
+                        {extraTxs.map(t => (
+                          <div key={t.id} className="hs-flow-subrow">
+                            <span className="hs-flow-subcat">{t.category}{t.description ? ` · ${t.description}` : ''}</span>
+                            <span className="hs-flow-subamt">{fmt(t.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

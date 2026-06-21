@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react'
-import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, X, Plus, Eye, Trash, UploadSimple } from '@phosphor-icons/react'
-import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
+import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, X, Plus, Eye, Trash, UploadSimple, PencilSimple } from '@phosphor-icons/react'
+import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
 import { uploadDocument, getReceiptSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/format'
@@ -35,6 +35,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
   const { documents, loading, error, refetch } = useDocuments()
   const [filter, setFilter] = useState<DocumentType | 'all'>('all')
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [file, setFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
@@ -55,11 +56,27 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       .filter(g => g.docs.length > 0)
   }, [documents, filter])
 
-  function openNew() { setForm(emptyForm); setFile(null); setFormError(null); setDrawerOpen(true) }
+  function openNew() { setForm(emptyForm); setFile(null); setEditingId(null); setFormError(null); setDrawerOpen(true) }
+  function openEdit(doc: { id: string; type: DocumentType; name: string; date: string | null }) {
+    setForm({ type: doc.type, name: doc.name, date: doc.date ?? '' })
+    setFile(null); setEditingId(doc.id); setFormError(null); setDrawerOpen(true)
+  }
 
   async function handleSubmit() {
-    if (!file) { setFormError('יש לבחור קובץ'); return }
     if (!user) return
+    if (editingId) {
+      if (!form.name.trim()) { setFormError('יש להזין שם'); return }
+      setSaving(true); setFormError(null)
+      try {
+        await updateDocument(editingId, { name: form.name.trim(), type: form.type, date: form.date || null })
+        setDrawerOpen(false); setEditingId(null)
+        refetch()
+      } catch (e) {
+        setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה')
+      } finally { setSaving(false) }
+      return
+    }
+    if (!file) { setFormError('יש לבחור קובץ'); return }
     setSaving(true); setFormError(null)
     try {
       const id = crypto.randomUUID()
@@ -116,8 +133,8 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
               <div className="docv-grid">
                 {docs.map(doc => (
                   <div key={doc.id} className="docv-card">
-                    <div className={`docv-icon ${TYPE_TONE[doc.type]}`}>{docIcon(doc.type)}</div>
-                    <div className="docv-info">
+                    <div className={`docv-icon ${TYPE_TONE[doc.type]}`} onClick={() => handleView(doc.storage_path)} style={{ cursor: 'pointer' }}>{docIcon(doc.type)}</div>
+                    <div className="docv-info" onClick={() => handleView(doc.storage_path)} style={{ cursor: 'pointer' }}>
                       <div className="docv-name">{doc.name}</div>
                       {doc.date && <div className="docv-date">{formatDate(doc.date)}</div>}
                     </div>
@@ -129,6 +146,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
                     ) : (
                       <div className="docv-actions">
                         <button className="docv-icon-btn" onClick={() => handleView(doc.storage_path)} aria-label="פתח"><Eye size={16} /></button>
+                        <button className="docv-icon-btn" onClick={() => openEdit(doc)} aria-label="שנה שם"><PencilSimple size={16} /></button>
                         <button className="docv-icon-btn danger" onClick={() => setConfirmDeleteId(doc.id)} aria-label="מחק"><Trash size={16} /></button>
                       </div>
                     )}
@@ -144,17 +162,19 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
       <div className={`docv-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside className={`docv-drawer ${drawerOpen ? 'open' : ''}`}>
-        <div className="docv-drawer-head"><h2>מסמך חדש</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
+        <div className="docv-drawer-head"><h2>{editingId ? 'עריכת מסמך' : 'מסמך חדש'}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
         <label className="docv-field"><span>סוג</span><select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as DocumentType }))}>{DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-        <label className="docv-field"><span>שם (אופציונלי)</span><input type="text" placeholder="ברירת מחדל: שם הקובץ" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></label>
+        <label className="docv-field"><span>שם{editingId ? '' : ' (אופציונלי)'}</span><input type="text" placeholder="ברירת מחדל: שם הקובץ" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></label>
         <label className="docv-field"><span>תאריך (אופציונלי)</span><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></label>
-        <div className="docv-field">
-          <span>קובץ</span>
-          <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" style={{ display: 'none' }} onChange={e => setFile(e.target.files?.[0] ?? null)} />
-          <button type="button" className="docv-filepick" onClick={() => fileInputRef.current?.click()}>
-            <UploadSimple size={17} /> {file ? file.name : 'בחר קובץ'}
-          </button>
-        </div>
+        {!editingId && (
+          <div className="docv-field">
+            <span>קובץ</span>
+            <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" style={{ display: 'none' }} onChange={e => setFile(e.target.files?.[0] ?? null)} />
+            <button type="button" className="docv-filepick" onClick={() => fileInputRef.current?.click()}>
+              <UploadSimple size={17} /> {file ? file.name : 'בחר קובץ'}
+            </button>
+          </div>
+        )}
         {formError && <div className="docv-form-err" role="alert">{formError}</div>}
         <button className="docv-save" disabled={saving} onClick={handleSubmit}>{saving ? 'שומר…' : 'שמירה'}</button>
       </aside>

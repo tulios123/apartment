@@ -33,6 +33,14 @@ export async function createDocument(doc: Omit<Document, 'created_at'>): Promise
   if (error) throw error
 }
 
+export async function updateDocument(
+  id: string,
+  fields: Partial<Pick<Document, 'name' | 'type' | 'date'>>
+): Promise<void> {
+  const { error } = await supabase.from('documents').update(fields).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteDocument(id: string, storagePath: string): Promise<void> {
   await supabase.storage.from('documents').remove([storagePath])
   const { error } = await supabase.from('documents').delete().eq('id', id)
