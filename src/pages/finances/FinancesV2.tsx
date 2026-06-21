@@ -81,6 +81,26 @@ export default function FinancesV2() {
   const [receiptBusy, setReceiptBusy] = useState(false)
   const receiptRef = useRef<HTMLInputElement>(null)
 
+  // Swipe the edit drawer back toward its left edge to dismiss it.
+  const swipe = useRef<{ x: number; y: number; horiz: boolean } | null>(null)
+  const [drawerDx, setDrawerDx] = useState(0)
+  function drawerTouchStart(e: ReactTouchEvent) { swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, horiz: false } }
+  function drawerTouchMove(e: ReactTouchEvent) {
+    const s = swipe.current; if (!s) return
+    const dx = e.touches[0].clientX - s.x, dy = e.touches[0].clientY - s.y
+    if (!s.horiz) {
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.4) s.horiz = true
+      else if (Math.abs(dy) > 12) { swipe.current = null; return }
+      else return
+    }
+    if (dx < 0) setDrawerDx(Math.max(dx, -window.innerWidth))
+  }
+  function drawerTouchEnd() {
+    const s = swipe.current; swipe.current = null
+    if (s && drawerDx < -70) setDrawerOpen(false)
+    setDrawerDx(0)
+  }
+
   // Open the form pre-filled when navigated here with a prefill (e.g. from a
   // completed repair/rent task). Clear the history state so it fires only once.
   useEffect(() => {
@@ -488,7 +508,9 @@ export default function FinancesV2() {
       <button className="finv-fab" onClick={openNew} aria-label="הוסף תנועה"><Plus size={26} weight="bold" /></button>
 
       <div className={`finv-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
-      <aside className={`finv-drawer ${drawerOpen ? 'open' : ''}`}>
+      <aside className={`finv-drawer ${drawerOpen ? 'open' : ''}`}
+        onTouchStart={drawerTouchStart} onTouchMove={drawerTouchMove} onTouchEnd={drawerTouchEnd}
+        style={drawerDx ? { transform: `translateX(${drawerDx}px)`, transition: 'none' } : undefined}>
         <div className="finv-drawer-head"><h2>{editingId ? 'עריכת תנועה' : 'תנועה חדשה'}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
         <div className="finv-seg">
           <button className={form.direction === 'expense' ? 'on' : ''} onClick={() => setDir('expense')}>הוצאה</button>
@@ -501,7 +523,7 @@ export default function FinancesV2() {
         <label className="finv-field"><span>תיאור</span><input type="text" placeholder="אופציונלי" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></label>
         {editingId && (
           <div className="finv-field">
-            <span>מסמכים מצורפים</span>
+            {txDocs.length > 0 && <span>מסמכים מצורפים</span>}
             <input ref={receiptRef} type="file" accept="image/*,.pdf,.heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) attachReceipt(f); e.target.value = '' }} />
             {txDocs.map(d => (
               <div key={d.id} className="finv-receipt-row">
