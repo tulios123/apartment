@@ -43,7 +43,9 @@ export default function Layout() {
     const root = document.documentElement
     function sync() {
       const h = vv ? vv.height : window.innerHeight
+      const top = vv ? vv.offsetTop : 0
       root.style.setProperty('--vvh', `${h}px`)
+      root.style.setProperty('--vv-top', `${top}px`)
     }
     sync()
     vv?.addEventListener('resize', sync)
