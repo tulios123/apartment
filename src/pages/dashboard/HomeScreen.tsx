@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
-  CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, Sun, CloudSun, MoonStars,
+  CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, ArrowLeft, Sun, CloudSun, MoonStars,
   Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, GearSix, CaretDown,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -304,7 +304,7 @@ export default function HomeScreen() {
                 aria-label="הוספה מהירה בשפה חופשית"
               />
               <button type="submit" className="hs-quick-go" aria-label="הוסף">
-                <ArrowRight size={18} weight="bold" />
+                <ArrowLeft size={18} weight="bold" />
               </button>
             </form>
             <div className="hs-fabs">

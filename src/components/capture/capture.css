@@ -36,7 +36,7 @@
 }
 
 /* Date + receipt chips share one row */
-.cap-row-chips { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.cap-row-chips { display: flex; align-items: center; gap: 8px; margin-top: 12px; margin-bottom: 16px; }
 .cap-row-chips .cap-datechip { width: auto; flex: 1; margin-top: 0; }
 .cap-receipt-clear {
   flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
