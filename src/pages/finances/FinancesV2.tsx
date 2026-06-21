@@ -5,6 +5,7 @@ import {
   ArrowDownLeft, ArrowUpRight, PencilSimple, Trash, Receipt, ChartPie, ChartBar,
 } from '@phosphor-icons/react'
 import { useTransactions, createTransaction, updateTransaction, deleteTransaction } from '../../hooks/useTransactions'
+import { usePropertyData } from '../../hooks/usePropertyData'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { monthlyVirtualEntries } from '../../lib/projections'
 import type { VirtualEntry } from '../../lib/projections'
@@ -36,10 +37,24 @@ export default function FinancesV2() {
   const location = useLocation()
   const navigate = useNavigate()
   const today = new Date()
-  const [view, setView] = useState<'month' | 'year'>('month')
+  const [view, setView] = useState<'month' | 'year' | 'range'>('month')
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
-  const { transactions, loading, error, refetch } = useTransactions(view === 'month' ? { year, month } : { year })
+
+  // Custom range. Defaults to key-delivery → today once the property loads.
+  const { property } = usePropertyData()
+  const [rangeFrom, setRangeFrom] = useState(`${today.getFullYear() - 4}-01-01`)
+  const [rangeTo, setRangeTo] = useState(todayISO())
+  const [rangeTouched, setRangeTouched] = useState(false)
+  useEffect(() => {
+    if (rangeTouched || !property) return
+    const start = property.key_delivery_date ?? property.purchase_date
+    if (start) setRangeFrom(start)
+  }, [property, rangeTouched])
+
+  const { transactions, loading, error, refetch } = useTransactions(
+    view === 'month' ? { year, month } : view === 'year' ? { year } : { from: rangeFrom, to: rangeTo }
+  )
 
   const [contracts, setContracts] = useState<Contract[]>([])
   const [mortgageTracks, setMortgageTracks] = useState<MortgageTrack[]>([])
@@ -143,12 +158,72 @@ export default function FinancesV2() {
   const maxBar = Math.max(1, ...monthly.map(r => Math.max(r.income, r.expense)))
   const bestMonth = monthly.length ? monthly.reduce((a, b) => (b.net > a.net ? b : a)) : null
 
+  // ── Range-scoped figures (used when view === 'range') ──────────────
+  // Same per-month engine as the year view, but across an arbitrary span.
+  const rangeMonthly = useMemo(() => {
+    if (view !== 'range') return []
+    return periodsBetween(rangeFrom, rangeTo).map(({ year: y, month: m }) => {
+      const mtx = transactions.filter(t => Number(t.date.slice(0, 4)) === y && Number(t.date.slice(5, 7)) === m)
+      const v = monthlyVirtualEntries(contracts, mortgageTracks, y, m, loans)
+      const rRent = mtx.some(t => t.direction === 'income' && RENT.includes(t.category))
+      const rMort = mtx.some(t => t.direction === 'expense' && MORT.includes(t.category))
+      const sv = v.filter(e => {
+        if (e.direction === 'income' && RENT.includes(e.category) && rRent) return false
+        if (e.direction === 'expense' && MORT.includes(e.category) && rMort) return false
+        return true
+      })
+      const income = mtx.filter(t => t.direction === 'income').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'income').reduce((s, e) => s + e.amount, 0)
+      const expense = mtx.filter(t => t.direction === 'expense').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'expense').reduce((s, e) => s + e.amount, 0)
+      return { year: y, month: m, income, expense, net: income - expense, sv, mtx }
+    })
+  }, [view, rangeFrom, rangeTo, transactions, contracts, mortgageTracks, loans])
+
+  const rangeTotals = useMemo(() => {
+    const income = rangeMonthly.reduce((s, r) => s + r.income, 0)
+    const expense = rangeMonthly.reduce((s, r) => s + r.expense, 0)
+    return { income, expense, net: income - expense }
+  }, [rangeMonthly])
+
+  const rangeBreakdown = useMemo(() => {
+    if (view !== 'range') return []
+    const map = new Map<string, number>()
+    rangeMonthly.forEach(r => {
+      r.mtx.filter(t => t.direction === 'expense').forEach(t => map.set(t.category, (map.get(t.category) ?? 0) + Number(t.amount)))
+      r.sv.filter(e => e.direction === 'expense').forEach(e => map.set(e.category, (map.get(e.category) ?? 0) + e.amount))
+    })
+    return mapToBreakdown(map)
+  }, [view, rangeMonthly])
+
+  // Bars: a column per month when the span is short, otherwise per calendar year.
+  const rangeByYear = rangeMonthly.length > 18
+  const rangeBuckets = useMemo(() => {
+    if (!rangeByYear) {
+      return rangeMonthly.map(r => ({
+        key: `${r.year}-${r.month}`, year: r.year, month: r.month,
+        label: r.month === 1 || rangeMonthly[0] === r ? `${MONTH_SHORT[r.month - 1]} '${String(r.year).slice(2)}` : MONTH_SHORT[r.month - 1],
+        income: r.income, expense: r.expense, net: r.net,
+      }))
+    }
+    const byYear = new Map<number, { income: number; expense: number }>()
+    rangeMonthly.forEach(r => {
+      const cur = byYear.get(r.year) ?? { income: 0, expense: 0 }
+      cur.income += r.income; cur.expense += r.expense
+      byYear.set(r.year, cur)
+    })
+    return Array.from(byYear.entries()).map(([y, v]) => ({
+      key: String(y), year: y, month: null as number | null,
+      label: String(y), income: v.income, expense: v.expense, net: v.income - v.expense,
+    }))
+  }, [rangeMonthly, rangeByYear])
+
+  const rangeMaxBar = Math.max(1, ...rangeBuckets.map(b => Math.max(b.income, b.expense)))
+
   // ── Displayed figures (mode-aware) ─────────────────────────────────
-  const income = view === 'month' ? mIncome : yearTotals.income
-  const expense = view === 'month' ? mExpense : yearTotals.expense
+  const income = view === 'month' ? mIncome : view === 'year' ? yearTotals.income : rangeTotals.income
+  const expense = view === 'month' ? mExpense : view === 'year' ? yearTotals.expense : rangeTotals.expense
   const net = income - expense
   const inPct = income + expense > 0 ? (income / (income + expense)) * 100 : 50
-  const breakdown = view === 'month' ? monthBreakdown : yearBreakdown
+  const breakdown = view === 'month' ? monthBreakdown : view === 'year' ? yearBreakdown : rangeBreakdown
 
   function openNew() { setForm(emptyForm); setEditingId(null); setFormError(null); setDrawerOpen(true) }
   function openEdit(t: Transaction) {
@@ -188,6 +263,10 @@ export default function FinancesV2() {
   }
 
   function drillToMonth(m: number) { setMonth(m); setView('month') }
+  function drillToBucket(b: { year: number; month: number | null }) {
+    setYear(b.year)
+    if (b.month != null) { setMonth(b.month); setView('month') } else { setView('year') }
+  }
 
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
   const colorFor = (cat: string) => { const b = breakdown.find(x => x.cat === cat); return b ? b.color : 'var(--text-muted)' }
@@ -200,16 +279,31 @@ export default function FinancesV2() {
         <div className="finv-viewtoggle">
           <button className={view === 'month' ? 'on' : ''} onClick={() => setView('month')}>חודש</button>
           <button className={view === 'year' ? 'on' : ''} onClick={() => setView('year')}>שנה</button>
+          <button className={view === 'range' ? 'on' : ''} onClick={() => setView('range')}>טווח</button>
         </div>
-        <div className="finv-monthnav">
-          <button className="finv-monthnav-btn" onClick={() => shiftPeriod(-1)} aria-label={view === 'year' ? 'שנה קודמת' : 'חודש קודם'}><CaretRight size={18} weight="bold" /></button>
-          <span className="finv-monthnav-label">{view === 'month' ? `${MONTH_NAMES[month - 1]} ${year}` : year}</span>
-          <button className="finv-monthnav-btn" onClick={() => shiftPeriod(1)} aria-label={view === 'year' ? 'שנה הבאה' : 'חודש הבא'}><CaretLeft size={18} weight="bold" /></button>
-        </div>
+        {view !== 'range' && (
+          <div className="finv-monthnav">
+            <button className="finv-monthnav-btn" onClick={() => shiftPeriod(-1)} aria-label={view === 'year' ? 'שנה קודמת' : 'חודש קודם'}><CaretRight size={18} weight="bold" /></button>
+            <span className="finv-monthnav-label">{view === 'month' ? `${MONTH_NAMES[month - 1]} ${year}` : year}</span>
+            <button className="finv-monthnav-btn" onClick={() => shiftPeriod(1)} aria-label={view === 'year' ? 'שנה הבאה' : 'חודש הבא'}><CaretLeft size={18} weight="bold" /></button>
+          </div>
+        )}
       </div>
 
+      {view === 'range' && (
+        <div className="finv-rangebar">
+          <label className="finv-range-field"><span>מ־</span><input type="date" value={rangeFrom} max={rangeTo} onChange={e => { setRangeTouched(true); setRangeFrom(e.target.value) }} /></label>
+          <label className="finv-range-field"><span>עד</span><input type="date" value={rangeTo} min={rangeFrom} max={todayISO()} onChange={e => { setRangeTouched(true); setRangeTo(e.target.value) }} /></label>
+          {(property?.key_delivery_date || property?.purchase_date) && (
+            <button className="finv-range-preset" onClick={() => { const start = property?.key_delivery_date ?? property?.purchase_date; if (!start) return; setRangeTouched(true); setRangeFrom(start); setRangeTo(todayISO()) }}>
+              מקבלת מפתח
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="finv-summary">
-        <div className="finv-summary-label">{view === 'month' ? 'מאזן החודש' : 'מאזן השנה'}</div>
+        <div className="finv-summary-label">{view === 'month' ? 'מאזן החודש' : view === 'year' ? 'מאזן השנה' : 'מאזן התקופה'}</div>
         <div className={`finv-summary-net ${net >= 0 ? 'pos' : 'neg'}`}>{net >= 0 ? '+' : '−'}{fmt(Math.abs(net))}</div>
         <div className="finv-summary-bar"><div className="in" style={{ width: `${inPct}%` }} /><div className="out" style={{ width: `${100 - inPct}%` }} /></div>
         <div className="finv-summary-tiles">
@@ -258,10 +352,43 @@ export default function FinancesV2() {
         )
       )}
 
+      {/* ── Range perspective: bar per month (short span) or per year ── */}
+      {view === 'range' && (
+        loading ? <SkeletonList rows={3} /> : rangeBuckets.length === 0 ? (
+          <div className="finv-empty"><p style={{ color: 'var(--text-muted)' }}>בחר טווח תאריכים תקין</p></div>
+        ) : (
+          <div className="finv-yearchart">
+            <div className="finv-yearchart-head">
+              <h3><ChartBar size={17} weight="duotone" /> סקירה {rangeByYear ? 'שנתית' : 'חודשית'} · {formatDate(rangeFrom)}–{formatDate(rangeTo)}</h3>
+              <div className="finv-yearchart-legend">
+                <span><i className="in" /> הכנסות</span>
+                <span><i className="out" /> הוצאות</span>
+              </div>
+            </div>
+            <div className="finv-yearbars">
+              {rangeBuckets.map(b => (
+                <button key={b.key} className="finv-yearbar-col" onClick={() => drillToBucket(b)}
+                  title={`${b.label} · הכנסות ${fmt(b.income)} · הוצאות ${fmt(b.expense)} · מאזן ${b.net >= 0 ? '+' : '−'}${fmt(Math.abs(b.net))}`}>
+                  <div className="finv-yearbar-stack">
+                    <div className="finv-yearbar in" style={{ height: `${(b.income / rangeMaxBar) * 100}%` }} />
+                    <div className="finv-yearbar out" style={{ height: `${(b.expense / rangeMaxBar) * 100}%` }} />
+                  </div>
+                  <span className="finv-yearbar-label">{b.label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="finv-yearchart-foot">
+              <span>סך התקופה: <strong>{rangeTotals.net >= 0 ? '+' : '−'}{fmt(Math.abs(rangeTotals.net))}</strong> על פני {rangeMonthly.length} חודשים</span>
+              <span className="finv-yearchart-hint">לחץ על עמודה לפירוט</span>
+            </div>
+          </div>
+        )
+      )}
+
       {expense > 0 && breakdown.length > 0 && (
         <div className={`finv-breakdown ${breakdownOpen ? 'open' : ''}`}>
           <button className="finv-breakdown-head" onClick={() => setBreakdownOpen(o => !o)}>
-            <h3><ChartPie size={17} weight="duotone" /> פילוח הוצאות לפי קטגוריה{view === 'year' ? ' · שנתי' : ''}</h3>
+            <h3><ChartPie size={17} weight="duotone" /> פילוח הוצאות לפי קטגוריה{view === 'year' ? ' · שנתי' : view === 'range' ? ' · בטווח' : ''}</h3>
             <CaretDown className="finv-breakdown-caret" size={15} weight="bold" />
           </button>
           <div className="finv-breakdown-body"><div className="finv-breakdown-inner">
@@ -345,6 +472,20 @@ export default function FinancesV2() {
       </aside>
     </div>
   )
+}
+
+// Inclusive list of {year, month} from one ISO date to another (capped).
+function periodsBetween(fromISO: string, toISO: string): { year: number; month: number }[] {
+  const res: { year: number; month: number }[] = []
+  let y = Number(fromISO.slice(0, 4)), m = Number(fromISO.slice(5, 7))
+  const ty = Number(toISO.slice(0, 4)), tm = Number(toISO.slice(5, 7))
+  if (!y || !m || !ty || !tm || y > ty || (y === ty && m > tm)) return res
+  let guard = 0
+  while ((y < ty || (y === ty && m <= tm)) && guard++ < 600) {
+    res.push({ year: y, month: m })
+    m++; if (m > 12) { m = 1; y++ }
+  }
+  return res
 }
 
 function mapToBreakdown(map: Map<string, number>) {

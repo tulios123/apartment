@@ -7,6 +7,8 @@ import type { Transaction } from '../types'
 interface Filters {
   year?: number
   month?: number // 1-12
+  from?: string // inclusive YYYY-MM-DD; takes precedence over year/month
+  to?: string // inclusive YYYY-MM-DD
 }
 
 export function useTransactions(filters: Filters = {}) {
@@ -26,7 +28,9 @@ export function useTransactions(filters: Filters = {}) {
       .eq('owner_id', user.id)
       .order('date', { ascending: false })
 
-    if (filters.year && filters.month) {
+    if (filters.from && filters.to) {
+      query = query.gte('date', filters.from).lte('date', filters.to)
+    } else if (filters.year && filters.month) {
       const from = `${filters.year}-${String(filters.month).padStart(2, '0')}-01`
       const to = monthEndISO(filters.year, filters.month)
       query = query.gte('date', from).lte('date', to)
@@ -40,7 +44,7 @@ export function useTransactions(filters: Filters = {}) {
     if (error) setError(error.message)
     else setTransactions(data ?? [])
     setLoading(false)
-  }, [user?.id, filters.year, filters.month])
+  }, [user?.id, filters.year, filters.month, filters.from, filters.to])
 
   useEffect(() => { fetch() }, [fetch])
 

@@ -15,6 +15,14 @@
   .finv-monthnav-btn:active { transform: scale(0.9); }
   .finv-monthnav-label { font-size: 16px; font-weight: 700; color: var(--brand-navy); min-width: 120px; text-align: center; }
 
+  /* Custom range controls */
+  .finv-rangebar { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin: 0 0 16px; }
+  .finv-range-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); }
+  .finv-range-field input { border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-family: inherit; font-size: 14px; padding: 9px 11px; border-radius: var(--r-sm); }
+  .finv-range-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .finv-range-preset { border: 1px solid var(--accent); background: var(--accent-light); color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: var(--r-sm); cursor: pointer; transition: background var(--t-fast); }
+  .finv-range-preset:hover { background: var(--accent); color: #fff; }
+
   /* Summary */
   .finv-summary { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 22px 24px; margin-bottom: 16px; }
   .finv-summary-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
