@@ -2554,42 +2554,51 @@ input[type="date"] {
     max-width: 100%;
   }
 
-  /* Modal — plain scrolling block on mobile. The overlay is the scroll
-     container (display:block, not flex) and the modal is a block whose height
-     grows with its content (min-height fills the screen for short forms).
-     Crucially the modal is NOT a fixed-height flex column — that made .form
-     (flex:1; min-height:0) shrink to fit and clip its own overflow, so the
-     lower fields/save button were unreachable. */
+  /* Modal — full-screen sheet on mobile, scrolled the SAME way as the
+     task/document drawers (which scroll reliably on iOS): a fixed-height
+     flex column where the INNER .form is the scroll container, not the
+     position:fixed overlay. iOS Safari won't take touch-scroll on a
+     position:fixed overflow container nested inside overflow:hidden
+     ancestors (the app shell), but it scrolls a normal flex child fine.
+     The save button (.form-actions) is pinned to the bottom so it is
+     always reachable without scrolling. */
   .modal-overlay {
-    display: block;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
     padding: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
   }
   .modal {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
     max-width: none;
-    max-height: none;
-    min-height: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
     border-radius: 0;
-    overflow: visible;
+    overflow: hidden;
   }
   .modal-header {
-    position: sticky;
-    top: 0;
-    z-index: 1;
+    flex: 0 0 auto;
     background: var(--surface);
     padding: 16px 18px 12px;
   }
   .form {
-    padding: 16px 18px calc(48px + env(safe-area-inset-bottom));
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
   }
   .form-actions {
-    position: static;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
     margin: 12px -18px 0;
-    padding: 12px 0 0;
-    border-top: none;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
   }
 
   /* Onboarding card */
