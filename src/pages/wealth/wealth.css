@@ -14,7 +14,7 @@
   .wlth-hero-label { font-size: 13px; opacity: 0.8; margin-bottom: 6px; }
   .wlth-hero-value { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
   .wlth-hero-sub { font-size: 13px; opacity: 0.8; margin-top: 8px; }
-  .wlth-delta { display: inline-flex; align-items: center; gap: 6px; background: rgba(43,179,155,0.22); color: #8ff0db; border: 1px solid rgba(43,179,155,0.45); padding: 6px 12px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  .wlth-delta { display: inline-flex; align-items: center; gap: 6px; background: rgba(52,227,176,0.32); color: #c8fbec; border: 1px solid rgba(52,227,176,0.6); padding: 6px 12px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
 
   .wlth-own-pct { font-size: 15px; font-weight: 700; margin: 22px 0 10px; }
   .wlth-ladder { display: flex; height: 14px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; background: rgba(255,255,255,0.12); }

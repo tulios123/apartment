@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  Sparkle, Plus, X, CaretDown, CaretLeft, CaretRight, ArrowUp, ArrowDown,
+  Plus, X, CaretDown, CaretLeft, CaretRight, ArrowUp, ArrowDown,
   ArrowDownLeft, ArrowUpRight, PencilSimple, Trash, Receipt, ChartPie, ChartBar,
 } from '@phosphor-icons/react'
 import { useTransactions, createTransaction, updateTransaction, deleteTransaction } from '../../hooks/useTransactions'
@@ -27,24 +27,7 @@ const MORT = MORTGAGE_CATEGORIES as readonly string[]
 
 type Dir = 'income' | 'expense'
 
-function parseNL(text: string): { amount: number | null; dir: Dir; cat: string; desc: string } {
-  const amountMatch = text.match(/[\d,]+(\.\d+)?/)
-  const amount = amountMatch ? Number(amountMatch[0].replace(/,/g, '')) : null
-  const income = /(קיבלתי|נכנס|הכנסה|שכ"ד|שכ״ד|שכירות|שכר)/.test(text)
-  const dir: Dir = income ? 'income' : 'expense'
-  let cat = 'אחר'
-  if (/תיקון|נזק|אינסטל|חשמלאי|צביע|שיפוץ/.test(text)) cat = 'תיקונים'
-  else if (/ריבית/.test(text)) cat = 'ריבית'
-  else if (income && /שכר|שכירות|שכ"ד|שכ״ד/.test(text)) cat = 'שכר דירה'
-  // keep only valid one-time categories
-  const valid = (dir === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES) as readonly string[]
-  if (!valid.includes(cat)) cat = 'אחר'
-  const m = text.match(/(?:על|עבור)\s+(.+)/)
-  const desc = m ? m[1].trim() : ''
-  return { amount, dir, cat, desc }
-}
-
-const emptyForm = { direction: 'expense' as Dir, amount: '', date: todayISO(), category: EXPENSE_CATEGORIES[0] as string, description: '', payment_method: '' }
+const emptyForm ={ direction: 'expense' as Dir, amount: '', date: todayISO(), category: EXPENSE_CATEGORIES[0] as string, description: '', payment_method: '' }
 
 type Prefill = { direction?: Dir; category?: string; description?: string; amount?: number }
 
@@ -72,7 +55,6 @@ export default function FinancesV2() {
 
   const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month, loans), [year, month, contracts, mortgageTracks, loans])
 
-  const [capture, setCapture] = useState('')
   const [breakdownOpen, setBreakdownOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -168,21 +150,6 @@ export default function FinancesV2() {
   const inPct = income + expense > 0 ? (income / (income + expense)) * 100 : 50
   const breakdown = view === 'month' ? monthBreakdown : yearBreakdown
 
-  const parsed = parseNL(capture)
-  const showChips = parsed.amount != null
-
-  async function addFromCapture() {
-    if (parsed.amount == null || !user) return
-    const payload: Partial<Transaction> = {
-      direction: parsed.dir, amount: parsed.amount, date: todayISO(),
-      category: parsed.cat, description: parsed.desc || null, payment_method: null, contract_id: null, recurring_item_id: null,
-    }
-    await createTransaction(payload as Omit<Transaction, 'id' | 'owner_id' | 'created_at'>)
-    setCapture('')
-    setView('month'); setYear(today.getFullYear()); setMonth(today.getMonth() + 1)
-    refetch()
-  }
-
   function openNew() { setForm(emptyForm); setEditingId(null); setFormError(null); setDrawerOpen(true) }
   function openEdit(t: Transaction) {
     setForm({ direction: t.direction, amount: String(t.amount), date: t.date, category: t.category, description: t.description ?? '', payment_method: t.payment_method ?? '' })
@@ -251,25 +218,9 @@ export default function FinancesV2() {
         </div>
       </div>
 
-      <div className="finv-capture">
-        <div className="finv-capture-row">
-          <Sparkle className="finv-capture-icon" size={20} weight="fill" />
-          <input className="finv-capture-input" placeholder="הזנה מהירה — לדוגמה: שילמתי 1,240 על תיקון דוד שמש" value={capture}
-            onChange={e => setCapture(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addFromCapture() }} />
-          <button className="finv-capture-send" disabled={!showChips} onClick={addFromCapture} aria-label="הוסף תנועה"><Plus size={18} weight="bold" /></button>
-        </div>
-        {showChips ? (
-          <div className="finv-chips">
-            <span className="finv-chip amount">{fmt(parsed.amount!)}</span>
-            <span className={`finv-chip dir-${parsed.dir}`}>{parsed.dir === 'income' ? 'הכנסה' : 'הוצאה'}</span>
-            <span className="finv-chip">{parsed.cat}</span>
-            <span className="finv-chip">היום</span>
-            {parsed.desc && <span className="finv-chip">{parsed.desc}</span>}
-          </div>
-        ) : (
-          <div className="finv-capture-hint">כתוב במילים שלך, או <button className="finv-capture-structured" onClick={openNew}>פתח טופס מלא</button></div>
-        )}
-      </div>
+      <button className="finv-addbtn" onClick={openNew}>
+        <Plus size={19} weight="bold" /> הוספת תנועה
+      </button>
 
       {/* ── Annual perspective: 12-month bar chart ───────────────────── */}
       {view === 'year' && (

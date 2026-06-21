@@ -5,7 +5,7 @@
   --hs-gap: 18px;
 
   /* ── Humanized header ── */
-  .hs-header { position: relative; margin-bottom: 20px; animation: hsFade 0.4s var(--ease) both; }
+  .hs-header { position: relative; margin-bottom: 14px; animation: hsFade 0.4s var(--ease) both; }
   .hs-gear {
     position: absolute; top: 0; inset-inline-end: 0;
     width: 38px; height: 38px; border-radius: 11px;
@@ -23,7 +23,7 @@
   .hs-flash { background: var(--success-bg); color: var(--success-text); font-size: 13.5px; font-weight: 600; padding: 11px 16px; border-radius: var(--r-md); margin-bottom: 14px; animation: hsFlash 0.3s var(--ease) both; }
 
   /* ── Action Center ── */
-  .hs-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .hs-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 
   .hs-card { display: flex; align-items: center; gap: 13px; background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 16px; animation: hsRise 0.35s var(--ease) both; transition: opacity 0.35s var(--ease), transform 0.35s var(--ease), max-height 0.35s var(--ease); }
   .hs-card.resolved { opacity: 0; transform: translateX(24px); max-height: 0; padding-top: 0; padding-bottom: 0; pointer-events: none; }
@@ -50,7 +50,7 @@
   .hs-clear-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
 
   /* ── Quick capture ── */
-  .hs-quick { margin-bottom: 26px; }
+  .hs-quick { margin-bottom: 16px; }
   .hs-quick-input { display: flex; align-items: center; gap: 10px; background: var(--bg-card); border-radius: var(--r-pill); box-shadow: var(--shadow-sm); padding: 6px 6px 6px 16px; transition: box-shadow var(--t-base) var(--ease); }
   .hs-quick-input:focus-within { box-shadow: var(--shadow-md); }
   .hs-quick-spark { color: var(--accent); flex-shrink: 0; }
@@ -68,8 +68,8 @@
   .hs-flow-head h2 { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
   .hs-link { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; }
 
-  .hs-flow-card { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 20px; animation: hsRise 0.35s var(--ease) both; }
-  .hs-flow-headline { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .hs-flow-card { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 16px 18px; animation: hsRise 0.35s var(--ease) both; }
+  .hs-flow-headline { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
   .hs-flow-headline-label { font-size: 13px; color: var(--text-muted); }
   .hs-flow-headline-value { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
   /* even a negative projection stays calm — muted ink, not alarm-red */
@@ -92,7 +92,7 @@
   .hs-track-fill { height: 100%; border-radius: var(--r-pill); background: var(--border-strong); transition: width 0.6s var(--ease); }
   .hs-track-fill.ok { background: var(--success); }
 
-  .hs-flow-note { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .hs-flow-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 
   .spin { animation: hsSpin 0.8s linear infinite; }
 }

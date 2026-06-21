@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Bank, CreditCard, Handshake, CaretDown, PencilSimple } from '@phosphor-icons/react'
 import { trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanEndDate } from '../../lib/loans'
-import { formatCurrency } from '../../lib/format'
+import { formatCurrency, todayISO } from '../../lib/format'
 import type { MortgageTrack, Loan, TrackType } from '../../types'
 import type { MortgageSummary } from '../../hooks/useMortgageData'
 
@@ -47,7 +47,7 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
   }, 0)
 
   function trackBalance(t: MortgageTrack): number {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayISO()
     const sched = trackSchedule(t)
     const lastPaid = [...sched].reverse().find(r => r.date <= today)
     return lastPaid ? lastPaid.balance : t.principal

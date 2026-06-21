@@ -32,22 +32,10 @@
   .finv-summary-tile.out .finv-summary-tile-value { color: var(--danger-text); }
 
   /* NL capture */
-  .finv-capture { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 16px; }
-  .finv-capture-row { display: flex; align-items: center; gap: 10px; }
-  .finv-capture-icon { color: var(--accent); flex-shrink: 0; }
-  .finv-capture-input { flex: 1; border: none; background: transparent; outline: none; font-family: inherit; font-size: 15px; color: var(--text); }
-  .finv-capture-input::placeholder { color: var(--text-muted); }
-  .finv-capture-send { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--accent); color: #fff; cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), transform 0.1s var(--ease), opacity var(--t-fast); }
-  .finv-capture-send:hover { background: var(--accent-hover); }
-  .finv-capture-send:active { transform: scale(0.9); }
-  .finv-capture-send:disabled { opacity: 0.35; cursor: default; }
-  .finv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
-  .finv-chip { font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: var(--r-pill); display: inline-flex; align-items: center; gap: 5px; background: var(--bg-alt); color: var(--brand-navy); }
-  .finv-chip.amount { background: var(--brand-navy); color: #fff; }
-  .finv-chip.dir-income { background: var(--success-bg); color: var(--success-text); }
-  .finv-chip.dir-expense { background: var(--danger-bg); color: var(--danger-text); }
-  .finv-capture-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-  .finv-capture-structured { background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 0; }
+  /* Primary add-transaction button (replaces the free-text capture box) */
+  .finv-addbtn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-bottom: 16px; padding: 14px; border: none; border-radius: var(--r-md); background: var(--accent); color: #fff; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-sm); transition: background var(--t-fast), transform 0.1s var(--ease); }
+  .finv-addbtn:hover { background: var(--accent-hover); }
+  .finv-addbtn:active { transform: scale(0.99); }
 
   /* Annual bar chart */
   .finv-yearchart { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 18px 18px 14px; margin-bottom: 16px; }

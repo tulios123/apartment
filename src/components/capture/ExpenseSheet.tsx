@@ -193,7 +193,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
                   <X size={15} weight="bold" />
                 </button>
               )}
-              <input ref={receiptRef} type="file" accept="image/*,.pdf,.heic" capture="environment"
+              <input ref={receiptRef} type="file" accept="image/*,.pdf,.heic"
                 style={{ display: 'none' }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) setReceipt(f); e.target.value = '' }} />
             </div>
