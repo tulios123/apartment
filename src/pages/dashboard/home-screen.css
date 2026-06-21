@@ -82,6 +82,8 @@
   .hs-flow-name svg { color: var(--text-muted); }
   .hs-flow-amt { font-size: 14px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hs-flow-amt.muted { color: var(--text-muted); }
+  .hs-flow-amt.income { color: var(--success-text); }
+  .hs-flow-amt.out { direction: ltr; }
   .hs-flow-of { color: var(--text-muted); font-weight: 500; }
 
   .hs-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--r-pill); display: inline-flex; align-items: center; gap: 3px; }

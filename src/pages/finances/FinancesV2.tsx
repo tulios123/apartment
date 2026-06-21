@@ -10,7 +10,7 @@ import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES
 import { monthlyVirtualEntries } from '../../lib/projections'
 import type { VirtualEntry } from '../../lib/projections'
 import { supabase } from '../../lib/supabase'
-import { getReceiptSignedUrl } from '../../lib/storage'
+import { getReceiptSignedUrl, uploadDocument } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatCurrency, formatDate, todayISO } from '../../lib/format'
 import type { Transaction, Contract, MortgageTrack, Loan } from '../../types'
@@ -78,6 +78,9 @@ export default function FinancesV2() {
   const [formError, setFormError] = useState<string | null>(null)
   const [swipe, setSwipe] = useState<{ id: string; dx: number } | null>(null)
   const swipeStart = useRef<{ x: number; y: number; horiz: boolean } | null>(null)
+  const [editingDocId, setEditingDocId] = useState<string | null>(null)
+  const [receiptBusy, setReceiptBusy] = useState(false)
+  const receiptRef = useRef<HTMLInputElement>(null)
 
   // Open the form pre-filled when navigated here with a prefill (e.g. from a
   // completed repair/rent task). Clear the history state so it fires only once.
@@ -226,10 +229,40 @@ export default function FinancesV2() {
   const inPct = income + expense > 0 ? (income / (income + expense)) * 100 : 50
   const breakdown = view === 'month' ? monthBreakdown : view === 'year' ? yearBreakdown : rangeBreakdown
 
-  function openNew() { setForm(emptyForm); setEditingId(null); setFormError(null); setDrawerOpen(true) }
+  function openNew() { setForm(emptyForm); setEditingId(null); setEditingDocId(null); setFormError(null); setDrawerOpen(true) }
   function openEdit(t: Transaction) {
     setForm({ direction: t.direction, amount: String(t.amount), date: t.date, category: t.category, description: t.description ?? '', payment_method: t.payment_method ?? '' })
-    setEditingId(t.id); setFormError(null); setDrawerOpen(true)
+    setEditingId(t.id); setEditingDocId(t.document_id ?? null); setFormError(null); setDrawerOpen(true)
+  }
+
+  async function openDrawerReceipt() {
+    if (!editingDocId) return
+    const { data } = await supabase.from('documents').select('storage_path').eq('id', editingDocId).single()
+    if (data) window.open(await getReceiptSignedUrl(data.storage_path), '_blank')
+  }
+  async function attachReceipt(file: File) {
+    if (!editingId || !user) return
+    setReceiptBusy(true)
+    try {
+      const docId = crypto.randomUUID()
+      const path = await uploadDocument(file, docId)
+      await supabase.from('documents').insert({ id: docId, owner_id: user.id, property_id: null, contract_id: null, transaction_id: editingId, task_id: null, type: 'receipt', name: file.name, storage_path: path, date: form.date || null })
+      await updateTransaction(editingId, { document_id: docId })
+      setEditingDocId(docId); refetch()
+    } catch { /* upload failed — transaction untouched */ }
+    finally { setReceiptBusy(false) }
+  }
+  async function removeReceipt() {
+    if (!editingId || !editingDocId) return
+    setReceiptBusy(true)
+    try {
+      await updateTransaction(editingId, { document_id: null })
+      const { data } = await supabase.from('documents').select('storage_path').eq('id', editingDocId).single()
+      if (data) await supabase.storage.from('documents').remove([data.storage_path])
+      await supabase.from('documents').delete().eq('id', editingDocId)
+      setEditingDocId(null); refetch()
+    } catch { /* ignore */ }
+    finally { setReceiptBusy(false) }
   }
   function setDir(dir: Dir) { setForm(f => ({ ...f, direction: dir, category: dir === 'income' ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0] })) }
 
@@ -490,6 +523,20 @@ export default function FinancesV2() {
         <label className="finv-field"><span>קטגוריה</span><select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
         <label className="finv-field"><span>אמצעי תשלום</span><select value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>{PAYMENT_METHODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</select></label>
         <label className="finv-field"><span>תיאור</span><input type="text" placeholder="אופציונלי" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></label>
+        {editingId && (
+          <div className="finv-field">
+            <span>קבלה</span>
+            <input ref={receiptRef} type="file" accept="image/*,.pdf,.heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) attachReceipt(f); e.target.value = '' }} />
+            {editingDocId ? (
+              <div className="finv-receipt-row">
+                <button type="button" className="finv-receipt-open" onClick={openDrawerReceipt}><Receipt size={15} /> פתח קבלה</button>
+                <button type="button" className="finv-receipt-del" onClick={removeReceipt} disabled={receiptBusy} aria-label="הסר קבלה"><X size={15} /></button>
+              </div>
+            ) : (
+              <button type="button" className="finv-receipt-add" onClick={() => receiptRef.current?.click()} disabled={receiptBusy}>{receiptBusy ? 'מעלה…' : 'צרף קבלה'}</button>
+            )}
+          </div>
+        )}
         {formError && <div className="finv-form-err" role="alert">{formError}</div>}
         <button className="finv-save" disabled={saving} onClick={submitForm}>{saving ? 'שומר…' : 'שמירת תנועה'}</button>
       </aside>

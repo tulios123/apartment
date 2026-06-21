@@ -73,12 +73,6 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
             <div className="wlth-vehicle-bal"><b>{fmt(mortgageBalance)}</b><span>יתרה</span></div>
             <CaretDown className="wlth-vehicle-caret" size={16} weight="bold" />
           </button>
-          {/* Track-mix micro-bar */}
-          <div className="wlth-mix">
-            {tracks.map(t => (
-              <div key={t.id} className="seg" style={{ width: `${(t.principal / summary.totalPrincipal) * 100}%`, background: TRACK_COLOR[t.track_type] }} title={`${TRACK_LABEL[t.track_type]} · ${fmt(t.principal)}`} />
-            ))}
-          </div>
           {/* Payoff progress */}
           <div className="wlth-progress">
             <div className="wlth-progress-track"><div className="wlth-progress-fill" style={{ width: `${Math.min(100, Math.max(0, mortgagePaidPct))}%` }} /></div>

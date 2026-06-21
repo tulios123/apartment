@@ -222,7 +222,13 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         <div className="tav-drawer-head"><h2>עריכת משימה</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
         <label className="tav-field"><span>כותרת</span><input type="text" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} /></label>
         <label className="tav-field"><span>קטגוריה</span><select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}>{TASK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
-        <label className="tav-field"><span>תאריך יעד</span><input type="date" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))} /></label>
+        <div className="tav-field">
+          <span>תאריך יעד</span>
+          <div className="tav-daterow">
+            <input type="date" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))} />
+            {editForm.due_date && <button type="button" className="tav-dateclear" onClick={() => setEditForm(f => ({ ...f, due_date: '' }))} aria-label="הסר תאריך"><X size={16} /></button>}
+          </div>
+        </div>
         <div className="tav-field">
           <span>סטטוס</span>
           <div className="tav-seg">

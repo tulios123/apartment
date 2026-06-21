@@ -97,6 +97,12 @@
   .tav-save:active { transform: scale(0.98); }
   .tav-save:disabled { opacity: 0.5; cursor: default; }
 
+  /* Date row with clear button */
+  .tav-daterow { display: flex; align-items: center; gap: 8px; }
+  .tav-daterow input { flex: 1; }
+  .tav-dateclear { flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--bg-alt); color: var(--text-muted); cursor: pointer; display: grid; place-items: center; }
+  .tav-dateclear:hover { color: var(--danger-text); border-color: var(--danger-text); }
+
   /* Task attachments */
   .tav-doclist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
   .tav-docrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg-alt); border-radius: var(--r-sm); padding: 8px 10px; }

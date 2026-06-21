@@ -341,7 +341,7 @@ export default function HomeScreen() {
                       שכר דירה
                       {rentCleared && <span className="hs-chip ok"><Check size={11} weight="bold" /> התקבל</span>}
                     </span>
-                    <span className="hs-flow-amt">
+                    <span className="hs-flow-amt income">
                       {fmt(rentReceived)}<span className="hs-flow-of"> / {fmt(monthlyRent)}</span>
                     </span>
                   </div>
@@ -353,9 +353,9 @@ export default function HomeScreen() {
                   <div className="hs-flow-line-top">
                     <span className="hs-flow-name">
                       <Coins size={15} weight="duotone" /> תשלומים קבועים
-                      <span className="hs-chip auto">אוטומטי</span>
+                      <span className="hs-chip auto">אוטומטי · הוצאה</span>
                     </span>
-                    <span className="hs-flow-amt muted">{fmt(fixedExpenses)}</span>
+                    <span className="hs-flow-amt muted out">−{fmt(fixedExpenses)}</span>
                   </div>
                 </div>
 
@@ -366,14 +366,14 @@ export default function HomeScreen() {
                         הוצאות נוספות החודש
                         <CaretDown className={`hs-flow-caret${extraOpen ? ' open' : ''}`} size={13} weight="bold" />
                       </span>
-                      <span className="hs-flow-amt muted">{fmt(extraExpenses)}</span>
+                      <span className="hs-flow-amt muted out">−{fmt(extraExpenses)}</span>
                     </button>
                     {extraOpen && (
                       <div className="hs-flow-sublist">
                         {extraTxs.map(t => (
                           <div key={t.id} className="hs-flow-subrow">
                             <span className="hs-flow-subcat">{t.category}{t.description ? ` · ${t.description}` : ''}</span>
-                            <span className="hs-flow-subamt">{fmt(t.amount)}</span>
+                            <span className="hs-flow-subamt">−{fmt(t.amount)}</span>
                           </div>
                         ))}
                       </div>
