@@ -50,7 +50,7 @@ export function useTasks(filters: Filters = {}) {
 
   useEffect(() => { fetch() }, [fetch])
 
-  return { tasks, loading, error, syncError, refetch: fetch }
+  return { tasks, setTasks, loading, error, syncError, refetch: fetch }
 }
 
 async function getOwnerId(): Promise<string> {

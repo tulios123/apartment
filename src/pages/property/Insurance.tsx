@@ -57,13 +57,9 @@ function InsuranceForm({
     <form onSubmit={submit} className="form">
       <div className="form-row">
         <label>סוג ביטוח</label>
-        <div className="toggle-group">
-          {INSURANCE_TYPES.map(t => (
-            <button key={t} type="button"
-              className={`toggle-btn${form.type === t ? ' active' : ''}`}
-              onClick={() => set('type', t)}>{t}</button>
-          ))}
-        </div>
+        <select value={form.type} onChange={e => set('type', e.target.value)}>
+          {INSURANCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
       </div>
       <div className="form-row">
         <label>חברת ביטוח</label>

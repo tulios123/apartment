@@ -54,10 +54,10 @@ export default function PropertyAdminHub() {
     property.property_size_sqm != null ? `${property.property_size_sqm} מ״ר` : null,
   ].filter(Boolean) : []
 
-  // Complementary details (block/parcel, purchase, key delivery, notes).
+  // Complementary details (block/parcel, key delivery, notes). Purchase price now
+  // sits under the address as the headline value, so it's dropped from here.
   const extraParts = property ? [
     property.block_parcel || null,
-    property.purchase_price != null ? `רכישה: ${fmt(property.purchase_price)}` : null,
     property.purchase_date ? `חתימה: ${formatDate(property.purchase_date)}` : null,
     property.key_delivery_date ? `מסירה: ${formatDate(property.key_delivery_date)}` : null,
   ].filter(Boolean) : []
@@ -91,12 +91,12 @@ export default function PropertyAdminHub() {
           <div className="padm-binder">
             <div className="padm-binder-main">
               <div className="padm-binder-addr">{property?.address ?? 'עדיין לא הוגדר נכס'}</div>
+              {propertyValue > 0 && <div className="padm-binder-value">{fmt(propertyValue)}</div>}
               {subParts.length > 0 && <div className="padm-binder-sub">{subParts.join(' · ')}</div>}
               {extraParts.length > 0 && <div className="padm-binder-extra">{extraParts.join(' · ')}</div>}
               {property?.notes && <div className="padm-binder-notes">{property.notes}</div>}
             </div>
             <div className="padm-binder-side">
-              {propertyValue > 0 && <div className="padm-binder-value">{fmt(propertyValue)}</div>}
               {activeTenant && (
                 <div className="padm-binder-tenant"><UserCircle size={15} weight="duotone" /> {activeTenant} · חוזה פעיל</div>
               )}

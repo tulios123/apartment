@@ -31,7 +31,7 @@ function isOverdue(t: Task) {
 export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { tasks, loading, error, refetch } = useTasks({ status: 'all' })
+  const { tasks, setTasks, loading, error, refetch } = useTasks({ status: 'all' })
   const { documents, refetch: refetchDocs } = useDocuments()
 
   const [editing, setEditing] = useState<Task | null>(null)
@@ -115,8 +115,12 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
   async function toggleDone(t: Task) {
     const newStatus = t.status === 'done' ? 'open' : 'done'
-    await updateTask(t.id, { status: newStatus })
-    refetch()
+    // Optimistic: flip locally first so the tap feels instant; persist in the
+    // background and only reload if the write fails.
+    setTasks(prev => prev.map(x => x.id === t.id
+      ? { ...x, status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null }
+      : x))
+    updateTask(t.id, { status: newStatus }).then(r => { if (r.error) refetch() })
     if (newStatus === 'done' && t.category === REPAIR_CATEGORY) {
       if (confirm('המשימה הושלמה. להזין הוצאת תיקון עבור משימה זו?')) {
         navigate('/finances', { state: { prefill: { direction: 'expense', category: 'תיקונים', description: t.title } } })
@@ -140,12 +144,6 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         <>
           {/* ── Open backlog ─────────────────────────────────────── */}
           <section className="tav-section">
-            <div className="tav-section-head">
-              <span className="tav-bucket-dot accent" />
-              <h2>משימות פתוחות</h2>
-              {backlog.length > 0 && <span className="tav-bucket-count">{backlog.length}</span>}
-            </div>
-
             <form className="tav-quickadd" onSubmit={handleAdd}>
               <Plus size={18} className="tav-quickadd-icon" />
               <input
@@ -155,6 +153,12 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
                 onChange={e => setAddingTitle(e.target.value)}
               />
             </form>
+
+            <div className="tav-section-head">
+              <span className="tav-bucket-dot accent" />
+              <h2>משימות פתוחות</h2>
+              {backlog.length > 0 && <span className="tav-bucket-count">{backlog.length}</span>}
+            </div>
 
             {backlog.length === 0 ? (
               <div className="tav-empty"><Check size={28} weight="bold" /><p>אין משימות פתוחות — הכול תחת שליטה</p></div>

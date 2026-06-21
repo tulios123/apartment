@@ -69,6 +69,13 @@ export default function DevNotes() {
     })
   }
 
+  function goTo(path: string) {
+    history.pushState({}, '', path)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    setPathname(path)
+    setOpen(false)
+  }
+
   const current = notes[pathname] ?? ''
   const others = Object.entries(notes).filter(([k, v]) => k !== pathname && v.trim())
   const totalScreens = Object.values(notes).filter(v => v.trim()).length
@@ -204,18 +211,21 @@ export default function DevNotes() {
                   paddingTop: 4,
                 }}>
                   {others.map(([k, v]) => (
-                    <div key={k} style={{
+                    <button key={k} onClick={() => goTo(k)} title="עבור למסך זה" style={{
+                      textAlign: 'right',
+                      font: 'inherit',
+                      cursor: 'pointer',
                       background: 'var(--surface-alt, var(--bg))',
                       border: '1px solid var(--border)',
                       borderRadius: 6,
                       padding: '8px 10px',
                     }}>
-                      <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-muted)' }}>
-                        {screenLabel(k)}
+                      <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--accent)' }}>
+                        {screenLabel(k)} ↗
                         <span style={{ fontWeight: 400, marginRight: 4, opacity: 0.6, fontFamily: 'monospace' }}>{k}</span>
                       </div>
                       <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text)' }}>{v}</div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </details>
