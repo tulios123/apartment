@@ -197,11 +197,14 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
               })}
               {balloonLoans.map(l => (
                 <div key={l.id} className="liav-balloon">
-                  <div className="liav-balloon-icon"><Scales size={20} weight="duotone" /></div>
-                  <div className="liav-balloon-main"><div className="liav-balloon-title">{l.label || 'הלוואת בלון'}{l.lender ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {l.lender}</span> : null}</div><div className="liav-balloon-note">בלון · נפרע במכירת הנכס · ללא תשלום חודשי</div></div>
-                  <div className="liav-balloon-amount">{fmt(l.principal)}</div>
-                  <button className="liav-detail-btn" style={{ marginRight: 8 }} onClick={() => editLoan(l)}><PencilSimple size={14} /></button>
-                  <button className="liav-detail-btn danger" onClick={() => removeLoan(l.id)}><Trash size={14} /></button>
+                  <div className="liav-balloon-top">
+                    <div className="liav-balloon-icon"><Scales size={20} weight="duotone" /></div>
+                    <div className="liav-balloon-main"><div className="liav-balloon-title">{l.label || 'הלוואת בלון'}{l.lender ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {l.lender}</span> : null}</div></div>
+                    <div className="liav-balloon-amount">{fmt(l.principal)}</div>
+                    <button className="liav-detail-btn" style={{ marginRight: 8 }} onClick={() => editLoan(l)}><PencilSimple size={14} /></button>
+                    <button className="liav-detail-btn danger" onClick={() => removeLoan(l.id)}><Trash size={14} /></button>
+                  </div>
+                  <div className="liav-balloon-note">בלון · נפרע במכירת הנכס · ללא תשלום חודשי</div>
                 </div>
               ))}
             </section>
