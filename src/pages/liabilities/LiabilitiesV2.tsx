@@ -30,6 +30,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const [kind, setKind] = useState<'mortgage' | 'loan'>('mortgage')
   const [editId, setEditId] = useState<string | null>(null)
   const [tForm, setTForm] = useState(emptyTrack)
+  const [graceOn, setGraceOn] = useState(false)
   const [lForm, setLForm] = useState(emptyLoan)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -54,11 +55,12 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     return { balance, interestPaid, interestLeft, endYear, pay, paidPct }
   }
 
-  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setFormError(null); setDrawerOpen(true) }
+  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
   function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setFormError(null); setDrawerOpen(true) }
   function editTrack(t: MortgageTrack) {
     setKind('mortgage'); setEditId(t.id); setFormError(null)
     setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
+    setGraceOn((t.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }
   function editLoan(l: Loan) {
@@ -78,7 +80,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           id: editId ?? undefined, mortgage_id: mortgageId, owner_id: user.id,
           label: tForm.label || null, track_type: tForm.track_type,
           principal: Number(tForm.principal), annual_rate: Number(tForm.annual_rate || 0),
-          term_months: Number(tForm.term_months || 0), grace_months: Number(tForm.grace_months || 0), start_date: tForm.start_date,
+          term_months: Number(tForm.term_months || 0), grace_months: graceOn ? Number(tForm.grace_months || 0) : 0, start_date: tForm.start_date,
         })
         refetchM()
       } else {
@@ -221,12 +223,12 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
             </div>
             <div className="liav-row2">
               <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={tForm.term_months} onChange={e => setTForm(f => ({ ...f, term_months: e.target.value }))} /></label>
-              {Number(tForm.grace_months) > 0
+              {graceOn
                 ? <label className="liav-field"><span>גרייס (חודשים)</span><input type="number" min="0" value={tForm.grace_months} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
                 : <div className="liav-field" />}
             </div>
             <label className="liav-grace-toggle">
-              <input type="checkbox" checked={Number(tForm.grace_months) > 0} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.checked ? '1' : '0' }))} />
+              <input type="checkbox" checked={graceOn} onChange={e => { setGraceOn(e.target.checked); if (e.target.checked && !Number(tForm.grace_months)) setTForm(f => ({ ...f, grace_months: '1' })) }} />
               <span>תקופת גרייס</span>
             </label>
             <label className="liav-field"><span>תאריך התחלה</span><input type="date" value={tForm.start_date} onChange={e => setTForm(f => ({ ...f, start_date: e.target.value }))} /></label>
