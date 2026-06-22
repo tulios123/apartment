@@ -18,7 +18,7 @@ const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => d ? new Date(d).getFullYear() : null
 
 const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '', annual_rate: '', term_months: '', grace_months: '0', start_date: new Date().toISOString().slice(0, 10) }
-const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, label: '', lender: '', principal: '', annual_rate: '', term_months: '', start_date: new Date().toISOString().slice(0, 10) }
+const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', term_months: '', grace_months: '0', start_date: new Date().toISOString().slice(0, 10) }
 
 export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth()
@@ -56,7 +56,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   }
 
   function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
-  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setFormError(null); setDrawerOpen(true) }
+  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
   function editTrack(t: MortgageTrack) {
     setKind('mortgage'); setEditId(t.id); setFormError(null)
     setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
@@ -65,7 +65,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   }
   function editLoan(l: Loan) {
     setKind('loan'); setEditId(l.id); setFormError(null)
-    setLForm({ repayment_type: l.repayment_type, label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', term_months: l.term_months != null ? String(l.term_months) : '', start_date: l.start_date ?? new Date().toISOString().slice(0, 10) })
+    setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? new Date().toISOString().slice(0, 10) })
+    setGraceOn((l.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }
 
@@ -85,12 +86,14 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         refetchM()
       } else {
         if (!lForm.principal || Number(lForm.principal) <= 0) throw new Error('יש להזין קרן תקינה')
+        const isMonthly = lForm.repayment_type === 'monthly_fixed'
         await upsertLoan({
           id: editId ?? undefined, owner_id: user.id, label: lForm.label || null, lender: lForm.lender || null,
-          repayment_type: lForm.repayment_type, principal: Number(lForm.principal),
-          annual_rate: lForm.repayment_type === 'monthly_fixed' ? Number(lForm.annual_rate || 0) : null,
-          term_months: lForm.repayment_type === 'monthly_fixed' ? Number(lForm.term_months || 0) : null,
-          grace_months: 0, start_date: lForm.start_date,
+          repayment_type: lForm.repayment_type, track_type: isMonthly ? lForm.track_type : null,
+          principal: Number(lForm.principal),
+          annual_rate: isMonthly ? Number(lForm.annual_rate || 0) : null,
+          term_months: isMonthly ? Number(lForm.term_months || 0) : null,
+          grace_months: isMonthly && graceOn ? Number(lForm.grace_months || 0) : 0, start_date: lForm.start_date,
         })
         refetchL()
       }
@@ -173,7 +176,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 return (
                   <div key={l.id} className={`liav-card${isOpen ? ' open' : ''}`}>
                     <button className="liav-card-head" onClick={() => setOpen(isOpen ? null : l.id)}>
-                      <span className="liav-badge teal">שפיצר</span>
+                      <span className={`liav-badge ${l.track_type ? TRACK_COLOR[l.track_type] : 'teal'}`}>{l.track_type ? TRACK_LABEL[l.track_type] : 'שפיצר'}</span>
                       <div className="liav-card-main"><div className="liav-card-title">{l.label || 'הלוואה'}</div><div className="liav-card-sub">{[l.lender, `${fmt(loanMonthlyPayment(l))} לחודש`, l.annual_rate != null ? `${l.annual_rate.toFixed(1)}%` : null].filter(Boolean).join(' · ')}</div></div>
                       <div className="liav-card-balance"><b>{fmt(bal)}</b><span>יתרה</span></div>
                       <CaretDown className="liav-card-caret" size={16} weight="bold" />
@@ -237,15 +240,30 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         ) : (
           <>
             <label className="liav-field"><span>סוג החזר</span><select value={lForm.repayment_type} onChange={e => setLForm(f => ({ ...f, repayment_type: e.target.value as LoanRepaymentType }))}><option value="monthly_fixed">שפיצר (חודשי קבוע)</option><option value="balloon">בלון (נפרע במכירה)</option></select></label>
+            {lForm.repayment_type === 'monthly_fixed' && (
+              <label className="liav-field"><span>סוג מסלול</span><select value={lForm.track_type} onChange={e => setLForm(f => ({ ...f, track_type: e.target.value as TrackType }))}>{MORTGAGE_TRACK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
+            )}
             <div className="liav-row2">
               <label className="liav-field"><span>קרן ₪</span><input type="number" value={lForm.principal} onChange={e => setLForm(f => ({ ...f, principal: e.target.value }))} autoFocus={drawerOpen} /></label>
               <label className="liav-field"><span>מלווה</span><input type="text" value={lForm.lender} onChange={e => setLForm(f => ({ ...f, lender: e.target.value }))} /></label>
             </div>
             {lForm.repayment_type === 'monthly_fixed' && (
-              <div className="liav-row2">
-                <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={lForm.annual_rate} onChange={e => setLForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>
-                <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={lForm.term_months} onChange={e => setLForm(f => ({ ...f, term_months: e.target.value }))} /></label>
-              </div>
+              <>
+                <div className="liav-row2">
+                  <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={lForm.annual_rate} onChange={e => setLForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>
+                  <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={lForm.term_months} onChange={e => setLForm(f => ({ ...f, term_months: e.target.value }))} /></label>
+                </div>
+                <div className="liav-row2">
+                  {graceOn
+                    ? <label className="liav-field"><span>גרייס (חודשים)</span><input type="number" min="0" value={lForm.grace_months} onChange={e => setLForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
+                    : <div className="liav-field" />}
+                  <div className="liav-field" />
+                </div>
+                <label className="liav-grace-toggle">
+                  <input type="checkbox" checked={graceOn} onChange={e => { setGraceOn(e.target.checked); if (e.target.checked && !Number(lForm.grace_months)) setLForm(f => ({ ...f, grace_months: '1' })) }} />
+                  <span>תקופת גרייס</span>
+                </label>
+              </>
             )}
             <label className="liav-field"><span>תאריך התחלה</span><input type="date" value={lForm.start_date} onChange={e => setLForm(f => ({ ...f, start_date: e.target.value }))} /></label>
             <label className="liav-field"><span>תווית (אופציונלי)</span><input type="text" value={lForm.label} onChange={e => setLForm(f => ({ ...f, label: e.target.value }))} /></label>

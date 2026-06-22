@@ -151,6 +151,7 @@ export interface Loan {
   label: string | null
   lender: string | null
   repayment_type: LoanRepaymentType
+  track_type: TrackType | null     // monthly_fixed only — interest type, like a mortgage track
   principal: number
   annual_rate: number | null       // monthly_fixed only — drives Shpitzer schedule
   term_months: number | null       // monthly_fixed only

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { loanBalance, loanInterestToDate, loanMonthlyPayment } from '../lib/loans'
-import type { Loan, LoanRepaymentType } from '../types'
+import type { Loan, LoanRepaymentType, TrackType } from '../types'
 
 export interface LoansSummary {
   /** Outstanding balance across monthly_fixed loans (Shpitzer). */
@@ -72,6 +72,7 @@ export async function upsertLoan(data: {
   label: string | null
   lender: string | null
   repayment_type: LoanRepaymentType
+  track_type?: TrackType | null
   principal: number
   annual_rate?: number | null
   term_months?: number | null
@@ -83,6 +84,7 @@ export async function upsertLoan(data: {
     label: data.label,
     lender: data.lender,
     repayment_type: data.repayment_type,
+    track_type: data.track_type ?? null,
     principal: data.principal,
     annual_rate: data.annual_rate ?? null,
     term_months: data.term_months ?? null,

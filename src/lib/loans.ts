@@ -35,16 +35,23 @@ function loanSchedule(loan: Loan): LoanRow[] {
   const principal = loan.principal
   const rate = loan.annual_rate ?? 0
   const term = loan.term_months ?? 0
+  const grace = loan.grace_months ?? 0
   const start = loan.start_date
   if (principal <= 0 || term <= 0 || !start) return []
   const r = rate / 100 / 12
-  const pay = monthlyPayment(principal, rate, term)
+  // Post-grace Shpitzer payment (amortizes the full principal over the remaining term).
+  const pay = monthlyPayment(principal, rate, term, grace)
   const rows: LoanRow[] = []
   let balance = principal
   for (let i = 1; i <= term; i++) {
     const interest = r === 0 ? 0 : balance * r
-    let prin = pay - interest
-    if (i === term) prin = balance // absorb rounding drift
+    let prin: number
+    if (i <= grace) {
+      prin = 0 // grace: interest-only, no principal repayment
+    } else {
+      prin = pay - interest
+      if (i === term) prin = balance // absorb rounding drift
+    }
     balance = Math.max(0, balance - prin)
     rows.push({ date: addMonths(start, i), interest, principal: prin, balance })
   }
@@ -72,7 +79,7 @@ export function loanBalance(loan: Loan, asOf: Date = new Date()): number {
 /** Derived (never shown) Shpitzer monthly payment; 0 for balloon. */
 export function loanMonthlyPayment(loan: Loan): number {
   if (loan.repayment_type !== 'monthly_fixed') return 0
-  return monthlyPayment(loan.principal, loan.annual_rate ?? 0, loan.term_months ?? 0)
+  return monthlyPayment(loan.principal, loan.annual_rate ?? 0, loan.term_months ?? 0, loan.grace_months ?? 0)
 }
 
 /**
