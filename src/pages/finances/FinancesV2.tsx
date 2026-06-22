@@ -545,12 +545,16 @@ export default function FinancesV2() {
 // delete panel (left edge), drag left reveals edit (right edge). Past half the
 // panel width it snaps open; tap the colored button to act, tap the row to close.
 function SwipeRow({ onEdit, onDelete, children }: { onEdit: () => void; onDelete: () => void; children: ReactNode }) {
-  const W = 88
+  const REVEAL = 84   // resting open width once snapped (icon + label visible)
+  const ref = useRef<HTMLDivElement>(null)
   const [dx, setDx] = useState(0)
   const start = useRef<{ x: number; y: number; base: number; horiz: boolean } | null>(null)
-  const dragging = useRef(false)
+  // Past this fraction of the row width the gesture "arms" and fires on release,
+  // and the colored panel fills the whole row — the Apple Music full-swipe.
+  const commitPx = () => Math.min(180, (ref.current?.offsetWidth ?? 320) * 0.55)
+  const maxPx = () => (ref.current?.offsetWidth ?? 320) - 24
 
-  function onStart(e: ReactTouchEvent) { start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, base: dx, horiz: false }; dragging.current = false }
+  function onStart(e: ReactTouchEvent) { start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, base: dx, horiz: false } }
   function onMove(e: ReactTouchEvent) {
     const s = start.current
     if (!s) return
@@ -561,27 +565,34 @@ function SwipeRow({ onEdit, onDelete, children }: { onEdit: () => void; onDelete
       else if (Math.abs(my) > 8) { start.current = null; return }
       else return
     }
-    dragging.current = true
-    setDx(Math.max(-W, Math.min(W, s.base + mx)))
+    const m = maxPx()
+    setDx(Math.max(-m, Math.min(m, s.base + mx)))
   }
   function onEnd() {
     const s = start.current
     start.current = null
     if (!s) return
-    setDx(d => (d > W / 2 ? W : d < -W / 2 ? -W : 0))
+    const c = commitPx()
+    if (dx >= c) { setDx(0); onDelete() }
+    else if (dx <= -c) { setDx(0); onEdit() }
+    else setDx(d => (d >= REVEAL ? REVEAL : d <= -REVEAL ? -REVEAL : 0))
   }
 
+  const armedDel = dx >= commitPx()
+  const armedEdit = dx <= -commitPx()
+
   return (
-    <div className="finv-swipe">
-      <button type="button" className="finv-swipe-action del" style={{ width: W }} tabIndex={-1} onClick={() => { setDx(0); onDelete() }}>
-        <Trash size={18} weight="bold" /> מחק
+    <div className="finv-swipe" ref={ref}>
+      {/* panels grow with the drag, flush to the edge, like Apple Music */}
+      <button type="button" className={`finv-swipe-action del${armedDel ? ' armed' : ''}`} style={{ width: Math.max(0, dx) }} tabIndex={-1} onClick={() => { setDx(0); onDelete() }}>
+        <span className="finv-swipe-ico"><Trash size={20} weight="bold" /> מחק</span>
       </button>
-      <button type="button" className="finv-swipe-action edit" style={{ width: W }} tabIndex={-1} onClick={() => { setDx(0); onEdit() }}>
-        <PencilSimple size={18} weight="bold" /> עריכה
+      <button type="button" className={`finv-swipe-action edit${armedEdit ? ' armed' : ''}`} style={{ width: Math.max(0, -dx) }} tabIndex={-1} onClick={() => { setDx(0); onEdit() }}>
+        <span className="finv-swipe-ico"><PencilSimple size={20} weight="bold" /> עריכה</span>
       </button>
       <div
         className="finv-swipe-fg"
-        style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: start.current ? 'none' : 'transform 0.22s var(--ease)' }}
+        style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: start.current ? 'none' : 'transform 0.26s cubic-bezier(0.22,1,0.36,1)' }}
         onTouchStart={onStart}
         onTouchMove={onMove}
         onTouchEnd={onEnd}
