@@ -202,15 +202,14 @@ export default function HomeScreen() {
     // AI "magic" path: classify + write inline, never leave the dashboard.
     const text = quick
     setQuick('')
-    // Only treat income as rent when the text actually mentions it; otherwise it's
-    // a one-off income that should surface in the "הכנסות נוספות" flow line.
-    const isRent = /שכ[ "ר]|שכירות|שכ״ד|דייר/.test(text)
+    // Quick-typed income is always treated as one-off "extra income" — rent has its
+    // own dedicated flow (the "שכר הדירה התקבל" action), so it never touches the rent line.
     const { error } = await createTransaction({
-      contract_id: parsed.income && isRent ? (activeContractId ?? null) : null,
+      contract_id: null,
       recurring_item_id: null, document_id: null,
       direction: parsed.income ? 'income' : 'expense',
       amount: parsed.amount, date: todayStr,
-      category: parsed.income ? (isRent ? 'שכר דירה' : 'אחר') : 'אחר',
+      category: 'אחר',
       description: parsed.desc, payment_method: null,
     })
     if (error) { setQuick(text); showFlash('לא הצלחנו לרשום, נסה שוב'); return }
