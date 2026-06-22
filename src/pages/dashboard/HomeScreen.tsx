@@ -202,12 +202,15 @@ export default function HomeScreen() {
     // AI "magic" path: classify + write inline, never leave the dashboard.
     const text = quick
     setQuick('')
+    // Only treat income as rent when the text actually mentions it; otherwise it's
+    // a one-off income that should surface in the "הכנסות נוספות" flow line.
+    const isRent = /שכ[ "ר]|שכירות|שכ״ד|דייר/.test(text)
     const { error } = await createTransaction({
-      contract_id: parsed.income ? (activeContractId ?? null) : null,
+      contract_id: parsed.income && isRent ? (activeContractId ?? null) : null,
       recurring_item_id: null, document_id: null,
       direction: parsed.income ? 'income' : 'expense',
       amount: parsed.amount, date: todayStr,
-      category: parsed.income ? 'שכר דירה' : 'אחר',
+      category: parsed.income ? (isRent ? 'שכר דירה' : 'אחר') : 'אחר',
       description: parsed.desc, payment_method: null,
     })
     if (error) { setQuick(text); showFlash('לא הצלחנו לרשום, נסה שוב'); return }
@@ -354,6 +357,17 @@ export default function HomeScreen() {
                   <div className="hs-track"><div className={`hs-track-fill${rentCleared ? ' ok' : ''}`} style={{ width: `${rentPct}%` }} /></div>
                 </div>
 
+                {/* Fixed expenses — neutral, tagged automatic, never red */}
+                <div className="hs-flow-line">
+                  <div className="hs-flow-line-top">
+                    <span className="hs-flow-name">
+                      <Coins size={15} weight="duotone" /> תשלומים קבועים
+                      <span className="hs-chip auto">אוטומטי · הוצאה</span>
+                    </span>
+                    <span className="hs-flow-amt muted out">−{fmt(fixedExpenses)}</span>
+                  </div>
+                </div>
+
                 {extraIncome > 0 && (
                   <div className="hs-flow-line">
                     <button className="hs-flow-line-top hs-flow-expand" onClick={() => setIncomeOpen(o => !o)} aria-expanded={incomeOpen}>
@@ -375,17 +389,6 @@ export default function HomeScreen() {
                     )}
                   </div>
                 )}
-
-                {/* Fixed expenses — neutral, tagged automatic, never red */}
-                <div className="hs-flow-line">
-                  <div className="hs-flow-line-top">
-                    <span className="hs-flow-name">
-                      <Coins size={15} weight="duotone" /> תשלומים קבועים
-                      <span className="hs-chip auto">אוטומטי · הוצאה</span>
-                    </span>
-                    <span className="hs-flow-amt muted out">−{fmt(fixedExpenses)}</span>
-                  </div>
-                </div>
 
                 {extraExpenses > 0 && (
                   <div className="hs-flow-line">
