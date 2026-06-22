@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { FileText, ShieldCheck, CheckSquare, FolderOpen, UserCircle, PencilSimple } from '@phosphor-icons/react'
-import { PropertyForm } from './Details'
+import { PropertyForm } from './PropertyForm'
 import { Modal } from '../../components/ui/Modal'
 import Rental from './Rental'
 import Insurance from './Insurance'
