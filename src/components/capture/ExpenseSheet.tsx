@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../../lib/constants'
 import { predictCategory } from '../../lib/quickParse'
 import { formatDate } from '../../lib/format'
+import { tap } from '../../lib/haptics'
 import './capture.css'
 
 type Props = {
@@ -20,6 +21,17 @@ type Props = {
 
 // RTL grid → bottom row reads: [⌫ right] [0 mid] [. left]
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0', '.'] as const
+
+// Up to 9 integer digits — keeps the 40px hero from overflowing the sheet width.
+const MAX_INT_DIGITS = 9
+
+// Group the integer part for the live hero ("1234567" → "1,234,567") while keeping any
+// trailing dot / partial decimals intact so it reads naturally mid-typing.
+function groupAmount(s: string): string {
+  const [int, dec] = s.split('.')
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return dec !== undefined ? `${grouped}.${dec}` : grouped
+}
 
 function isoOffset(days: number): string {
   const d = new Date()
@@ -38,6 +50,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const [payMethod, setPayMethod] = useState('')
   const [date, setDate] = useState(isoOffset(0))
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
+  const [err, setErr] = useState<string | null>(null)
   const [receipt, setReceipt] = useState<File | null>(null)
 
   const [calOpen, setCalOpen] = useState(false)
@@ -45,6 +58,8 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const receiptRef = useRef<HTMLInputElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const [trackH, setTrackH] = useState<number>()
+  const backTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const backCleared = useRef(false)
 
   const today = isoOffset(0)
   const yesterday = isoOffset(1)
@@ -60,6 +75,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
       setPayMethod('')
       setDate(today)
       setState('idle')
+      setErr(null)
       setReceipt(null)
     }
   }, [open, initialDesc, initialAmount, today])
@@ -70,10 +86,12 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   }, [desc, touchedCat])
 
   // Fix the sheet height to the TALLEST step so the slide never changes height.
+  // Measure only on open / step change — neither step's height changes while typing,
+  // so depending on amount/desc would force a synchronous reflow on every keystroke.
   useLayoutEffect(() => {
     const h = stepRefs.current.reduce((m, el) => Math.max(m, el?.scrollHeight ?? 0), 0)
     if (h) setTrackH(h)
-  }, [amount, desc, category, open])
+  }, [open, step])
 
   // Focus the description input only after the slide settles → no keyboard/layout thrash.
   useEffect(() => {
@@ -83,11 +101,32 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   }, [step])
 
   function press(k: string) {
-    if (k === 'back') { setAmount(a => a.slice(0, -1)); return }
-    if (k === '.' && amount.includes('.')) return
-    if (k === '.' && amount === '') { setAmount('0.'); return }
-    if (amount.includes('.') && amount.split('.')[1]?.length >= 2) return
-    setAmount(a => (a === '0' && k !== '.' ? k : a + k))
+    if (err) setErr(null)
+    tap()
+    if (k === 'back') {
+      // A long-press already cleared the field — swallow the trailing click.
+      if (backCleared.current) { backCleared.current = false; return }
+      setAmount(a => a.slice(0, -1)); return
+    }
+    if (k === '.') {
+      if (amount.includes('.')) return
+      setAmount(a => (a === '' ? '0.' : a + '.')); return
+    }
+    // digit: max 2 decimals, and cap the integer part so the hero never overflows.
+    if (amount.includes('.')) {
+      if (amount.split('.')[1]?.length >= 2) return
+    } else if (amount !== '0' && amount.length >= MAX_INT_DIGITS) {
+      return
+    }
+    setAmount(a => (a === '0' ? k : a + k))
+  }
+
+  // Long-press backspace = clear the whole amount (works on every platform).
+  function backHoldStart() {
+    backTimer.current = setTimeout(() => { backCleared.current = true; setAmount(''); tap(18) }, 450)
+  }
+  function backHoldEnd() {
+    if (backTimer.current) { clearTimeout(backTimer.current); backTimer.current = null }
   }
 
   const numeric = Number(amount)
@@ -96,13 +135,14 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
   async function save() {
     if (numeric <= 0 || state !== 'idle') return
+    setErr(null)
     setState('saving')
     const { data: tx, error } = await createTransaction({
       contract_id: null, recurring_item_id: null, document_id: null,
       direction: 'expense', amount: numeric, date,
       category, description: desc.trim() || null, payment_method: payMethod || null,
     })
-    if (error) { setState('idle'); return }
+    if (error) { setState('idle'); setErr('לא הצלחנו לשמור — נסו שוב'); return }
 
     // Attach the receipt (non-fatal): upload, create a document row, link it.
     if (receipt && tx) {
@@ -120,6 +160,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
     }
 
     setState('done')
+    tap(18)
     onDone(`נרשמה הוצאה · ₪${numeric.toLocaleString()}${desc.trim() ? ` · ${desc.trim()}` : ''}`)
     setTimeout(onClose, 480)
   }
@@ -133,11 +174,20 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
           <div className="cap-step" dir="rtl" ref={el => { stepRefs.current[0] = el }} aria-hidden={step !== 1}>
             <div className="cap-amount">
               <span className="cap-amount-cur">₪</span>
-              <span className={`cap-amount-val${amount ? '' : ' ph'}`}>{amount || '0'}</span>
+              <span className={`cap-amount-val${amount ? '' : ' ph'}`}>{amount ? groupAmount(amount) : '0'}</span>
             </div>
             <div className="numpad">
               {KEYS.map(k => (
-                <button key={k} className={`numkey${k === 'back' ? ' fn' : ''}`} onClick={() => press(k)}>
+                <button
+                  key={k}
+                  className={`numkey${k === 'back' ? ' fn' : ''}`}
+                  onClick={() => press(k)}
+                  {...(k === 'back' ? {
+                    onPointerDown: backHoldStart,
+                    onPointerUp: backHoldEnd,
+                    onPointerLeave: backHoldEnd,
+                  } : {})}
+                >
                   {k === 'back' ? <Backspace size={22} /> : k}
                 </button>
               ))}
@@ -156,7 +206,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
               ref={descRef}
               className="cap-desc"
               value={desc}
-              onChange={e => setDesc(e.target.value)}
+              onChange={e => { if (err) setErr(null); setDesc(e.target.value) }}
               onKeyDown={e => { if (e.key === 'Enter') save() }}
               placeholder="על מה? (למשל: תיקון ברז)"
             />
@@ -181,6 +231,12 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
               ))}
             </div>
 
+            <span className="cap-fieldlabel">תאריך</span>
+            <div className="cap-chips">
+              <button type="button" className={`cap-chip${date === today ? ' on' : ''}`} onClick={() => { tap(); setDate(today) }}>היום</button>
+              <button type="button" className={`cap-chip${date === yesterday ? ' on' : ''}`} onClick={() => { tap(); setDate(yesterday) }}>אתמול</button>
+            </div>
+
             <div className="cap-row-chips">
               <button type="button" className="cap-datechip" onClick={() => setCalOpen(true)}>
                 <CalendarBlank size={18} weight="duotone" /> {dateLabel}
@@ -197,6 +253,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
                 style={{ display: 'none' }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) setReceipt(f); e.target.value = '' }} />
             </div>
+            {err && <p className="cap-error" role="alert">{err}</p>}
             <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={state !== 'idle'} onClick={save}>
               {state === 'saving' ? <CircleNotch className="spin" size={20} weight="bold" />
                 : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>

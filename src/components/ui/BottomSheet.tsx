@@ -20,6 +20,7 @@ export default function BottomSheet({ open, onClose, title, children }: Props) {
   const [mounted, setMounted] = useState(open)
   const [minimized, setMinimized] = useState(false)
   const [dragY, setDragY] = useState(0)
+  const [kbInset, setKbInset] = useState(0)
   const startY = useRef<number | null>(null)
 
   useEffect(() => {
@@ -46,6 +47,20 @@ export default function BottomSheet({ open, onClose, title, children }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // Lift the sheet above the soft keyboard. On iOS the keyboard overlays a
+  // bottom-anchored fixed element (it doesn't reflow the layout viewport), so a
+  // focused input would otherwise hide the primary action. visualViewport tells
+  // us the occluded height; we pad the sheet bottom by it. No-op where unsupported.
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!open || minimized || !vv) { setKbInset(0); return }
+    const update = () => setKbInset(Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)))
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
+  }, [open, minimized])
+
   if (!mounted) return null
 
   function onTouchStart(e: React.TouchEvent) { startY.current = e.touches[0].clientY }
@@ -64,14 +79,20 @@ export default function BottomSheet({ open, onClose, title, children }: Props) {
   }
 
   // While dragging, follow the finger; otherwise let CSS classes drive the transform.
-  const dragStyle = dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined
+  // Layer the keyboard inset on top so a focused input never hides the action button.
+  const sheetStyle: React.CSSProperties | undefined = minimized
+    ? undefined
+    : {
+        ...(dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : null),
+        ...(kbInset > 0 ? { paddingBottom: kbInset + 16 } : null),
+      }
 
   return createPortal(
     <div className={`bsheet-root${open ? ' open' : ''}${minimized ? ' minimized' : ''}`}>
       <div className="bsheet-scrim" onClick={onClose} />
       <div
         className="bsheet"
-        style={minimized ? undefined : dragStyle}
+        style={sheetStyle}
         role="dialog"
         aria-modal="true"
         aria-label={title}
