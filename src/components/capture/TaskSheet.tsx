@@ -4,6 +4,7 @@ import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { createTask } from '../../hooks/useTasks'
 import { formatDate } from '../../lib/format'
+import { tap } from '../../lib/haptics'
 import './capture.css'
 
 type Props = {
@@ -17,15 +18,17 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
   const [due, setDue] = useState('')
   const [calOpen, setCalOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
+  const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
-    if (open) { setTitle(''); setDue(''); setCalOpen(false); setState('idle') }
+    if (open) { setTitle(''); setDue(''); setCalOpen(false); setState('idle'); setErr(null) }
   }, [open])
 
   const canSave = title.trim().length > 0 && state === 'idle'
 
   async function save() {
     if (!canSave) return
+    setErr(null)
     setState('saving')
     const { error } = await createTask({
       property_id: null, recurring_item_id: null, transaction_id: null,
@@ -33,8 +36,9 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
       category: 'כללי', status: 'open', source: 'manual',
       is_recurring: false, recurrence_days: null,
     })
-    if (error) { setState('idle'); return }
+    if (error) { setState('idle'); setErr('לא הצלחנו לשמור — נסו שוב'); return }
     setState('done')
+    tap(18)
     onDone(due ? 'נוספה משימה לתזמון ✓' : 'נוספה לתוכנית העבודה ✓')
     setTimeout(onClose, 480)
   }
@@ -44,7 +48,7 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
       <input
         className="cap-title"
         value={title}
-        onChange={e => setTitle(e.target.value)}
+        onChange={e => { if (err) setErr(null); setTitle(e.target.value) }}
         onKeyDown={e => { if (e.key === 'Enter') save() }}
         placeholder="מה צריך לעשות?"
         autoFocus
@@ -64,6 +68,7 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
         </button>
       )}
 
+      {err && <p className="cap-error" role="alert">{err}</p>}
       <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={!canSave} onClick={save}>
         {state === 'saving' ? <CircleNotch className="spin" size={20} weight="bold" />
           : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>
