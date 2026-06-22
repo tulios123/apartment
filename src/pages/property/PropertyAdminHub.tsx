@@ -89,21 +89,27 @@ export default function PropertyAdminHub() {
         <>
           {/* Property binder — summary at the top, edit in place */}
           <div className="padm-binder">
-            <div className="padm-binder-main">
-              <div className="padm-binder-addr">{property?.address ?? 'עדיין לא הוגדר נכס'}</div>
-              {propertyValue > 0 && <div className="padm-binder-value">{fmt(propertyValue)}</div>}
-              {subParts.length > 0 && <div className="padm-binder-sub">{subParts.join(' · ')}</div>}
-              {extraParts.length > 0 && <div className="padm-binder-extra">{extraParts.join(' · ')}</div>}
-              {property?.notes && <div className="padm-binder-notes">{property.notes}</div>}
+            <div className="padm-binder-top">
+              <div className="padm-binder-main">
+                <div className="padm-binder-addr">{property?.address ?? 'עדיין לא הוגדר נכס'}</div>
+                {propertyValue > 0 && <div className="padm-binder-value">{fmt(propertyValue)}</div>}
+                {subParts.length > 0 && <div className="padm-binder-sub">{subParts.join(' · ')}</div>}
+              </div>
+              <div className="padm-binder-side">
+                {activeTenant && (
+                  <div className="padm-binder-tenant"><UserCircle size={15} weight="duotone" /> {activeTenant} · חוזה פעיל</div>
+                )}
+                <button className="padm-binder-edit" onClick={() => setShowModal(true)}>
+                  <PencilSimple size={14} /> {property ? 'עריכה' : 'הוסף נכס'}
+                </button>
+              </div>
             </div>
-            <div className="padm-binder-side">
-              {activeTenant && (
-                <div className="padm-binder-tenant"><UserCircle size={15} weight="duotone" /> {activeTenant} · חוזה פעיל</div>
-              )}
-              <button className="padm-binder-edit" onClick={() => setShowModal(true)}>
-                <PencilSimple size={14} /> {property ? 'עריכה' : 'הוסף נכס'}
-              </button>
-            </div>
+            {(extraParts.length > 0 || property?.notes) && (
+              <div className="padm-binder-foot">
+                {extraParts.length > 0 && <span className="padm-binder-extra">{extraParts.join(' · ')}</span>}
+                {property?.notes && <span className="padm-binder-notes">{property.notes}</span>}
+              </div>
+            )}
           </div>
 
           <nav className="prov-tabs">
