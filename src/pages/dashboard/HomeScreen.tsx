@@ -60,6 +60,7 @@ export default function HomeScreen() {
   const [sheet, setSheet] = useState<null | 'expense' | 'task'>(null)
   const [sheetSeed, setSheetSeed] = useState('')
   const [extraOpen, setExtraOpen] = useState(false)
+  const [incomeOpen, setIncomeOpen] = useState(false)
 
   const firstName =
     (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ||
@@ -92,9 +93,14 @@ export default function HomeScreen() {
     .reduce((s, t) => s + t.amount, 0)
   const extraTxs = transactions.filter(t => t.direction === 'expense' && !fixedCatSet.has(t.category))
   const extraExpenses = extraTxs.reduce((s, t) => s + t.amount, 0)
+  // Actual income that isn't the monthly rent (one-off income added by hand).
+  const extraIncomeTxs = transactions.filter(t => t.direction === 'income' && !rentCatSet.has(t.category))
+  const extraIncome = extraIncomeTxs.reduce((s, t) => s + t.amount, 0)
   const rentCleared = monthlyRent > 0 && rentReceived >= monthlyRent
   const rentPct = monthlyRent > 0 ? Math.min(100, (rentReceived / monthlyRent) * 100) : 0
-  const expectedNet = monthlyRent - fixedExpenses - extraExpenses
+  // Forecast uses the greater of expected vs actual rent, plus any extra income,
+  // so anything you add by hand is reflected in the bottom line.
+  const expectedNet = Math.max(monthlyRent, rentReceived) + extraIncome - fixedExpenses - extraExpenses
 
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
   const actions = useMemo<Action[]>(() => {
@@ -347,6 +353,28 @@ export default function HomeScreen() {
                   </div>
                   <div className="hs-track"><div className={`hs-track-fill${rentCleared ? ' ok' : ''}`} style={{ width: `${rentPct}%` }} /></div>
                 </div>
+
+                {extraIncome > 0 && (
+                  <div className="hs-flow-line">
+                    <button className="hs-flow-line-top hs-flow-expand" onClick={() => setIncomeOpen(o => !o)} aria-expanded={incomeOpen}>
+                      <span className="hs-flow-name">
+                        הכנסות נוספות החודש
+                        <CaretDown className={`hs-flow-caret${incomeOpen ? ' open' : ''}`} size={13} weight="bold" />
+                      </span>
+                      <span className="hs-flow-amt income">{fmt(extraIncome)}</span>
+                    </button>
+                    {incomeOpen && (
+                      <div className="hs-flow-sublist">
+                        {extraIncomeTxs.map(t => (
+                          <div key={t.id} className="hs-flow-subrow">
+                            <span className="hs-flow-subcat">{t.category}{t.description ? ` · ${t.description}` : ''}</span>
+                            <span className="hs-flow-subamt income">{fmt(t.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Fixed expenses — neutral, tagged automatic, never red */}
                 <div className="hs-flow-line">

@@ -592,7 +592,7 @@ function SwipeRow({ onEdit, onDelete, children }: { onEdit: () => void; onDelete
       </button>
       <div
         className="finv-swipe-fg"
-        style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: start.current ? 'none' : 'transform 0.26s cubic-bezier(0.22,1,0.36,1)' }}
+        style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: start.current ? 'none' : 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
         onTouchStart={onStart}
         onTouchMove={onMove}
         onTouchEnd={onEnd}
