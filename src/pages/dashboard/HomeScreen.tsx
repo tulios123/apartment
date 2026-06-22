@@ -17,6 +17,7 @@ import { gracePeriodPayment } from '../../lib/mortgage'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { parseQuick } from '../../lib/quickParse'
+import { taskCompletionFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
@@ -184,6 +185,9 @@ export default function HomeScreen() {
   }
 
   function markTaskDone(id: string) {
+    // Capture the task before the optimistic drop so we can offer the money
+    // follow-up (record the repair expense / rent collection / payment).
+    const task = tasks.find(t => t.id === id)
     // Optimistic pipeline: drop the task from the open pool immediately so the next
     // backlog task slides up into its slot and "+ עוד X משימות" decrements in real time.
     // Persist in the background; only reload if the write fails.
@@ -193,6 +197,14 @@ export default function HomeScreen() {
     updateTask(id, { status: 'done' }).then(r => {
       if (r.error) { setFlash('לא הצלחנו לעדכן, נסה שוב'); refetchTasks() }
     })
+
+    // Same follow-up the Tasks hub offers, deferred so the checkmark paints first.
+    const followup = task ? taskCompletionFollowup(task) : null
+    if (followup) {
+      setTimeout(() => {
+        if (confirm(followup.msg)) navigate('/finances', { state: { prefill: followup.prefill } })
+      }, 80)
+    }
   }
 
   function showFlash(msg: string) {

@@ -5,13 +5,12 @@ import { useTasks, createTask, updateTask, deleteTask } from '../../hooks/useTas
 import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
-import { TASK_CATEGORIES, RENT_CATEGORIES } from '../../lib/constants'
+import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
+import { taskCompletionFollowup } from '../../lib/taskFollowup'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import './tasks-v2.css'
-
-const REPAIR_CATEGORY = 'תיקונים ותחזוקה'
 
 const CAT_ICON: Record<string, typeof Wrench> = {
   'תיקונים ותחזוקה': Wrench,
@@ -124,15 +123,10 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
     // Any follow-up prompt is deferred so React can paint the checkmark first —
     // a synchronous confirm() here would freeze the tap and make it feel dead.
-    const prompt = newStatus !== 'done' ? null
-      : t.category === REPAIR_CATEGORY
-        ? { msg: 'המשימה הושלמה. להזין הוצאת תיקון עבור משימה זו?', state: { prefill: { direction: 'expense', category: 'תיקונים', description: t.title } } }
-        : t.source === 'recurring_item' && t.title.startsWith('גביית')
-          ? { msg: 'המשימה הושלמה. להזין קבלת שכר דירה?', state: { prefill: { direction: 'income', category: RENT_CATEGORIES[0], description: t.title } } }
-          : null
-    if (prompt) {
+    const followup = newStatus === 'done' ? taskCompletionFollowup(t) : null
+    if (followup) {
       setTimeout(() => {
-        if (confirm(prompt.msg)) navigate('/finances', { state: prompt.state })
+        if (confirm(followup.msg)) navigate('/finances', { state: { prefill: followup.prefill } })
       }, 80)
     }
   }

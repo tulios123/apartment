@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { monthEndISO } from '../lib/format'
+import { monthEndISO, todayISO } from '../lib/format'
 
 const GENERATION_KEY = 'monthly_generation'
 
@@ -114,9 +114,11 @@ async function runGeneration() {
   if (newTransactions.length > 0) await supabase.from('transactions').insert(newTransactions)
   if (newTasks.length > 0) await supabase.from('tasks').insert(newTasks)
 
-  // Renewal alerts: create a task when a contract is within its alert window
+  // Renewal alerts: create a task when a contract is within its alert window.
+  // todayStr must be the LOCAL date (Israel UTC+2/+3) — toISOString() is UTC and
+  // would roll back a day in the small hours, mis-dating the alert and its window.
   const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
+  const todayStr = todayISO()
 
   const { data: contracts } = await supabase
     .from('contracts')
