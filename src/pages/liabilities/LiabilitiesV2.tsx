@@ -54,7 +54,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     return { balance, interestPaid, interestLeft, endYear, pay, paidPct }
   }
 
-  function openAdd() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setLForm(emptyLoan); setFormError(null); setDrawerOpen(true) }
+  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setFormError(null); setDrawerOpen(true) }
+  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setFormError(null); setDrawerOpen(true) }
   function editTrack(t: MortgageTrack) {
     setKind('mortgage'); setEditId(t.id); setFormError(null)
     setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
@@ -105,9 +106,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     <div className={embedded ? 'liav liav-embedded' : 'page liav'}>
       {!embedded && <div className="page-header"><h1>התחייבויות</h1></div>}
 
-      {(loadingM || loadingL) ? <SkeletonList rows={4} /> : total === 0 ? (
-        <div className="liav-empty">עדיין לא הוגדרו משכנתא או הלוואות. הוסף בעזרת הכפתור למטה.</div>
-      ) : (
+      {(loadingM || loadingL) ? <SkeletonList rows={4} /> : (
         <>
           <div className={`liav-hero${embedded ? ' slim' : ''}`}>
             {!embedded && (
@@ -132,9 +131,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
             </div>
           </div>
 
-          {tracks.length > 0 && (
-            <section className="liav-section">
-              <div className="liav-section-head"><Bank size={18} weight="duotone" color="var(--brand-navy)" /><h2>תמהיל המשכנתא</h2><span className="count">· {tracks.length} מסלולים</span></div>
+          <section className="liav-section">
+              <div className="liav-section-head"><Bank size={18} weight="duotone" color="var(--brand-navy)" /><h2>תמהיל המשכנתא</h2>{tracks.length > 0 && <span className="count">· {tracks.length} מסלולים</span>}</div>
               {tracks.map(t => {
                 const s = trackStats(t); const color = TRACK_COLOR[t.track_type]; const isOpen = open === t.id
                 return (
@@ -162,12 +160,10 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   </div>
                 )
               })}
-              <button className="liav-add-track" onClick={openAdd}><Plus size={15} weight="bold" /> הוסף מסלול משכנתא</button>
+              <button className="liav-add-track" onClick={openAddMortgage}><Plus size={15} weight="bold" /> הוסף מסלול משכנתא</button>
             </section>
-          )}
 
-          {(monthlyLoans.length > 0 || balloonLoans.length > 0) && (
-            <section className="liav-section">
+          <section className="liav-section">
               <div className="liav-section-head"><HandCoins size={18} weight="duotone" color="var(--brand-navy)" /><h2>הלוואות</h2></div>
               {monthlyLoans.map(l => {
                 const bal = loanBalance(l); const isOpen = open === l.id
@@ -207,20 +203,14 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   <div className="liav-balloon-note">בלון · נפרע במכירת הנכס · ללא תשלום חודשי</div>
                 </div>
               ))}
+              <button className="liav-add-track" onClick={openAddLoan}><Plus size={15} weight="bold" /> הוסף הלוואה</button>
             </section>
-          )}
         </>
       )}
 
-      <button className="liav-fab" onClick={openAdd} aria-label="הוסף התחייבות"><Plus size={26} weight="bold" /></button>
-
       <div className={`liav-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside className={`liav-drawer ${drawerOpen ? 'open' : ''}`}>
-        <div className="liav-drawer-head"><h2>{editId ? 'עריכה' : 'הוספת התחייבות'}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
-        <div className="liav-seg">
-          <button className={kind === 'mortgage' ? 'on' : ''} disabled={!!editId && kind !== 'mortgage'} onClick={() => !editId && setKind('mortgage')}>מסלול משכנתא</button>
-          <button className={kind === 'loan' ? 'on' : ''} disabled={!!editId && kind !== 'loan'} onClick={() => !editId && setKind('loan')}>הלוואה</button>
-        </div>
+        <div className="liav-drawer-head"><h2>{editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
 
         {kind === 'mortgage' ? (
           <>
@@ -231,8 +221,14 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
             </div>
             <div className="liav-row2">
               <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={tForm.term_months} onChange={e => setTForm(f => ({ ...f, term_months: e.target.value }))} /></label>
-              <label className="liav-field"><span>גרייס (חודשים)</span><input type="number" value={tForm.grace_months} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
+              {Number(tForm.grace_months) > 0
+                ? <label className="liav-field"><span>גרייס (חודשים)</span><input type="number" min="0" value={tForm.grace_months} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
+                : <div className="liav-field" />}
             </div>
+            <label className="liav-grace-toggle">
+              <input type="checkbox" checked={Number(tForm.grace_months) > 0} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.checked ? '1' : '0' }))} />
+              <span>תקופת גרייס</span>
+            </label>
             <label className="liav-field"><span>תאריך התחלה</span><input type="date" value={tForm.start_date} onChange={e => setTForm(f => ({ ...f, start_date: e.target.value }))} /></label>
             <label className="liav-field"><span>תווית (אופציונלי)</span><input type="text" value={tForm.label} onChange={e => setTForm(f => ({ ...f, label: e.target.value }))} /></label>
           </>
