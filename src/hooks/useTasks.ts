@@ -54,9 +54,12 @@ export function useTasks(filters: Filters = {}) {
 }
 
 async function getOwnerId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-  return user.id
+  // Read from the cached session (local) rather than getUser() — the latter
+  // makes a network round trip to validate the token, which needlessly slows
+  // down every write (e.g. ticking a task complete).
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error('Not authenticated')
+  return session.user.id
 }
 
 export async function createTask(data: Omit<Task, 'id' | 'owner_id' | 'created_at' | 'google_task_id' | 'completed_at'>) {
@@ -86,36 +89,45 @@ export async function updateTask(
 ) {
   const ownerId = await getOwnerId()
 
-  const { data: current } = await supabase
-    .from('tasks')
-    .select('google_task_id')
-    .eq('id', id)
-    .single()
-
   // Stamp/clear the completion time alongside any status change (powers the logbook).
   const payload = data.status !== undefined
     ? { ...data, completed_at: data.status === 'done' ? new Date().toISOString() : null }
     : data
 
+  // The write itself is the only thing the UI waits on. Mirroring to Google
+  // Tasks (which needs its own lookup round trip) runs in the background so a
+  // simple status toggle doesn't stall on extra network calls.
   const result = await supabase.from('tasks').update(payload).eq('id', id).eq('owner_id', ownerId)
 
-  if (current?.google_task_id) {
-    try {
-      await updateGoogleTask(current.google_task_id, {
-        ...(data.title !== undefined ? { title: data.title } : {}),
-        ...(data.due_date !== undefined
-          ? { due: data.due_date ? `${data.due_date}T00:00:00.000Z` : null }
-          : {}),
-        ...(data.status !== undefined
-          ? { status: data.status === 'done' ? 'completed' : 'needsAction' }
-          : {}),
-      })
-    } catch {
-      // Google sync failed — not critical
-    }
-  }
+  void mirrorToGoogleTasks(id, data)
 
   return result
+}
+
+async function mirrorToGoogleTasks(
+  id: string,
+  data: Partial<Omit<Task, 'id' | 'owner_id' | 'created_at'>>
+) {
+  if (data.title === undefined && data.due_date === undefined && data.status === undefined) return
+  try {
+    const { data: current } = await supabase
+      .from('tasks')
+      .select('google_task_id')
+      .eq('id', id)
+      .single()
+    if (!current?.google_task_id) return
+    await updateGoogleTask(current.google_task_id, {
+      ...(data.title !== undefined ? { title: data.title } : {}),
+      ...(data.due_date !== undefined
+        ? { due: data.due_date ? `${data.due_date}T00:00:00.000Z` : null }
+        : {}),
+      ...(data.status !== undefined
+        ? { status: data.status === 'done' ? 'completed' : 'needsAction' }
+        : {}),
+    })
+  } catch {
+    // Google sync failed — not critical
+  }
 }
 
 export async function deleteTask(id: string) {

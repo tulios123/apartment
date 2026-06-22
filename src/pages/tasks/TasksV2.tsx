@@ -113,7 +113,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     await deleteTask(id); setConfirmDeleteId(null); refetch()
   }
 
-  async function toggleDone(t: Task) {
+  function toggleDone(t: Task) {
     const newStatus = t.status === 'done' ? 'open' : 'done'
     // Optimistic: flip locally first so the tap feels instant; persist in the
     // background and only reload if the write fails.
@@ -121,15 +121,19 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       ? { ...x, status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null }
       : x))
     updateTask(t.id, { status: newStatus }).then(r => { if (r.error) refetch() })
-    if (newStatus === 'done' && t.category === REPAIR_CATEGORY) {
-      if (confirm('המשימה הושלמה. להזין הוצאת תיקון עבור משימה זו?')) {
-        navigate('/finances', { state: { prefill: { direction: 'expense', category: 'תיקונים', description: t.title } } })
-      }
-    }
-    if (newStatus === 'done' && t.source === 'recurring_item' && t.title.startsWith('גביית')) {
-      if (confirm('המשימה הושלמה. להזין קבלת שכר דירה?')) {
-        navigate('/finances', { state: { prefill: { direction: 'income', category: RENT_CATEGORIES[0], description: t.title } } })
-      }
+
+    // Any follow-up prompt is deferred so React can paint the checkmark first —
+    // a synchronous confirm() here would freeze the tap and make it feel dead.
+    const prompt = newStatus !== 'done' ? null
+      : t.category === REPAIR_CATEGORY
+        ? { msg: 'המשימה הושלמה. להזין הוצאת תיקון עבור משימה זו?', state: { prefill: { direction: 'expense', category: 'תיקונים', description: t.title } } }
+        : t.source === 'recurring_item' && t.title.startsWith('גביית')
+          ? { msg: 'המשימה הושלמה. להזין קבלת שכר דירה?', state: { prefill: { direction: 'income', category: RENT_CATEGORIES[0], description: t.title } } }
+          : null
+    if (prompt) {
+      setTimeout(() => {
+        if (confirm(prompt.msg)) navigate('/finances', { state: prompt.state })
+      }, 80)
     }
   }
 
