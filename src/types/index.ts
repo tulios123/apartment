@@ -153,7 +153,9 @@ export interface Loan {
   repayment_type: LoanRepaymentType
   track_type: TrackType | null     // monthly_fixed only — interest type, like a mortgage track
   principal: number
-  annual_rate: number | null       // monthly_fixed only — drives Shpitzer schedule
+  annual_rate: number | null       // monthly_fixed only — effective rate (anchor + margin), drives Shpitzer schedule
+  prime_rate: number | null        // prime/variable tracks — the anchor component
+  margin: number | null            // prime/variable tracks — the margin (can be negative, "prime minus")
   term_months: number | null       // monthly_fixed only
   grace_months: number | null      // monthly_fixed only — interest-only months at start
   start_date: string | null

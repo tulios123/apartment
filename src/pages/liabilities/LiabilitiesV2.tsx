@@ -5,7 +5,7 @@ import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
 import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanInterestToDate, loanEndDate } from '../../lib/loans'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
-import { formatCurrency } from '../../lib/format'
+import { formatCurrency, formatNum } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -18,7 +18,8 @@ const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => d ? new Date(d).getFullYear() : null
 
 const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '', annual_rate: '', term_months: '', grace_months: '0', start_date: new Date().toISOString().slice(0, 10) }
-const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', term_months: '', grace_months: '0', start_date: new Date().toISOString().slice(0, 10) }
+const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: new Date().toISOString().slice(0, 10) }
+const isAnchoredType = (t: TrackType) => t === 'prime' || t === 'variable'
 
 export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth()
@@ -65,7 +66,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   }
   function editLoan(l: Loan) {
     setKind('loan'); setEditId(l.id); setFormError(null)
-    setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? new Date().toISOString().slice(0, 10) })
+    setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? new Date().toISOString().slice(0, 10) })
     setGraceOn((l.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }
@@ -87,11 +88,16 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       } else {
         if (!lForm.principal || Number(lForm.principal) <= 0) throw new Error('יש להזין קרן תקינה')
         const isMonthly = lForm.repayment_type === 'monthly_fixed'
+        const anchored = isMonthly && isAnchoredType(lForm.track_type)
+        // Prime/variable: effective rate = anchor + margin (margin can be negative, "prime minus").
+        const effRate = anchored ? Number(lForm.prime_rate || 0) + Number(lForm.margin || 0) : Number(lForm.annual_rate || 0)
         await upsertLoan({
           id: editId ?? undefined, owner_id: user.id, label: lForm.label || null, lender: lForm.lender || null,
           repayment_type: lForm.repayment_type, track_type: isMonthly ? lForm.track_type : null,
           principal: Number(lForm.principal),
-          annual_rate: isMonthly ? Number(lForm.annual_rate || 0) : null,
+          annual_rate: isMonthly ? effRate : null,
+          prime_rate: anchored ? Number(lForm.prime_rate || 0) : null,
+          margin: anchored ? Number(lForm.margin || 0) : null,
           term_months: isMonthly ? Number(lForm.term_months || 0) : null,
           grace_months: isMonthly && graceOn ? Number(lForm.grace_months || 0) : 0, start_date: lForm.start_date,
         })
@@ -221,7 +227,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           <>
             <label className="liav-field"><span>סוג מסלול</span><select value={tForm.track_type} onChange={e => setTForm(f => ({ ...f, track_type: e.target.value as TrackType }))}>{MORTGAGE_TRACK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
             <div className="liav-row2">
-              <label className="liav-field"><span>קרן ₪</span><input type="number" value={tForm.principal} onChange={e => setTForm(f => ({ ...f, principal: e.target.value }))} autoFocus={drawerOpen} /></label>
+              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(tForm.principal)} onChange={e => setTForm(f => ({ ...f, principal: e.target.value.replace(/[^\d]/g, '') }))} autoFocus={drawerOpen} /></label>
               <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={tForm.annual_rate} onChange={e => setTForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>
             </div>
             <div className="liav-row2">
@@ -244,14 +250,22 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
               <label className="liav-field"><span>סוג מסלול</span><select value={lForm.track_type} onChange={e => setLForm(f => ({ ...f, track_type: e.target.value as TrackType }))}>{MORTGAGE_TRACK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
             )}
             <div className="liav-row2">
-              <label className="liav-field"><span>קרן ₪</span><input type="number" value={lForm.principal} onChange={e => setLForm(f => ({ ...f, principal: e.target.value }))} autoFocus={drawerOpen} /></label>
+              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(lForm.principal)} onChange={e => setLForm(f => ({ ...f, principal: e.target.value.replace(/[^\d]/g, '') }))} autoFocus={drawerOpen} /></label>
               <label className="liav-field"><span>מלווה</span><input type="text" value={lForm.lender} onChange={e => setLForm(f => ({ ...f, lender: e.target.value }))} /></label>
             </div>
             {lForm.repayment_type === 'monthly_fixed' && (
               <>
-                <div className="liav-row2">
+                {isAnchoredType(lForm.track_type) ? (
+                  <div className="liav-row2">
+                    <label className="liav-field"><span>עוגן (פריים/בסיס) %</span><input type="number" step="0.01" value={lForm.prime_rate} onChange={e => setLForm(f => ({ ...f, prime_rate: e.target.value }))} placeholder="6.00" /></label>
+                    <label className="liav-field"><span>מרווח % (פריים מינוס = שלילי)</span><input type="number" step="0.01" value={lForm.margin} onChange={e => setLForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
+                  </div>
+                ) : (
                   <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={lForm.annual_rate} onChange={e => setLForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>
+                )}
+                <div className="liav-row2">
                   <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={lForm.term_months} onChange={e => setLForm(f => ({ ...f, term_months: e.target.value }))} /></label>
+                  <div className="liav-field" />
                 </div>
                 <div className="liav-row2">
                   {graceOn

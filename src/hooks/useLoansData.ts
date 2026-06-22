@@ -75,6 +75,8 @@ export async function upsertLoan(data: {
   track_type?: TrackType | null
   principal: number
   annual_rate?: number | null
+  prime_rate?: number | null
+  margin?: number | null
   term_months?: number | null
   grace_months?: number | null
   start_date?: string | null
@@ -87,6 +89,8 @@ export async function upsertLoan(data: {
     track_type: data.track_type ?? null,
     principal: data.principal,
     annual_rate: data.annual_rate ?? null,
+    prime_rate: data.prime_rate ?? null,
+    margin: data.margin ?? null,
     term_months: data.term_months ?? null,
     grace_months: data.grace_months ?? null,
     start_date: data.start_date ?? null,
