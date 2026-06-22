@@ -22,8 +22,12 @@
 
   .hs-flash { background: var(--success-bg); color: var(--success-text); font-size: 13.5px; font-weight: 600; padding: 11px 16px; border-radius: var(--r-md); margin-bottom: 14px; animation: hsFlash 0.3s var(--ease) both; }
 
-  /* ── Action Center ── */
-  .hs-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  /* ── Action Center ──
+     Min-height locks to the common "sweet spot" of two task rows so routine task
+     churn (and the return to the Zen state) causes ZERO layout shift — the cash-flow
+     card below stays anchored. Rent/renewal alerts are allowed to grow past this:
+     they're rare, critical, money-bearing events that deserve the extra space. */
+  .hs-actions { display: flex; flex-direction: column; justify-content: center; gap: 10px; margin-bottom: 16px; min-height: 164px; }
 
   .hs-card { display: flex; align-items: center; gap: 13px; background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 16px; animation: hsRise 0.35s var(--ease) both; transition: opacity 0.35s var(--ease), transform 0.35s var(--ease), max-height 0.35s var(--ease); }
   .hs-card.resolved { opacity: 0; transform: translateX(24px); max-height: 0; padding-top: 0; padding-bottom: 0; pointer-events: none; }
@@ -45,6 +49,11 @@
   .hs-btn.ghost:hover:not(:disabled) { background: var(--border); }
 
   .hs-clear { display: flex; align-items: center; gap: 14px; background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); padding: 22px; animation: hsRise 0.35s var(--ease) both; }
+
+  /* Minimal "show all" affordance — small, elegant text but a ≥44px tall hit area
+     (via padding) so a thumb tap never lands on the task row directly above it. */
+  .hs-more-tasks { align-self: stretch; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--accent); padding: 13px 8px; border-radius: var(--r-md); transition: background var(--t-fast) var(--ease); -webkit-tap-highlight-color: transparent; }
+  .hs-more-tasks:hover { background: var(--hover-bg); }
   .hs-clear-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--success-bg); color: var(--success-text); display: grid; place-items: center; flex-shrink: 0; }
   .hs-clear-title { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
   .hs-clear-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }

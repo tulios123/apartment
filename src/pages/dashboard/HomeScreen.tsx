@@ -50,7 +50,7 @@ export default function HomeScreen() {
   const { property, contracts, utilities, loading: loadingProperty } = usePropertyData()
   const { summary: loansSummary, loading: loadingLoans } = useLoansData()
   const { policies, loading: loadingInsurance } = useInsurance()
-  const { tasks, loading: loadingTasks, refetch: refetchTasks } = useTasks({ status: 'open' })
+  const { tasks, setTasks, loading: loadingTasks, refetch: refetchTasks } = useTasks({ status: 'open' })
   const { transactions, loading: loadingTx, refetch: refetchTx } = useTransactions({ year, month })
 
   const [busy, setBusy] = useState<string | null>(null)
@@ -114,15 +114,25 @@ export default function HomeScreen() {
         amount: monthlyRent - rentReceived,
       })
     }
-    tasks
-      .filter(t => t.due_date && t.due_date <= todayStr)
-      .slice(0, 3)
+    // All open tasks, smart-sorted: dated first (soonest/overdue on top), then undated
+    // backlog — so nothing without a deadline gets forgotten. Only the top 2 render here.
+    const sortedTasks = [...tasks].sort((a, b) => {
+      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date)
+      if (a.due_date) return -1
+      if (b.due_date) return 1
+      return 0
+    })
+    sortedTasks
+      .slice(0, 2)
       .forEach(t =>
         list.push({
           id: `task-${t.id}`,
           kind: 'task',
           title: t.title,
-          sub: t.due_date && t.due_date < todayStr ? `באיחור · ${formatDate(t.due_date)}` : 'להיום',
+          sub: !t.due_date ? `ללא תאריך · ${t.category}`
+            : t.due_date < todayStr ? `באיחור · ${formatDate(t.due_date)}`
+            : t.due_date === todayStr ? 'להיום'
+            : formatDate(t.due_date),
           taskId: t.id,
         })
       )
@@ -137,8 +147,12 @@ export default function HomeScreen() {
           onGo: () => navigate('/property/rental'),
         })
       )
-    return list.filter(a => !done.has(a.id)).slice(0, 3)
+    // Rent (≤1) + renewals (rare) keep priority; tasks already bounded to 2 above.
+    return list.filter(a => !done.has(a.id))
   }, [monthlyRent, rentCleared, rentReceived, activeContract, tasks, upcomingRenewals, done, todayStr, navigate])
+
+  // How many open tasks aren't shown in the bounded top-2 — drives "+ עוד X משימות".
+  const extraTaskCount = Math.max(0, tasks.length - 2)
 
   const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty
   const loadingFlow = loadingProperty || loadingMortgage || loadingLoans || loadingInsurance || loadingTx
@@ -169,20 +183,16 @@ export default function HomeScreen() {
     }
   }
 
-  async function markTaskDone(id: string) {
-    setBusy(`task-${id}`)
-    try {
-      const { error } = await updateTask(id, { status: 'done' })
-      if (error) throw error
-      setDone(prev => new Set(prev).add(`task-${id}`))
-      setFlash('משימה הושלמה ✓')
-      await refetchTasks()
-    } catch {
-      setFlash('לא הצלחנו לעדכן, נסה שוב')
-    } finally {
-      setBusy(null)
-      setTimeout(() => setFlash(null), 2600)
-    }
+  function markTaskDone(id: string) {
+    // Optimistic pipeline: drop the task from the open pool immediately so the next
+    // backlog task slides up into its slot and "+ עוד X משימות" decrements in real time.
+    // Persist in the background; only reload if the write fails.
+    setTasks(prev => prev.filter(t => t.id !== id))
+    setFlash('משימה הושלמה ✓')
+    setTimeout(() => setFlash(null), 2600)
+    updateTask(id, { status: 'done' }).then(r => {
+      if (r.error) { setFlash('לא הצלחנו לעדכן, נסה שוב'); refetchTasks() }
+    })
   }
 
   function showFlash(msg: string) {
@@ -298,6 +308,11 @@ export default function HomeScreen() {
                   </article>
                 )
               })
+            )}
+            {extraTaskCount > 0 && (
+              <button className="hs-more-tasks" onClick={() => navigate('/property/tasks')}>
+                + עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}
+              </button>
             )}
           </section>
 
