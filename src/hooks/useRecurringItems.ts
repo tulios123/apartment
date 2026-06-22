@@ -141,6 +141,10 @@ export async function deleteRentRecurringItems(contractId: string) {
     .eq('direction', 'income')
   const ids = (existing ?? []).filter(i => rentCats.includes(i.category)).map(i => i.id)
   if (ids.length > 0) {
-    await supabase.from('recurring_items').delete().in('id', ids)
+    // Throw on failure so the caller (contract delete) aborts before removing the
+    // contract — otherwise a failed rent-item delete would silently orphan items
+    // that keep generating rent tasks.
+    const { error } = await supabase.from('recurring_items').delete().in('id', ids)
+    if (error) throw error
   }
 }

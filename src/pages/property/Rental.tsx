@@ -161,6 +161,7 @@ export default function Rental() {
 
   const [showContractModal, setShowContractModal] = useState(false)
   const [editingContract, setEditingContract] = useState<Contract | null>(null)
+  const [deleteErr, setDeleteErr] = useState<string | null>(null)
 
   function getUtilPayer(contractId: string, utility: string): UtilityPayer {
     return utilities.find(u => u.contract_id === contractId && u.utility === utility)?.payer ?? 'tenant'
@@ -228,11 +229,19 @@ export default function Rental() {
 
   async function handleDeleteContract(id: string) {
     if (!confirm('למחוק חוזה זה?')) return
+    setDeleteErr(null)
     // FK is ON DELETE SET NULL, so remove the linked rent item explicitly,
-    // otherwise it orphans and keeps generating rent tasks.
-    await deleteRentRecurringItems(id)
-    await deleteContract(id)
-    refetch()
+    // otherwise it orphans and keeps generating rent tasks. Delete the rent item
+    // first: if the contract delete then fails, the contract is recoverable (a
+    // re-save re-syncs the rent item), whereas the reverse would orphan it silently.
+    try {
+      await deleteRentRecurringItems(id)
+      await deleteContract(id)
+      refetch()
+    } catch (e) {
+      setDeleteErr(e instanceof Error ? e.message : 'מחיקת החוזה נכשלה — נסו שוב')
+      refetch()
+    }
   }
 
   function daysLeft(endDate: string): number {
@@ -258,6 +267,8 @@ export default function Rental() {
           <h2>חוזים</h2>
           <button className="btn-secondary" onClick={openNewContract}>+ חוזה חדש</button>
         </div>
+
+        {deleteErr && <div className="form-error" role="alert">{deleteErr}</div>}
 
         {contracts.length === 0 && (
           <div className="empty-state-cta">
