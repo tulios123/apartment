@@ -47,6 +47,8 @@ type LoanDraft = {
   lender: string
   principal: string
   annual_rate: string
+  prime_rate: string
+  margin: string
   term_months: string
   grace_months: string
   start_date: string
@@ -79,6 +81,8 @@ function emptyLoan(startDate?: string): LoanDraft {
     lender: '',
     principal: '',
     annual_rate: '',
+    prime_rate: '',
+    margin: '',
     term_months: '',
     grace_months: '',
     start_date: startDate || new Date().toISOString().slice(0, 10),
@@ -230,6 +234,16 @@ export default function Onboarding({ onComplete }: Props) {
     return monthlyPayment(p, r, t, g)
   }
 
+  // Effective annual rate for a loan draft — anchor + margin for prime/variable
+  // ("prime minus" = negative margin), otherwise the plain fixed rate. No magic
+  // defaults: an empty anchored loan reads as 0, mirroring the liabilities editor.
+  function loanDraftRate(d: LoanDraft): number {
+    if (d.track_type === 'prime' || d.track_type === 'variable') {
+      return (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
+    }
+    return parseFloat(d.annual_rate) || 0
+  }
+
   // ── handleFinish ─────────────────────────────────────────────────────────────
   async function handleFinish() {
     if (!user) return
@@ -324,6 +338,11 @@ export default function Onboarding({ onComplete }: Props) {
               .filter(d => (parseFloat(d.principal) || 0) > 0)
               .map(d => {
                 const isMonthly = d.repayment_type === 'monthly_fixed'
+                const anchored = isMonthly && (d.track_type === 'prime' || d.track_type === 'variable')
+                // Prime/variable: effective rate = anchor + margin (margin can be negative).
+                const effRate = anchored
+                  ? (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
+                  : (parseFloat(d.annual_rate) || 0)
                 return upsertLoan({
                   owner_id: user.id,
                   property_id: property.id,
@@ -332,7 +351,9 @@ export default function Onboarding({ onComplete }: Props) {
                   repayment_type: d.repayment_type,
                   track_type: isMonthly ? d.track_type : null,
                   principal: parseFloat(d.principal) || 0,
-                  annual_rate: isMonthly ? (parseFloat(d.annual_rate) || 0) : null,
+                  annual_rate: isMonthly ? effRate : null,
+                  prime_rate: anchored ? (parseFloat(d.prime_rate) || 0) : null,
+                  margin: anchored ? (parseFloat(d.margin) || 0) : null,
                   term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
                   grace_months: isMonthly ? (parseInt(d.grace_months) || null) : null,
                   start_date: isMonthly ? (d.start_date || null) : (d.start_date || keyDeliveryDate || null),
@@ -556,8 +577,8 @@ export default function Onboarding({ onComplete }: Props) {
 
   function fillTestLoans() {
     setLoans([
-      { repayment_type: 'monthly_fixed', track_type: 'prime', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6.000', term_months: '60', start_date: '2026-03-11', grace_months: '' },
-      { repayment_type: 'balloon', track_type: 'fixed_unlinked', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', annual_rate: '', term_months: '', start_date: '2026-03-11', grace_months: '' },
+      { repayment_type: 'monthly_fixed', track_type: 'prime', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6.000', prime_rate: '6.000', margin: '0', term_months: '60', start_date: '2026-03-11', grace_months: '' },
+      { repayment_type: 'balloon', track_type: 'fixed_unlinked', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', annual_rate: '', prime_rate: '', margin: '', term_months: '', start_date: '2026-03-11', grace_months: '' },
     ])
     setShowLoanForm(false)
   }
@@ -893,6 +914,7 @@ export default function Onboarding({ onComplete }: Props) {
   // ── Loan form renderer ────────────────────────────────────────────────────────
   function renderLoanForm(onSave: () => void, onCancel: () => void) {
     const isMonthly = loanForm.repayment_type === 'monthly_fixed'
+    const isAnchored = loanForm.track_type === 'prime' || loanForm.track_type === 'variable'
     return (
       <div className="onboarding-inline-form">
         <div className="onboarding-field">
@@ -941,18 +963,44 @@ export default function Onboarding({ onComplete }: Props) {
                 ))}
               </select>
             </div>
-            <div className="onboarding-row">
-              <div className="onboarding-field">
-                <label>ריבית שנתית (%)</label>
-                <input type="number" step="0.01" min="0" placeholder="5.000" value={loanForm.annual_rate}
-                  onChange={e => setLF('annual_rate', e.target.value)} />
+            {isAnchored ? (
+              <>
+                <div className="onboarding-row">
+                  <div className="onboarding-field">
+                    <label>{loanForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
+                    <input type="number" step="0.01"
+                      placeholder={loanForm.track_type === 'prime' ? '6.000' : '3.500'}
+                      value={loanForm.prime_rate}
+                      onChange={e => setLF('prime_rate', e.target.value)} />
+                  </div>
+                  <div className="onboarding-field">
+                    <label>מרווח % (פריים מינוס = שלילי)</label>
+                    <input type="number" step="0.01"
+                      placeholder={loanForm.track_type === 'prime' ? '-0.500' : '1.500'}
+                      value={loanForm.margin}
+                      onChange={e => setLF('margin', e.target.value)} />
+                  </div>
+                </div>
+                <div className="onboarding-field">
+                  <label>תקופה (חודשים)</label>
+                  <input type="number" min="1" placeholder="60" value={loanForm.term_months}
+                    onChange={e => setLF('term_months', e.target.value)} />
+                </div>
+              </>
+            ) : (
+              <div className="onboarding-row">
+                <div className="onboarding-field">
+                  <label>ריבית שנתית (%)</label>
+                  <input type="number" step="0.01" min="0" placeholder="5.000" value={loanForm.annual_rate}
+                    onChange={e => setLF('annual_rate', e.target.value)} />
+                </div>
+                <div className="onboarding-field">
+                  <label>תקופה (חודשים)</label>
+                  <input type="number" min="1" placeholder="60" value={loanForm.term_months}
+                    onChange={e => setLF('term_months', e.target.value)} />
+                </div>
               </div>
-              <div className="onboarding-field">
-                <label>תקופה (חודשים)</label>
-                <input type="number" min="1" placeholder="60" value={loanForm.term_months}
-                  onChange={e => setLF('term_months', e.target.value)} />
-              </div>
-            </div>
+            )}
             <div className="onboarding-field">
               <label>תאריך התחלה</label>
               <input type="date" value={loanForm.start_date}
@@ -1228,7 +1276,7 @@ export default function Onboarding({ onComplete }: Props) {
               <div className="onboarding-list">
                 {loans.map((d, i) => {
                   const isMonthly = d.repayment_type === 'monthly_fixed'
-                  const rate = parseFloat(d.annual_rate) || 0
+                  const rate = loanDraftRate(d)
                   const isEditing = editingLoanIdx === i
                   return (
                     <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
