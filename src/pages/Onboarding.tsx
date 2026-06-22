@@ -42,6 +42,7 @@ type PolicyDraft = {
 
 type LoanDraft = {
   repayment_type: LoanRepaymentType
+  track_type: TrackType
   label: string
   lender: string
   principal: string
@@ -73,6 +74,7 @@ function emptyPolicy(): PolicyDraft {
 function emptyLoan(startDate?: string): LoanDraft {
   return {
     repayment_type: 'monthly_fixed',
+    track_type: 'fixed_unlinked',
     label: '',
     lender: '',
     principal: '',
@@ -328,6 +330,7 @@ export default function Onboarding({ onComplete }: Props) {
                   label: d.label.trim() || null,
                   lender: d.lender.trim() || null,
                   repayment_type: d.repayment_type,
+                  track_type: isMonthly ? d.track_type : null,
                   principal: parseFloat(d.principal) || 0,
                   annual_rate: isMonthly ? (parseFloat(d.annual_rate) || 0) : null,
                   term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
@@ -553,8 +556,8 @@ export default function Onboarding({ onComplete }: Props) {
 
   function fillTestLoans() {
     setLoans([
-      { repayment_type: 'monthly_fixed', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6.000', term_months: '60', start_date: '2026-03-11', grace_months: '' },
-      { repayment_type: 'balloon', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', annual_rate: '', term_months: '', start_date: '2026-03-11', grace_months: '' },
+      { repayment_type: 'monthly_fixed', track_type: 'prime', label: 'הלוואה משלימה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6.000', term_months: '60', start_date: '2026-03-11', grace_months: '' },
+      { repayment_type: 'balloon', track_type: 'fixed_unlinked', label: 'הלוואת בלון', lender: 'הורים', principal: '200000', annual_rate: '', term_months: '', start_date: '2026-03-11', grace_months: '' },
     ])
     setShowLoanForm(false)
   }
@@ -929,6 +932,15 @@ export default function Onboarding({ onComplete }: Props) {
         </div>
         {isMonthly ? (
           <>
+            <div className="onboarding-field">
+              <label>סוג מסלול</label>
+              <select className="form-input" value={loanForm.track_type}
+                onChange={e => setLF('track_type', e.target.value as TrackType)}>
+                {MORTGAGE_TRACK_TYPES.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
             <div className="onboarding-row">
               <div className="onboarding-field">
                 <label>ריבית שנתית (%)</label>
