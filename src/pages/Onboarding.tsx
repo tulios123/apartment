@@ -13,111 +13,15 @@ import { pushSupported, pushConfigured, isInstalledPWA, isIOS, enablePush } from
 import { monthlyPayment } from '../lib/mortgage'
 import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
 import type { TrackType, LoanRepaymentType, Contract } from '../types'
-
-// ── Step types ────────────────────────────────────────────────────────────────
-type Step = 'welcome' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
-
-const STEP_ORDER: Step[] = ['purchase', 'mortgage', 'loans', 'investment', 'rental', 'insurance']
+import {
+  STEP_ORDER, INS_TYPES, TRACK_TYPES,
+  emptyTrack, emptyPolicy, emptyLoan,
+  formatPrice, formatCurrency, formatNum,
+  defaultLawyerCost, defaultBrokerageCost, defaultSelfEquityPct,
+} from '../components/onboarding/types'
+import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost } from '../components/onboarding/types'
 
 interface Props { onComplete: () => void }
-
-// ── Draft types ────────────────────────────────────────────────────────────────
-type TrackDraft = {
-  track_type: TrackType
-  principal: string
-  annual_rate: string
-  prime_rate: string
-  margin: string
-  term_months: string
-  grace_months: string
-  start_date: string
-}
-
-type PolicyDraft = {
-  type: string
-  company: string
-  monthly_premium: string
-  start_date: string
-  end_date: string
-}
-
-type LoanDraft = {
-  repayment_type: LoanRepaymentType
-  track_type: TrackType
-  label: string
-  lender: string
-  principal: string
-  annual_rate: string
-  prime_rate: string
-  margin: string
-  term_months: string
-  grace_months: string
-  start_date: string
-}
-
-type ExtraCost = { name: string; amount: string }
-
-function emptyTrack(startDate?: string): TrackDraft {
-  return {
-    track_type: 'fixed_unlinked',
-    principal: '',
-    annual_rate: '',
-    prime_rate: '',
-    margin: '',
-    term_months: '',
-    grace_months: '',
-    start_date: startDate || new Date().toISOString().slice(0, 10),
-  }
-}
-
-function emptyPolicy(): PolicyDraft {
-  return { type: 'חיים', company: '', monthly_premium: '', start_date: '', end_date: '' }
-}
-
-function emptyLoan(startDate?: string): LoanDraft {
-  return {
-    repayment_type: 'monthly_fixed',
-    track_type: 'fixed_unlinked',
-    label: '',
-    lender: '',
-    principal: '',
-    annual_rate: '',
-    prime_rate: '',
-    margin: '',
-    term_months: '',
-    grace_months: '',
-    start_date: startDate || new Date().toISOString().slice(0, 10),
-  }
-}
-
-const INS_TYPES = ['מבנה', 'חיים', 'משכנתא', 'תכולה', 'אחר']
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function formatPrice(raw: string) {
-  if (!raw) return ''
-  return Number(raw).toLocaleString('he-IL')
-}
-
-function formatCurrency(n: number) {
-  return '₪' + Math.round(n).toLocaleString('he-IL')
-}
-
-function formatNum(raw: string | number): string {
-  const str = String(raw)
-  if (str === '') return ''
-  const n = Number(str)
-  return isNaN(n) ? str : n.toLocaleString('he-IL')
-}
-
-function defaultLawyerCost(price: number): string {
-  return price > 0 ? String(Math.round((price * 0.005 + 1000) * 1.18)) : ''
-}
-
-function defaultBrokerageCost(price: number): string {
-  return price > 0 ? String(Math.round(price * 0.02 * 1.18)) : ''
-}
-
-function defaultSelfEquityPct(): string { return '25' }
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function Onboarding({ onComplete }: Props) {
@@ -297,8 +201,6 @@ export default function Onboarding({ onComplete }: Props) {
     }
     return (h >>> 0).toString(36)
   }
-
-  const TRACK_TYPES: TrackType[] = ['prime', 'fixed_unlinked', 'fixed_linked', 'variable']
 
   async function aiFillMortgage(file: File) {
     setMortgageAiBusy(true)
