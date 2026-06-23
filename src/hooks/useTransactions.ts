@@ -48,13 +48,16 @@ export function useTransactions(filters: Filters = {}) {
 
   useEffect(() => { fetch() }, [fetch])
 
-  return { transactions, loading, error, refetch: fetch }
+  return { transactions, setTransactions, loading, error, refetch: fetch }
 }
 
 async function getOwnerId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-  return user.id
+  // Read the cached session (local) rather than getUser() — the latter makes a
+  // network round trip to validate the token, which adds noticeable latency to
+  // every write (saving an edit, deleting a transaction).
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error('Not authenticated')
+  return session.user.id
 }
 
 export async function createTransaction(

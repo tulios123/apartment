@@ -53,7 +53,7 @@ export default function FinancesV2() {
     if (start) setRangeFrom(start)
   }, [property, rangeTouched])
 
-  const { transactions, loading, error, refetch } = useTransactions(
+  const { transactions, setTransactions, loading, error, refetch } = useTransactions(
     view === 'month' ? { year, month } : view === 'year' ? { year } : { from: rangeFrom, to: rangeTo }
   )
 
@@ -291,20 +291,34 @@ export default function FinancesV2() {
 
   async function submitForm() {
     if (!form.amount || Number(form.amount) <= 0) { setFormError('יש להזין סכום תקין'); return }
+    const payload: Partial<Transaction> = {
+      direction: form.direction, amount: Number(form.amount), date: form.date, category: form.category,
+      description: form.description || null, payment_method: form.payment_method || null, contract_id: null, recurring_item_id: null,
+    }
+    if (editingId) {
+      // Optimistic edit: merge locally and close the drawer at once so it feels
+      // instant; persist in the background and only reload if the write fails.
+      const id = editingId
+      setTransactions(prev => prev.map(x => x.id === id ? { ...x, ...payload } : x))
+      setDrawerOpen(false); setFormError(null)
+      updateTransaction(id, payload).then(({ error }) => { if (error) refetch() })
+      return
+    }
     setSaving(true); setFormError(null)
     try {
-      const payload: Partial<Transaction> = {
-        direction: form.direction, amount: Number(form.amount), date: form.date, category: form.category,
-        description: form.description || null, payment_method: form.payment_method || null, contract_id: null, recurring_item_id: null,
-      }
-      if (editingId) { const { error } = await updateTransaction(editingId, payload); if (error) throw new Error(error.message) }
-      else { const { error } = await createTransaction(payload as Omit<Transaction, 'id' | 'owner_id' | 'created_at'>); if (error) throw new Error(error.message) }
+      const { error } = await createTransaction(payload as Omit<Transaction, 'id' | 'owner_id' | 'created_at'>)
+      if (error) throw new Error(error.message)
       setDrawerOpen(false); refetch()
     } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
     setSaving(false)
   }
 
-  async function handleDelete(id: string) { await deleteTransaction(id); refetch() }
+  // Optimistic delete: drop the row immediately (no skeleton flash from a refetch);
+  // restore from the server only if the delete actually failed.
+  function handleDelete(id: string) {
+    setTransactions(prev => prev.filter(x => x.id !== id))
+    deleteTransaction(id).then(({ error }) => { if (error) refetch() })
+  }
   async function openReceipt(t: Transaction) {
     if (!t.document_id) return
     const w = window.open('', '_blank')
