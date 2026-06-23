@@ -82,13 +82,13 @@ Return an empty "tracks" array only if no loan-conditions table exists.`
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        // Opus + extended thinking is what reliably reads these scanned, multi-section bank
-        // printouts (Haiku/Sonnet wobbled on the variable מק"מ tracks; Opus+thinking = stable
-        // 5/5 in calibration). Runs once per user at onboarding, so the extra cost is fine.
-        model: 'claude-opus-4-8',
+        // Sonnet + extended thinking reliably reads these scanned, multi-section bank printouts.
+        // Calibrated against a real נספח א: plain Haiku/Sonnet wobbled on the variable מק"מ tracks;
+        // Sonnet+thinking (4k budget) + the deterministic anchor/margin guard below = stable 5/5
+        // across runs, ~4× cheaper and faster than Opus. Runs once per user at onboarding.
+        model: 'claude-sonnet-4-6',
         max_tokens: 8000,
-        thinking: { type: 'adaptive' },
-        output_config: { effort: 'high' },
+        thinking: { type: 'enabled', budget_tokens: 4000 },
         messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }],
       }),
     })
@@ -103,6 +103,20 @@ Return an empty "tracks" array only if no loan-conditions table exists.`
     const text: string = data.content?.find((b: { type: string; text?: string }) => b.type === 'text')?.text ?? '{}'
     const match = text.match(/\{[\s\S]*\}/)
     const result = match ? JSON.parse(match[0]) : { tracks: [] }
+
+    // Deterministic guard: for prime/variable tracks the anchor (prime ~5–6% or מק"מ ~3–4%) is
+    // always larger than the spread (<~1.5%). If the model swapped them, swap back — this fixes
+    // the one residual failure mode and makes the cheaper model reliable.
+    if (Array.isArray(result.tracks)) {
+      result.tracks = result.tracks.map((t: Record<string, unknown>) => {
+        const pr = Number(t.prime_rate), mg = Number(t.margin)
+        if ((t.track_type === 'prime' || t.track_type === 'variable') &&
+            t.prime_rate != null && t.margin != null && Math.abs(mg) > Math.abs(pr)) {
+          return { ...t, prime_rate: t.margin, margin: t.prime_rate }
+        }
+        return t
+      })
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
