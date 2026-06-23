@@ -1,0 +1,94 @@
+import { Tag, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
+import { StepHeader } from './StepHeader'
+import { emptyTrack, formatPrice } from './types'
+import { useOnboarding } from './context'
+
+export function PurchaseStep() {
+  const {
+    advance, back, setTrackForm, keyDeliveryDate,
+    buyerName, setBuyerName, street, setStreet, city, setCity,
+    rooms, setRooms, purchasePrice, setPurchasePrice,
+    signingDate, setSigningDate, setKeyDeliveryDate,
+    propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
+    purchaseFile, setPurchaseFile, purchaseInputRef,
+    showFillExample, fillTestPurchase,
+  } = useOnboarding()
+
+  return (
+    <form onSubmit={e => {
+      e.preventDefault()
+      setTrackForm(emptyTrack(keyDeliveryDate || undefined))
+      advance('mortgage')
+    }}>
+      <StepHeader current="purchase" icon={<Tag size={44} color="var(--accent)" />} title="פרטי רכישה" />
+      <div className="onboarding-form">
+        <div className="onboarding-field">
+          <label>שם הרוכש</label>
+          <input type="text" placeholder="שם מלא" value={buyerName}
+            onChange={e => setBuyerName(e.target.value)} autoFocus />
+        </div>
+        <div className="onboarding-row">
+          <div className="onboarding-field">
+            <label>רחוב</label>
+            <input type="text" placeholder="רחוב ומספר" value={street}
+              onChange={e => setStreet(e.target.value)} />
+          </div>
+          <div className="onboarding-field">
+            <label>עיר</label>
+            <input type="text" placeholder="עיר" value={city}
+              onChange={e => setCity(e.target.value)} />
+          </div>
+        </div>
+        <div className="onboarding-row">
+          <div className="onboarding-field">
+            <label>שטח (מ&quot;ר)</label>
+            <input type="number" placeholder="0" min="0" value={propertySizeSqm}
+              onChange={e => setPropertySizeSqm(e.target.value)} />
+          </div>
+          <div className="onboarding-field">
+            <label>קומה</label>
+            <input type="number" placeholder="0" value={floorNumber}
+              onChange={e => setFloorNumber(e.target.value)} />
+          </div>
+        </div>
+        <div className="onboarding-row">
+          <div className="onboarding-field">
+            <label>מספר חדרים</label>
+            <input type="number" placeholder="0" min="0" step="0.5" value={rooms}
+              onChange={e => setRooms(e.target.value)} />
+          </div>
+          <div className="onboarding-field">
+            <label>מחיר רכישה (₪)</label>
+            <input type="text" inputMode="numeric" placeholder="0"
+              value={formatPrice(purchasePrice)}
+              onChange={e => setPurchasePrice(e.target.value.replace(/\D/g, ''))} />
+          </div>
+        </div>
+        <div className="onboarding-row">
+          <div className="onboarding-field">
+            <label>תאריך חתימת חוזה</label>
+            <input type="date" value={signingDate} onChange={e => setSigningDate(e.target.value)} />
+          </div>
+          <div className="onboarding-field">
+            <label>מסירת מפתח</label>
+            <input type="date" value={keyDeliveryDate} onChange={e => setKeyDeliveryDate(e.target.value)} />
+          </div>
+        </div>
+        <div className="onboarding-file-field" onClick={() => purchaseInputRef.current?.click()}>
+          <span className="onboarding-file-label">חוזה רכישה</span>
+          <span className="onboarding-file-name">{purchaseFile?.name ?? 'לחץ לבחירת קובץ'}</span>
+          <input ref={purchaseInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) setPurchaseFile(f) }} />
+        </div>
+      </div>
+      <div className="onboarding-actions">
+        <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
+        {showFillExample && (
+          <button type="button" className="btn-onboard-skip" onClick={fillTestPurchase}>מלא דוגמה</button>
+        )}
+        <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
+      </div>
+    </form>
+  )
+}
