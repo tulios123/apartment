@@ -122,6 +122,9 @@ function defaultSelfEquityPct(): string { return '25' }
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function Onboarding({ onComplete }: Props) {
   const { user } = useAuth()
+  // "מלא דוגמה" buttons: shown in local dev and for the dev@test.local manager
+  // account (so onboarding can be filled quickly when testing on the live app).
+  const showFillExample = import.meta.env.DEV || user?.email === 'dev@test.local'
   const [step, setStep] = useState<Step>('welcome')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1232,7 +1235,7 @@ export default function Onboarding({ onComplete }: Props) {
             </div>
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-              {import.meta.env.DEV && (
+              {showFillExample && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestPurchase}>מלא דוגמה</button>
               )}
               <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
@@ -1361,7 +1364,7 @@ export default function Onboarding({ onComplete }: Props) {
 
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-              {import.meta.env.DEV && (
+              {showFillExample && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestMortgage}>מלא דוגמה</button>
               )}
               <button type="submit" className="btn-onboard-primary">{tracks.length ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
@@ -1465,7 +1468,7 @@ export default function Onboarding({ onComplete }: Props) {
 
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-              {import.meta.env.DEV && (
+              {showFillExample && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestLoans}>מלא דוגמה</button>
               )}
               <button type="submit" className="btn-onboard-primary">{loans.length ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
@@ -1636,7 +1639,7 @@ export default function Onboarding({ onComplete }: Props) {
             </div>
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-              {import.meta.env.DEV && (
+              {showFillExample && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestInvestment}>מלא דוגמה</button>
               )}
               <button type="submit" className="btn-onboard-primary">{(extraCosts.length || Object.values(costs).some(v => v.trim())) ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
@@ -1719,7 +1722,7 @@ export default function Onboarding({ onComplete }: Props) {
             </div>
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-              {import.meta.env.DEV && (
+              {showFillExample && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
               )}
               <button type="submit" className="btn-onboard-primary">{(companyName.trim() || monthlyRent) ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
@@ -1813,7 +1816,7 @@ export default function Onboarding({ onComplete }: Props) {
             {error && <p className="onboarding-error" role="alert">{error}</p>}
             <div className="onboarding-actions">
               <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-              {import.meta.env.DEV && (
+              {showFillExample && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestInsurance}>מלא דוגמה</button>
               )}
               <button type="submit" className="btn-onboard-primary" disabled={saving}>
