@@ -16,8 +16,17 @@ import {
 } from '../lib/push'
 
 const GENERATION_KEY = 'monthly_generation'
+const ADMIN_EMAIL = 'itai.shubi@gmail.com'
 
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
+
+interface FeedbackRow {
+  id: string
+  email: string | null
+  note: string
+  path: string | null
+  created_at: string
+}
 
 export default function Settings() {
   const { user, signOut } = useAuth()
@@ -25,10 +34,27 @@ export default function Settings() {
   const [resetting, setResetting] = useState(false)
   const [pushState, setPushState] = useState<PushState>('loading')
   const [pushBusy, setPushBusy] = useState(false)
+  const [feedback, setFeedback] = useState<FeedbackRow[]>([])
+
+  const isAdmin = user?.email === ADMIN_EMAIL
 
   useEffect(() => {
     refreshPushState()
   }, [])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    supabase
+      .from('feedback')
+      .select('id, email, note, path, created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setFeedback(data ?? []))
+  }, [isAdmin])
+
+  async function deleteFeedback(id: string) {
+    setFeedback(prev => prev.filter(f => f.id !== id))
+    await supabase.from('feedback').delete().eq('id', id)
+  }
 
   async function refreshPushState() {
     if (!pushSupported()) { setPushState('unsupported'); return }
@@ -205,6 +231,27 @@ export default function Settings() {
             </button>
           </div>
         </section>
+
+        {isAdmin && (
+          <section className="settings-section">
+            <h2>הצעות לשיפור {feedback.length > 0 && `(${feedback.length})`}</h2>
+            {feedback.length === 0 ? (
+              <p className="settings-note">עדיין אין הצעות.</p>
+            ) : (
+              <div className="settings-feedback-list">
+                {feedback.map(f => (
+                  <div key={f.id} className="settings-feedback-row">
+                    <p className="settings-feedback-note">{f.note}</p>
+                    <div className="settings-feedback-meta">
+                      <span>{f.email ?? '—'} · {new Date(f.created_at).toLocaleDateString('he-IL')}{f.path ? ` · ${f.path}` : ''}</span>
+                      <button className="settings-feedback-del" onClick={() => deleteFeedback(f.id)} aria-label="מחק">✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {import.meta.env.DEV && (
         <section className="settings-section">

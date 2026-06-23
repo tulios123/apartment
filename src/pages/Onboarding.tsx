@@ -9,6 +9,7 @@ import { upsertLoan } from '../hooks/useLoansData'
 import { upsertInvestmentCost } from '../hooks/useInvestmentData'
 import { createInsurancePolicy } from '../hooks/useInsurance'
 import { supabase } from '../lib/supabase'
+import { pushSupported, pushConfigured, isInstalledPWA, isIOS, enablePush } from '../lib/push'
 import { monthlyPayment } from '../lib/mortgage'
 import { MORTGAGE_TRACK_TYPES } from '../lib/constants'
 import type { TrackType, LoanRepaymentType, Contract } from '../types'
@@ -124,6 +125,21 @@ export default function Onboarding({ onComplete }: Props) {
   const [step, setStep] = useState<Step>('welcome')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notifOn, setNotifOn] = useState(false)
+  const [notifBusy, setNotifBusy] = useState(false)
+
+  async function enableNotifications() {
+    if (!user) return
+    setNotifBusy(true)
+    try {
+      await enablePush(user.id)
+      setNotifOn(true)
+    } catch {
+      // Permission denied or unsupported — leave the prompt as-is.
+    } finally {
+      setNotifBusy(false)
+    }
+  }
 
   // ── Purchase fields ──
   const [purchaseFile, setPurchaseFile] = useState<File | null>(null)
@@ -1054,7 +1070,8 @@ export default function Onboarding({ onComplete }: Props) {
             <div className="onboarding-icon"><House size={44} color="var(--accent)" /></div>
             <h1 className="onboarding-title">ברוך הבא!</h1>
             <p className="onboarding-subtitle">
-              בואו נגדיר את הנכס שלך בכמה שלבים קצרים.
+              בואו נגדיר את הנכס שלך בכמה שלבים קצרים.<br />
+              רק פרטי הרכישה נדרשים — כל השאר אופציונלי, אפשר לדלג ולהוסיף בהמשך.
             </p>
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
               <button type="submit" className="btn-onboard-primary">התחל <ArrowLeft size={16} /></button>
@@ -1257,7 +1274,7 @@ export default function Onboarding({ onComplete }: Props) {
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestMortgage}>מלא דוגמה</button>
               )}
-              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
+              <button type="submit" className="btn-onboard-primary">{tracks.length ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -1361,7 +1378,7 @@ export default function Onboarding({ onComplete }: Props) {
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestLoans}>מלא דוגמה</button>
               )}
-              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
+              <button type="submit" className="btn-onboard-primary">{loans.length ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -1516,7 +1533,7 @@ export default function Onboarding({ onComplete }: Props) {
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestInvestment}>מלא דוגמה</button>
               )}
-              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
+              <button type="submit" className="btn-onboard-primary">{(extraCosts.length || Object.values(costs).some(v => v.trim())) ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -1597,7 +1614,7 @@ export default function Onboarding({ onComplete }: Props) {
               {import.meta.env.DEV && (
                 <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
               )}
-              <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
+              <button type="submit" className="btn-onboard-primary">{(companyName.trim() || monthlyRent) ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
             </div>
           </form>
         )}
@@ -1707,6 +1724,25 @@ export default function Onboarding({ onComplete }: Props) {
               הנכס שלך הוגדר בהצלחה.<br />תוכל לנהל משכנתא, ביטוח, עלויות ותשלומים קבועים מתוך האפליקציה.
             </p>
             {error && <p className="onboarding-error" role="alert" style={{ textAlign: 'center' }}>{error}</p>}
+
+            {(() => {
+              if (notifOn) {
+                return <p className="onboarding-subtitle onboarding-optional" style={{ textAlign: 'center' }}>🔔 התראות הופעלו — נזכיר לך כשמשהו דורש טיפול.</p>
+              }
+              if (!pushSupported() || !pushConfigured()) return null
+              if (isIOS() && !isInstalledPWA()) {
+                return <p className="onboarding-subtitle onboarding-optional" style={{ textAlign: 'center' }}>רוצה תזכורות? ב-iPhone צריך קודם להוסיף את האפליקציה למסך הבית (שיתוף ← הוסף למסך הבית), ואז להפעיל התראות בהגדרות.</p>
+              }
+              return (
+                <div className="onboarding-actions" style={{ justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+                  <p className="onboarding-subtitle" style={{ textAlign: 'center', margin: 0 }}>רוצה לקבל תזכורות על גביית שכר דירה, תשלומים וחידושי חוזה?</p>
+                  <button type="button" className="btn-onboard-skip" onClick={enableNotifications} disabled={notifBusy}>
+                    {notifBusy ? 'מפעיל...' : '🔔 הפעל תזכורות'}
+                  </button>
+                </div>
+              )
+            })()}
+
             <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
               <button className="btn-onboard-primary" onClick={() => { window.history.replaceState(null, '', '/'); onComplete() }}>למסך הראשי <ArrowLeft size={16} /></button>
             </div>

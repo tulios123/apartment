@@ -1249,6 +1249,43 @@ input[type="date"] {
   gap: 8px;
 }
 
+/* Admin feedback list */
+.settings-feedback-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settings-feedback-row {
+  background: var(--surface-2, #f7f8fa);
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  padding: 10px 12px;
+}
+.settings-feedback-note {
+  margin: 0 0 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text, #1a1a1a);
+  white-space: pre-wrap;
+}
+.settings-feedback-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.settings-feedback-del {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
 /* Tasks — Google Tasks style */
 .tasks-page .page-header {
   align-items: center;

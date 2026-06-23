@@ -9,6 +9,7 @@ import {
 import type { Icon } from '@phosphor-icons/react'
 import { useMonthlyGeneration } from '../../hooks/useMonthlyGeneration'
 import { useAuth } from '../../contexts/AuthContext'
+import FeedbackButton from '../FeedbackButton'
 
 type NavItem = { to: string; label: string; icon: Icon; end?: boolean }
 
@@ -81,6 +82,8 @@ export default function Layout() {
       <main className="main-content" ref={mainRef}>
         <Outlet />
       </main>
+
+      <FeedbackButton />
 
       {/* Mobile bottom tab bar */}
       <nav className="bottom-nav" aria-label="ניווט ראשי">
