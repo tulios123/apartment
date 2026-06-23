@@ -1,17 +1,83 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { resetListCache } from '../lib/googleTasks'
+import {
+  pushSupported,
+  pushConfigured,
+  isInstalledPWA,
+  isIOS,
+  isSubscribed,
+  enablePush,
+  disablePush,
+  sendTestNotification,
+} from '../lib/push'
 
 const GENERATION_KEY = 'monthly_generation'
 const MANAGER_EMAIL = 'dev@test.local'
+
+type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
 export default function Settings() {
   const { user, signOut } = useAuth()
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [pushState, setPushState] = useState<PushState>('loading')
+  const [pushBusy, setPushBusy] = useState(false)
+
+  useEffect(() => {
+    refreshPushState()
+  }, [])
+
+  async function refreshPushState() {
+    if (!pushSupported()) { setPushState('unsupported'); return }
+    const perm = Notification.permission
+    if (perm === 'denied') { setPushState('denied'); return }
+    if (perm === 'granted') {
+      setPushState((await isSubscribed()) ? 'granted' : 'default')
+      return
+    }
+    // perm === 'default': on iOS push only works once added to the home screen.
+    if (isIOS() && !isInstalledPWA()) { setPushState('not-installed'); return }
+    setPushState('default')
+  }
+
+  async function enableNotifications() {
+    if (!user) return
+    setPushBusy(true)
+    try {
+      await enablePush(user.id)
+      setPushState('granted')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg === 'denied') setPushState('denied')
+      else alert('שגיאה בהפעלת התראות: ' + msg)
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  async function disableNotifications() {
+    setPushBusy(true)
+    try {
+      await disablePush()
+      setPushState('default')
+    } catch (e) {
+      alert('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  async function testNotification() {
+    try {
+      await sendTestNotification()
+    } catch (e) {
+      alert('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
+    }
+  }
 
   function resetGenerationCache() {
     localStorage.removeItem(GENERATION_KEY)
@@ -73,6 +139,46 @@ export default function Settings() {
           <div className="settings-actions">
             <button className="btn-secondary" onClick={signOut}>יציאה מהחשבון</button>
           </div>
+        </section>
+
+        <section className="settings-section">
+          <h2>התראות</h2>
+          <p className="settings-note">
+            קבלו התראה לנייד כשמשהו דורש טיפול — אישור גביית שכר דירה, תשלומים, חידוש חוזה ומשימות שעבר זמנן. נשלחת פעם ביום, רק כשיש משהו ממתין.
+          </p>
+          {pushState === 'unsupported' && (
+            <p className="settings-note">הדפדפן הזה לא תומך בהתראות.</p>
+          )}
+          {pushState === 'not-installed' && (
+            <p className="settings-note">
+              כדי לקבל התראות ב-iPhone צריך קודם להוסיף את האפליקציה למסך הבית (שיתוף ← הוסף למסך הבית) ולפתוח אותה משם.
+            </p>
+          )}
+          {pushState === 'denied' && (
+            <p className="settings-note">
+              ההתראות חסומות. ניתן לאפשר אותן מחדש בהגדרות המכשיר עבור האפליקציה.
+            </p>
+          )}
+          {pushState === 'default' && !pushConfigured() && (
+            <p className="settings-note">ההתראות יופעלו בקרוב.</p>
+          )}
+          {pushState === 'granted' ? (
+            <div className="settings-actions" style={{ alignItems: 'center', gap: 12 }}>
+              <span className="settings-value" style={{ color: 'var(--success-text, #1a7f37)', fontWeight: 600 }}>מופעל ✓</span>
+              <button className="btn-secondary" onClick={testNotification} disabled={pushBusy}>
+                שלח התראת בדיקה
+              </button>
+              <button className="btn-secondary" onClick={disableNotifications} disabled={pushBusy}>
+                {pushBusy ? '...' : 'כבה'}
+              </button>
+            </div>
+          ) : pushState === 'default' && pushConfigured() ? (
+            <div className="settings-actions">
+              <button className="btn-secondary" onClick={enableNotifications} disabled={pushBusy}>
+                {pushBusy ? 'מפעיל...' : 'הפעל התראות'}
+              </button>
+            </div>
+          ) : null}
         </section>
 
         <section className="settings-section">

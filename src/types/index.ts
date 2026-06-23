@@ -177,6 +177,17 @@ export interface InsurancePolicy {
   created_at: string
 }
 
+export interface PushSubscriptionRow {
+  id: string
+  owner_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  user_agent: string | null
+  created_at: string
+  last_seen_at: string
+}
+
 export interface Document {
   id: string
   owner_id: string

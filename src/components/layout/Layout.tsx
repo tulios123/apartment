@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   House,
   Wallet,
@@ -24,7 +24,19 @@ export default function Layout() {
   useMonthlyGeneration()
   const { user, signOut } = useAuth()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const mainRef = useRef<HTMLElement>(null)
+
+  // A notification tap, when the app is already open, postMessages from the
+  // service worker — route in-app (SPA) instead of triggering a full reload.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'navigate' && typeof e.data.url === 'string') navigate(e.data.url)
+    }
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [navigate])
 
   // Lock the body to the viewport while inside the app shell (mobile), so iOS
   // Safari can't scroll the body and toggle its toolbars. Removed on unmount so
