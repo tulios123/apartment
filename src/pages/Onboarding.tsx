@@ -161,7 +161,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
 
   // ── Investment / equity ──
-  const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('percent')
+  const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('amount')
   const [equityValue, setEquityValue] = useState('')
   const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '' })
   const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([])
@@ -216,10 +216,15 @@ export default function Onboarding({ onComplete }: Props) {
 
   // ── Derived: equity ─────────────────────────────────────────────────────────
   const price = parseFloat(purchasePrice) || 0
-  // effective = user value if typed, else computed default (grey placeholder)
+  // Equity is what's left of the price after all financing — derive it from the
+  // mortgage + loans already entered, rather than guessing a flat percentage.
+  const totalMortgagePrincipal = tracks.reduce((s, t) => s + (parseFloat(t.principal) || 0), 0)
+  const totalLoanPrincipal = loans.reduce((s, l) => s + (parseFloat(l.principal) || 0), 0)
+  const derivedEquityAmount = Math.max(0, price - totalMortgagePrincipal - totalLoanPrincipal)
+  // effective = user value if typed, else the derived default (grey placeholder)
   const effEquity = equityValue || (equityMode === 'percent'
     ? defaultSelfEquityPct()
-    : (price > 0 ? String(Math.round(price * 0.25)) : ''))
+    : (derivedEquityAmount > 0 ? String(derivedEquityAmount) : ''))
   const effLawyer = costs.lawyer || defaultLawyerCost(price)
   const effBrokerage = costs.brokerage || defaultBrokerageCost(price)
   const equityAmount = equityMode === 'percent'
@@ -407,7 +412,14 @@ export default function Onboarding({ onComplete }: Props) {
 
         // Rental contract
         (async () => {
-          if (!companyName.trim() || !startDate || !endDate || !monthlyRent) return
+          if (!companyName.trim() || !startDate || !endDate || !monthlyRent) {
+            // Don't silently drop a partly-filled rental — a contract needs all of
+            // company + start + end + rent, so flag it instead of losing the input.
+            if (companyName.trim() || monthlyRent || startDate || endDate) {
+              failures.push('שכירות (חסרים שם/תאריכים/סכום)')
+            }
+            return
+          }
           try {
             contract = await createContract({
               owner_id: user.id,
@@ -1394,7 +1406,7 @@ export default function Onboarding({ onComplete }: Props) {
             <div className="onboarding-form">
               {/* Equity */}
               <div className="onboarding-field">
-                <label>הון עצמי</label>
+                <label>הון עצמי <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>· מחושב: מחיר − משכנתא − הלוואות (ניתן לשנות)</span></label>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <div className="toggle-group" style={{ flexShrink: 0 }}>
                     <button type="button" className={`toggle-btn${equityMode === 'amount' ? ' active' : ''}`}

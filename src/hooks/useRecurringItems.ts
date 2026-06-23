@@ -31,9 +31,12 @@ export function useRecurringItems() {
 }
 
 async function getOwnerId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-  return user.id
+  // Cached session (local) instead of getUser() — the latter makes a network
+  // round trip to validate the token, slowing every write (e.g. the onboarding
+  // rent-reminder sync).
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error('Not authenticated')
+  return session.user.id
 }
 
 export async function createRecurringItem(
