@@ -12,6 +12,12 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
+  // Manager (dev test account) login stays hidden from family. It's available in
+  // local dev, or on the live app via a discreet ?manager URL param for the owner.
+  const managerAccess =
+    import.meta.env.DEV ||
+    (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('manager'))
+
   const handleSignIn = async () => {
     setBusy(true)
     try {
@@ -52,8 +58,8 @@ export default function Login() {
           {busy ? 'מתחבר...' : 'התחברות עם Google'}
         </button>
 
-        {/* Dev-only manager (password) login — never rendered in the production build. */}
-        {import.meta.env.DEV && (
+        {/* Manager (dev test account) login — hidden from family; shown in dev or via ?manager. */}
+        {managerAccess && (
           !showManager ? (
             <button className="login-manager-link" onClick={() => setShowManager(true)}>
               כניסת מנהל
