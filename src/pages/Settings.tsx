@@ -17,6 +17,9 @@ import {
 
 const GENERATION_KEY = 'monthly_generation'
 const ADMIN_EMAIL = 'itai.shubi@gmail.com'
+// The dev/test account (reached via the ?manager login) keeps the reset tools on
+// the live app so onboarding can be re-tested there — family accounts never see them.
+const TEST_ACCOUNT_EMAIL = 'dev@test.local'
 
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
@@ -253,7 +256,7 @@ export default function Settings() {
           </section>
         )}
 
-        {import.meta.env.DEV && (
+        {(import.meta.env.DEV || user?.email === TEST_ACCOUNT_EMAIL) && (
         <section className="settings-section">
           <h2>פיתוח ובדיקה</h2>
           <p className="settings-note">
