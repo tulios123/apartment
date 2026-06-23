@@ -1730,10 +1730,39 @@ input[type="date"] {
 
 /* Content */
 .onboarding-icon {
-  font-size: 44px;
-  text-align: center;
-  margin-bottom: 14px;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft, rgba(10, 31, 68, .06));
+  border-radius: 18px;
+  font-size: 40px;
   line-height: 1;
+}
+
+/* Slide/fade each step in on change (re-triggered via key={step}). */
+.onboarding-step-anim {
+  animation: onboarding-step-in 0.26s var(--ease, cubic-bezier(.4, 0, .2, 1));
+}
+@keyframes onboarding-step-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-step-anim { animation: none; }
+}
+
+/* Section sub-header inside a dense step. */
+.onboarding-subhead {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  margin: 10px 0 -2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 
 .onboarding-title {

@@ -21,14 +21,17 @@ export default function Onboarding({ onComplete }: Props) {
     <OnboardingContext.Provider value={state}>
       <div className="onboarding-wrap">
         <div className="onboarding-card">
-          {step === 'documents' && <DocumentsStep />}
-          {step === 'purchase' && <PurchaseStep />}
-          {step === 'mortgage' && <MortgageStep />}
-          {step === 'loans' && <LoansStep />}
-          {step === 'investment' && <InvestmentStep />}
-          {step === 'rental' && <RentalStep />}
-          {step === 'insurance' && <InsuranceStep />}
-          {step === 'done' && <DoneStep />}
+          {/* key={step} remounts on each step change, re-triggering the slide/fade. */}
+          <div className="onboarding-step-anim" key={step}>
+            {step === 'documents' && <DocumentsStep />}
+            {step === 'purchase' && <PurchaseStep />}
+            {step === 'mortgage' && <MortgageStep />}
+            {step === 'loans' && <LoansStep />}
+            {step === 'investment' && <InvestmentStep />}
+            {step === 'rental' && <RentalStep />}
+            {step === 'insurance' && <InsuranceStep />}
+            {step === 'done' && <DoneStep />}
+          </div>
         </div>
       </div>
     </OnboardingContext.Provider>

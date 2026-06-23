@@ -98,6 +98,8 @@ export function InvestmentStep() {
           </div>
         </div>
 
+        <p className="onboarding-subhead">עלויות רכישה ונלוות</p>
+
         {/* Cost fields */}
         {(() => {
           const lawyerDef = defaultLawyerCost(price)
