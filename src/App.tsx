@@ -68,11 +68,19 @@ function AppRoutes() {
   )
 }
 
+// Notes overlay: in local dev, and for the dev@test.local manager account on the
+// live app (so notes can be taken/copied across screens while reviewing in prod).
+function DevNotesGate() {
+  const { user } = useAuth()
+  if (!(import.meta.env.DEV || user?.email === 'dev@test.local')) return null
+  return <DevNotes />
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <AppRoutes />
-      {import.meta.env.DEV && <DevNotes />}
+      <DevNotesGate />
     </AuthProvider>
   )
 }
