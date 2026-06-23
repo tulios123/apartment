@@ -131,6 +131,9 @@ export default function Settings() {
       await supabase.from('contracts').delete().eq('owner_id', user.id)
       await supabase.from('mortgage_tracks').delete().eq('owner_id', user.id)
       await supabase.from('mortgages').delete().eq('owner_id', user.id)
+      // loans (monthly + balloon) carry owner_id and a SET NULL property FK, so a
+      // property delete leaves them orphaned — clear them explicitly before properties.
+      await supabase.from('loans').delete().eq('owner_id', user.id)
       await supabase.from('properties').delete().eq('owner_id', user.id)
 
       if (docs && docs.length > 0) {
