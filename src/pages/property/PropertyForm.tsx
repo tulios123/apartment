@@ -38,6 +38,9 @@ export function PropertyForm({
   const [purchasePrice, setPurchasePrice] = useState(
     initial.purchase_price != null ? String(initial.purchase_price) : ''
   )
+  const [estimatedValue, setEstimatedValue] = useState(
+    initial.estimated_value != null ? String(initial.estimated_value) : ''
+  )
   const [purchaseDate, setPurchaseDate] = useState(initial.purchase_date ?? '')
   const [keyDeliveryDate, setKeyDeliveryDate] = useState(initial.key_delivery_date ?? '')
   const [floor, setFloor] = useState(initial.floor != null ? String(initial.floor) : '')
@@ -61,6 +64,7 @@ export function PropertyForm({
         buyer_name: buyerName.trim() || null,
         block_parcel: block && parcel ? `גוש ${block.trim()} חלקה ${parcel.trim()}` : null,
         purchase_price: purchasePrice ? Number(purchasePrice.replace(/,/g, '')) : null,
+        estimated_value: estimatedValue ? Number(estimatedValue.replace(/,/g, '')) : null,
         purchase_date: purchaseDate || null,
         key_delivery_date: keyDeliveryDate || null,
         floor: floor ? Number(floor) : null,
@@ -117,16 +121,29 @@ export function PropertyForm({
         <label>שם הקונה</label>
         <input type="text" value={buyerName} onChange={e => setBuyerName(e.target.value)} placeholder="שם מלא" />
       </div>
-      <div className="form-row">
-        <label>מחיר רכישה (₪)</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={purchasePrice ? formatPrice(purchasePrice) : ''}
-          onChange={e => setPurchasePrice(e.target.value.replace(/[^\d]/g, ''))}
-          placeholder="0"
-        />
+      <div className="form-2col">
+        <div className="form-row">
+          <label>מחיר רכישה (₪)</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={purchasePrice ? formatPrice(purchasePrice) : ''}
+            onChange={e => setPurchasePrice(e.target.value.replace(/[^\d]/g, ''))}
+            placeholder="0"
+          />
+        </div>
+        <div className="form-row">
+          <label>שווי נכס נוכחי (₪)</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={estimatedValue ? formatPrice(estimatedValue) : ''}
+            onChange={e => setEstimatedValue(e.target.value.replace(/[^\d]/g, ''))}
+            placeholder={purchasePrice ? formatPrice(purchasePrice) : '0'}
+          />
+        </div>
       </div>
+      <p className="form-hint">שווי השוק העדכני — משמש לחישוב ההון העצמי והתשואה. ברירת מחדל: מחיר הרכישה.</p>
       <div className="form-2col">
         <div className="form-row">
           <label>תאריך חתימת חוזה</label>
