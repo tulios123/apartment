@@ -157,3 +157,19 @@
 @media (hover: none) {
   .finv-tx-actions { opacity: 1; }
 }
+
+/* Confirmation toast for optimistic save/delete — fixed above the bottom nav. */
+.finv-flash {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  z-index: 200; max-width: calc(100% - 40px); white-space: nowrap;
+  padding: 11px 18px; border-radius: var(--r-pill); box-shadow: var(--shadow-md);
+  font-size: 13.5px; font-weight: 600; text-align: center;
+  animation: finvFlashIn 0.22s var(--ease) both;
+}
+.finv-flash.ok  { background: var(--success-bg); color: var(--success-text); }
+.finv-flash.err { background: var(--danger-bg);  color: var(--danger-text); }
+@keyframes finvFlashIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}

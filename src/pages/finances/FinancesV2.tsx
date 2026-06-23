@@ -81,6 +81,16 @@ export default function FinancesV2() {
   const [receiptBusy, setReceiptBusy] = useState(false)
   const receiptRef = useRef<HTMLInputElement>(null)
 
+  // Brief confirmation toast — since saves/deletes are optimistic (no spinner),
+  // this is the only signal that the action took effect.
+  const [flash, setFlash] = useState<{ msg: string; tone: 'ok' | 'err' } | null>(null)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function showFlash(msg: string, tone: 'ok' | 'err' = 'ok') {
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    setFlash({ msg, tone })
+    flashTimer.current = setTimeout(() => setFlash(null), 2200)
+  }
+
   // Swipe the edit drawer back toward its left edge to dismiss it.
   const swipe = useRef<{ x: number; y: number; horiz: boolean } | null>(null)
   const [drawerDx, setDrawerDx] = useState(0)
@@ -301,7 +311,8 @@ export default function FinancesV2() {
       const id = editingId
       setTransactions(prev => prev.map(x => x.id === id ? { ...x, ...payload } : x))
       setDrawerOpen(false); setFormError(null)
-      updateTransaction(id, payload).then(({ error }) => { if (error) refetch() })
+      showFlash('התנועה עודכנה')
+      updateTransaction(id, payload).then(({ error }) => { if (error) { refetch(); showFlash('העדכון נכשל — שוחזר', 'err') } })
       return
     }
     setSaving(true); setFormError(null)
@@ -309,6 +320,7 @@ export default function FinancesV2() {
       const { error } = await createTransaction(payload as Omit<Transaction, 'id' | 'owner_id' | 'created_at'>)
       if (error) throw new Error(error.message)
       setDrawerOpen(false); refetch()
+      showFlash('התנועה נוספה')
     } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
     setSaving(false)
   }
@@ -317,7 +329,8 @@ export default function FinancesV2() {
   // restore from the server only if the delete actually failed.
   function handleDelete(id: string) {
     setTransactions(prev => prev.filter(x => x.id !== id))
-    deleteTransaction(id).then(({ error }) => { if (error) refetch() })
+    showFlash('התנועה נמחקה')
+    deleteTransaction(id).then(({ error }) => { if (error) { refetch(); showFlash('המחיקה נכשלה — שוחזר', 'err') } })
   }
   async function openReceipt(t: Transaction) {
     if (!t.document_id) return
@@ -347,6 +360,7 @@ export default function FinancesV2() {
 
   return (
     <div className="finv">
+      {flash && <div className={`finv-flash ${flash.tone}`} role="status">{flash.msg}</div>}
       <div className="finv-periodbar">
         <div className="finv-viewtoggle">
           <button className={view === 'month' ? 'on' : ''} onClick={() => setView('month')}>חודש</button>
