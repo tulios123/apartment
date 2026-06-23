@@ -1966,6 +1966,60 @@ input[type="date"] {
 .onboarding-finish-early:hover { color: var(--accent); text-decoration: underline; }
 .onboarding-finish-early:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Documents-first screen — upload cards that kick off background extraction. */
+.onboarding-doc-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 20px;
+}
+.onboarding-doc-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md, 14px);
+  background: var(--surface);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: right;
+  transition: border-color var(--t-fast, .15s) var(--ease, ease), background var(--t-fast, .15s) var(--ease, ease);
+}
+.onboarding-doc-card:hover:not(:disabled) { border-color: var(--accent); }
+.onboarding-doc-card:disabled { cursor: wait; }
+.onboarding-doc-card-icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft, rgba(10, 31, 68, .06));
+  border-radius: 12px;
+}
+.onboarding-doc-card-body { flex: 1; min-width: 0; }
+.onboarding-doc-card-title { font-weight: 600; font-size: 15px; color: var(--text); }
+.onboarding-doc-card-status {
+  font-size: 13px; color: var(--text-muted); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.onboarding-doc-card-mark {
+  flex-shrink: 0; width: 24px; text-align: center;
+  font-size: 20px; font-weight: 600; color: var(--text-muted);
+}
+.onboarding-doc-card.is-done { border-color: var(--success, #1a7f37); background: var(--success-soft, rgba(26, 127, 55, .05)); }
+.onboarding-doc-card.is-done .onboarding-doc-card-mark,
+.onboarding-doc-card.is-done .onboarding-doc-card-status { color: var(--success-text, #1a7f37); }
+.onboarding-doc-card.is-error { border-color: var(--danger); }
+.onboarding-doc-card.is-error .onboarding-doc-card-status { color: var(--danger); }
+.onboarding-doc-card.is-reading { border-color: var(--accent); }
+.onboarding-doc-spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: onboarding-spin .7s linear infinite;
+  vertical-align: middle;
+}
+@keyframes onboarding-spin { to { transform: rotate(360deg); } }
+
 .onboarding-error {
   color: var(--danger);
   font-size: 13px;

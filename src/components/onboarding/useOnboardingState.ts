@@ -27,7 +27,7 @@ export function useOnboardingState(onComplete: () => void) {
   // "מלא דוגמה" buttons: shown in local dev and for the dev@test.local manager
   // account (so onboarding can be filled quickly when testing on the live app).
   const showFillExample = import.meta.env.DEV || user?.email === 'dev@test.local'
-  const [step, setStep] = useState<Step>('welcome')
+  const [step, setStep] = useState<Step>('documents')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notifOn, setNotifOn] = useState(false)
@@ -121,7 +121,7 @@ export function useOnboardingState(onComplete: () => void) {
     dismissKeyboardAndScrollTop()
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
-    else setStep('welcome')
+    else setStep('documents')
   }
 
   function advance(next: Step) {

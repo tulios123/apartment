@@ -1,7 +1,7 @@
 import type { TrackType, LoanRepaymentType } from '../../types'
 
 // ── Step types ────────────────────────────────────────────────────────────────
-export type Step = 'welcome' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
+export type Step = 'documents' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
 
 export const STEP_ORDER: Step[] = ['purchase', 'mortgage', 'loans', 'investment', 'rental', 'insurance']
 

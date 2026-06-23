@@ -1,6 +1,6 @@
 import { OnboardingContext } from '../components/onboarding/context'
 import { useOnboardingState } from '../components/onboarding/useOnboardingState'
-import { WelcomeStep } from '../components/onboarding/WelcomeStep'
+import { DocumentsStep } from '../components/onboarding/DocumentsStep'
 import { PurchaseStep } from '../components/onboarding/PurchaseStep'
 import { MortgageStep } from '../components/onboarding/MortgageStep'
 import { LoansStep } from '../components/onboarding/LoansStep'
@@ -21,7 +21,7 @@ export default function Onboarding({ onComplete }: Props) {
     <OnboardingContext.Provider value={state}>
       <div className="onboarding-wrap">
         <div className="onboarding-card">
-          {step === 'welcome' && <WelcomeStep />}
+          {step === 'documents' && <DocumentsStep />}
           {step === 'purchase' && <PurchaseStep />}
           {step === 'mortgage' && <MortgageStep />}
           {step === 'loans' && <LoansStep />}
