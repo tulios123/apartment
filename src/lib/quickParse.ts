@@ -3,10 +3,16 @@
 export type ParsedQuick = { amount: number; desc: string; income: boolean }
 
 const INCOME_RE = /קיבלתי|התקבל|הכנס|נכנס|שכר[\s-]?דירה|שכ["']?ד|שכירות|החזר|זיכוי|הפקד|משכורת|תשלום\s+מהשוכר|שוכר\s+שילם/
-const SHEKEL_RE = /₪|ש["']?ח|שקל(?:ים)?|nis/gi
+// ₪ and "nis" are safe to strip anywhere. The Hebrew currency words (ש"ח, שקל)
+// must only match as standalone tokens — bounded by non-Hebrew on both sides —
+// or they mangle ordinary words that merely contain them (שחור→"ור", משחק→"מק").
+const SHEKEL_RE = /₪|\bnis\b/gi
+const SHEKEL_WORD_RE = /(^|[^א-ת])(ש["']?ח|שקל(?:ים)?)(?=[^א-ת]|$)/g
 // Leading verbs / fillers that aren't part of the description.
 const LEAD_RE = /^\s*(שילמתי|שילמת|שולם|קיבלתי|התקבל|הוצאתי|הוצאה|הכנסה|רשום|תרשום|תוסיף|הוסף)\s*/g
-const CONNECTOR_RE = /\s+(עבור|על|בעבור|בגין|ל|של|מ)\s+/g
+// Connector words between amount and subject. Also matches a connector left at
+// the start once the lead verb is stripped ("שילמתי 350 על תיקון" → "תיקון").
+const CONNECTOR_RE = /(^|\s)(עבור|על|בעבור|בגין|ל|של|מ)\s+/g
 // Time words that add noise to the description.
 const TIME_RE = /(^|\s)(היום|אתמול|מחר|השבוע|החודש)(?=\s|$)/g
 
@@ -27,6 +33,7 @@ export function parseQuick(raw: string): ParsedQuick | null {
     .replace(/(\d),(?=\d{3}\b)/g, '$1')
     .replace(/\d+(\.\d+)?/, ' ')
     .replace(SHEKEL_RE, ' ')
+    .replace(SHEKEL_WORD_RE, '$1 ')
     .replace(LEAD_RE, '')
     .replace(TIME_RE, ' ')
     .replace(CONNECTOR_RE, ' ')
