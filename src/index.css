@@ -1948,6 +1948,24 @@ input[type="date"] {
 
 .btn-onboard-skip:hover { color: var(--text); }
 
+/* Optional-step escape hatch: save what's entered so far and jump to the finish
+   screen, for users who only want the property in and will add the rest later. */
+.onboarding-finish-early {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 0;
+  text-align: center;
+}
+.onboarding-finish-early:hover { color: var(--accent); text-decoration: underline; }
+.onboarding-finish-early:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .onboarding-error {
   color: var(--danger);
   font-size: 13px;

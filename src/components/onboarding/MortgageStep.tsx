@@ -1,6 +1,7 @@
 import { Bank, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { TrackForm } from './TrackForm'
+import { FinishEarly } from './FinishEarly'
 import { emptyTrack, emptyLoan, formatCurrency } from './types'
 import { useOnboarding } from './context'
 
@@ -137,6 +138,7 @@ export function MortgageStep() {
         )}
         <button type="submit" className="btn-onboard-primary">{tracks.length ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
       </div>
+      <FinishEarly />
     </form>
   )
 }

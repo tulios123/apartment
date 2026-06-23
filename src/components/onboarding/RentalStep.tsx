@@ -1,5 +1,6 @@
 import { FileText, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
+import { FinishEarly } from './FinishEarly'
 import { formatNum } from './types'
 import { useOnboarding } from './context'
 
@@ -89,6 +90,7 @@ export function RentalStep() {
         )}
         <button type="submit" className="btn-onboard-primary">{(companyName.trim() || monthlyRent) ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
       </div>
+      <FinishEarly />
     </form>
   )
 }

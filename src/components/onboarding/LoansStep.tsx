@@ -1,6 +1,7 @@
 import { HandCoins, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { LoanForm } from './LoanForm'
+import { FinishEarly } from './FinishEarly'
 import { emptyLoan, formatCurrency } from './types'
 import { useOnboarding } from './context'
 
@@ -111,6 +112,7 @@ export function LoansStep() {
         )}
         <button type="submit" className="btn-onboard-primary">{loans.length ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
       </div>
+      <FinishEarly />
     </form>
   )
 }

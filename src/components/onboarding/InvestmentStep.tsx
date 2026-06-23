@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react'
 import { Coins, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
+import { FinishEarly } from './FinishEarly'
 import {
   formatNum, formatCurrency,
   defaultLawyerCost, defaultBrokerageCost, defaultSelfEquityPct,
@@ -181,6 +182,7 @@ export function InvestmentStep() {
         )}
         <button type="submit" className="btn-onboard-primary">{(extraCosts.length || Object.values(costs).some(v => v.trim())) ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
       </div>
+      <FinishEarly />
     </form>
   )
 }
