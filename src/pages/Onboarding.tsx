@@ -285,6 +285,19 @@ export default function Onboarding({ onComplete }: Props) {
     })
   }
 
+  // Content-addressed cache of the AI extraction so re-uploading the same bank
+  // document doesn't re-hit (re-charge) the model — the second pass is free and
+  // instant, which makes testing the mapping/UI cheap. FNV-1a 32-bit over the
+  // base64; different bytes → different key → a fresh call.
+  function hashString(s: string): string {
+    let h = 0x811c9dc5
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i)
+      h = Math.imul(h, 0x01000193)
+    }
+    return (h >>> 0).toString(36)
+  }
+
   const TRACK_TYPES: TrackType[] = ['prime', 'fixed_unlinked', 'fixed_linked', 'variable']
 
   async function aiFillMortgage(file: File) {
@@ -292,10 +305,20 @@ export default function Onboarding({ onComplete }: Props) {
     setMortgageAiErr(null)
     try {
       const fileBase64 = await fileToBase64(file)
-      const { data, error } = await supabase.functions.invoke('extract-mortgage', {
-        body: { fileBase64, mediaType: file.type },
-      })
-      if (error) throw error
+      const cacheKey = `apt_extract_mortgage_${hashString(fileBase64)}`
+      let data: { tracks?: Record<string, unknown>[] } | null = null
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
+      }
+      if (!data) {
+        const res = await supabase.functions.invoke('extract-mortgage', {
+          body: { fileBase64, mediaType: file.type },
+        })
+        if (res.error) throw res.error
+        data = res.data
+        try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+      }
       const raw = (data?.tracks ?? []) as Record<string, unknown>[]
       const mapped: TrackDraft[] = raw
         .filter(t => (Number(t.principal) || 0) > 0)
