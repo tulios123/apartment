@@ -305,7 +305,9 @@ export default function Onboarding({ onComplete }: Props) {
     setMortgageAiErr(null)
     try {
       const fileBase64 = await fileToBase64(file)
-      const cacheKey = `apt_extract_mortgage_${hashString(fileBase64)}`
+      // Version the key so improving the extraction (model/prompt) invalidates stale cached
+      // results for the same file. Bump v2→v3… whenever the edge function's output changes.
+      const cacheKey = `apt_extract_mortgage_v2_${hashString(fileBase64)}`
       let data: { tracks?: Record<string, unknown>[] } | null = null
       const cached = localStorage.getItem(cacheKey)
       if (cached) {

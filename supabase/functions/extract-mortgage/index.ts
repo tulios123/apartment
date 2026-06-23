@@ -19,32 +19,60 @@ Deno.serve(async (req) => {
       ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
       : { type: 'image', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
 
-    const prompt = `This is an Israeli mortgage document — an approval-in-principle (אישור עקרוני),
-amortization schedule (לוח סילוקין), or mortgage-mix summary (תמהיל משכנתא). Extract every
-track (מסלול) in the mix. Return ONLY a valid JSON object — no markdown, no explanation:
+    const prompt = `You are reading an Israeli bank mortgage approval/confirmation document (it may be a
+scanned monospaced printout). Extract the borrower's FULL mortgage composition — every
+track (מסלול / מַשְׁנֶה) — and return ONLY a valid JSON object, no markdown:
 
 {
   "tracks": [
     {
       "track_type": "prime | fixed_unlinked | fixed_linked | variable",
-      "principal": numeric track amount in ₪ as an integer,
-      "annual_rate": effective annual interest rate as a percent number (e.g. 5.1),
-      "prime_rate": prime/anchor component as a percent (prime & variable only), else null,
-      "margin": margin/spread as a percent — CAN be negative ("פריים מינוס") (prime & variable only), else null,
-      "term_months": repayment period in months (years × 12) as an integer,
-      "grace_months": interest-only months (גרייס) as an integer, or 0
+      "principal": integer ₪ amount of THIS track,
+      "annual_rate": nominal annual interest rate, percent number (e.g. 4.6),
+      "prime_rate": the anchor/base rate (prime or מק"מ) percent for prime & variable, else null,
+      "margin": spread over the anchor, percent — negative for "מינוס"/הפחתה (prime & variable), else null,
+      "term_months": total repayment period in months (integer),
+      "grace_months": leading interest-only months (גרייס), else 0
     }
   ]
 }
 
-track_type mapping from Hebrew:
-- "prime" ← פריים
-- "fixed_unlinked" ← קבועה לא צמודה (ק"ל / קל"צ)
-- "fixed_linked" ← קבועה צמודה (ק"צ)
-- "variable" ← משתנה / משתנה צמודה / משתנה כל 5 שנים
-For prime & variable: annual_rate = prime_rate + margin. For fixed tracks: prime_rate and
-margin are null and annual_rate is the stated fixed rate.
-Use null or 0 for anything not clearly stated. Return an empty "tracks" array if none are found.`
+CRITICAL rules for these documents:
+1. SOURCE OF TRUTH = the loan-conditions table (often titled "תנאי ההלואה ופירוט התשלומים"
+   inside "נספח א"), which lists every numbered loan (מס׳/משנה 1,2,3…). Use THAT table for the
+   tracks — NOT the credit/disbursement screens ("זיכוי", "סכום הזיכוי"), which show only the
+   amount transferred on one date and would undercount the mortgage.
+2. ONE track per loan number. A loan may span TWO rows: a leading interest-only period then the
+   amortizing period (e.g. 24 rows then 336 rows). When a loan has two rows, term_months = the
+   SUM of the two payment counts, and grace_months = the FIRST (smaller) count. This applies to
+   EVERY loan that has two rows, whatever its track type. A loan with a single row has
+   grace_months = 0 and term_months = that count. Read the exact payment counts from the scan —
+   distinguish e.g. 23 from 24.
+3. track_type — use BOTH of these together:
+   (a) STRUCTURAL signal from the conditions table: a loan row that has an anchor ("שיעור העוגן")
+       and/or a margin ("תוספת/הפחתה") is NEVER fixed — it is prime or variable. A loan with NO
+       anchor and NO margin is fixed.
+   (b) The description table ("תאור ההלואה"), keyed by the same loan number, via its "אפיון" text:
+       "ריבית קבועה לא צמודה" → fixed_unlinked
+       "ריבית קבועה צמודה"    → fixed_linked
+       "פריים" (פריים-קרן…)   → prime
+       "ריבית משתנה" / "עוגן מק\"מ" / "משתנה כל X" → variable
+   When (a) and (b) agree, you are done. If a loan has an anchor whose value is close to the prime
+   rate (~5.5–6%) it is prime; an anchor of ~3–4% (מק"מ) with a "משתנה" description is variable.
+   Cross-reference EACH loan number between the two tables — do not default everything to fixed.
+   Several loans can share the same אפיון and therefore the same track_type (e.g. TWO separate
+   "עוגן מק\"מ" variable loans). Read every loan's own אפיון line and give it that type; a loan
+   described "משתנה"/"עוגן מק\"מ" is ALWAYS variable (never fixed), and its anchor is the ~3–4%
+   value in its own עוגן column — not the 5.5% prime used by the prime loans.
+4. annual_rate = the plain "ריבית" column (nominal). If there is also a "ריבית מתואמת"
+   (adjusted/effective) column, do NOT use it for annual_rate.
+5. For prime & variable: prime_rate = the "שיעור העוגן" (anchor BASE) value — the larger number,
+   typically 3–6% (prime ≈ 5–6%, מק"מ/makam ≈ 3–4%). margin = the small "תוספת/הפחתה" spread —
+   typically under 1.5% — keeping its sign (+ adds, − / הפחתה subtracts). The anchor is almost
+   always LARGER than the margin; do NOT swap them. Sanity: annual_rate ≈ prime_rate + margin.
+6. Extract ALL loans in the conditions table, even if some were disbursed on different dates.
+
+Return an empty "tracks" array only if no loan-conditions table exists.`
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -54,8 +82,13 @@ Use null or 0 for anything not clearly stated. Return an empty "tracks" array if
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 1024,
+        // Opus + extended thinking is what reliably reads these scanned, multi-section bank
+        // printouts (Haiku/Sonnet wobbled on the variable מק"מ tracks; Opus+thinking = stable
+        // 5/5 in calibration). Runs once per user at onboarding, so the extra cost is fine.
+        model: 'claude-opus-4-8',
+        max_tokens: 8000,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'high' },
         messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }],
       }),
     })
@@ -66,7 +99,8 @@ Use null or 0 for anything not clearly stated. Return an empty "tracks" array if
     }
 
     const data = await resp.json()
-    const text: string = data.content?.[0]?.text ?? '{}'
+    // With extended thinking, content[0] is a thinking block — grab the text block, not [0].
+    const text: string = data.content?.find((b: { type: string; text?: string }) => b.type === 'text')?.text ?? '{}'
     const match = text.match(/\{[\s\S]*\}/)
     const result = match ? JSON.parse(match[0]) : { tracks: [] }
 
