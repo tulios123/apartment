@@ -52,26 +52,29 @@ export default function Login() {
           {busy ? 'מתחבר...' : 'התחברות עם Google'}
         </button>
 
-        {!showManager ? (
-          <button className="login-manager-link" onClick={() => setShowManager(true)}>
-            כניסת מנהל
-          </button>
-        ) : (
-          <form className="login-manager-form" onSubmit={handleManagerLogin}>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="current-password"
-              placeholder="סיסמת מנהל"
-              value={password}
-              onChange={e => { setPassword(e.target.value); setError('') }}
-              autoFocus
-            />
-            <button type="submit" className="btn-manager" disabled={busy || !password}>
-              {busy ? 'מתחבר...' : 'כניסה'}
+        {/* Dev-only manager (password) login — never rendered in the production build. */}
+        {import.meta.env.DEV && (
+          !showManager ? (
+            <button className="login-manager-link" onClick={() => setShowManager(true)}>
+              כניסת מנהל
             </button>
-            {error && <p className="login-error">{error}</p>}
-          </form>
+          ) : (
+            <form className="login-manager-form" onSubmit={handleManagerLogin}>
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="current-password"
+                placeholder="סיסמת מנהל"
+                value={password}
+                onChange={e => { setPassword(e.target.value); setError('') }}
+                autoFocus
+              />
+              <button type="submit" className="btn-manager" disabled={busy || !password}>
+                {busy ? 'מתחבר...' : 'כניסה'}
+              </button>
+              {error && <p className="login-error">{error}</p>}
+            </form>
+          )
         )}
       </div>
     </div>

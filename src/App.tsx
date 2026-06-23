@@ -72,7 +72,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppRoutes />
-      <DevNotes />
+      {import.meta.env.DEV && <DevNotes />}
     </AuthProvider>
   )
 }

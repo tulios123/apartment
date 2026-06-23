@@ -1,5 +1,11 @@
 import { supabase } from './supabase'
 
+// Google Tasks two-way sync is SUSPENDED (not removed) — flip to `true` to bring
+// it back. While false: the OAuth `tasks` scope isn't requested (so sign-in stays
+// non-sensitive / no Google verification needed for new users), the on-load sync
+// is skipped, task writes don't mirror to Google, and the Settings section hides.
+export const GOOGLE_TASKS_ENABLED = false
+
 const API_BASE = 'https://tasks.googleapis.com/tasks/v1'
 const LIST_NAME = 'apartment'
 

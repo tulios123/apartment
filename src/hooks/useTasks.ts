@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { createGoogleTask, updateGoogleTask, deleteGoogleTask } from '../lib/googleTasks'
+import { createGoogleTask, updateGoogleTask, deleteGoogleTask, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { syncGoogleTasks } from './useGoogleTasksSync'
 import type { Task } from '../types'
 
@@ -41,7 +41,7 @@ export function useTasks(filters: Filters = {}) {
   }, [user?.id, filters.status])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !GOOGLE_TASKS_ENABLED) return
     syncGoogleTasks(user.id).then(result => {
       setSyncError(result.error)
       fetch()
@@ -73,11 +73,13 @@ export async function createTask(data: Omit<Task, 'id' | 'owner_id' | 'created_a
 
   if (error || !created) return { data: created, error }
 
-  try {
-    const gt = await createGoogleTask(data.title, data.due_date ?? null)
-    await supabase.from('tasks').update({ google_task_id: gt.id }).eq('id', created.id)
-  } catch {
-    // Google sync failed — not critical
+  if (GOOGLE_TASKS_ENABLED) {
+    try {
+      const gt = await createGoogleTask(data.title, data.due_date ?? null)
+      await supabase.from('tasks').update({ google_task_id: gt.id }).eq('id', created.id)
+    } catch {
+      // Google sync failed — not critical
+    }
   }
 
   return { data: created, error: null }
@@ -99,7 +101,7 @@ export async function updateTask(
   // simple status toggle doesn't stall on extra network calls.
   const result = await supabase.from('tasks').update(payload).eq('id', id).eq('owner_id', ownerId)
 
-  void mirrorToGoogleTasks(id, data)
+  if (GOOGLE_TASKS_ENABLED) void mirrorToGoogleTasks(id, data)
 
   return result
 }
@@ -141,7 +143,7 @@ export async function deleteTask(id: string) {
 
   const result = await supabase.from('tasks').delete().eq('id', id).eq('owner_id', ownerId)
 
-  if (current?.google_task_id) {
+  if (GOOGLE_TASKS_ENABLED && current?.google_task_id) {
     try {
       await deleteGoogleTask(current.google_task_id)
     } catch {

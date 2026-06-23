@@ -1,9 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-
-const OLD_OWNER_ID = '00000000-0000-0000-0000-000000000001'
-const MIGRATED_KEY = 'data_migrated_v1'
+import { GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
 const DEV_EMAIL = import.meta.env.VITE_DEV_USER_EMAIL as string
@@ -19,18 +17,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>(null!)
 
-async function migrateOldData(userId: string, userName: string) {
-  // Ensure an owners row exists for this user (required by FK constraints)
+async function ensureOwnerRow(userId: string, userName: string) {
+  // Every user gets their own owners row (required by FK constraints). Each user's
+  // data is isolated by owner_id = auth.uid() RLS — no cross-user migration.
   await supabase.from('owners').upsert({ id: userId, name: userName }, { onConflict: 'id' })
-
-  if (localStorage.getItem(MIGRATED_KEY) === userId) return
-  const tables = ['transactions', 'tasks', 'recurring_items', 'documents', 'properties', 'contracts']
-  for (const table of tables) {
-    await (supabase.from(table as 'tasks') as ReturnType<typeof supabase.from>)
-      .update({ owner_id: userId })
-      .eq('owner_id', OLD_OWNER_ID)
-  }
-  localStorage.setItem(MIGRATED_KEY, userId)
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -42,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (DEV_BYPASS) {
         const { data } = await supabase.auth.signInWithPassword({ email: DEV_EMAIL, password: DEV_PASSWORD })
         if (data.session?.user) {
-          await migrateOldData(data.session.user.id, 'Dev User')
+          await ensureOwnerRow(data.session.user.id, 'Dev User')
         }
         setSession(data.session)
         setLoading(false)
@@ -54,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
         if (session?.user) {
           const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
-          migrateOldData(session.user.id, name)
+          ensureOwnerRow(session.user.id, name)
         }
       })
     }
@@ -72,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (event === 'SIGNED_IN' && session?.user) {
         const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
-        await migrateOldData(session.user.id, name)
+        await ensureOwnerRow(session.user.id, name)
       }
     })
 
@@ -83,9 +73,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        scopes: 'https://www.googleapis.com/auth/tasks',
         redirectTo: window.location.origin,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
+        // The Google Tasks `tasks` scope is sensitive (needs Google verification
+        // to use beyond test users). While Tasks sync is suspended, request only
+        // basic profile/email so any family member can sign in without friction.
+        ...(GOOGLE_TASKS_ENABLED
+          ? {
+              scopes: 'https://www.googleapis.com/auth/tasks',
+              queryParams: { access_type: 'offline', prompt: 'consent' },
+            }
+          : {}),
       },
     })
   }

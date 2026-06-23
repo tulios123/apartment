@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { resetListCache } from '../lib/googleTasks'
+import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import {
   pushSupported,
   pushConfigured,
@@ -16,7 +16,6 @@ import {
 } from '../lib/push'
 
 const GENERATION_KEY = 'monthly_generation'
-const MANAGER_EMAIL = 'dev@test.local'
 
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
@@ -181,6 +180,7 @@ export default function Settings() {
           ) : null}
         </section>
 
+        {GOOGLE_TASKS_ENABLED && (
         <section className="settings-section">
           <h2>סנכרון Google Tasks</h2>
           <p className="settings-note">
@@ -192,6 +192,7 @@ export default function Settings() {
             </button>
           </div>
         </section>
+        )}
 
         <section className="settings-section">
           <h2>גנרציה חודשית</h2>
@@ -205,7 +206,7 @@ export default function Settings() {
           </div>
         </section>
 
-        {(import.meta.env.DEV || user?.email === MANAGER_EMAIL) && (
+        {import.meta.env.DEV && (
         <section className="settings-section">
           <h2>פיתוח ובדיקה</h2>
           <p className="settings-note">
