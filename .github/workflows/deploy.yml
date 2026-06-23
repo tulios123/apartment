@@ -26,6 +26,9 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Web-push VAPID *public* key — non-sensitive by design (ships in the
+          # client bundle anyway). The private key lives only in Supabase secrets.
+          VITE_VAPID_PUBLIC_KEY: BC37k0Kv1s503cBFIfhAop05sPFlTJ4h9ZjvjWasmGQ6GZ04nT3-FO2Zq0BtTpuibti9utXxhCf33kaijGC_SaA
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist --project-name=apartment --branch=main
