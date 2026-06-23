@@ -96,11 +96,16 @@ async function runGeneration() {
       }
     } else {
       if (!taskIds.has(item.id)) {
-        const label = item.direction === 'income' ? 'גביית' : 'תשלום'
+        // Rent paid by post-dated checks → the monthly action is depositing the
+        // check, so label it that way (taskFollowup still treats it as rent income).
+        const isCheckDeposit = item.direction === 'income' && item.payment_method === 'check'
+        const title = isCheckDeposit
+          ? `הפקדת צ׳ק שכר דירה${item.payee ? ` – ${item.payee}` : ''}`
+          : `${item.direction === 'income' ? 'גביית' : 'תשלום'} ${item.category}${item.payee ? ` – ${item.payee}` : ''}`
         newTasks.push({
           owner_id: ownerId,
           recurring_item_id: item.id,
-          title: `${label} ${item.category}${item.payee ? ` – ${item.payee}` : ''}`,
+          title,
           due_date: txDate,
           category: 'כללי',
           status: 'open',

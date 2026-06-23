@@ -24,7 +24,9 @@ export function taskCompletionFollowup(t: Task): TaskFollowup | null {
       prefill: { direction: 'expense', category: 'תיקונים', description: t.title },
     }
   }
-  if (t.source === 'recurring_item' && t.title.startsWith('גביית')) {
+  // "גביית …" (collect rent) and "הפקדת צ׳ק …" (deposit a post-dated rent check)
+  // both mean rent came in — offer to record the income.
+  if (t.source === 'recurring_item' && (t.title.startsWith('גביית') || t.title.startsWith('הפקדת צ׳ק'))) {
     return {
       msg: 'המשימה הושלמה. להזין קבלת שכר דירה?',
       prefill: { direction: 'income', category: RENT_CATEGORIES[0], description: t.title },

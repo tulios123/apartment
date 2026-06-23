@@ -187,6 +187,10 @@ export default function Onboarding({ onComplete }: Props) {
 
   // ── Loans ──
   const [loans, setLoans] = useState<LoanDraft[]>([])
+  // Balloon loan (interest-free, repaid only on sale — e.g. from family). Entered
+  // in the investment/equity step since it offsets self-equity, not a monthly debt.
+  const [balloonAmount, setBalloonAmount] = useState('')
+  const [balloonLender, setBalloonLender] = useState('')
   const [loanForm, setLoanForm] = useState<LoanDraft>(emptyLoan())
   const [loanGraceOn, setLoanGraceOn] = useState(false)
   const [showLoanForm, setShowLoanForm] = useState(true)
@@ -223,7 +227,7 @@ export default function Onboarding({ onComplete }: Props) {
   // mortgage + loans already entered, rather than guessing a flat percentage.
   const totalMortgagePrincipal = tracks.reduce((s, t) => s + (parseFloat(t.principal) || 0), 0)
   const totalLoanPrincipal = loans.reduce((s, l) => s + (parseFloat(l.principal) || 0), 0)
-  const derivedEquityAmount = Math.max(0, price - totalMortgagePrincipal - totalLoanPrincipal)
+  const derivedEquityAmount = Math.max(0, price - totalMortgagePrincipal - totalLoanPrincipal - (parseFloat(balloonAmount) || 0))
   // effective = user value if typed, else the derived default (grey placeholder)
   const effEquity = equityValue || (equityMode === 'percent'
     ? defaultSelfEquityPct()
@@ -403,10 +407,10 @@ export default function Onboarding({ onComplete }: Props) {
           }
         })(),
 
-        // Loans
+        // Loans (monthly) + the balloon loan from the investment step
         (async () => {
           try {
-            await Promise.all(allLoans
+            const loanWrites = allLoans
               .filter(d => (parseFloat(d.principal) || 0) > 0)
               .map(d => {
                 const isMonthly = d.repayment_type === 'monthly_fixed'
@@ -431,7 +435,27 @@ export default function Onboarding({ onComplete }: Props) {
                   start_date: isMonthly ? (d.start_date || null) : (d.start_date || keyDeliveryDate || null),
                 })
               })
-            )
+
+            const balloonVal = parseFloat(balloonAmount) || 0
+            if (balloonVal > 0) {
+              loanWrites.push(upsertLoan({
+                owner_id: user.id,
+                property_id: property.id,
+                label: balloonLender.trim() || 'הלוואת בלון',
+                lender: balloonLender.trim() || null,
+                repayment_type: 'balloon',
+                track_type: null,
+                principal: balloonVal,
+                annual_rate: null,
+                prime_rate: null,
+                margin: null,
+                term_months: null,
+                grace_months: null,
+                start_date: keyDeliveryDate || null,
+              }))
+            }
+
+            await Promise.all(loanWrites)
           } catch {
             failures.push('הלוואות')
           }
@@ -996,15 +1020,7 @@ export default function Onboarding({ onComplete }: Props) {
     const isAnchored = loanForm.track_type === 'prime' || loanForm.track_type === 'variable'
     return (
       <div className="onboarding-inline-form">
-        <div className="onboarding-field">
-          <label>סוג הלוואה</label>
-          <div className="toggle-group">
-            <button type="button" className={`toggle-btn${isMonthly ? ' active' : ''}`}
-              onClick={() => { setLF('repayment_type', 'monthly_fixed'); setLoanGraceOn(false) }}>הלוואה משלימה</button>
-            <button type="button" className={`toggle-btn${!isMonthly ? ' active' : ''}`}
-              onClick={() => { setLF('repayment_type', 'balloon'); setLoanGraceOn(false) }}>בלון</button>
-          </div>
-        </div>
+        {/* Balloon loans moved to the investment step; this step is monthly loans only. */}
         {isMonthly ? (
           <div className="onboarding-row">
             <div className="onboarding-field">
@@ -1525,6 +1541,22 @@ export default function Onboarding({ onComplete }: Props) {
                 )}
               </div>
 
+              {/* Balloon loan — interest-free, repaid only on sale; offsets equity */}
+              <div className="onboarding-row">
+                <div className="onboarding-field">
+                  <label>הלוואת בלון <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>· ללא ריבית, נפרעת במכירה</span></label>
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={formatNum(balloonAmount)}
+                    onChange={e => setBalloonAmount(e.target.value.replace(/[^\d]/g, ''))} />
+                </div>
+                <div className="onboarding-field">
+                  <label>ממי (אופציונלי)</label>
+                  <input type="text" placeholder="למשל: הורים"
+                    value={balloonLender}
+                    onChange={e => setBalloonLender(e.target.value)} />
+                </div>
+              </div>
+
               {/* Cost fields */}
               {(() => {
                 const lawyerDef = defaultLawyerCost(price)
@@ -1658,7 +1690,7 @@ export default function Onboarding({ onComplete }: Props) {
                   <div className="toggle-group">
                     <button type="button"
                       className={`toggle-btn${rentPaymentMethod === 'check' ? ' active' : ''}`}
-                      onClick={() => setRentPaymentMethod('check')}>צ׳ק</button>
+                      onClick={() => { setRentPaymentMethod('check'); setAddRentReminder(true) }}>צ׳ק</button>
                     <button type="button"
                       className={`toggle-btn${rentPaymentMethod === 'bank_transfer' ? ' active' : ''}`}
                       onClick={() => setRentPaymentMethod('bank_transfer')}>העברה בנקאית</button>
@@ -1673,7 +1705,9 @@ export default function Onboarding({ onComplete }: Props) {
               <label className="onboarding-checkbox-row">
                 <input type="checkbox" checked={addRentReminder}
                   onChange={e => setAddRentReminder(e.target.checked)} />
-                <span>הוסף תזכורת חודשית לאישור קבלת תשלום</span>
+                <span>{rentPaymentMethod === 'check'
+                  ? 'תזכורת חודשית להפקדת הצ׳ק'
+                  : 'תזכורת חודשית לאישור קבלת תשלום'}</span>
               </label>
               <div className="onboarding-file-field" onClick={() => rentalInputRef.current?.click()}>
                 <span className="onboarding-file-label">חוזה שכירות</span>
