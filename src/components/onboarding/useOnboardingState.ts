@@ -10,6 +10,7 @@ import { createInsurancePolicy } from '../../hooks/useInsurance'
 import { supabase } from '../../lib/supabase'
 import { enablePush } from '../../lib/push'
 import { monthlyPayment } from '../../lib/mortgage'
+import { todayISO } from '../../lib/format'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType, LoanRepaymentType, Contract } from '../../types'
 import {
@@ -236,7 +237,7 @@ export function useOnboardingState(onComplete: () => void) {
           margin: t.margin != null ? String(t.margin) : '',
           term_months: t.term_months != null ? String(t.term_months) : '',
           grace_months: t.grace_months != null ? String(t.grace_months) : '',
-          start_date: keyDeliveryDate || new Date().toISOString().slice(0, 10),
+          start_date: keyDeliveryDate || todayISO(),
         }))
       if (mapped.length === 0) {
         setMortgageAiErr('לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הזינו ידנית.')
@@ -593,7 +594,7 @@ export function useOnboardingState(onComplete: () => void) {
                 {
                   id: createdContract.id,
                   monthly_rent: parseFloat(monthlyRent),
-                  start_date: startDate || new Date().toISOString().slice(0, 10),
+                  start_date: startDate || todayISO(),
                   end_date: endDate || null,
                   company_name: companyName.trim(),
                   payment_method: rentPaymentMethod,

@@ -3,6 +3,7 @@ import { FileText, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FinishEarly } from './FinishEarly'
 import { formatNum } from './types'
+import { monthDayISO } from '../../lib/format'
 import { useOnboarding } from './context'
 
 export function RentalStep() {
@@ -50,7 +51,7 @@ export function RentalStep() {
                   const d = new Date(val)
                   d.setFullYear(d.getFullYear() + 1)
                   d.setDate(d.getDate() - 1)
-                  setEndDate(d.toISOString().slice(0, 10))
+                  setEndDate(monthDayISO(d))
                 }
               }} />
           </div>

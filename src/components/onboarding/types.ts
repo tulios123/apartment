@@ -1,4 +1,5 @@
 import type { TrackType, LoanRepaymentType } from '../../types'
+import { todayISO } from '../../lib/format'
 
 // ── Step types ────────────────────────────────────────────────────────────────
 export type Step = 'documents' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
@@ -50,7 +51,7 @@ export function emptyTrack(startDate?: string): TrackDraft {
     margin: '',
     term_months: '',
     grace_months: '',
-    start_date: startDate || new Date().toISOString().slice(0, 10),
+    start_date: startDate || todayISO(),
   }
 }
 
@@ -70,7 +71,7 @@ export function emptyLoan(startDate?: string): LoanDraft {
     margin: '',
     term_months: '',
     grace_months: '',
-    start_date: startDate || new Date().toISOString().slice(0, 10),
+    start_date: startDate || todayISO(),
   }
 }
 
