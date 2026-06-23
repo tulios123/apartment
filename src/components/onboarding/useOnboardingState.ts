@@ -204,14 +204,14 @@ export function useOnboardingState(onComplete: () => void) {
     return (h >>> 0).toString(36)
   }
 
-  async function aiFillMortgage(file: File) {
+  async function aiFillMortgage(fileList: File[]) {
     setMortgageAiBusy(true)
     setMortgageAiErr(null)
     try {
-      const fileBase64 = await fileToBase64(file)
+      const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       // Version the key so improving the extraction (model/prompt) invalidates stale cached
-      // results for the same file. Bump v2→v3… whenever the edge function's output changes.
-      const cacheKey = `apt_extract_mortgage_v2_${hashString(fileBase64)}`
+      // results for the same file(s). Bump v2→v3… whenever the edge output changes.
+      const cacheKey = `apt_extract_mortgage_v2_${hashString(files.map(f => f.fileBase64).join(''))}`
       let data: { tracks?: Record<string, unknown>[] } | null = null
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
@@ -219,7 +219,7 @@ export function useOnboardingState(onComplete: () => void) {
       }
       if (!data) {
         const res = await supabase.functions.invoke('extract-mortgage', {
-          body: { fileBase64, mediaType: file.type },
+          body: { files },
         })
         if (res.error) throw res.error
         data = res.data
@@ -253,13 +253,13 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   // ── AI fill: purchase contract → property fields ─────────────────────────────
-  async function aiFillPurchase(file: File) {
-    setPurchaseFile(file)
+  async function aiFillPurchase(fileList: File[]) {
+    setPurchaseFile(fileList[0])
     setPurchaseAiBusy(true)
     setPurchaseAiErr(null)
     try {
-      const fileBase64 = await fileToBase64(file)
-      const cacheKey = `apt_extract_purchase_v1_${hashString(fileBase64)}`
+      const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
+      const cacheKey = `apt_extract_purchase_v1_${hashString(files.map(f => f.fileBase64).join(''))}`
       let data: Record<string, unknown> | null = null
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
@@ -267,7 +267,7 @@ export function useOnboardingState(onComplete: () => void) {
       }
       if (!data) {
         const res = await supabase.functions.invoke('extract-contract', {
-          body: { fileBase64, mediaType: file.type },
+          body: { files },
         })
         if (res.error) throw res.error
         data = res.data
@@ -295,13 +295,13 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   // ── AI fill: rental agreement → rental fields ────────────────────────────────
-  async function aiFillRental(file: File) {
-    setRentalFile(file)
+  async function aiFillRental(fileList: File[]) {
+    setRentalFile(fileList[0])
     setRentalAiBusy(true)
     setRentalAiErr(null)
     try {
-      const fileBase64 = await fileToBase64(file)
-      const cacheKey = `apt_extract_rental_v1_${hashString(fileBase64)}`
+      const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
+      const cacheKey = `apt_extract_rental_v1_${hashString(files.map(f => f.fileBase64).join(''))}`
       let data: Record<string, unknown> | null = null
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
@@ -309,7 +309,7 @@ export function useOnboardingState(onComplete: () => void) {
       }
       if (!data) {
         const res = await supabase.functions.invoke('extract-rental', {
-          body: { fileBase64, mediaType: file.type },
+          body: { files },
         })
         if (res.error) throw res.error
         data = res.data

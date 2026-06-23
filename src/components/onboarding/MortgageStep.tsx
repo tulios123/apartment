@@ -28,12 +28,12 @@ export function MortgageStep() {
       <div className="onboarding-ai-fill">
         <button type="button" className="btn-onboard-ai" disabled={mortgageAiBusy}
           onClick={() => mortgageDocRef.current?.click()}>
-          {mortgageAiBusy ? 'קורא את המסמך…' : '📄 העלו אישור מהבנק — מילוי אוטומטי'}
+          {mortgageAiBusy ? 'קורא את המסמך…' : '📄 העלו אישור מהבנק או צילומי מסך — מילוי אוטומטי'}
         </button>
-        <input ref={mortgageDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) aiFillMortgage(f); e.target.value = '' }} />
+        <input ref={mortgageDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
+          onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillMortgage(fs); e.target.value = '' }} />
         {mortgageAiErr && <p className="onboarding-error" role="alert">{mortgageAiErr}</p>}
-        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>או הזינו את המסלולים ידנית למטה</p>
+        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר לבחור כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>
 
       {/* Saved tracks list — click header to toggle edit in-place */}
@@ -136,7 +136,7 @@ export function MortgageStep() {
         {showFillExample && (
           <button type="button" className="btn-onboard-skip" onClick={fillTestMortgage}>מלא דוגמה</button>
         )}
-        <button type="submit" className="btn-onboard-primary">{tracks.length ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
+        <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
       <FinishEarly />
     </form>

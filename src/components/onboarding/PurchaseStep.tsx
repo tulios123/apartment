@@ -30,10 +30,10 @@ export function PurchaseStep() {
           onClick={() => purchaseDocRef.current?.click()}>
           {purchaseAiBusy ? 'קורא את החוזה…' : '📄 העלו חוזה רכישה — מילוי אוטומטי'}
         </button>
-        <input ref={purchaseDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) aiFillPurchase(f); e.target.value = '' }} />
+        <input ref={purchaseDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
+          onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillPurchase(fs); e.target.value = '' }} />
         {purchaseAiErr && <p className="onboarding-error" role="alert">{purchaseAiErr}</p>}
-        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>או מלאו את הפרטים ידנית למטה</p>
+        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>
 
       <div className="onboarding-form">

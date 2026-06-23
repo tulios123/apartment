@@ -27,10 +27,10 @@ export function RentalStep() {
           onClick={() => rentalDocRef.current?.click()}>
           {rentalAiBusy ? 'קורא את החוזה…' : '📄 העלו חוזה שכירות — מילוי אוטומטי'}
         </button>
-        <input ref={rentalDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) aiFillRental(f); e.target.value = '' }} />
+        <input ref={rentalDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
+          onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillRental(fs); e.target.value = '' }} />
         {rentalAiErr && <p className="onboarding-error" role="alert">{rentalAiErr}</p>}
-        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>או מלאו את הפרטים ידנית למטה</p>
+        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>
 
       <div className="onboarding-form">
@@ -103,7 +103,7 @@ export function RentalStep() {
         {showFillExample && (
           <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
         )}
-        <button type="submit" className="btn-onboard-primary">{(companyName.trim() || monthlyRent) ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
+        <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
       <FinishEarly />
     </form>

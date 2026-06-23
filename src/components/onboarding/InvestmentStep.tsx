@@ -180,7 +180,7 @@ export function InvestmentStep() {
         {showFillExample && (
           <button type="button" className="btn-onboard-skip" onClick={fillTestInvestment}>מלא דוגמה</button>
         )}
-        <button type="submit" className="btn-onboard-primary">{(extraCosts.length || Object.values(costs).some(v => v.trim())) ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
+        <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
       <FinishEarly />
     </form>

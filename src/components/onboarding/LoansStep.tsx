@@ -110,7 +110,7 @@ export function LoansStep() {
         {showFillExample && (
           <button type="button" className="btn-onboard-skip" onClick={fillTestLoans}>מלא דוגמה</button>
         )}
-        <button type="submit" className="btn-onboard-primary">{loans.length ? 'הבא' : 'דלג'} <ArrowLeft size={16} /></button>
+        <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
       <FinishEarly />
     </form>

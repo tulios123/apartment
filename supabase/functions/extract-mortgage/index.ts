@@ -9,18 +9,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { fileBase64, mediaType } = await req.json()
+    const body = await req.json()
+    // Accept multiple files (e.g. several bank-app screenshots of one mortgage) via
+    // { files: [{fileBase64, mediaType}] }; keep back-compat with a single file.
+    const files: { fileBase64: string; mediaType: string }[] =
+      Array.isArray(body.files) && body.files.length
+        ? body.files
+        : [{ fileBase64: body.fileBase64, mediaType: body.mediaType }]
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
 
-    const isPdf = mediaType === 'application/pdf'
-    const contentBlock = isPdf
-      ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
-      : { type: 'image', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
+    const contentBlocks = files.map(f => f.mediaType === 'application/pdf'
+      ? { type: 'document', source: { type: 'base64', media_type: f.mediaType, data: f.fileBase64 } }
+      : { type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.fileBase64 } })
 
     const prompt = `You are reading an Israeli bank mortgage approval/confirmation document (it may be a
-scanned monospaced printout). Extract the borrower's FULL mortgage composition — every
+scanned monospaced printout, and may be split across several images, e.g. bank-app screenshots —
+read them all together as one document). Extract the borrower's FULL mortgage composition — every
 track (מסלול / מַשְׁנֶה) — and return ONLY a valid JSON object, no markdown:
 
 {
@@ -89,7 +95,7 @@ Return an empty "tracks" array only if no loan-conditions table exists.`
         model: 'claude-sonnet-4-6',
         max_tokens: 8000,
         thinking: { type: 'enabled', budget_tokens: 4000 },
-        messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }],
+        messages: [{ role: 'user', content: [...contentBlocks, { type: 'text', text: prompt }] }],
       }),
     })
 

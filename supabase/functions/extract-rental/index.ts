@@ -25,19 +25,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { fileBase64, mediaType } = await req.json()
+    const body = await req.json()
+    // Accept multiple files (e.g. several screenshots) via { files: [...] }; keep
+    // back-compat with a single { fileBase64, mediaType }.
+    const files: { fileBase64: string; mediaType: string }[] =
+      Array.isArray(body.files) && body.files.length
+        ? body.files
+        : [{ fileBase64: body.fileBase64, mediaType: body.mediaType }]
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
 
-    const isPdf = mediaType === 'application/pdf'
-
-    // Cheap path: text-layer PDFs → send TEXT to Haiku (no page-image tokens).
-    // Scanned PDFs / images → Sonnet vision.
+    // Cheap path: a SINGLE text-layer PDF → send its text to Haiku (no page-image
+    // tokens). Multiple files / scans / images → Sonnet vision over all of them.
     let docText = ''
-    if (isPdf) {
+    if (files.length === 1 && files[0].mediaType === 'application/pdf') {
       try {
-        const bytes = Uint8Array.from(atob(fileBase64), c => c.charCodeAt(0))
+        const bytes = Uint8Array.from(atob(files[0].fileBase64), c => c.charCodeAt(0))
         const pdf = await getDocumentProxy(bytes)
         const r = await extractText(pdf, { mergePages: true })
         docText = (typeof r.text === 'string' ? r.text : (r.text ?? []).join('\n')).trim()
@@ -49,9 +53,9 @@ Deno.serve(async (req) => {
     const content = useText
       ? [{ type: 'text', text: `${prompt}\n\n--- DOCUMENT TEXT ---\n${docText}` }]
       : [
-          isPdf
-            ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
-            : { type: 'image', source: { type: 'base64', media_type: mediaType, data: fileBase64 } },
+          ...files.map(f => f.mediaType === 'application/pdf'
+            ? { type: 'document', source: { type: 'base64', media_type: f.mediaType, data: f.fileBase64 } }
+            : { type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.fileBase64 } }),
           { type: 'text', text: prompt },
         ]
 
