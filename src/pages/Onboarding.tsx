@@ -194,6 +194,9 @@ export default function Onboarding({ onComplete }: Props) {
 
   const purchaseInputRef = useRef<HTMLInputElement>(null)
   const rentalInputRef = useRef<HTMLInputElement>(null)
+  const mortgageDocRef = useRef<HTMLInputElement>(null)
+  const [mortgageAiBusy, setMortgageAiBusy] = useState(false)
+  const [mortgageAiErr, setMortgageAiErr] = useState<string | null>(null)
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function dismissKeyboardAndScrollTop() {
@@ -263,6 +266,54 @@ export default function Onboarding({ onComplete }: Props) {
       return (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
     }
     return parseFloat(d.annual_rate) || 0
+  }
+
+  // ── AI mortgage fill ─────────────────────────────────────────────────────────
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve((r.result as string).split(',')[1] ?? '')
+      r.onerror = () => reject(new Error('read failed'))
+      r.readAsDataURL(file)
+    })
+  }
+
+  const TRACK_TYPES: TrackType[] = ['prime', 'fixed_unlinked', 'fixed_linked', 'variable']
+
+  async function aiFillMortgage(file: File) {
+    setMortgageAiBusy(true)
+    setMortgageAiErr(null)
+    try {
+      const fileBase64 = await fileToBase64(file)
+      const { data, error } = await supabase.functions.invoke('extract-mortgage', {
+        body: { fileBase64, mediaType: file.type },
+      })
+      if (error) throw error
+      const raw = (data?.tracks ?? []) as Record<string, unknown>[]
+      const mapped: TrackDraft[] = raw
+        .filter(t => (Number(t.principal) || 0) > 0)
+        .map(t => ({
+          track_type: (TRACK_TYPES.includes(t.track_type as TrackType) ? t.track_type : 'fixed_unlinked') as TrackType,
+          principal: t.principal != null ? String(t.principal) : '',
+          annual_rate: t.annual_rate != null ? String(t.annual_rate) : '',
+          prime_rate: t.prime_rate != null ? String(t.prime_rate) : '',
+          margin: t.margin != null ? String(t.margin) : '',
+          term_months: t.term_months != null ? String(t.term_months) : '',
+          grace_months: t.grace_months != null ? String(t.grace_months) : '',
+          start_date: keyDeliveryDate || new Date().toISOString().slice(0, 10),
+        }))
+      if (mapped.length === 0) {
+        setMortgageAiErr('לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הזינו ידנית.')
+        return
+      }
+      setTracks(mapped)
+      setShowTrackForm(false)
+      setEditingIdx(null)
+    } catch {
+      setMortgageAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
+    } finally {
+      setMortgageAiBusy(false)
+    }
   }
 
   // ── handleFinish ─────────────────────────────────────────────────────────────
@@ -1185,6 +1236,17 @@ export default function Onboarding({ onComplete }: Props) {
             <div className="onboarding-icon"><Bank size={44} color="var(--accent)" /></div>
             <h2 className="onboarding-title">משכנתא</h2>
             <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
+
+            <div className="onboarding-ai-fill">
+              <button type="button" className="btn-onboard-ai" disabled={mortgageAiBusy}
+                onClick={() => mortgageDocRef.current?.click()}>
+                {mortgageAiBusy ? 'קורא את המסמך…' : '📄 העלו אישור מהבנק — מילוי אוטומטי'}
+              </button>
+              <input ref={mortgageDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) aiFillMortgage(f); e.target.value = '' }} />
+              {mortgageAiErr && <p className="onboarding-error" role="alert">{mortgageAiErr}</p>}
+              <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>או הזינו את המסלולים ידנית למטה</p>
+            </div>
 
             {/* Saved tracks list — click header to toggle edit in-place */}
             {tracks.length > 0 && (
