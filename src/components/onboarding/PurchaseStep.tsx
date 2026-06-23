@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Tag, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { emptyTrack, formatPrice } from './types'
@@ -11,8 +12,10 @@ export function PurchaseStep() {
     signingDate, setSigningDate, setKeyDeliveryDate,
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
     purchaseFile, setPurchaseFile, purchaseInputRef,
+    purchaseAiBusy, purchaseAiErr, aiFillPurchase,
     showFillExample, fillTestPurchase,
   } = useOnboarding()
+  const purchaseDocRef = useRef<HTMLInputElement>(null)
 
   return (
     <form onSubmit={e => {
@@ -21,6 +24,18 @@ export function PurchaseStep() {
       advance('mortgage')
     }}>
       <StepHeader current="purchase" icon={<Tag size={44} color="var(--accent)" />} title="פרטי רכישה" />
+
+      <div className="onboarding-ai-fill">
+        <button type="button" className="btn-onboard-ai" disabled={purchaseAiBusy}
+          onClick={() => purchaseDocRef.current?.click()}>
+          {purchaseAiBusy ? 'קורא את החוזה…' : '📄 העלו חוזה רכישה — מילוי אוטומטי'}
+        </button>
+        <input ref={purchaseDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) aiFillPurchase(f); e.target.value = '' }} />
+        {purchaseAiErr && <p className="onboarding-error" role="alert">{purchaseAiErr}</p>}
+        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>או מלאו את הפרטים ידנית למטה</p>
+      </div>
+
       <div className="onboarding-form">
         <div className="onboarding-field">
           <label>שם הרוכש</label>

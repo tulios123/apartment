@@ -106,6 +106,10 @@ export function useOnboardingState(onComplete: () => void) {
   const mortgageDocRef = useRef<HTMLInputElement>(null)
   const [mortgageAiBusy, setMortgageAiBusy] = useState(false)
   const [mortgageAiErr, setMortgageAiErr] = useState<string | null>(null)
+  const [purchaseAiBusy, setPurchaseAiBusy] = useState(false)
+  const [purchaseAiErr, setPurchaseAiErr] = useState<string | null>(null)
+  const [rentalAiBusy, setRentalAiBusy] = useState(false)
+  const [rentalAiErr, setRentalAiErr] = useState<string | null>(null)
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function dismissKeyboardAndScrollTop() {
@@ -245,6 +249,84 @@ export function useOnboardingState(onComplete: () => void) {
       setMortgageAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
     } finally {
       setMortgageAiBusy(false)
+    }
+  }
+
+  // ── AI fill: purchase contract → property fields ─────────────────────────────
+  async function aiFillPurchase(file: File) {
+    setPurchaseFile(file)
+    setPurchaseAiBusy(true)
+    setPurchaseAiErr(null)
+    try {
+      const fileBase64 = await fileToBase64(file)
+      const cacheKey = `apt_extract_purchase_v1_${hashString(fileBase64)}`
+      let data: Record<string, unknown> | null = null
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
+      }
+      if (!data) {
+        const res = await supabase.functions.invoke('extract-contract', {
+          body: { fileBase64, mediaType: file.type },
+        })
+        if (res.error) throw res.error
+        data = res.data
+        try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+      }
+      const d = data ?? {}
+      if (d.buyerName) setBuyerName(String(d.buyerName))
+      if (d.propertyAddress) {
+        const addr = String(d.propertyAddress)
+        const ci = addr.lastIndexOf(',')
+        if (ci > 0) { setStreet(addr.slice(0, ci).trim()); setCity(addr.slice(ci + 1).trim()) }
+        else setStreet(addr)
+      }
+      if (d.purchasePrice != null) setPurchasePrice(String(d.purchasePrice))
+      if (d.purchaseDate) setSigningDate(String(d.purchaseDate))
+      if (d.keyDeliveryDate) setKeyDeliveryDate(String(d.keyDeliveryDate))
+      if (d.propertySizeSqm != null) setPropertySizeSqm(String(d.propertySizeSqm))
+      if (d.floor != null) setFloorNumber(String(d.floor))
+      if (d.rooms != null) setRooms(String(d.rooms))
+    } catch {
+      setPurchaseAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } finally {
+      setPurchaseAiBusy(false)
+    }
+  }
+
+  // ── AI fill: rental agreement → rental fields ────────────────────────────────
+  async function aiFillRental(file: File) {
+    setRentalFile(file)
+    setRentalAiBusy(true)
+    setRentalAiErr(null)
+    try {
+      const fileBase64 = await fileToBase64(file)
+      const cacheKey = `apt_extract_rental_v1_${hashString(fileBase64)}`
+      let data: Record<string, unknown> | null = null
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
+      }
+      if (!data) {
+        const res = await supabase.functions.invoke('extract-rental', {
+          body: { fileBase64, mediaType: file.type },
+        })
+        if (res.error) throw res.error
+        data = res.data
+        try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+      }
+      const d = data ?? {}
+      if (d.tenantName) setCompanyName(String(d.tenantName))
+      if (d.startDate) setStartDate(String(d.startDate))
+      if (d.endDate) setEndDate(String(d.endDate))
+      if (d.monthlyRent != null) setMonthlyRent(String(d.monthlyRent))
+      if (d.paymentMethod === 'check') { setRentPaymentMethod('check'); setAddRentReminder(true) }
+      else if (d.paymentMethod === 'bank_transfer') setRentPaymentMethod('bank_transfer')
+      if (d.paymentDay != null) setRentPaymentDay(String(d.paymentDay))
+    } catch {
+      setRentalAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } finally {
+      setRentalAiBusy(false)
     }
   }
 
@@ -816,6 +898,9 @@ export function useOnboardingState(onComplete: () => void) {
     effectiveTrackForm, previewMonthly, previewGrace,
     // AI mortgage fill
     mortgageDocRef, mortgageAiBusy, mortgageAiErr, aiFillMortgage,
+    // AI purchase + rental fill
+    purchaseAiBusy, purchaseAiErr, aiFillPurchase,
+    rentalAiBusy, rentalAiErr, aiFillRental,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal,

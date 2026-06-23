@@ -19,19 +19,16 @@ Deno.serve(async (req) => {
       ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
       : { type: 'image', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
 
-    const prompt = `This is an Israeli real estate purchase contract (חוזה רכישה / חוזה מכר).
+    const prompt = `This is an Israeli residential rental agreement (חוזה שכירות / הסכם שכירות).
 Extract these fields and return ONLY a valid JSON object — no markdown, no explanation:
 
 {
-  "buyerName": "full name of the buyer/purchaser (הרוכש/הקונה), or null",
-  "propertyAddress": "full address of the property (כתובת הנכס) as 'street and number, city', or null",
-  "blockParcel": "Gush and Helka (גוש וחלקה), e.g. 'גוש 6660 חלקה 84', or null",
-  "purchasePrice": numeric purchase price (מחיר הרכישה/התמורה) as integer, or null,
-  "purchaseDate": "signing/purchase date in YYYY-MM-DD format, or null",
-  "keyDeliveryDate": "key delivery / possession date (תאריך מסירת המפתח / יום המסירה) in YYYY-MM-DD format, or null",
-  "propertySizeSqm": numeric size in square meters (שטח הנכס) as number, or null,
-  "floor": floor number as integer (קומה), or null,
-  "rooms": number of rooms (מספר חדרים), may be a half (e.g. 4.5), or null
+  "tenantName": "name of the tenant or company renting the property (השוכר), or null",
+  "startDate": "lease start date (תחילת השכירות) in YYYY-MM-DD format, or null",
+  "endDate": "lease end date (סיום השכירות) in YYYY-MM-DD format, or null",
+  "monthlyRent": numeric monthly rent (דמי השכירות החודשיים) as integer in ₪, or null,
+  "paymentMethod": "check" if rent is paid by post-dated checks (צ'קים/שיקים/המחאות), else "bank_transfer" if by bank transfer/standing order (העברה בנקאית/הוראת קבע), else null,
+  "paymentDay": day of month the rent is due (היום בחודש לתשלום) as integer 1-28, or null
 }
 
 Use null for any field not clearly stated in the document.`
@@ -44,8 +41,7 @@ Use null for any field not clearly stated in the document.`
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        // Sonnet (not Haiku) for reliable extraction from long/scanned contracts; this is
-        // flat field extraction (no cross-referencing), so no extended thinking needed.
+        // Flat field extraction — Sonnet is plenty; no extended thinking needed.
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }],
@@ -58,7 +54,7 @@ Use null for any field not clearly stated in the document.`
     }
 
     const data = await resp.json()
-    const text: string = data.content?.[0]?.text ?? '{}'
+    const text: string = data.content?.find((b: { type: string; text?: string }) => b.type === 'text')?.text ?? '{}'
     const match = text.match(/\{[\s\S]*\}/)
     const result = match ? JSON.parse(match[0]) : {}
 
@@ -66,7 +62,7 @@ Use null for any field not clearly stated in the document.`
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (e) {
-    console.error('extract-contract error:', e)
+    console.error('extract-rental error:', e)
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

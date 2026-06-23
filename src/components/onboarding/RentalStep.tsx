@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { FileText, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FinishEarly } from './FinishEarly'
@@ -11,13 +12,27 @@ export function RentalStep() {
     monthlyRent, setMonthlyRent, rentPaymentMethod, setRentPaymentMethod,
     rentPaymentDay, setRentPaymentDay, addRentReminder, setAddRentReminder,
     rentalFile, setRentalFile, rentalInputRef,
+    rentalAiBusy, rentalAiErr, aiFillRental,
     showFillExample, fillTestRental,
   } = useOnboarding()
+  const rentalDocRef = useRef<HTMLInputElement>(null)
 
   return (
     <form onSubmit={e => { e.preventDefault(); advance('insurance') }}>
       <StepHeader current="rental" icon={<FileText size={44} color="var(--accent)" />} title="פרטי השכירות" />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
+
+      <div className="onboarding-ai-fill">
+        <button type="button" className="btn-onboard-ai" disabled={rentalAiBusy}
+          onClick={() => rentalDocRef.current?.click()}>
+          {rentalAiBusy ? 'קורא את החוזה…' : '📄 העלו חוזה שכירות — מילוי אוטומטי'}
+        </button>
+        <input ref={rentalDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) aiFillRental(f); e.target.value = '' }} />
+        {rentalAiErr && <p className="onboarding-error" role="alert">{rentalAiErr}</p>}
+        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>או מלאו את הפרטים ידנית למטה</p>
+      </div>
+
       <div className="onboarding-form">
         <div className="onboarding-field">
           <label>שם חברה / שוכר</label>
