@@ -25,6 +25,10 @@
   --sidebar-width:210px;
   font:400 15px/1.6 var(--font-body);
   color:var(--text); background:var(--bg);
+  /* The app is light-only. Pin the color-scheme so native controls (date pickers,
+     selects, scrollbars, autofill) render light too — otherwise an OS dark-mode
+     user sees dark-tinted native widgets clashing with the light UI. */
+  color-scheme:light;
   -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
   /* Kill the rubber-band overscroll bounce that exposes the black area behind the
      document in standalone PWA mode (and in Safari). */

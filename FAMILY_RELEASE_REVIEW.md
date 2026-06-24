@@ -43,6 +43,9 @@ The destructive "איפוס כל הנתונים" section is gated to dev/test/ad
 ### F8 🟡 Native confirm() dialogs scattered (delete contract, task follow-up)
 `Rental.handleDeleteContract` uses `confirm('למחוק חוזה זה?')`; `HomeScreen.markTaskDone` uses `confirm(followup.msg)`. Insurance/Mortgage use a nicer inline confirm. Native dialogs look browser-chrome-y on an iOS PWA. Consistency polish — log only (changing delete UX carries small risk; owner can prioritise).
 
+### F11 ✅ Dark-mode: native controls rendered dark — FIXED
+The app is light-only (no `prefers-color-scheme` styles) but never declared a `color-scheme`, so an OS dark-mode family member would get the browser's **dark-tinted native controls** — date pickers, selects, scrollbars, autofill — clashing with the light UI. Pinned `color-scheme: light` in `:root` (index.css) + `<meta name="color-scheme" content="light">` (index.html). Verified: the transaction form's date input + selects now render light in emulated dark mode. (NB: the app's own cards are unaffected — they have no dark styles, the earlier "faded" capture was just the entry animation mid-frame.)
+
 ### F4 🟡 Weak text-only empty states on Finances & Wealth
 `FinancesV2` empty month → bare "אין תנועות בחודש זה"; `WealthHub` !hasData → bare "עדיין לא הוגדרו נכס…". Both lack the ClayIllustration treatment used elsewhere. Rare for a post-onboarding user (they have projected rows / a property), so low priority — log only.
 
