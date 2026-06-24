@@ -5,6 +5,7 @@ import { useTasks, createTask, updateTask, deleteTask } from '../../hooks/useTas
 import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
+import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
 import { taskCompletionFollowup } from '../../lib/taskFollowup'
@@ -159,7 +160,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             {backlog.length === 0 ? (
-              <div className="tav-empty"><Check size={28} weight="bold" /><p>אין משימות פתוחות — הכול תחת שליטה</p></div>
+              <div className="tav-empty"><ClayIllustration variant="check" /><p>אין משימות פתוחות — הכול תחת שליטה</p></div>
             ) : backlog.map(t => {
               const Icon = CAT_ICON[t.category] ?? ListChecks
               const overdue = isOverdue(t)

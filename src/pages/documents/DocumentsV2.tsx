@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/format'
 import type { DocumentType } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './documents-v2.css'
 
 const DOC_TYPE_LABELS: Record<DocumentType, string> = {
@@ -110,7 +111,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
       {!loading && documents.length === 0 && (
         <div className="docv-empty">
-          <div className="docv-empty-icon"><File size={30} weight="duotone" /></div>
+          <div className="docv-empty-illu"><ClayIllustration variant="folder" /></div>
           <p>עדיין לא הועלו מסמכים</p>
           <button className="docv-empty-btn" onClick={openNew}><UploadSimple size={17} weight="bold" /> העלה מסמך</button>
         </div>
