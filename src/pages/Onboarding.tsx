@@ -22,9 +22,11 @@ export default function Onboarding({ onComplete }: Props) {
   // Hidden on the bookends — welcome has nowhere to go back to, done is terminal.
   const showBack = step !== 'welcome' && step !== 'done'
 
+  const centered = step === 'welcome' || step === 'done'
+
   return (
     <OnboardingContext.Provider value={state}>
-      <div className="onboarding-wrap">
+      <div className={`onboarding-wrap${centered ? ' onboarding-wrap--center' : ''}`}>
         <div className="onboarding-card">
           {showBack && (
             <button type="button" className="onboarding-back-chevron" onClick={back} aria-label="חזור">

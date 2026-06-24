@@ -1939,6 +1939,9 @@ input[type="date"] {
   padding: 40px 24px env(safe-area-inset-bottom, 80px);
   padding-bottom: max(80px, env(safe-area-inset-bottom, 80px));
 }
+/* Bookends (welcome/done) hug their content — center the card vertically so its
+   top/bottom margins are symmetric instead of sticking to the top. */
+.onboarding-wrap--center { align-items: center; }
 
 .onboarding-card {
   position: relative;
@@ -1986,7 +1989,6 @@ input[type="date"] {
 .onboarding-welcome {
   display: flex;
   flex-direction: column;
-  min-height: calc(100svh - 250px);
 }
 .onboarding-welcome-top { text-align: center; padding-top: 6px; }
 .onboarding-welcome-mark {
@@ -2047,7 +2049,7 @@ input[type="date"] {
   color: var(--text-muted);
   margin-top: 2px;
 }
-.onboarding-welcome-spacer { flex: 1; min-height: 10px; }
+.onboarding-welcome-spacer { min-height: 18px; }
 
 /* Step dots */
 .onboarding-dots {
@@ -2613,7 +2615,6 @@ input[type="date"] {
 .onboarding-done {
   display: flex;
   flex-direction: column;
-  min-height: calc(100svh - 300px);
 }
 .onboarding-done-hero {
   position: relative;
@@ -2706,7 +2707,7 @@ input[type="date"] {
 }
 .onboarding-metric-value.income { color: var(--success-text); }
 
-.onboarding-done-spacer { flex: 1; min-height: 14px; }
+.onboarding-done-spacer { min-height: 18px; }
 
 .onboarding-notif-card {
   display: flex;
