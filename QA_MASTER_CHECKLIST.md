@@ -365,6 +365,12 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 ## Findings log
 *(Bugs found while executing, with severity + fix commit. Newest first.)*
 
+### BUG #8 🟠 — `activeContract` skewed the lease active/inactive at the day boundary — FIXED
+`projections.ts activeContract` compared `new Date(c.start_date)` (UTC midnight) against a LOCAL `asOf` instant. On a contract's exact start/end date, the lease read inactive for part of the day in Israel (e.g. expired ~04:00 on its last valid day). Drives the Home rent action and Wealth monthly rent. Test (boundary at 00:30 start / 10:00 end) caught it; fixed to inclusive LOCAL date-string comparison.
+
+### Guard audit (Ch.15 partial) — wealth percentage calcs are well-guarded
+`WealthAccelerator` (returns null when total ≤ 0), `OwnershipScore` (propertyValue>0 guard), `FinancingStructure.mortgagePaidPct`/`paidPct` (denominator guards) — no NaN. One trivial hardening applied: `blendedRate` now guards `sum(principal)>0` (was `tracks.length`) so a stray 0-principal track can't show "NaN%".
+
 ### BUG #2 🟠 — UTC-date roll-back was SYSTEMIC (6 more sites) — ALL FIXED
 The same `toISOString().slice(0,10/7)` pattern (UTC, rolls back a day/month in Israel) was in 6 more places, all comparing against LOCAL-dated schedule rows or driving "today". Each undercounts/misattributes during the late-night window (and on the 1st of the month). Found by tests + grep; all fixed to local-date helpers; tests added where unit-testable:
 - `loans.ts loanBalance` 🟠 — outstanding balance ~one full principal payment too high at midnight on a payment date (feeds ownership % / bank debt). Test: as-of value must not depend on time-of-day.

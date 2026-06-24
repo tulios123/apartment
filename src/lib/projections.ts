@@ -35,7 +35,11 @@ export function activeContract<T extends { start_date: string; end_date: string 
   contracts: T[],
   asOf: Date = new Date()
 ): T | undefined {
-  return contracts.find(c => new Date(c.start_date) <= asOf && new Date(c.end_date) >= asOf)
+  // Compare as LOCAL date strings so start/end are inclusive whole days. Instant
+  // comparison (new Date('YYYY-MM-DD') is UTC midnight) skews by the UTC offset at the
+  // day boundary in Israel — a lease would read inactive on its own start/end date.
+  const d = `${asOf.getFullYear()}-${String(asOf.getMonth() + 1).padStart(2, '0')}-${String(asOf.getDate()).padStart(2, '0')}`
+  return contracts.find(c => c.start_date <= d && c.end_date >= d)
 }
 
 /** Total rent received across all contracts from each start_date up to asOf. */

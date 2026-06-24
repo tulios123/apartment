@@ -30,8 +30,11 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
   const [open, setOpen] = useState(false)
 
   const mortgageBalance = summary.currentBalance || 0
-  const blendedRate = tracks.length
-    ? tracks.reduce((s, t) => s + t.annual_rate * t.principal, 0) / tracks.reduce((s, t) => s + t.principal, 0)
+  // Principal-weighted average rate. Guard the denominator (not just tracks.length)
+  // so a stray 0-principal track can't produce NaN% in the blended-rate label.
+  const trackPrincipal = tracks.reduce((s, t) => s + t.principal, 0)
+  const blendedRate = trackPrincipal > 0
+    ? tracks.reduce((s, t) => s + t.annual_rate * t.principal, 0) / trackPrincipal
     : 0
   const mortgagePaidPct = summary.totalPrincipal > 0 ? ((summary.totalPrincipal - mortgageBalance) / summary.totalPrincipal) * 100 : 0
 

@@ -52,6 +52,14 @@ describe('activeContract', () => {
     const old = { ...contract({}), end_date: '2024-12-31' } as Contract
     expect(activeContract([old], new Date(2026, 5, 15))).toBeUndefined()
   })
+  it('treats start/end as inclusive whole days (no UTC instant skew)', () => {
+    // First day, just after local midnight — should already be active.
+    const starting = contract({ start_date: '2026-06-01', end_date: '2026-12-01' })
+    expect(activeContract([starting], new Date(2026, 5, 1, 0, 30))?.id).toBe('c1')
+    // Last day, mid-morning — should still be active (end date is inclusive).
+    const ending = contract({ start_date: '2026-01-01', end_date: '2026-06-01' })
+    expect(activeContract([ending], new Date(2026, 5, 1, 10, 0))?.id).toBe('c1')
+  })
 })
 
 describe('paid-to-date helpers', () => {
