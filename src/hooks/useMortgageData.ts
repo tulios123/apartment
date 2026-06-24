@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { monthlyPayment, combineSchedules, interestToDate, trackSchedule } from '../lib/mortgage'
+import { todayISO } from '../lib/format'
 import type { Mortgage, MortgageTrack, TrackType } from '../types'
 import type { ScheduleRow } from '../lib/mortgage'
 
@@ -53,7 +54,7 @@ export function useMortgageData(): MortgageData {
   useEffect(() => { fetch() }, [fetch])
 
   const combined = combineSchedules(tracks)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO() // LOCAL date — not toISOString (UTC rolls back a day)
   const lastPaidRow = [...combined].reverse().find(r => r.date <= today)
 
   const summary: MortgageSummary = {

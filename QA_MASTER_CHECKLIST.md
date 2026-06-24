@@ -30,7 +30,7 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 ## Progress tracker
 | Ch | Area | Items | Done | Bugs found/fixed | Status |
 |----|------|-------|------|------------------|--------|
-| 1  | Financial calculation core | — | — | — | not started |
+| 1  | Financial calculation core | ~40 | 52 tests | **7 bugs (UTC-date)** | mortgage/loans/equity/projections/format DONE; quickParse/taskFollowup next |
 | 2  | Database & data integrity | — | — | — | not started |
 | 3  | Security & access isolation | — | — | — | not started |
 | 4  | Auth & Login | — | — | — | not started |
@@ -364,6 +364,18 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 
 ## Findings log
 *(Bugs found while executing, with severity + fix commit. Newest first.)*
+
+### BUG #2 🟠 — UTC-date roll-back was SYSTEMIC (6 more sites) — ALL FIXED
+The same `toISOString().slice(0,10/7)` pattern (UTC, rolls back a day/month in Israel) was in 6 more places, all comparing against LOCAL-dated schedule rows or driving "today". Each undercounts/misattributes during the late-night window (and on the 1st of the month). Found by tests + grep; all fixed to local-date helpers; tests added where unit-testable:
+- `loans.ts loanBalance` 🟠 — outstanding balance ~one full principal payment too high at midnight on a payment date (feeds ownership % / bank debt). Test: as-of value must not depend on time-of-day.
+- `loans.ts loanInterestToDate` 🟠 — interest-paid short by a month. (added `localISO` helper for both.)
+- `equity.ts ym()` 🟠 — `toISOString().slice(0,7)` → on the 1st at midnight the "מאיץ ההון" accelerator showed the PREVIOUS month's principal/interest split. Test caught it (May shown instead of June).
+- `projections.ts monthlyVirtualEntries` 🟠 — year/range forecast dropped the CURRENT month's rent/mortgage rows on the 1st at midnight. Fake-clock test (00:30 on the 1st) caught it. → `todayISO()`.
+- `useDashboardStats.ts` 🟡 — renewal-alert window (today / +90d) shifted a day. → `todayISO()`/`monthDayISO`.
+- `useMortgageData.ts` 🟠 — mortgage current balance picked the prior month's row at midnight on a payment date. → `todayISO()`.
+- `LiabilitiesV2.tsx` 🟡 — new mortgage-track/loan forms defaulted start_date to yesterday in the late-night window. → `monthDayISO(new Date())` (×4).
+
+**Net: the entire `toISOString().slice` date-compare class is now eliminated** (`grep` clean except a doc comment). The codebase already had `todayISO`/`monthDayISO`/`monthEndISO` for exactly this — these sites predated or missed the convention.
 
 ### BUG #1 🟠 — `interestToDate` used a UTC date cutoff (off-by-one-day) — FIXED
 `lib/mortgage.ts interestToDate` compared the (local-dated) schedule rows against `asOf.toISOString().slice(0,10)` — a UTC date. In Israel (UTC+3) that cutoff lands on the *previous* day, so a payment row dated "today" (1st of the month) is dropped from the "interest paid to date" total. Feeds the Wealth screen's "ריבית ששולמה" (via `useMortgageData` + `useInvestmentData`). Test (`mortgage.test.ts`, run under `TZ=Asia/Jerusalem`) proved it: returned 4 months' interest instead of 5 (336₪ short in the fixture). Fixed to a LOCAL Y-M-D cutoff, matching the `addMonths` pattern in the same file. Low real-world frequency (only the late-night window with a 1st-of-month payment) but a genuine correctness + convention bug.

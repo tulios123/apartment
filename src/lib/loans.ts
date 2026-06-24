@@ -19,6 +19,12 @@ function addMonths(iso: string, months: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** LOCAL Y-M-D — never toISOString (UTC rolls back a day in timezones ahead of UTC,
+ * which would drop a payment dated "today" from balance/interest totals). */
+function localISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 interface LoanRow {
   date: string
   interest: number
@@ -67,7 +73,7 @@ export function loanBalance(loan: Loan, asOf: Date = new Date()): number {
   if (loan.repayment_type === 'balloon') return loan.principal
   const rows = loanSchedule(loan)
   if (rows.length === 0) return loan.principal
-  const cutoff = asOf.toISOString().slice(0, 10)
+  const cutoff = localISO(asOf)
   let balance = loan.principal
   for (const row of rows) {
     if (row.date <= cutoff) balance = row.balance
@@ -106,7 +112,7 @@ export function loanSplitForMonth(loan: Loan, monthStr: string): { principal: nu
 
 /** Interest accrued up to and including asOf — feeds investment interest expenses. */
 export function loanInterestToDate(loan: Loan, asOf: Date = new Date()): number {
-  const cutoff = asOf.toISOString().slice(0, 10)
+  const cutoff = localISO(asOf)
   return loanSchedule(loan).reduce((s, row) => (row.date <= cutoff ? s + row.interest : s), 0)
 }
 

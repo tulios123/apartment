@@ -18,7 +18,9 @@ export interface PaymentSplit {
 }
 
 function ym(d: Date): string {
-  return d.toISOString().slice(0, 7)
+  // LOCAL YYYY-MM — toISOString is UTC and returns the previous month for the first
+  // hours of the 1st in timezones ahead of UTC (Israel), shifting "this month".
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 function shift(asOf: Date, monthsAhead: number): Date {

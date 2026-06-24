@@ -17,8 +17,8 @@ const TRACK_COLOR: Record<TrackType, string> = { prime: 'blue', fixed_unlinked: 
 const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => d ? new Date(d).getFullYear() : null
 
-const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '', annual_rate: '', term_months: '', grace_months: '0', start_date: new Date().toISOString().slice(0, 10) }
-const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: new Date().toISOString().slice(0, 10) }
+const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '', annual_rate: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()) }
+const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()) }
 const isAnchoredType = (t: TrackType) => t === 'prime' || t === 'variable'
 
 export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean }) {
@@ -46,7 +46,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = monthDayISO(new Date())
   const mortgageBalance = summary.currentBalance || 0
   const loanBal = loansSummary.monthlyBalance || 0
   const balloonBal = loansSummary.balloonOutstanding || 0
@@ -76,7 +76,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   }
   function editLoan(l: Loan) {
     setKind('loan'); setEditId(l.id); setFormError(null)
-    setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? new Date().toISOString().slice(0, 10) })
+    setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? monthDayISO(new Date()) })
     setGraceOn((l.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }

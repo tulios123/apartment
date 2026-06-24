@@ -1,6 +1,6 @@
 import { trackSchedule } from './mortgage'
 import { loanPaymentForMonth } from './loans'
-import { monthEndISO } from './format'
+import { monthEndISO, todayISO } from './format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
 import type { Contract, MortgageTrack, Loan } from '../types'
 
@@ -77,7 +77,7 @@ export function monthlyVirtualEntries(
   month?: number,
   loans: Loan[] = [],
 ): VirtualEntry[] {
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = todayISO() // LOCAL date — not toISOString (UTC rolls back a day)
 
   const months = month
     ? [month]

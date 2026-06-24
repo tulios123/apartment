@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { rentReceivedToDate, mortgagePaidToDate } from '../lib/projections'
+import { todayISO, monthDayISO } from '../lib/format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import type { Transaction, Task, Contract, MortgageTrack } from '../types'
 
@@ -38,9 +39,9 @@ export function useDashboardStats(): DashboardStats {
       setLoading(true)
       setError(null)
       try {
-        const todayStr = new Date().toISOString().slice(0, 10)
+        const todayStr = todayISO() // LOCAL date — not toISOString (UTC rolls back a day)
         const in90 = new Date(); in90.setDate(in90.getDate() + 90)
-        const in90Str = in90.toISOString().slice(0, 10)
+        const in90Str = monthDayISO(in90)
 
         const [txRes, tasksRes, renewalRes, allContractsRes, tracksRes] = await Promise.all([
           supabase
