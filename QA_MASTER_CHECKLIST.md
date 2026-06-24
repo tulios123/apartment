@@ -30,7 +30,7 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 ## Progress tracker
 | Ch | Area | Items | Done | Bugs found/fixed | Status |
 |----|------|-------|------|------------------|--------|
-| 1  | Financial calculation core | ~40 | 52 tests | **7 bugs (UTC-date)** | mortgage/loans/equity/projections/format DONE; quickParse/taskFollowup next |
+| 1  | Financial calculation core | ~40 | **70 tests ✅** | **7 bugs (UTC-date), all fixed** | ✅ DONE — format/mortgage/loans/equity/projections/quickParse/taskFollowup all covered |
 | 2  | Database & data integrity | — | — | — | not started |
 | 3  | Security & access isolation | — | — | — | not started |
 | 4  | Auth & Login | — | — | — | not started |
