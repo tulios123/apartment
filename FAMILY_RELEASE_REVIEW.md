@@ -19,6 +19,12 @@
 
 ## Status summary (updated as the pass runs)
 
+**Owner reviewed the judgment calls (round 2) → "leave כניסת מנהל, do the rest as you see fit". Shipped (`7f72cb8`):**
+- F3 — page title "כספים" → "תזרים" (matches the nav tab)
+- F9 — `formatSignedCurrency()` (Intl `signDisplay`) → crisp "+362 ₪" on the Home + Ledger hero figures (was the drifting "₪362 +")
+- F8 — Rental contract delete → inline confirm (matches Insurance/Mortgage); the two task-completion *offer* confirms left intentionally (documented pattern, not deletes)
+- F10 — "כניסת מנהל" link: owner chose to keep it.
+
 **Shipped this pass (6 fixes, all pushed):**
 - F1 — splash no longer hangs ~5s on a cold-start/deep-link to a non-home tab (`22dbb63`)
 - F2 — Insurance empty state: removed redundant top add button (`22dbb63`)
@@ -43,8 +49,8 @@ Only `HomeScreen` calls `markReady()`. App holds the splash-overlay until `appRe
 ### F2 ✅ Insurance empty state redundant top button — FIXED (22dbb63)
 On the empty Insurance tab there are two identical add affordances: a top "+ פוליסה חדשה" button AND the empty-state "+ הוסף פוליסה" CTA, with an awkward gap between them. Inconsistent with Tasks (inline-add only) and Documents (empty-CTA only). **Fix:** hide the top button when there are no policies; let the empty state own the CTA. (Insurance.tsx)
 
-### F3 🟡 Naming: nav "תזרים" vs page title "כספים" (+ desktop sidebar "ניהול דירה")
-Nav tab label and the page H1 disagree (תזרים ≠ כספים). הון/ניהול match their tabs; only finances is off. Desktop sidebar also says "ניהול דירה" — a third app-name variant vs "Apartment" elsewhere (desktop-only, lower priority). Owner to pick the canonical name. Not auto-changed.
+### F3 ✅ Naming: nav "תזרים" vs page title "כספים" — FIXED (7f72cb8)
+Aligned the page H1 to the nav tab → "תזרים". (Desktop-only sidebar still "ניהול דירה" — left, since desktop isn't the family target and it's the app-name decision, still open.)
 
 ### F5 ✅ Settings: provider hardcoded "Google" — FIXED
 Account section showed a literal "ספק: Google" for everyone. A magic-link family member signs in via email, not Google, so the label was wrong. Now derived from `user.app_metadata.provider` → "Google" / "אימייל". (Settings.tsx)
@@ -58,11 +64,14 @@ The destructive "איפוס כל הנתונים" section is gated to dev/test/ad
 ### F7 ✅ Rental empty state had the same duplicate add button — FIXED
 "+ חוזה חדש" appeared in both the section header and the empty-state CTA when there were no contracts. Header button now hidden when empty (heading kept). (Rental.tsx)
 
-### F8 🟡 Native confirm() dialogs scattered (delete contract, task follow-up)
-`Rental.handleDeleteContract` uses `confirm('למחוק חוזה זה?')`; `HomeScreen.markTaskDone` uses `confirm(followup.msg)`. Insurance/Mortgage use a nicer inline confirm. Native dialogs look browser-chrome-y on an iOS PWA. Consistency polish — log only (changing delete UX carries small risk; owner can prioritise).
+### F8 ✅ Native confirm() on contract delete — FIXED (7f72cb8)
+`Rental.handleDeleteContract` now uses the inline `confirmDeleteId` pattern (Insurance/Mortgage). The two task-completion *offer* confirms (`HomeScreen.markTaskDone`, `TasksV2`) are deliberately left — they're "also log the payment?" offers (a documented pattern after the optimistic checkmark), not delete dialogs, and converting them is higher-risk/lower-value.
 
 ### F11 ✅ Dark-mode: native controls rendered dark — FIXED
 The app is light-only (no `prefers-color-scheme` styles) but never declared a `color-scheme`, so an OS dark-mode family member would get the browser's **dark-tinted native controls** — date pickers, selects, scrollbars, autofill — clashing with the light UI. Pinned `color-scheme: light` in `:root` (index.css) + `<meta name="color-scheme" content="light">` (index.html). Verified: the transaction form's date input + selects now render light in emulated dark mode. (NB: the app's own cards are unaffected — they have no dark styles, the earlier "faded" capture was just the entry animation mid-frame.)
+
+### F9 ✅ Hero figure sign/₪ bidi — FIXED (7f72cb8)
+`'+' + formatCurrency(x)` put a bare sign outside the currency's RTL run, so the sign drifted and the ₪ glued to the digits ("₪362 +"). New `formatSignedCurrency()` uses Intl `signDisplay:'exceptZero'` (keeps "+362" a unit via an LRM, ₪ correctly spaced, no sign for zero). Applied to the Home + Ledger hero figures; verified "+362 ₪" renders cleanly. Smaller per-row transaction amounts left as-is.
 
 ### F4 🟡 Weak text-only empty states on Finances & Wealth
 `FinancesV2` empty month → bare "אין תנועות בחודש זה"; `WealthHub` !hasData → bare "עדיין לא הוגדרו נכס…". Both lack the ClayIllustration treatment used elsewhere. Rare for a post-onboarding user (they have projected rows / a property), so low priority — log only.
