@@ -99,6 +99,9 @@ export function InvestmentStep() {
         </div>
 
         <p className="onboarding-subhead">עלויות רכישה ונלוות</p>
+        <p className="onboarding-field-hint" style={{ marginTop: -2, marginBottom: 2 }}>
+          המספרים האפורים הם הערכה לפי שיעורים מקובלים והם יישמרו כפי שמוצג. ערכו אם שונה — או אפסו אם לא רלוונטי (למשל קנייה ללא תיווך).
+        </p>
 
         {/* Cost fields */}
         {(() => {
