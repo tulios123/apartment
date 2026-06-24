@@ -37,6 +37,12 @@ The "גנרציה חודשית" section (jargon + a manual "הרץ שוב חוד
 ### F-safe ✅ "Reset all data" tool already gated (no fix needed)
 The destructive "איפוס כל הנתונים" section is gated to dev/test/admin — family members never see it. The old review's concern is already handled.
 
+### F7 ✅ Rental empty state had the same duplicate add button — FIXED
+"+ חוזה חדש" appeared in both the section header and the empty-state CTA when there were no contracts. Header button now hidden when empty (heading kept). (Rental.tsx)
+
+### F8 🟡 Native confirm() dialogs scattered (delete contract, task follow-up)
+`Rental.handleDeleteContract` uses `confirm('למחוק חוזה זה?')`; `HomeScreen.markTaskDone` uses `confirm(followup.msg)`. Insurance/Mortgage use a nicer inline confirm. Native dialogs look browser-chrome-y on an iOS PWA. Consistency polish — log only (changing delete UX carries small risk; owner can prioritise).
+
 ### F4 🟡 Weak text-only empty states on Finances & Wealth
 `FinancesV2` empty month → bare "אין תנועות בחודש זה"; `WealthHub` !hasData → bare "עדיין לא הוגדרו נכס…". Both lack the ClayIllustration treatment used elsewhere. Rare for a post-onboarding user (they have projected rows / a property), so low priority — log only.
 

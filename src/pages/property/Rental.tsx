@@ -293,7 +293,9 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
       <section className="prop-section">
         <div className="prop-section-header">
           <h2>חוזים</h2>
-          <button className="btn-secondary" onClick={openNewContract}>+ חוזה חדש</button>
+          {/* When empty, the empty-state below owns the single add CTA (matches
+              Insurance/Tasks/Documents) — avoid showing "+ חוזה חדש" twice. */}
+          {contracts.length > 0 && <button className="btn-secondary" onClick={openNewContract}>+ חוזה חדש</button>}
         </div>
 
         {deleteErr && <div className="form-error" role="alert">{deleteErr}</div>}
