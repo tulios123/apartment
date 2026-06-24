@@ -2613,7 +2613,7 @@ input[type="date"] {
 .onboarding-done {
   display: flex;
   flex-direction: column;
-  min-height: calc(100svh - 210px);
+  min-height: calc(100svh - 300px);
 }
 .onboarding-done-hero {
   position: relative;
@@ -2706,7 +2706,7 @@ input[type="date"] {
 }
 .onboarding-metric-value.income { color: var(--success-text); }
 
-.onboarding-done-spacer { flex: 1; min-height: 24px; }
+.onboarding-done-spacer { flex: 1; min-height: 14px; }
 
 .onboarding-notif-card {
   display: flex;
