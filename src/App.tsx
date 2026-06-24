@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { AppReadyContext } from './contexts/AppReadyContext'
 import { supabase } from './lib/supabase'
 import Layout from './components/layout/Layout'
 import { Splash } from './components/ui/Splash'
@@ -17,6 +18,11 @@ import DevNotes from './components/DevNotes'
 function AppRoutes() {
   const { user, loading } = useAuth()
   const [hasProperty, setHasProperty] = useState<boolean | null>(null)
+  // Keep the splash up until the first screen's data has loaded (markReady), so the
+  // user goes straight from splash to a fully-populated app — no skeleton flash.
+  const [appReady, setAppReady] = useState(false)
+  const markReady = useCallback(() => setAppReady(true), [])
+  const readyValue = useMemo(() => ({ markReady }), [markReady])
 
   useEffect(() => {
     if (!user) { setHasProperty(null); return }
@@ -28,11 +34,20 @@ function AppRoutes() {
       .then(({ data }) => setHasProperty((data?.length ?? 0) > 0))
   }, [user])
 
+  // Safety ceiling: never trap the user behind the splash if no screen signals ready
+  // (e.g. a query error, or a first route that isn't Home).
+  useEffect(() => {
+    if (appReady || loading || !user || !hasProperty) return
+    const t = setTimeout(() => setAppReady(true), 5000)
+    return () => clearTimeout(t)
+  }, [appReady, loading, user, hasProperty])
+
   if (loading || (user && hasProperty === null)) return <Splash />
   if (!user) return <Login />
   if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
 
   return (
+    <AppReadyContext.Provider value={readyValue}>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
@@ -66,6 +81,8 @@ function AppRoutes() {
         </Route>
       </Routes>
     </BrowserRouter>
+    {!appReady && <div className="splash-overlay"><Splash /></div>}
+    </AppReadyContext.Provider>
   )
 }
 

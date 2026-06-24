@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useAppReady } from '../../contexts/AppReadyContext'
 import {
   CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, ArrowLeft, Sun, CloudSun, MoonStars,
   Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, GearSix, CaretDown, CaretLeft,
@@ -157,6 +158,12 @@ export default function HomeScreen() {
 
   const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty
   const loadingFlow = loadingProperty || loadingMortgage || loadingLoans || loadingInsurance || loadingTx
+
+  // Once every data source on the home is loaded, let the app reveal it (drops the
+  // initial splash held by App). Errors still flip loading→false, so this won't hang.
+  const { markReady } = useAppReady()
+  const homeLoaded = !loadingStats && !loadingMortgage && !loadingProperty && !loadingLoans && !loadingInsurance && !loadingTasks && !loadingTx
+  useEffect(() => { if (homeLoaded) markReady() }, [homeLoaded, markReady])
 
   async function approveRent(amount: number) {
     setBusy('rent')

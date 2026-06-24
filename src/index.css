@@ -1523,6 +1523,15 @@ input[type="date"] {
   color: var(--text-muted);
 }
 
+/* Splash held over the app until the first screen's data is ready (one continuous
+   load, no skeleton flash). Opaque, covers everything until App flips appReady. */
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg);
+}
+
 /* Branded cold-start splash (replaces the bare "טוען..." text). */
 .splash {
   display: flex;
