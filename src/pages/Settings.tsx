@@ -259,7 +259,7 @@ export default function Settings() {
           </section>
         )}
 
-        {(import.meta.env.DEV || user?.email === TEST_ACCOUNT_EMAIL) && (
+        {(import.meta.env.DEV || user?.email === TEST_ACCOUNT_EMAIL || isAdmin) && (
         <section className="settings-section">
           <h2>פיתוח ובדיקה</h2>
           <p className="settings-note">
