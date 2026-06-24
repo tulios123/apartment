@@ -152,7 +152,7 @@ function ContractForm({
   )
 }
 
-export default function Rental() {
+export default function Rental({ onContractsChange }: { onContractsChange?: () => void } = {}) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { property, contracts, utilities, loading, error, refetch } = usePropertyData()
@@ -225,6 +225,7 @@ export default function Rental() {
     setShowContractModal(false)
     setEditingContract(null)
     refetch()
+    onContractsChange?.()
   }
 
   async function handleDeleteContract(id: string) {
@@ -238,6 +239,7 @@ export default function Rental() {
       await deleteRentRecurringItems(id)
       await deleteContract(id)
       refetch()
+      onContractsChange?.()
     } catch (e) {
       setDeleteErr(e instanceof Error ? e.message : 'מחיקת החוזה נכשלה — נסו שוב')
       refetch()

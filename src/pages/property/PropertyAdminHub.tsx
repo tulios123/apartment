@@ -96,8 +96,11 @@ export default function PropertyAdminHub() {
                 {subParts.length > 0 && <div className="padm-binder-sub">{subParts.join(' · ')}</div>}
               </div>
               <div className="padm-binder-side">
-                {activeTenant && (
-                  <div className="padm-binder-tenant"><UserCircle size={15} weight="duotone" /> {activeTenant} · חוזה פעיל</div>
+                {property && (
+                  <div className={`padm-binder-lease${activeTenant ? ' is-active' : ' is-none'}`}>
+                    <UserCircle size={15} weight="duotone" />
+                    {activeTenant ? `${activeTenant} · חוזה פעיל` : 'אין חוזה שכירות'}
+                  </div>
                 )}
                 <button className="padm-binder-edit" onClick={() => setShowModal(true)}>
                   <PencilSimple size={14} /> {property ? 'עריכה' : 'הוסף נכס'}
@@ -126,7 +129,9 @@ export default function PropertyAdminHub() {
           </nav>
 
           <div className="prov-panel">
-            <Active />
+            {/* Rental gets a callback so adding/removing a contract refreshes the
+                lease badge above (the hub holds its own contracts instance). */}
+            {tab === 'rental' ? <Rental onContractsChange={refetch} /> : <Active />}
           </div>
         </>
       )}
