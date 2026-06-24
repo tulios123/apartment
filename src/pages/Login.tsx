@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { House } from '@phosphor-icons/react'
+import { House, EnvelopeSimple, Lock } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -63,66 +63,75 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-card">
-        <div className="login-logo"><House weight="duotone" size={40} color="var(--accent)" /></div>
-        <h1>ניהול דירה</h1>
-        <p className="login-subtitle">התחבר כדי להמשיך</p>
-
-        {/* Email sign-in link */}
-        {!linkSent ? (
-          <form className="login-email-form" onSubmit={sendLink}>
-            <input
-              type="email" inputMode="email" autoComplete="email" dir="ltr"
-              placeholder="כתובת מייל"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setLinkError('') }}
-            />
-            <button type="submit" className="btn-primary login-email-btn" disabled={linkBusy || !email.trim()}>
-              {linkBusy ? 'שולח...' : 'שלחו לי קישור כניסה למייל'}
-            </button>
-          </form>
-        ) : (
-          <div className="login-email-form">
-            <p className="login-info">שלחנו קישור ל-{email.trim()} — פתח את המייל ולחץ עליו כדי להיכנס.</p>
-            <button type="button" className="login-manager-link" onClick={() => { setLinkSent(false); setLinkError('') }}>
-              שנה מייל או שלח שוב
-            </button>
+      <div className="login-shell">
+        <div className="login-card2">
+          {/* Navy brand hero — ties the login to the splash and the app's status bar. */}
+          <div className="login-hero">
+            <div className="login-hero-mark"><House weight="duotone" size={31} color="#fff" /></div>
+            <div className="login-hero-title">Apartment</div>
+            <div className="login-hero-sub">ניהול השקעה</div>
           </div>
-        )}
-        {linkError && <p className="login-error">{linkError}</p>}
 
-        <div className="login-divider"><span>או</span></div>
+          <div className="login-body">
+            {/* Email sign-in link */}
+            {!linkSent ? (
+              <form className="login-email-form2" onSubmit={sendLink}>
+                <input
+                  type="email" inputMode="email" autoComplete="email" dir="ltr"
+                  placeholder="כתובת מייל"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setLinkError('') }}
+                />
+                <button type="submit" className="login-send-btn" disabled={linkBusy || !email.trim()}>
+                  <EnvelopeSimple size={18} weight="bold" /> {linkBusy ? 'שולח...' : 'שליחת קישור כניסה'}
+                </button>
+              </form>
+            ) : (
+              <div className="login-email-form2">
+                <p className="login-info">שלחנו קישור ל-{email.trim()} — פתח את המייל ולחץ עליו כדי להיכנס.</p>
+                <button type="button" className="login-manager-link" onClick={() => { setLinkSent(false); setLinkError('') }}>
+                  שנה מייל או שלח שוב
+                </button>
+              </div>
+            )}
+            {linkError && <p className="login-error">{linkError}</p>}
 
-        <button className="btn-google" onClick={handleSignIn} disabled={busy}>
-          <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-            <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-            <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-          </svg>
-          {busy ? 'מתחבר...' : 'התחברות עם Google'}
-        </button>
+            <div className="login-divider2"><span>או</span></div>
 
-        {/* Manager (dev test account) login */}
-        {!showManager ? (
-          <button className="login-manager-link" onClick={() => setShowManager(true)}>
-            כניסת מנהל
-          </button>
-        ) : (
-          <form className="login-manager-form" onSubmit={handleManagerLogin}>
-            <input
-              type="password" inputMode="numeric" autoComplete="current-password"
-              placeholder="סיסמת מנהל"
-              value={mgrPwd}
-              onChange={e => { setMgrPwd(e.target.value); setMgrError('') }}
-              autoFocus
-            />
-            <button type="submit" className="btn-manager" disabled={busy || !mgrPwd}>
-              {busy ? 'מתחבר...' : 'כניסה'}
+            <button className="btn-google2" onClick={handleSignIn} disabled={busy}>
+              <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              {busy ? 'מתחבר...' : 'המשך עם Google'}
             </button>
-            {mgrError && <p className="login-error">{mgrError}</p>}
-          </form>
-        )}
+
+            {/* Manager (dev test account) login */}
+            {!showManager ? (
+              <button className="login-manager-link login-manager-link--foot" onClick={() => setShowManager(true)}>
+                כניסת מנהל
+              </button>
+            ) : (
+              <form className="login-manager-form" onSubmit={handleManagerLogin}>
+                <input
+                  type="password" inputMode="numeric" autoComplete="current-password"
+                  placeholder="סיסמת מנהל"
+                  value={mgrPwd}
+                  onChange={e => { setMgrPwd(e.target.value); setMgrError('') }}
+                  autoFocus
+                />
+                <button type="submit" className="btn-manager" disabled={busy || !mgrPwd}>
+                  {busy ? 'מתחבר...' : 'כניסה'}
+                </button>
+                {mgrError && <p className="login-error">{mgrError}</p>}
+              </form>
+            )}
+          </div>
+        </div>
+
+        <div className="login-trust"><Lock size={13} weight="fill" /> המידע שלך פרטי ומאובטח</div>
       </div>
     </div>
   )

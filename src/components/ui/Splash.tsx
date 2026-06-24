@@ -6,7 +6,7 @@ export function Splash({ caption = 'טוען את הנכס שלך…' }: { capti
   return (
     <div className="splash">
       <div className="splash-badge"><House size={44} weight="duotone" color="var(--accent)" /></div>
-      <div className="splash-title">ניהול דירה</div>
+      <div className="splash-title">Apartment</div>
       <div className="splash-bar"><span className="splash-bar-fill" /></div>
       <div className="splash-caption">{caption}</div>
     </div>
