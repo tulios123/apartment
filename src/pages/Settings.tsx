@@ -40,6 +40,11 @@ export default function Settings() {
   const [feedback, setFeedback] = useState<FeedbackRow[]>([])
 
   const isAdmin = user?.email === ADMIN_EMAIL
+  // Technical/debug controls (reset, manual generation re-run) — owner/dev only, never
+  // shown to family accounts.
+  const showDevTools = import.meta.env.DEV || user?.email === TEST_ACCOUNT_EMAIL || isAdmin
+  // Real provider, not a hardcoded "Google" — magic-link users sign in via email.
+  const providerLabel = user?.app_metadata?.provider === 'google' ? 'Google' : 'אימייל'
 
   useEffect(() => {
     refreshPushState()
@@ -165,7 +170,7 @@ export default function Settings() {
           </div>
           <div className="settings-row">
             <span className="settings-label">ספק</span>
-            <span className="settings-value">Google</span>
+            <span className="settings-value">{providerLabel}</span>
           </div>
           <div className="settings-actions">
             <button className="btn-secondary" onClick={signOut}>יציאה מהחשבון</button>
@@ -226,6 +231,7 @@ export default function Settings() {
         </section>
         )}
 
+        {showDevTools && (
         <section className="settings-section">
           <h2>גנרציה חודשית</h2>
           <p className="settings-note">
@@ -237,6 +243,7 @@ export default function Settings() {
             </button>
           </div>
         </section>
+        )}
 
         {isAdmin && (
           <section className="settings-section">
@@ -259,7 +266,7 @@ export default function Settings() {
           </section>
         )}
 
-        {(import.meta.env.DEV || user?.email === TEST_ACCOUNT_EMAIL || isAdmin) && (
+        {showDevTools && (
         <section className="settings-section">
           <h2>פיתוח ובדיקה</h2>
           <p className="settings-note">

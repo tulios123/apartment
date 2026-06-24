@@ -19,14 +19,23 @@
 
 ## Findings log
 
-### F1 🔴→🟠 Splash hangs 5s on cold-start / deep-link to any non-home route
+### F1 ✅ Splash hangs 5s on cold-start / deep-link to any non-home route — FIXED (22dbb63)
 Only `HomeScreen` calls `markReady()`. App holds the splash-overlay until `appReady`, with a 5s safety ceiling. So a PWA cold-start or refresh while the last route was `/finances`, `/wealth`, or `/property` shows a blank-ish splash for the **full 5 seconds** before the screen appears. Returning family members who left the app on a non-home tab hit this every reopen. **Fix:** only hold the splash on the home route — initialise `appReady` from `window.location.pathname !== '/'` so non-home routes render their own (fast) skeletons immediately. (App.tsx)
 
-### F2 🟠 Insurance empty state shows a redundant top "+ פוליסה חדשה"
+### F2 ✅ Insurance empty state redundant top button — FIXED (22dbb63)
 On the empty Insurance tab there are two identical add affordances: a top "+ פוליסה חדשה" button AND the empty-state "+ הוסף פוליסה" CTA, with an awkward gap between them. Inconsistent with Tasks (inline-add only) and Documents (empty-CTA only). **Fix:** hide the top button when there are no policies; let the empty state own the CTA. (Insurance.tsx)
 
 ### F3 🟡 Naming: nav "תזרים" vs page title "כספים" (+ desktop sidebar "ניהול דירה")
 Nav tab label and the page H1 disagree (תזרים ≠ כספים). הון/ניהול match their tabs; only finances is off. Desktop sidebar also says "ניהול דירה" — a third app-name variant vs "Apartment" elsewhere (desktop-only, lower priority). Owner to pick the canonical name. Not auto-changed.
+
+### F5 ✅ Settings: provider hardcoded "Google" — FIXED
+Account section showed a literal "ספק: Google" for everyone. A magic-link family member signs in via email, not Google, so the label was wrong. Now derived from `user.app_metadata.provider` → "Google" / "אימייל". (Settings.tsx)
+
+### F6 ✅ Settings: "גנרציה חודשית" plumbing exposed to family — FIXED
+The "גנרציה חודשית" section (jargon + a manual "הרץ שוב חודש זה" debug button) was visible to all users. Generation runs automatically; the manual control is a debug affordance. Gated behind `showDevTools` (dev/test/admin) like the reset tool, so family settings are just חשבון + התראות. Reversible if the owner wants it back. (Settings.tsx)
+
+### F-safe ✅ "Reset all data" tool already gated (no fix needed)
+The destructive "איפוס כל הנתונים" section is gated to dev/test/admin — family members never see it. The old review's concern is already handled.
 
 ### F4 🟡 Weak text-only empty states on Finances & Wealth
 `FinancesV2` empty month → bare "אין תנועות בחודש זה"; `WealthHub` !hasData → bare "עדיין לא הוגדרו נכס…". Both lack the ClayIllustration treatment used elsewhere. Rare for a post-onboarding user (they have projected rows / a property), so low priority — log only.
