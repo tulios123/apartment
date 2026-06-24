@@ -1,4 +1,4 @@
-import { House, Check, MapPin, Bell, CloudCheck, ArrowRight } from '@phosphor-icons/react'
+import { House, Check, MapPin, Bell, CloudCheck, ArrowLeft } from '@phosphor-icons/react'
 import { pushSupported, pushConfigured, isInstalledPWA, isIOS } from '../../lib/push'
 import { formatCurrency } from './types'
 import { useOnboarding } from './context'
@@ -87,7 +87,7 @@ export function DoneStep() {
 
       <button className="btn-onboard-primary onboarding-done-cta"
         onClick={() => { window.history.replaceState(null, '', '/'); onComplete() }}>
-        <ArrowRight size={18} weight="bold" /> כניסה לאפליקציה
+        כניסה לאפליקציה <ArrowLeft size={18} weight="bold" />
       </button>
 
       <p className="onboarding-done-saving"><CloudCheck size={14} /> המסמכים נשמרים ברקע</p>
