@@ -104,8 +104,8 @@ export function PurchaseStep() {
         </div>
       </div>
       <div className="onboarding-actions">
-        <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-        <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
+        <button type="submit" className="btn-onboard-primary"><ArrowRight size={16} /> הבא</button>
+        <button type="button" className="btn-onboard-skip" onClick={back}>חזור <ArrowLeft size={16} /></button>
       </div>
     </form>
   )

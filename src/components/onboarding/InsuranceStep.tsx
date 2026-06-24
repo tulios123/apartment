@@ -1,4 +1,4 @@
-import { ShieldCheck, ArrowRight, Check, X } from '@phosphor-icons/react'
+import { ShieldCheck, ArrowLeft, Check, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { PolicyForm } from './PolicyForm'
@@ -96,10 +96,10 @@ export function InsuranceStep() {
 
       {error && <p className="onboarding-error" role="alert">{error}</p>}
       <div className="onboarding-actions">
-        <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
         <button type="submit" className="btn-onboard-primary" disabled={saving || pendingFinish}>
-          {saving ? 'שומר...' : pendingFinish ? 'רגע, קוראים…' : <><span>סיום</span><Check size={14} weight="bold" /></> }
+          {saving ? 'שומר...' : pendingFinish ? 'רגע, קוראים…' : <><Check size={14} weight="bold" /><span>סיום</span></> }
         </button>
+        <button type="button" className="btn-onboard-skip" onClick={back}>חזור <ArrowLeft size={16} /></button>
       </div>
     </form>
   )

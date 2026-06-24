@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, ArrowLeft, SignOut } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, ArrowRight, SignOut } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import { useAuth } from '../../contexts/AuthContext'
@@ -83,7 +83,7 @@ export function DocumentsStep() {
 
       <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
         <button type="button" className="btn-onboard-primary" onClick={() => advance('purchase')}>
-          {anyBusy ? 'המשך · נמשיך לקרוא ברקע' : 'המשך'} <ArrowLeft size={16} />
+          <ArrowRight size={16} /> {anyBusy ? 'המשך · נמשיך לקרוא ברקע' : 'המשך'}
         </button>
       </div>
 

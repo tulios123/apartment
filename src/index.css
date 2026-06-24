@@ -2310,12 +2310,163 @@ input[type="date"] {
   font-weight: 500;
 }
 
-/* Done step */
-.onboarding-done-icon {
-  font-size: 64px;
+/* Done step — fills the card height so there's no dead space; reflects the property
+   the user just built, with a branded celebratory hero. */
+.onboarding-done {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100svh - 210px);
+}
+.onboarding-done-hero {
+  position: relative;
   text-align: center;
-  margin-bottom: 20px;
-  line-height: 1;
+  padding-top: 8px;
+}
+.onboarding-done-badge {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 16px;
+  background: var(--accent-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.onboarding-done-check {
+  position: absolute;
+  bottom: -2px;
+  inset-inline-start: -2px;
+  width: 30px;
+  height: 30px;
+  background: var(--success);
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.onboarding-done-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0a1f44;
+  margin: 0;
+}
+.onboarding-done-sub {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 6px;
+}
+.onboarding-confetti {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+.onboarding-confetti.c1 { top: 4px; left: calc(50% - 62px); background: var(--accent-coral); transform: rotate(20deg); }
+.onboarding-confetti.c2 { top: 20px; left: calc(50% + 54px); background: var(--accent-teal); transform: rotate(-15deg); }
+.onboarding-confetti.c3 { top: 0; left: calc(50% + 22px); width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.onboarding-confetti.c4 { top: 34px; left: calc(50% - 46px); width: 5px; height: 5px; border-radius: 50%; background: #efa12a; }
+
+.onboarding-prop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 24px;
+}
+.onboarding-prop-addr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+.onboarding-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.onboarding-metric {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.onboarding-metric-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.onboarding-metric-value {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 3px;
+}
+.onboarding-metric-value.income { color: var(--success-text); }
+
+.onboarding-done-spacer { flex: 1; min-height: 24px; }
+
+.onboarding-notif-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 11px 14px;
+  margin-bottom: 12px;
+}
+.onboarding-notif-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.onboarding-notif-btn {
+  flex-shrink: 0;
+  background: var(--accent-light);
+  color: var(--accent);
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.onboarding-notif-btn:disabled { opacity: 0.6; }
+.onboarding-notif-card.is-on { background: var(--success-bg); border-color: transparent; }
+.onboarding-notif-card.is-on .onboarding-notif-text { color: var(--success-text); }
+
+.onboarding-done-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.onboarding-done-cta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px;
+  font-size: 16px;
+}
+.onboarding-done-saving {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 12px;
 }
 
 @media (max-width: 520px) {
