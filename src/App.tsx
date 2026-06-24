@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { supabase } from './lib/supabase'
 import Layout from './components/layout/Layout'
+import { Splash } from './components/ui/Splash'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import HomeScreen from './pages/dashboard/HomeScreen'
@@ -27,7 +28,7 @@ function AppRoutes() {
       .then(({ data }) => setHasProperty((data?.length ?? 0) > 0))
   }, [user])
 
-  if (loading || (user && hasProperty === null)) return <div className="app-loading">טוען...</div>
+  if (loading || (user && hasProperty === null)) return <Splash />
   if (!user) return <Login />
   if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
 
