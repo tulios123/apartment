@@ -1,8 +1,9 @@
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, ArrowLeft } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, ArrowLeft, SignOut } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
+import { useAuth } from '../../contexts/AuthContext'
 
 // One upload card. Tapping it picks file(s) and immediately kicks off extraction
 // (which runs in the background while the user continues through the wizard).
@@ -39,6 +40,7 @@ export function DocumentsStep() {
     aiFillLoans, loanAiBusy, loanAiErr, loans,
     aiFillRental, rentalAiBusy, rentalAiErr, companyName, monthlyRent,
   } = useOnboarding()
+  const { user, signOut } = useAuth()
 
   const purchaseDone = (street || city || purchasePrice)
     ? `${[street, city].filter(Boolean).join(', ') || 'נכס'}${price > 0 ? ` · ${formatCurrency(price)}` : ''}`
@@ -82,6 +84,15 @@ export function DocumentsStep() {
       <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
         <button type="button" className="btn-onboard-primary" onClick={() => advance('purchase')}>
           {anyBusy ? 'המשך · נמשיך לקרוא ברקע' : 'המשך'} <ArrowLeft size={16} />
+        </button>
+      </div>
+
+      {/* Sign-out — the documents step is the wizard entry point and has no "back",
+          so this is the only way out to the login screen (e.g. wrong account). */}
+      <div className="onboarding-signout-row">
+        {user?.email && <span>מחובר כ-{user.email}</span>}
+        <button type="button" className="onboarding-signout-link" onClick={signOut}>
+          <SignOut size={14} /> התנתקות וחזרה לכניסה
         </button>
       </div>
     </div>
