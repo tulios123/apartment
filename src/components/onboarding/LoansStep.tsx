@@ -13,6 +13,7 @@ export function LoansStep() {
     editingLoanIdx, setEditingLoanIdx, setLoanForm, showLoanForm, setShowLoanForm,
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
+    loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
     fillTestLoans,
   } = useOnboarding()
 
@@ -21,6 +22,21 @@ export function LoansStep() {
       <StepHeader current="loans" icon={<HandCoins size={44} color="var(--accent)" />} title="הלוואות" />
       <FillExampleTop onFill={fillTestLoans} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
+
+      <div className="onboarding-ai-fill">
+        <button type="button" className={`btn-onboard-ai${loanAiDone && !loanAiBusy ? ' is-done' : ''}`} disabled={loanAiBusy}
+          onClick={() => loanDocRef.current?.click()}>
+          {loanAiBusy
+            ? 'קורא את המסמך…'
+            : loanAiDone
+              ? '✓ ההלוואה נקראה — בדקו למטה · לחצו להעלאה מחדש'
+              : '📄 העלו מסמך הלוואה או צילום מסך — מילוי אוטומטי'}
+        </button>
+        <input ref={loanDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
+          onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillLoans(fs); e.target.value = '' }} />
+        {loanAiErr && <p className="onboarding-error" role="alert">{loanAiErr}</p>}
+        <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
+      </div>
 
       {/* Saved loans list — click header to toggle edit in-place */}
       {loans.length > 0 && (

@@ -110,9 +110,13 @@ export function useOnboardingState(onComplete: () => void) {
   const purchaseInputRef = useRef<HTMLInputElement>(null)
   const rentalInputRef = useRef<HTMLInputElement>(null)
   const mortgageDocRef = useRef<HTMLInputElement>(null)
+  const loanDocRef = useRef<HTMLInputElement>(null)
   const [mortgageAiBusy, setMortgageAiBusy] = useState(false)
   const [mortgageAiErr, setMortgageAiErr] = useState<string | null>(null)
   const [mortgageAiDone, setMortgageAiDone] = useState(false)
+  const [loanAiBusy, setLoanAiBusy] = useState(false)
+  const [loanAiErr, setLoanAiErr] = useState<string | null>(null)
+  const [loanAiDone, setLoanAiDone] = useState(false)
   const [purchaseAiBusy, setPurchaseAiBusy] = useState(false)
   const [purchaseAiErr, setPurchaseAiErr] = useState<string | null>(null)
   const [purchaseAiDone, setPurchaseAiDone] = useState(false)
@@ -260,6 +264,60 @@ export function useOnboardingState(onComplete: () => void) {
       setMortgageAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
     } finally {
       setMortgageAiBusy(false)
+    }
+  }
+
+  // ── AI fill: personal/supplementary loan doc → loan rows ─────────────────────
+  async function aiFillLoans(fileList: File[]) {
+    setLoanAiBusy(true)
+    setLoanAiErr(null)
+    setLoanAiDone(false)
+    try {
+      const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
+      const cacheKey = `apt_extract_loan_v1_${hashString(files.map(f => f.fileBase64).join(''))}`
+      let data: { loans?: Record<string, unknown>[] } | null = null
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
+      }
+      if (!data) {
+        const res = await supabase.functions.invoke('extract-loan', { body: { files } })
+        if (res.error) throw res.error
+        data = res.data
+        try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+      }
+      const raw = (data?.loans ?? []) as Record<string, unknown>[]
+      const mapped: LoanDraft[] = raw
+        .filter(l => (Number(l.principal) || 0) > 0)
+        .map(l => {
+          const isBalloon = l.repayment_type === 'balloon'
+          return {
+            repayment_type: (isBalloon ? 'balloon' : 'monthly_fixed') as LoanRepaymentType,
+            track_type: 'fixed_unlinked' as TrackType,
+            label: l.lender != null ? String(l.lender) : '',
+            lender: l.lender != null ? String(l.lender) : '',
+            principal: l.principal != null ? String(l.principal) : '',
+            annual_rate: !isBalloon && l.annual_rate != null ? String(l.annual_rate) : '',
+            prime_rate: '',
+            margin: '',
+            term_months: !isBalloon && l.term_months != null ? String(l.term_months) : '',
+            grace_months: !isBalloon && l.grace_months != null ? String(l.grace_months) : '',
+            start_date: keyDeliveryDate || todayISO(),
+          }
+        })
+      if (mapped.length === 0) {
+        setLoanAiErr('לא זוהתה הלוואה במסמך — נסו קובץ ברור יותר או הזינו ידנית.')
+        return
+      }
+      // Append (don't clobber) any loans the user already entered.
+      setLoans(prev => [...prev, ...mapped])
+      setShowLoanForm(false)
+      setEditingLoanIdx(null)
+      setLoanAiDone(true)
+    } catch {
+      setLoanAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
+    } finally {
+      setLoanAiBusy(false)
     }
   }
 
@@ -641,7 +699,7 @@ export function useOnboardingState(onComplete: () => void) {
 
   // ── Finish guard: don't finish while a doc is still being read ───────────────
   // True whenever any of the three background extractions is in flight.
-  const anyAiBusy = purchaseAiBusy || mortgageAiBusy || rentalAiBusy
+  const anyAiBusy = purchaseAiBusy || mortgageAiBusy || rentalAiBusy || loanAiBusy
 
   // The finish entry point used by the UI. If a document is still being read,
   // defer the actual save until it resolves (the effect below fires it) so the
@@ -940,6 +998,7 @@ export function useOnboardingState(onComplete: () => void) {
     effectiveTrackForm, previewMonthly, previewGrace,
     // AI mortgage fill
     mortgageDocRef, mortgageAiBusy, mortgageAiErr, mortgageAiDone, aiFillMortgage,
+    loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
     // AI purchase + rental fill
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
     rentalAiBusy, rentalAiErr, aiFillRental,
