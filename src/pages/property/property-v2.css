@@ -2,7 +2,7 @@
    Scoped to .prov; reuses the proven Details/Rental/Insurance/InvestmentCosts
    sub-components inside the panel (they keep their .prop-* styling). */
 .prov {
-  .prov-hero { background: linear-gradient(150deg, var(--brand-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 18px; }
+  .prov-hero { background: linear-gradient(150deg, var(--hero-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 18px; }
   .prov-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
   .prov-hero-label { font-size: 13px; opacity: 0.8; margin-bottom: 6px; }
   .prov-hero-value { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }

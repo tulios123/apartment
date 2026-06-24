@@ -1,7 +1,7 @@
 /* Liabilities V2 — sandbox design ported to production, wired to real data.
    Scoped to .liav; renders as the full התחייבויות page (replaces the accordion when flagged). */
 .liav {
-  .liav-hero { background: linear-gradient(150deg, var(--brand-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 24px; }
+  .liav-hero { background: linear-gradient(150deg, var(--hero-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 24px; }
   /* Embedded in the Wealth hub: equity hero above already shows the debt total, so show only the payment/interest detail */
   .liav-hero.slim { padding: 18px 24px; }
   .liav-hero.slim .liav-hero-foot { margin-top: 0; padding-top: 0; border-top: none; }
@@ -27,7 +27,7 @@
   .liav-card-head { display: flex; align-items: center; gap: 12px; padding: 16px; cursor: pointer; border: none; background: none; width: 100%; font-family: inherit; text-align: right; }
   .liav-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--r-pill); white-space: nowrap; flex-shrink: 0; }
   .liav-badge.blue { background: var(--accent-light); color: var(--accent); }
-  .liav-badge.teal { background: #d8f0eb; color: #0c7a66; }
+  .liav-badge.teal { background: var(--teal-bg); color: var(--teal-text); }
   .liav-badge.purple { background: var(--accent-2-bg); color: var(--accent-2); }
   .liav-badge.amber { background: var(--warning-bg); color: var(--warning-text); }
   .liav-card-main { flex: 1; min-width: 0; }

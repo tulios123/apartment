@@ -9,7 +9,7 @@
   .wlth-empty { background: var(--bg-card); border-radius: var(--r-md); padding: 40px 24px; text-align: center; color: var(--text-muted); box-shadow: var(--shadow-sm); }
 
   /* ── Layer 1: Ownership Score hero ─────────────────────────── */
-  .wlth-hero { background: linear-gradient(150deg, var(--brand-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 16px; }
+  .wlth-hero { background: linear-gradient(150deg, var(--hero-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 16px; }
   .wlth-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .wlth-hero-top > div:first-child { min-width: 0; }
   .wlth-delta { max-width: 100%; }
