@@ -17,6 +17,24 @@
 
 ---
 
+## Status summary (updated as the pass runs)
+
+**Shipped this pass (6 fixes, all pushed):**
+- F1 — splash no longer hangs ~5s on a cold-start/deep-link to a non-home tab (`22dbb63`)
+- F2 — Insurance empty state: removed redundant top add button (`22dbb63`)
+- F5 — Settings: real auth provider instead of hardcoded "Google" (`110af75`)
+- F6 — Settings: gated the "גנרציה חודשית" debug section from family (`110af75`)
+- F7 — Rental empty state: removed redundant top add button (`d885fda`)
+- F11 — pinned `color-scheme: light` so native controls stay light in OS dark mode (`a2f2cd3`)
+
+**Verified good, no fix needed:** destructive "reset all data" already gated to dev/admin · DevNotes overlay gated · PWA manifest + all icon assets present/correct · friendly error state (Warning + retry) · Tasks/Documents/Login/Home/Wealth/Property-admin all well-built · app CSS is dark-safe (stays light).
+
+**Left for owner (judgment calls):** F3 naming תזרים↔כספים · F4 quiet empty months (actually fine) · F8 native confirm() dialogs · F9 hero-number sign/₪ bidi · F10 "כניסת מנהל" visible on login.
+
+**Surfaces reviewed:** Home · Finances · Wealth (+editor) · Property-admin (×4 tabs) · Settings · Login (code) · transaction form · dark mode. Onboarding skipped (locked + can't preview in dev).
+
+---
+
 ## Findings log
 
 ### F1 ✅ Splash hangs 5s on cold-start / deep-link to any non-home route — FIXED (22dbb63)
