@@ -10,12 +10,14 @@ Extract these fields and return ONLY a valid JSON object — no markdown, no exp
 
 {
   "buyerName": "full name of the buyer/purchaser (הרוכש/הקונה), or null",
-  "propertyAddress": "full address of the property (כתובת הנכס) as 'street and number, city', or null",
+  "street": "street name and house number only (רחוב ומספר בית) — WITHOUT the city, or null",
+  "city": "city / locality only (עיר / יישוב) — the settlement name, not the street, or null",
+  "propertyAddress": "full address as 'street and number, city' (fallback only), or null",
   "blockParcel": "Gush and Helka (גוש וחלקה), e.g. 'גוש 6660 חלקה 84', or null",
   "purchasePrice": numeric purchase price (מחיר הרכישה/התמורה) as integer, or null. Do NOT use an existing mortgage/loan payoff amount (יתרה לסילוק) as the price,
   "purchaseDate": "signing/purchase date in YYYY-MM-DD format, or null",
   "keyDeliveryDate": "key delivery / possession date (תאריך מסירת המפתח / יום המסירה) in YYYY-MM-DD format, or null",
-  "propertySizeSqm": numeric size in square meters (שטח הנכס) as number, or null,
+  "propertySizeSqm": numeric built area of the apartment itself in square meters (שטח הדירה הרשום במ\"ר) — NOT land/plot/garden/balcony/shared area, or null,
   "floor": floor number as integer (קומה), or null,
   "rooms": number of rooms (מספר חדרים), may be a half (e.g. 4.5), or null
 }

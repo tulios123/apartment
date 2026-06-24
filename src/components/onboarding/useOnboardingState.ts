@@ -271,7 +271,7 @@ export function useOnboardingState(onComplete: () => void) {
     setPurchaseAiDone(false)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
-      const cacheKey = `apt_extract_purchase_v1_${hashString(files.map(f => f.fileBase64).join(''))}`
+      const cacheKey = `apt_extract_purchase_v2_${hashString(files.map(f => f.fileBase64).join(''))}`
       let data: Record<string, unknown> | null = null
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
@@ -287,7 +287,12 @@ export function useOnboardingState(onComplete: () => void) {
       }
       const d = data ?? {}
       if (d.buyerName) setBuyerName(String(d.buyerName))
-      if (d.propertyAddress) {
+      // Prefer the separately-extracted street/city; fall back to splitting the full
+      // address on its last comma (older/looser extractions only return propertyAddress).
+      if (d.street || d.city) {
+        if (d.street) setStreet(String(d.street))
+        if (d.city) setCity(String(d.city))
+      } else if (d.propertyAddress) {
         const addr = String(d.propertyAddress)
         const ci = addr.lastIndexOf(',')
         if (ci > 0) { setStreet(addr.slice(0, ci).trim()); setCity(addr.slice(ci + 1).trim()) }
