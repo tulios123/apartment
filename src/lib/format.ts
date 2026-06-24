@@ -2,6 +2,17 @@ export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(amount)
 }
 
+/**
+ * Currency with an explicit +/− sign, correctly placed for Hebrew RTL.
+ * Intl's `signDisplay` keeps the sign glued to the number (it inserts an LRM so
+ * "+362" stays a unit) and the ₪ properly separated — avoiding the broken layout
+ * of `'+' + formatCurrency(x)`, where a bare sign sits outside the currency's RTL
+ * run and drifts away from the digits. No sign for zero.
+ */
+export function formatSignedCurrency(amount: number): string {
+  return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0, signDisplay: 'exceptZero' }).format(amount)
+}
+
 export function formatDate(date: string | null): string {
   if (!date) return ''
   return new Date(date).toLocaleDateString('he-IL')

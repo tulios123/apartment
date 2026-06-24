@@ -13,7 +13,7 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
-import { formatCurrency, formatDate, todayISO } from '../../lib/format'
+import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { gracePeriodPayment } from '../../lib/mortgage'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
@@ -372,7 +372,7 @@ export default function HomeScreen() {
                 <div className="hs-flow-headline">
                   <span className="hs-flow-headline-label">צפי לסוף החודש</span>
                   <span className={`hs-flow-headline-value${expectedNet >= 0 ? '' : ' soft-neg'}`}>
-                    {expectedNet >= 0 ? '+' : '−'}{fmt(Math.abs(expectedNet))}
+                    {formatSignedCurrency(expectedNet)}
                   </span>
                 </div>
 

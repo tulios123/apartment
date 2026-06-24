@@ -13,7 +13,7 @@ import type { VirtualEntry } from '../../lib/projections'
 import { supabase } from '../../lib/supabase'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatCurrency, formatDate, todayISO } from '../../lib/format'
+import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import type { Transaction, Contract, MortgageTrack, Loan } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -390,7 +390,7 @@ export default function FinancesV2() {
 
       <div className="finv-summary">
         <div className="finv-summary-label">{view === 'month' ? 'מאזן החודש' : view === 'year' ? 'מאזן השנה' : 'מאזן התקופה'}</div>
-        <div className={`finv-summary-net ${net >= 0 ? 'pos' : 'neg'}`}>{net >= 0 ? '+' : '−'}{fmt(Math.abs(net))}</div>
+        <div className={`finv-summary-net ${net >= 0 ? 'pos' : 'neg'}`}>{formatSignedCurrency(net)}</div>
         <div className="finv-summary-bar"><div className="in" style={{ width: `${inPct}%` }} /><div className="out" style={{ width: `${100 - inPct}%` }} /></div>
         <div className="finv-summary-tiles">
           <div className="finv-summary-tile in"><span className="finv-summary-tile-label"><ArrowDown size={13} weight="bold" /> הכנסות</span><span className="finv-summary-tile-value">{fmt(income)}</span></div>

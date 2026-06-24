@@ -188,6 +188,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
   const [showContractModal, setShowContractModal] = useState(false)
   const [editingContract, setEditingContract] = useState<Contract | null>(null)
   const [deleteErr, setDeleteErr] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   function getUtilPayer(contractId: string, utility: string): UtilityPayer {
     return utilities.find(u => u.contract_id === contractId && u.utility === utility)?.payer ?? 'tenant'
@@ -255,7 +256,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
   }
 
   async function handleDeleteContract(id: string) {
-    if (!confirm('למחוק חוזה זה?')) return
+    setConfirmDeleteId(null)
     setDeleteErr(null)
     // FK is ON DELETE SET NULL, so remove the linked rent item explicitly,
     // otherwise it orphans and keeps generating rent tasks. Delete the rent item
@@ -331,11 +332,19 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                       <path d="M14.5 2.5a2.12 2.12 0 013 3L6 17H3v-3L14.5 2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
                     </svg>
                   </button>
-                  <button className="btn-icon danger" onClick={() => handleDeleteContract(c.id)} title="מחק">
-                    <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
-                      <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                  </button>
+                  {confirmDeleteId === c.id ? (
+                    <span className="mortgage-delete-confirm">
+                      <span className="mortgage-delete-confirm-label">למחוק?</span>
+                      <button className="btn-xs btn-danger-solid" onClick={() => handleDeleteContract(c.id)}>מחק</button>
+                      <button className="btn-xs btn-secondary" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
+                    </span>
+                  ) : (
+                    <button className="btn-icon danger" onClick={() => setConfirmDeleteId(c.id)} title="מחק">
+                      <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
+                        <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -4,7 +4,7 @@ export default function FinancesHub() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>כספים</h1>
+        <h1>תזרים</h1>
       </div>
       <Outlet />
     </div>
