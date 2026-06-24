@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useInsurance, createInsurancePolicy, updateInsurancePolicy, deleteInsurancePolicy } from '../../hooks/useInsurance'
 import { usePropertyData } from '../../hooks/usePropertyData'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency, formatDate, monthDayISO } from '../../lib/format'
 import type { InsurancePolicy } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -36,6 +36,21 @@ function InsuranceForm({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
+  // Manager/dev-only quick-fill, mirroring the onboarding "מלא דוגמה" affordance.
+  const { user } = useAuth()
+  const showFill = import.meta.env.DEV || user?.email === 'dev@test.local'
+  function fillExample() {
+    setForm({
+      type: 'מבנה',
+      company: 'הראל',
+      policy_number: 'POL-12345',
+      monthly_premium: '85',
+      start_date: monthDayISO(new Date()),
+      end_date: '',
+      notes: '',
+    })
+  }
+
   function set(k: keyof typeof emptyForm, v: string) {
     setForm(f => ({ ...f, [k]: v }))
   }
@@ -55,6 +70,11 @@ function InsuranceForm({
 
   return (
     <form onSubmit={submit} className="form">
+      {showFill && (
+        <div className="onboarding-fill-top">
+          <button type="button" className="onboarding-fill-top-btn" onClick={fillExample}>מלא דוגמה</button>
+        </div>
+      )}
       <div className="form-row">
         <label>סוג ביטוח</label>
         <select value={form.type} onChange={e => set('type', e.target.value)}>

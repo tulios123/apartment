@@ -5,7 +5,7 @@ import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
 import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanInterestToDate, loanEndDate } from '../../lib/loans'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
-import { formatCurrency, formatNum } from '../../lib/format'
+import { formatCurrency, formatNum, monthDayISO } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -35,6 +35,16 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const [lForm, setLForm] = useState(emptyLoan)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  // Manager/dev-only quick-fill for the open drawer (track or loan by kind).
+  const showFill = import.meta.env.DEV || user?.email === 'dev@test.local'
+  function fillDrawerExample() {
+    if (kind === 'mortgage') {
+      setTForm({ track_type: 'fixed_unlinked', label: 'מסלול לדוגמה', principal: '600000', annual_rate: '4.5', term_months: '360', grace_months: '0', start_date: monthDayISO(new Date()) })
+    } else {
+      setLForm({ repayment_type: 'monthly_fixed', track_type: 'fixed_unlinked', label: 'הלוואה לדוגמה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6', prime_rate: '', margin: '', term_months: '60', grace_months: '0', start_date: monthDayISO(new Date()) })
+    }
+  }
 
   const today = new Date().toISOString().slice(0, 10)
   const mortgageBalance = summary.currentBalance || 0
@@ -222,6 +232,11 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       <div className={`liav-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside className={`liav-drawer ${drawerOpen ? 'open' : ''}`}>
         <div className="liav-drawer-head"><h2>{editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
+        {showFill && !editId && (
+          <div className="onboarding-fill-top">
+            <button type="button" className="onboarding-fill-top-btn" onClick={fillDrawerExample}>מלא דוגמה</button>
+          </div>
+        )}
 
         {kind === 'mortgage' ? (
           <>
