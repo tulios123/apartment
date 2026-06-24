@@ -12,6 +12,15 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
+  // Email one-time-code sign-in (stays fully in-app — no OAuth browser redirect,
+  // which on an installed iOS PWA breaks out to Safari). Session persists by default,
+  // so this is a one-time step per device.
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [codeSent, setCodeSent] = useState(false)
+  const [emailBusy, setEmailBusy] = useState(false)
+  const [emailError, setEmailError] = useState('')
+
   // Lock the body like the app shell so iOS Safari doesn't pop its top/bottom
   // toolbars on drag. Login never needs to scroll. Released on unmount (→ app/onboarding).
   useEffect(() => {
@@ -26,6 +35,39 @@ export default function Login() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function sendCode(e: React.FormEvent) {
+    e.preventDefault()
+    setEmailBusy(true)
+    setEmailError('')
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: true },
+    })
+    setEmailBusy(false)
+    if (error) {
+      setEmailError('לא הצלחנו לשלוח קוד — בדקו את כתובת המייל ונסו שוב')
+      return
+    }
+    setCodeSent(true)
+  }
+
+  async function verifyCode(e: React.FormEvent) {
+    e.preventDefault()
+    setEmailBusy(true)
+    setEmailError('')
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'email',
+    })
+    if (error) {
+      setEmailError('הקוד שגוי או שפג תוקפו')
+      setEmailBusy(false)
+      return
+    }
+    // On success, AuthContext's onAuthStateChange updates the session and routes in.
   }
 
   const handleManagerLogin = async (e: React.FormEvent) => {
@@ -49,6 +91,49 @@ export default function Login() {
         <div className="login-logo"><House weight="duotone" size={40} color="var(--accent)" /></div>
         <h1>ניהול דירה</h1>
         <p className="login-subtitle">התחבר כדי להמשיך</p>
+
+        {/* Email code — stays in-app, the smoothest path on the installed iPhone app */}
+        {!codeSent ? (
+          <form className="login-email-form" onSubmit={sendCode}>
+            <input
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              dir="ltr"
+              placeholder="כתובת מייל"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setEmailError('') }}
+            />
+            <button type="submit" className="btn-primary login-email-btn" disabled={emailBusy || !email.trim()}>
+              {emailBusy ? 'שולח...' : 'שלחו לי קוד למייל'}
+            </button>
+          </form>
+        ) : (
+          <form className="login-email-form" onSubmit={verifyCode}>
+            <p className="login-subtitle" style={{ margin: 0 }}>שלחנו קוד ל-{email.trim()}</p>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              dir="ltr"
+              placeholder="הקוד מהמייל"
+              maxLength={6}
+              value={code}
+              onChange={e => { setCode(e.target.value.replace(/\D/g, '')); setEmailError('') }}
+              autoFocus
+            />
+            <button type="submit" className="btn-primary login-email-btn" disabled={emailBusy || code.length < 6}>
+              {emailBusy ? 'מאמת...' : 'אימות וכניסה'}
+            </button>
+            <button type="button" className="login-manager-link" onClick={() => { setCodeSent(false); setCode(''); setEmailError('') }}>
+              שנה מייל או שלח קוד מחדש
+            </button>
+          </form>
+        )}
+        {emailError && <p className="login-error">{emailError}</p>}
+
+        <div className="login-divider"><span>או</span></div>
+
         <button className="btn-google" onClick={handleSignIn} disabled={busy}>
           <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
             <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
