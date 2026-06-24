@@ -115,6 +115,8 @@
   .finv-tx-top { display: flex; align-items: center; gap: 8px; }
   .finv-tx-cat { font-size: 14px; font-weight: 600; }
   .finv-tx-tag { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: var(--r-pill); background: var(--bg-alt); color: var(--text-muted); }
+  /* Recurring/fixed item (rent, mortgage…) — accent tint, distinct from the grey "תחזית". */
+  .finv-tx-tag.fixed { background: var(--accent-light); color: var(--accent); }
   .finv-tx-meta { font-size: 12px; color: var(--text-muted); }
   .finv-tx-side { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   /* Sign sits left of the number (direction:ltr) and amounts share a fixed

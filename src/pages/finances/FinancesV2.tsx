@@ -27,6 +27,10 @@ const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(PAYMENT_METHODS
 const fmt = (v: number) => formatCurrency(v)
 const RENT = RENT_CATEGORIES as readonly string[]
 const MORT = MORTGAGE_CATEGORIES as readonly string[]
+// Categories that represent a fixed monthly item (rent / mortgage / loan / insurance).
+// A real transaction in one of these is the recorded instance of a recurring item, so
+// it gets a "קבוע" tag — same idea as the "תחזית" tag on the not-yet-recorded forecast.
+const FIXED_CATS = new Set<string>([...RENT, ...MORT, 'הלוואה', 'ביטוח'])
 
 type Dir = 'income' | 'expense'
 
@@ -517,7 +521,7 @@ export default function FinancesV2() {
                   <SwipeRow key={t.id} onEdit={() => openEdit(t)} onDelete={() => handleDelete(t.id)}>
                     <div className="finv-tx">
                       <span className="finv-cat-icon" style={{ background: colorFor(t.category) || 'var(--text-muted)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
-                      <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span></div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
+                      <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span>{FIXED_CATS.has(t.category) && <span className="finv-tx-tag fixed">קבוע</span>}</div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
                       <div className="finv-tx-side">
                         <span className={`finv-tx-amount ${t.direction}`}>{formatSignedCurrency(t.direction === 'income' ? Number(t.amount) : -Number(t.amount))}</span>
                         <div className="finv-tx-actions">
