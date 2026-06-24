@@ -26,10 +26,10 @@
   --sidebar-width:210px;
   font:400 15px/1.6 var(--font-body);
   color:var(--text); background:var(--bg);
-  /* Light + dark are both designed (dark tokens in the @media block below). Declaring
-     both lets native controls (date pickers, selects, scrollbars, autofill) follow the
-     OS theme so they match the app instead of clashing. */
-  color-scheme:light dark;
+  /* Light is the default theme; the dark token block (keyed on [data-theme="dark"])
+     declares its own color-scheme. lib/theme.ts sets data-theme from the user's choice
+     (light / dark / system). color-scheme keeps native controls matching the app. */
+  color-scheme:light;
   /* Tabular (monospaced) figures everywhere — a finance app is number-dense, and
      equal-width digits keep amounts aligned in lists/tables and stop them jittering
      when a value changes. Affects digits only; Hebrew text is untouched. */
@@ -45,8 +45,8 @@
    colors, and white-on-accent stay as-is (they already read well on dark). Surfaces
    are dark slate-navy (not pure black); accents brighten slightly to pop; semantic
    tints become dark fills with lighter text. ── */
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-theme="dark"] {
+  color-scheme:dark;
     --bg:#0e1319; --bg-alt:#161d27; --bg-card:#172029; --surface:#172029; --surface-raised:#1e2833; --hover-bg:#1e2833;
     --border:#29333f; --border-strong:#3a4654;
     --text:#e7eaef; --text-primary:#e7eaef; --text-muted:#98a2b1; --text-secondary:#98a2b1; --text-on-accent:#ffffff;
@@ -61,7 +61,6 @@
     --accent-2:#9279e6; --accent-2-bg:#211a37;
     --teal-bg:#10302a; --teal-text:#54c9b0;
     --shadow-sm:0 1px 2px rgba(0,0,0,0.40); --shadow-md:0 4px 14px rgba(0,0,0,0.45); --shadow-lg:0 14px 36px rgba(0,0,0,0.55);
-  }
 }
 
 html, body {

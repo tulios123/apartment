@@ -4,6 +4,7 @@ import { ArrowRight } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
+import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
 import {
   pushSupported,
   pushConfigured,
@@ -45,6 +46,9 @@ export default function Settings() {
   const showDevTools = import.meta.env.DEV || user?.email === TEST_ACCOUNT_EMAIL || isAdmin
   // Real provider, not a hardcoded "Google" — magic-link users sign in via email.
   const providerLabel = user?.app_metadata?.provider === 'google' ? 'Google' : 'אימייל'
+
+  const [themePref, setThemePrefState] = useState<ThemePref>(getThemePref())
+  function changeTheme(p: ThemePref) { setThemePref(p); setThemePrefState(p) }
 
   useEffect(() => {
     refreshPushState()
@@ -174,6 +178,16 @@ export default function Settings() {
           </div>
           <div className="settings-actions">
             <button className="btn-secondary" onClick={signOut}>יציאה מהחשבון</button>
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <h2>מראה</h2>
+          <p className="settings-note">בחרו מצב תצוגה. "לפי המכשיר" יתחלף אוטומטית בין יום ללילה לפי הגדרות הטלפון.</p>
+          <div className="toggle-group" style={{ marginTop: 6 }}>
+            <button type="button" className={`toggle-btn${themePref === 'light' ? ' active' : ''}`} onClick={() => changeTheme('light')}>בהיר</button>
+            <button type="button" className={`toggle-btn${themePref === 'dark' ? ' active' : ''}`} onClick={() => changeTheme('dark')}>כהה</button>
+            <button type="button" className={`toggle-btn${themePref === 'system' ? ' active' : ''}`} onClick={() => changeTheme('system')}>לפי המכשיר</button>
           </div>
         </section>
 
