@@ -111,8 +111,10 @@ export function useOnboardingState(onComplete: () => void) {
   const mortgageDocRef = useRef<HTMLInputElement>(null)
   const [mortgageAiBusy, setMortgageAiBusy] = useState(false)
   const [mortgageAiErr, setMortgageAiErr] = useState<string | null>(null)
+  const [mortgageAiDone, setMortgageAiDone] = useState(false)
   const [purchaseAiBusy, setPurchaseAiBusy] = useState(false)
   const [purchaseAiErr, setPurchaseAiErr] = useState<string | null>(null)
+  const [purchaseAiDone, setPurchaseAiDone] = useState(false)
   const [rentalAiBusy, setRentalAiBusy] = useState(false)
   const [rentalAiErr, setRentalAiErr] = useState<string | null>(null)
 
@@ -212,6 +214,7 @@ export function useOnboardingState(onComplete: () => void) {
   async function aiFillMortgage(fileList: File[]) {
     setMortgageAiBusy(true)
     setMortgageAiErr(null)
+    setMortgageAiDone(false)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       // Version the key so improving the extraction (model/prompt) invalidates stale cached
@@ -250,6 +253,7 @@ export function useOnboardingState(onComplete: () => void) {
       setTracks(mapped)
       setShowTrackForm(false)
       setEditingIdx(null)
+      setMortgageAiDone(true)
     } catch {
       setMortgageAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
     } finally {
@@ -262,6 +266,7 @@ export function useOnboardingState(onComplete: () => void) {
     setPurchaseFile(fileList[0])
     setPurchaseAiBusy(true)
     setPurchaseAiErr(null)
+    setPurchaseAiDone(false)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       const cacheKey = `apt_extract_purchase_v1_${hashString(files.map(f => f.fileBase64).join(''))}`
@@ -292,6 +297,7 @@ export function useOnboardingState(onComplete: () => void) {
       if (d.propertySizeSqm != null) setPropertySizeSqm(String(d.propertySizeSqm))
       if (d.floor != null) setFloorNumber(String(d.floor))
       if (d.rooms != null) setRooms(String(d.rooms))
+      setPurchaseAiDone(true)
     } catch {
       setPurchaseAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
     } finally {
@@ -925,9 +931,9 @@ export function useOnboardingState(onComplete: () => void) {
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
     effectiveTrackForm, previewMonthly, previewGrace,
     // AI mortgage fill
-    mortgageDocRef, mortgageAiBusy, mortgageAiErr, aiFillMortgage,
+    mortgageDocRef, mortgageAiBusy, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     // AI purchase + rental fill
-    purchaseAiBusy, purchaseAiErr, aiFillPurchase,
+    purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
     rentalAiBusy, rentalAiErr, aiFillRental,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,

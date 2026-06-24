@@ -9,7 +9,7 @@ import { useOnboarding } from './context'
 export function MortgageStep() {
   const {
     advance, back, keyDeliveryDate, setLoanForm,
-    mortgageAiBusy, mortgageDocRef, mortgageAiErr, aiFillMortgage,
+    mortgageAiBusy, mortgageDocRef, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     tracks, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
@@ -28,9 +28,13 @@ export function MortgageStep() {
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
       <div className="onboarding-ai-fill">
-        <button type="button" className="btn-onboard-ai" disabled={mortgageAiBusy}
+        <button type="button" className={`btn-onboard-ai${mortgageAiDone && !mortgageAiBusy ? ' is-done' : ''}`} disabled={mortgageAiBusy}
           onClick={() => mortgageDocRef.current?.click()}>
-          {mortgageAiBusy ? 'קורא את המסמך…' : '📄 העלו אישור מהבנק או צילומי מסך — מילוי אוטומטי'}
+          {mortgageAiBusy
+            ? 'קורא את המסמך…'
+            : mortgageAiDone
+              ? '✓ נקראו המסלולים — בדקו למטה · לחצו להעלאה מחדש'
+              : '📄 העלו אישור מהבנק או צילומי מסך — מילוי אוטומטי'}
         </button>
         <input ref={mortgageDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillMortgage(fs); e.target.value = '' }} />

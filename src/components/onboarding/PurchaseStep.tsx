@@ -13,7 +13,7 @@ export function PurchaseStep() {
     signingDate, setSigningDate, setKeyDeliveryDate,
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
     purchaseFile, setPurchaseFile, purchaseInputRef,
-    purchaseAiBusy, purchaseAiErr, aiFillPurchase,
+    purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
     fillTestPurchase,
   } = useOnboarding()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
@@ -28,9 +28,13 @@ export function PurchaseStep() {
       <FillExampleTop onFill={fillTestPurchase} />
 
       <div className="onboarding-ai-fill">
-        <button type="button" className="btn-onboard-ai" disabled={purchaseAiBusy}
+        <button type="button" className={`btn-onboard-ai${purchaseAiDone && !purchaseAiBusy ? ' is-done' : ''}`} disabled={purchaseAiBusy}
           onClick={() => purchaseDocRef.current?.click()}>
-          {purchaseAiBusy ? 'קורא את החוזה…' : '📄 העלו חוזה רכישה — מילוי אוטומטי'}
+          {purchaseAiBusy
+            ? 'קורא את החוזה…'
+            : purchaseAiDone
+              ? '✓ נקרא — בדקו את הפרטים למטה · לחצו להעלאה מחדש'
+              : '📄 העלו חוזה רכישה — מילוי אוטומטי'}
         </button>
         <input ref={purchaseDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillPurchase(fs); e.target.value = '' }} />

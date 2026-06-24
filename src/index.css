@@ -1971,6 +1971,14 @@ input[type="date"] {
 }
 .btn-onboard-ai:hover { background: var(--accent-soft-hover, rgba(10, 31, 68, 0.1)); }
 .btn-onboard-ai:disabled { opacity: 0.6; cursor: wait; }
+/* Success state after a document was read & fields filled — solid green, not a dashed prompt */
+.btn-onboard-ai.is-done {
+  border-style: solid;
+  border-color: var(--success, #1c7c54);
+  background: var(--success-bg, #e7f6ee);
+  color: var(--success-text, #186a47);
+}
+.btn-onboard-ai.is-done:hover { background: var(--success-bg, #e7f6ee); }
 
 .btn-onboard-skip {
   background: none;
