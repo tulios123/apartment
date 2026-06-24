@@ -9,18 +9,12 @@ export default function Login() {
   const { signInWithGoogle } = useAuth()
   const [busy, setBusy] = useState(false)
 
-  // Shared email for both password and magic-link sign-in.
+  // Magic-link sign-in: enter email → get a sign-in link. Session persists after,
+  // so it's a one-time step per device.
   const [email, setEmail] = useState('')
-  const [pwd, setPwd] = useState('')
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
-  const [pwBusy, setPwBusy] = useState(false)
-  const [pwError, setPwError] = useState('')
-  const [info, setInfo] = useState('')
-
-  // Magic-link option (sends a sign-in link to the email — works on the free tier
-  // where the email body can't be customised to show a code).
   const [linkBusy, setLinkBusy] = useState(false)
   const [linkSent, setLinkSent] = useState(false)
+  const [linkError, setLinkError] = useState('')
 
   // Manager (dev test account) password login.
   const [showManager, setShowManager] = useState(false)
@@ -43,40 +37,16 @@ export default function Login() {
     }
   }
 
-  async function submitPassword(e: React.FormEvent) {
+  async function sendLink(e: React.FormEvent) {
     e.preventDefault()
-    setPwBusy(true)
-    setPwError('')
-    setInfo('')
-    if (authMode === 'signup') {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: pwd,
-        options: { emailRedirectTo: window.location.origin },
-      })
-      setPwBusy(false)
-      if (error) { setPwError(error.message === 'User already registered' ? 'כבר קיים חשבון עם המייל הזה — התחבר' : 'ההרשמה נכשלה — נסה שוב'); return }
-      // With email confirmation OFF a session is returned and we route in automatically.
-      // With it ON there's no session yet — tell the user to confirm via the emailed link.
-      if (!data.session) setInfo('שלחנו מייל לאישור — פתח אותו ולחץ על הקישור, ואז התחבר.')
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pwd })
-      setPwBusy(false)
-      if (error) { setPwError('מייל או סיסמה שגויים'); return }
-      // On success, AuthContext's onAuthStateChange updates the session and routes in.
-    }
-  }
-
-  async function sendLink() {
     setLinkBusy(true)
-    setPwError('')
-    setInfo('')
+    setLinkError('')
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
     })
     setLinkBusy(false)
-    if (error) { setPwError('לא הצלחנו לשלוח קישור — בדוק את המייל ונסה שוב'); return }
+    if (error) { setLinkError('לא הצלחנו לשלוח קישור — בדוק את כתובת המייל ונסה שוב'); return }
     setLinkSent(true)
   }
 
@@ -98,42 +68,28 @@ export default function Login() {
         <h1>ניהול דירה</h1>
         <p className="login-subtitle">התחבר כדי להמשיך</p>
 
-        {/* Email + password — stays fully in-app */}
-        <form className="login-email-form" onSubmit={submitPassword}>
-          <input
-            type="email" inputMode="email" autoComplete="email" dir="ltr"
-            placeholder="כתובת מייל"
-            value={email}
-            onChange={e => { setEmail(e.target.value); setPwError(''); setInfo('') }}
-          />
-          <input
-            type="password"
-            autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
-            dir="ltr"
-            placeholder={authMode === 'signup' ? 'בחר סיסמה (6 תווים לפחות)' : 'סיסמה'}
-            value={pwd}
-            onChange={e => { setPwd(e.target.value); setPwError(''); setInfo('') }}
-          />
-          <button type="submit" className="btn-primary login-email-btn"
-            disabled={pwBusy || !email.trim() || pwd.length < 6}>
-            {pwBusy ? 'רגע...' : authMode === 'signup' ? 'הרשמה' : 'כניסה'}
-          </button>
-        </form>
-        <button type="button" className="login-manager-link"
-          onClick={() => { setAuthMode(m => m === 'signin' ? 'signup' : 'signin'); setPwError(''); setInfo('') }}>
-          {authMode === 'signin' ? 'אין לך חשבון? להרשמה' : 'יש לך חשבון? לכניסה'}
-        </button>
-        {pwError && <p className="login-error">{pwError}</p>}
-        {info && <p className="login-info">{info}</p>}
-
-        {/* Magic-link alternative */}
+        {/* Email sign-in link */}
         {!linkSent ? (
-          <button type="button" className="login-manager-link" onClick={sendLink} disabled={linkBusy || !email.trim()}>
-            {linkBusy ? 'שולח...' : 'או שלחו לי קישור כניסה למייל'}
-          </button>
+          <form className="login-email-form" onSubmit={sendLink}>
+            <input
+              type="email" inputMode="email" autoComplete="email" dir="ltr"
+              placeholder="כתובת מייל"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setLinkError('') }}
+            />
+            <button type="submit" className="btn-primary login-email-btn" disabled={linkBusy || !email.trim()}>
+              {linkBusy ? 'שולח...' : 'שלחו לי קישור כניסה למייל'}
+            </button>
+          </form>
         ) : (
-          <p className="login-info">שלחנו קישור ל-{email.trim()} — פתח את המייל ולחץ עליו כדי להיכנס.</p>
+          <div className="login-email-form">
+            <p className="login-info">שלחנו קישור ל-{email.trim()} — פתח את המייל ולחץ עליו כדי להיכנס.</p>
+            <button type="button" className="login-manager-link" onClick={() => { setLinkSent(false); setLinkError('') }}>
+              שנה מייל או שלח שוב
+            </button>
+          </div>
         )}
+        {linkError && <p className="login-error">{linkError}</p>}
 
         <div className="login-divider"><span>או</span></div>
 
