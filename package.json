@@ -9,7 +9,9 @@
     "build:prod": "tsc -b && VITE_DEV_BYPASS_AUTH=false VITE_DEV_USER_EMAIL= VITE_DEV_USER_PASSWORD= vite build",
     "deploy": "npm run build:prod && wrangler pages deploy dist --project-name=apartment --branch=main --commit-dirty=true",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "TZ='Asia/Jerusalem' vitest run",
+    "test:watch": "TZ='Asia/Jerusalem' vitest"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -32,6 +34,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",
+    "vitest": "^4.1.9",
     "wrangler": "^4.101.0"
   }
 }

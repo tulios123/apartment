@@ -114,7 +114,9 @@ export function gracePeriodPayment(tracks: MortgageTrack[]): number {
 
 /** Total interest accrued across all tracks up to and including asOf. */
 export function interestToDate(tracks: MortgageTrack[], asOf: Date = new Date()): number {
-  const cutoff = asOf.toISOString().slice(0, 10)
+  // LOCAL Y-M-D cutoff — NOT toISOString (UTC), which rolls back a day in timezones
+  // ahead of UTC (Israel) and would drop a payment row dated "today" from the total.
+  const cutoff = `${asOf.getFullYear()}-${String(asOf.getMonth() + 1).padStart(2, '0')}-${String(asOf.getDate()).padStart(2, '0')}`
   let sum = 0
   for (const t of tracks) {
     for (const row of trackSchedule(t)) {

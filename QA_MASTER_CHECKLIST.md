@@ -365,4 +365,5 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 ## Findings log
 *(Bugs found while executing, with severity + fix commit. Newest first.)*
 
-(none yet — execution starts at Chapter 1)
+### BUG #1 🟠 — `interestToDate` used a UTC date cutoff (off-by-one-day) — FIXED
+`lib/mortgage.ts interestToDate` compared the (local-dated) schedule rows against `asOf.toISOString().slice(0,10)` — a UTC date. In Israel (UTC+3) that cutoff lands on the *previous* day, so a payment row dated "today" (1st of the month) is dropped from the "interest paid to date" total. Feeds the Wealth screen's "ריבית ששולמה" (via `useMortgageData` + `useInvestmentData`). Test (`mortgage.test.ts`, run under `TZ=Asia/Jerusalem`) proved it: returned 4 months' interest instead of 5 (336₪ short in the fixture). Fixed to a LOCAL Y-M-D cutoff, matching the `addMonths` pattern in the same file. Low real-world frequency (only the late-night window with a 1st-of-month payment) but a genuine correctness + convention bug.
