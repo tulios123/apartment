@@ -1564,9 +1564,10 @@ input[type="date"] {
   border-radius: 999px;
   animation: splash-slide 1.1s ease-in-out infinite;
 }
+/* Flows rightward (start off-left, sweep to the right). */
 @keyframes splash-slide {
-  0% { transform: translateX(120%); }
-  100% { transform: translateX(-260%); }
+  0% { transform: translateX(-260%); }
+  100% { transform: translateX(120%); }
 }
 .splash-caption {
   font-size: 12.5px;
@@ -1664,7 +1665,7 @@ input[type="date"] {
 }
 .login-hero {
   background: #0a1f44;
-  padding: 32px 24px 26px;
+  padding: 42px 24px 34px;
   text-align: center;
 }
 .login-hero-mark {
@@ -1689,7 +1690,7 @@ input[type="date"] {
   margin-top: 7px;
 }
 .login-body {
-  padding: 24px 22px;
+  padding: 30px 24px 28px;
 }
 .login-email-form2 {
   display: flex;
@@ -1736,7 +1737,7 @@ input[type="date"] {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 16px 0;
+  margin: 20px 0;
 }
 .login-divider2::before,
 .login-divider2::after {
