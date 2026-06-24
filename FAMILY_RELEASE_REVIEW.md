@@ -1,0 +1,45 @@
+# Family-Release Review — live log
+
+**Mission:** full sweep of the app (UX · flow · design · correctness) to make it ready to share with family.
+**Autonomy:** "תקן ושלח" — fix clear bugs + clear UX/design wins autonomously, commit+push, log everything; leave judgment-call redesigns for the owner.
+**Priority order:** (1) new-user experience · (2) stability/correctness · (3) visual polish.
+**Started:** 2026-06-24.
+
+**Constraint:** dev auto-logs-in `dev@test.local` (has property + data). Populated screens reviewed live in preview; new-user / empty states reviewed by reading code paths (can't safely create a zero-data account against the linked remote DB).
+
+---
+
+## Severity legend
+- 🔴 BLOCKER — broken / would embarrass on a fresh family install → fix now
+- 🟠 CLEAR WIN — obvious UX/design improvement → fix now
+- 🟡 JUDGMENT — bigger or opinionated change → log, leave for owner
+- ✅ DONE — fixed + pushed (commit noted)
+
+---
+
+## Findings log
+
+### F1 🔴→🟠 Splash hangs 5s on cold-start / deep-link to any non-home route
+Only `HomeScreen` calls `markReady()`. App holds the splash-overlay until `appReady`, with a 5s safety ceiling. So a PWA cold-start or refresh while the last route was `/finances`, `/wealth`, or `/property` shows a blank-ish splash for the **full 5 seconds** before the screen appears. Returning family members who left the app on a non-home tab hit this every reopen. **Fix:** only hold the splash on the home route — initialise `appReady` from `window.location.pathname !== '/'` so non-home routes render their own (fast) skeletons immediately. (App.tsx)
+
+### F2 🟠 Insurance empty state shows a redundant top "+ פוליסה חדשה"
+On the empty Insurance tab there are two identical add affordances: a top "+ פוליסה חדשה" button AND the empty-state "+ הוסף פוליסה" CTA, with an awkward gap between them. Inconsistent with Tasks (inline-add only) and Documents (empty-CTA only). **Fix:** hide the top button when there are no policies; let the empty state own the CTA. (Insurance.tsx)
+
+### F3 🟡 Naming: nav "תזרים" vs page title "כספים" (+ desktop sidebar "ניהול דירה")
+Nav tab label and the page H1 disagree (תזרים ≠ כספים). הון/ניהול match their tabs; only finances is off. Desktop sidebar also says "ניהול דירה" — a third app-name variant vs "Apartment" elsewhere (desktop-only, lower priority). Owner to pick the canonical name. Not auto-changed.
+
+### F4 🟡 Weak text-only empty states on Finances & Wealth
+`FinancesV2` empty month → bare "אין תנועות בחודש זה"; `WealthHub` !hasData → bare "עדיין לא הוגדרו נכס…". Both lack the ClayIllustration treatment used elsewhere. Rare for a post-onboarding user (they have projected rows / a property), so low priority — log only.
+
+---
+
+## Screen sweep checklist
+- [ ] App entry / splash / auth gate (code-read)
+- [ ] Login (code-read)
+- [ ] Onboarding regression check (locked — verify nothing broke)
+- [ ] Home (HomeScreen)
+- [ ] Ledger / תנועות (FinancesV2 + FinancesHub)
+- [ ] Wealth / הון (WealthHub: FinancingStructure, OwnershipScore, WealthAccelerator)
+- [ ] Property Admin / ניהול נכס (PropertyAdminHub: Insurance, InvestmentCosts, Rental, PropertyForm, Tasks, Documents)
+- [ ] Settings
+- [ ] Cross-cutting: empty states, error states, RTL, number formatting, nav

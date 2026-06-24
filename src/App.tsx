@@ -20,7 +20,10 @@ function AppRoutes() {
   const [hasProperty, setHasProperty] = useState<boolean | null>(null)
   // Keep the splash up until the first screen's data has loaded (markReady), so the
   // user goes straight from splash to a fully-populated app — no skeleton flash.
-  const [appReady, setAppReady] = useState(false)
+  // Only the home route signals ready, so only hold the splash when we actually land
+  // on home; a cold-start/deep-link to any other tab renders its own (fast) skeletons
+  // immediately instead of waiting out the 5s safety ceiling on a blank splash.
+  const [appReady, setAppReady] = useState(() => window.location.pathname !== '/')
   const markReady = useCallback(() => setAppReady(true), [])
   const readyValue = useMemo(() => ({ markReady }), [markReady])
 

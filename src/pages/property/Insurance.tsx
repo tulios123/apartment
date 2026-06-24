@@ -184,12 +184,14 @@ export default function Insurance() {
 
   return (
     <>
-      <div className="sub-page-actions">
-        <button className="btn-primary" onClick={openNew}>+ פוליסה חדשה</button>
-        {policies.length > 0 && (
+      {/* Top action bar only once there are policies — when empty, the empty-state
+          below owns the single add CTA (matching the Tasks/Documents pattern). */}
+      {policies.length > 0 && (
+        <div className="sub-page-actions">
+          <button className="btn-primary" onClick={openNew}>+ פוליסה חדשה</button>
           <span className="sub-page-summary">סה״כ: {formatCurrency(totalMonthly)} / חודש</span>
-        )}
-      </div>
+        </div>
+      )}
 
       {policies.length === 0 && (
         <div className="empty-state-cta">
