@@ -12,7 +12,7 @@ import { enablePush } from '../../lib/push'
 import { monthlyPayment } from '../../lib/mortgage'
 import { todayISO } from '../../lib/format'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
-import type { TrackType, LoanRepaymentType, Contract } from '../../types'
+import type { TrackType, LoanRepaymentType, Contract, DocumentType } from '../../types'
 import {
   STEP_ORDER, TRACK_TYPES,
   emptyTrack, emptyPolicy, emptyLoan,
@@ -331,8 +331,10 @@ export function useOnboardingState(onComplete: () => void) {
       setLoans(prev => [...prev, ...mapped])
       // If the doc left a monthly loan missing key details, open it for completion right
       // away instead of collapsing it to a tidy card that looks finished (false "ready").
+      // Only rate/term count as "missing" — start_date is intentionally blank here and
+      // gets anchored to key-delivery at save, so it must NOT mark the loan incomplete.
       const incompleteIdx = mapped.findIndex(l =>
-        l.repayment_type === 'monthly_fixed' && (loanDraftRate(l) <= 0 || !l.term_months || !l.start_date))
+        l.repayment_type === 'monthly_fixed' && (loanDraftRate(l) <= 0 || !l.term_months))
       if (incompleteIdx >= 0) {
         setLoanForm(mapped[incompleteIdx])
         setEditingLoanIdx(base + incompleteIdx)
@@ -434,6 +436,30 @@ export function useOnboardingState(onComplete: () => void) {
     } finally {
       setRentalAiBusy(false)
     }
+  }
+
+  // Background upload of the supplementary document files (purchase / mortgage / loan /
+  // rental). Called WITHOUT await from handleFinish so "done" shows immediately; each
+  // upload is independent and non-critical, so failures are swallowed (re-uploadable
+  // from the Documents screen). Passing userId skips a getUser() round-trip per file.
+  async function uploadOnboardingDocs(userId: string, propertyId: string, contractId: string | null) {
+    const put = async (file: File, type: DocumentType, date: string | null, contract_id: string | null) => {
+      try {
+        const docId = crypto.randomUUID()
+        const path = await uploadDocument(file, docId, userId)
+        await supabase.from('documents').insert({
+          id: docId, owner_id: userId, property_id: propertyId,
+          contract_id, transaction_id: null,
+          type, name: file.name, storage_path: path, date,
+        })
+      } catch { /* non-critical — re-uploadable from Documents */ }
+    }
+    const jobs: Promise<void>[] = []
+    if (purchaseFile) jobs.push(put(purchaseFile, 'purchase_contract', signingDate || null, null))
+    for (const f of mortgageDocFiles) jobs.push(put(f, 'mortgage_statement', null, null))
+    for (const f of loanDocFiles) jobs.push(put(f, 'loan_statement', null, null))
+    if (rentalFile) jobs.push(put(rentalFile, 'rental_contract', startDate || null, contractId))
+    await Promise.all(jobs)
   }
 
   // ── handleFinish ─────────────────────────────────────────────────────────────
@@ -659,102 +685,41 @@ export function useOnboardingState(onComplete: () => void) {
             failures.push('ביטוח')
           }
         })(),
-
-        // Purchase file
-        (async () => {
-          if (!purchaseFile) return
-          try {
-            const docId = crypto.randomUUID()
-            const path = await uploadDocument(purchaseFile, docId)
-            await supabase.from('documents').insert({
-              id: docId, owner_id: user.id, property_id: property.id,
-              contract_id: null, transaction_id: null,
-              type: 'purchase_contract', name: purchaseFile.name,
-              storage_path: path, date: signingDate || null,
-            })
-          } catch {
-            failures.push('קובץ חוזה רכישה')
-          }
-        })(),
-
-        // Mortgage + loan files uploaded for extraction — persist them as documents
-        // (the extraction reads the file, but the file itself must be stored too).
-        (async () => {
-          await Promise.all([
-            ...mortgageDocFiles.map(async f => {
-              try {
-                const docId = crypto.randomUUID()
-                const path = await uploadDocument(f, docId)
-                await supabase.from('documents').insert({
-                  id: docId, owner_id: user.id, property_id: property.id,
-                  contract_id: null, transaction_id: null,
-                  type: 'mortgage_statement', name: f.name,
-                  storage_path: path, date: null,
-                })
-              } catch { failures.push('קובץ משכנתא') }
-            }),
-            ...loanDocFiles.map(async f => {
-              try {
-                const docId = crypto.randomUUID()
-                const path = await uploadDocument(f, docId)
-                await supabase.from('documents').insert({
-                  id: docId, owner_id: user.id, property_id: property.id,
-                  contract_id: null, transaction_id: null,
-                  type: 'loan_statement', name: f.name,
-                  storage_path: path, date: null,
-                })
-              } catch { failures.push('קובץ הלוואה') }
-            }),
-          ])
-        })(),
       ])
 
-      // Rental file + recurring — depend on contract being created above
+      // Rent reminder — depends on the contract created above. Cheap and core, so awaited.
       if (contract) {
         // TS can't track that `contract` is assigned inside the awaited closure
         // above, so it narrows to `never` here; the cast restores the real type.
         const createdContract = contract as Contract
-        await Promise.all([
-          (async () => {
-            if (!rentalFile) return
-            try {
-              const docId = crypto.randomUUID()
-              const path = await uploadDocument(rentalFile, docId)
-              await supabase.from('documents').insert({
-                id: docId, owner_id: user.id, property_id: property.id,
-                contract_id: createdContract.id, transaction_id: null,
-                type: 'rental_contract', name: rentalFile.name,
-                storage_path: path, date: startDate || null,
-              })
-            } catch {
-              failures.push('קובץ חוזה שכירות')
-            }
-          })(),
-          (async () => {
-            if (!monthlyRent) return
-            try {
-              await syncRentRecurringItem(
-                {
-                  id: createdContract.id,
-                  monthly_rent: parseFloat(monthlyRent),
-                  start_date: startDate || todayISO(),
-                  end_date: endDate || null,
-                  company_name: companyName.trim(),
-                  payment_method: rentPaymentMethod,
-                  requires_approval: addRentReminder,
-                },
-                { dayOfMonth: parseInt(rentPaymentDay, 10) || 1 },
-              )
-            } catch {
-              failures.push('תזכורת שכירות')
-            }
-          })(),
-        ])
+        if (monthlyRent) {
+          try {
+            await syncRentRecurringItem(
+              {
+                id: createdContract.id,
+                monthly_rent: parseFloat(monthlyRent),
+                start_date: startDate || todayISO(),
+                end_date: endDate || null,
+                company_name: companyName.trim(),
+                payment_method: rentPaymentMethod,
+                requires_approval: addRentReminder,
+              },
+              { dayOfMonth: parseInt(rentPaymentDay, 10) || 1 },
+            )
+          } catch {
+            failures.push('תזכורת שכירות')
+          }
+        }
       }
 
       if (failures.length > 0) {
         setError(`חלק מהפרטים לא נשמרו: ${failures.join(', ')} — ניתן להוסיף אותם מתוך האפליקציה`)
       }
+      // Document files are supplementary — the app is fully usable without them. Upload
+      // them in the background (not awaited) so the user reaches "done" immediately
+      // instead of waiting on several storage round-trips. They keep uploading while the
+      // user is on the done screen; fetch isn't tied to React so unmount won't abort them.
+      uploadOnboardingDocs(user.id, property.id, contract ? (contract as Contract).id : null)
       setStep('done')
     } catch (e) {
       // Only createProperty throws here — stay on step so the user can retry

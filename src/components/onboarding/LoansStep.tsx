@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { HandCoins, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -16,6 +17,27 @@ export function LoansStep() {
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
     fillTestLoans,
   } = useOnboarding()
+
+  // A loan read in the documents step may have been auto-flagged for completion
+  // (editingLoanIdx set), but the mortgage step resets the shared working form on its
+  // way here — which would open the card showing empty placeholder fields. On entering
+  // this step, re-sync the form to the row marked for editing so it opens with the
+  // loan's real values; if nothing is flagged, open the first loan still missing
+  // rate/term so an incomplete loan never hides behind a tidy "done"-looking card.
+  useEffect(() => {
+    if (editingLoanIdx !== null) {
+      if (loans[editingLoanIdx]) setLoanForm({ ...loans[editingLoanIdx] })
+      return
+    }
+    if (showLoanForm) return
+    const idx = loans.findIndex(l => l.repayment_type === 'monthly_fixed' && (loanDraftRate(l) <= 0 || !l.term_months))
+    if (idx >= 0) {
+      setEditingLoanIdx(idx)
+      setLoanForm({ ...loans[idx] })
+    }
+    // Run once on entering the step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <form onSubmit={e => { e.preventDefault(); advance('investment') }}>
@@ -75,7 +97,7 @@ export function LoansStep() {
                       {isMonthly && d.term_months && <><span>·</span><span>{d.term_months} ח׳</span></>}
                       {d.lender.trim() && <><span>·</span><span>{d.lender.trim()}</span></>}
                     </div>
-                    {isMonthly && (rate <= 0 || !d.term_months || !d.start_date) && (
+                    {isMonthly && (rate <= 0 || !d.term_months) && (
                       <div className="onboarding-track-missing">חסרים פרטים — לחצו להשלמה</div>
                     )}
                   </div>

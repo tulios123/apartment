@@ -1,10 +1,17 @@
 import { supabase } from './supabase'
 
-export async function uploadDocument(file: File, docId: string): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
+export async function uploadDocument(file: File, docId: string, userId?: string): Promise<string> {
+  // getUser() is a network round-trip that validates the token. Callers that already
+  // hold the user id (e.g. onboarding uploading several files) can pass it to skip
+  // the redundant call — meaningful when uploading multiple files back-to-back.
+  let uid = userId
+  if (!uid) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    uid = user.id
+  }
   const ext = file.name.split('.').pop()
-  const path = `${user.id}/docs/${docId}.${ext}`
+  const path = `${uid}/docs/${docId}.${ext}`
   const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
   if (error) throw error
   return path
