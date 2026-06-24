@@ -8,18 +8,24 @@ const MANAGER_EMAIL = 'dev@test.local'
 export default function Login() {
   const { signInWithGoogle } = useAuth()
   const [busy, setBusy] = useState(false)
-  const [showManager, setShowManager] = useState(false)
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
 
-  // Email one-time-code sign-in (stays fully in-app — no OAuth browser redirect,
-  // which on an installed iOS PWA breaks out to Safari). Session persists by default,
-  // so this is a one-time step per device.
+  // Shared email for both password and magic-link sign-in.
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
-  const [codeSent, setCodeSent] = useState(false)
-  const [emailBusy, setEmailBusy] = useState(false)
-  const [emailError, setEmailError] = useState('')
+  const [pwd, setPwd] = useState('')
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [pwBusy, setPwBusy] = useState(false)
+  const [pwError, setPwError] = useState('')
+  const [info, setInfo] = useState('')
+
+  // Magic-link option (sends a sign-in link to the email — works on the free tier
+  // where the email body can't be customised to show a code).
+  const [linkBusy, setLinkBusy] = useState(false)
+  const [linkSent, setLinkSent] = useState(false)
+
+  // Manager (dev test account) password login.
+  const [showManager, setShowManager] = useState(false)
+  const [mgrPwd, setMgrPwd] = useState('')
+  const [mgrError, setMgrError] = useState('')
 
   // Lock the body like the app shell so iOS Safari doesn't pop its top/bottom
   // toolbars on drag. Login never needs to scroll. Released on unmount (→ app/onboarding).
@@ -37,52 +43,52 @@ export default function Login() {
     }
   }
 
-  async function sendCode(e: React.FormEvent) {
+  async function submitPassword(e: React.FormEvent) {
     e.preventDefault()
-    setEmailBusy(true)
-    setEmailError('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { shouldCreateUser: true },
-    })
-    setEmailBusy(false)
-    if (error) {
-      setEmailError('לא הצלחנו לשלוח קוד — בדקו את כתובת המייל ונסו שוב')
-      return
+    setPwBusy(true)
+    setPwError('')
+    setInfo('')
+    if (authMode === 'signup') {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: pwd,
+        options: { emailRedirectTo: window.location.origin },
+      })
+      setPwBusy(false)
+      if (error) { setPwError(error.message === 'User already registered' ? 'כבר קיים חשבון עם המייל הזה — התחבר' : 'ההרשמה נכשלה — נסה שוב'); return }
+      // With email confirmation OFF a session is returned and we route in automatically.
+      // With it ON there's no session yet — tell the user to confirm via the emailed link.
+      if (!data.session) setInfo('שלחנו מייל לאישור — פתח אותו ולחץ על הקישור, ואז התחבר.')
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pwd })
+      setPwBusy(false)
+      if (error) { setPwError('מייל או סיסמה שגויים'); return }
+      // On success, AuthContext's onAuthStateChange updates the session and routes in.
     }
-    setCodeSent(true)
   }
 
-  async function verifyCode(e: React.FormEvent) {
-    e.preventDefault()
-    setEmailBusy(true)
-    setEmailError('')
-    const { error } = await supabase.auth.verifyOtp({
+  async function sendLink() {
+    setLinkBusy(true)
+    setPwError('')
+    setInfo('')
+    const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      token: code.trim(),
-      type: 'email',
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
     })
-    if (error) {
-      setEmailError('הקוד שגוי או שפג תוקפו')
-      setEmailBusy(false)
-      return
-    }
-    // On success, AuthContext's onAuthStateChange updates the session and routes in.
+    setLinkBusy(false)
+    if (error) { setPwError('לא הצלחנו לשלוח קישור — בדוק את המייל ונסה שוב'); return }
+    setLinkSent(true)
   }
 
   const handleManagerLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true)
-    setError('')
-    const { error } = await supabase.auth.signInWithPassword({
-      email: MANAGER_EMAIL,
-      password,
-    })
+    setMgrError('')
+    const { error } = await supabase.auth.signInWithPassword({ email: MANAGER_EMAIL, password: mgrPwd })
     if (error) {
-      setError('סיסמה שגויה')
+      setMgrError('סיסמה שגויה')
       setBusy(false)
     }
-    // On success, AuthContext's onAuthStateChange updates the session and routes in.
   }
 
   return (
@@ -92,45 +98,42 @@ export default function Login() {
         <h1>ניהול דירה</h1>
         <p className="login-subtitle">התחבר כדי להמשיך</p>
 
-        {/* Email code — stays in-app, the smoothest path on the installed iPhone app */}
-        {!codeSent ? (
-          <form className="login-email-form" onSubmit={sendCode}>
-            <input
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              dir="ltr"
-              placeholder="כתובת מייל"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setEmailError('') }}
-            />
-            <button type="submit" className="btn-primary login-email-btn" disabled={emailBusy || !email.trim()}>
-              {emailBusy ? 'שולח...' : 'שלחו לי קוד למייל'}
-            </button>
-          </form>
+        {/* Email + password — stays fully in-app */}
+        <form className="login-email-form" onSubmit={submitPassword}>
+          <input
+            type="email" inputMode="email" autoComplete="email" dir="ltr"
+            placeholder="כתובת מייל"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setPwError(''); setInfo('') }}
+          />
+          <input
+            type="password"
+            autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+            dir="ltr"
+            placeholder={authMode === 'signup' ? 'בחר סיסמה (6 תווים לפחות)' : 'סיסמה'}
+            value={pwd}
+            onChange={e => { setPwd(e.target.value); setPwError(''); setInfo('') }}
+          />
+          <button type="submit" className="btn-primary login-email-btn"
+            disabled={pwBusy || !email.trim() || pwd.length < 6}>
+            {pwBusy ? 'רגע...' : authMode === 'signup' ? 'הרשמה' : 'כניסה'}
+          </button>
+        </form>
+        <button type="button" className="login-manager-link"
+          onClick={() => { setAuthMode(m => m === 'signin' ? 'signup' : 'signin'); setPwError(''); setInfo('') }}>
+          {authMode === 'signin' ? 'אין לך חשבון? להרשמה' : 'יש לך חשבון? לכניסה'}
+        </button>
+        {pwError && <p className="login-error">{pwError}</p>}
+        {info && <p className="login-info">{info}</p>}
+
+        {/* Magic-link alternative */}
+        {!linkSent ? (
+          <button type="button" className="login-manager-link" onClick={sendLink} disabled={linkBusy || !email.trim()}>
+            {linkBusy ? 'שולח...' : 'או שלחו לי קישור כניסה למייל'}
+          </button>
         ) : (
-          <form className="login-email-form" onSubmit={verifyCode}>
-            <p className="login-subtitle" style={{ margin: 0 }}>שלחנו קוד ל-{email.trim()}</p>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              dir="ltr"
-              placeholder="הקוד מהמייל"
-              maxLength={6}
-              value={code}
-              onChange={e => { setCode(e.target.value.replace(/\D/g, '')); setEmailError('') }}
-              autoFocus
-            />
-            <button type="submit" className="btn-primary login-email-btn" disabled={emailBusy || code.length < 6}>
-              {emailBusy ? 'מאמת...' : 'אימות וכניסה'}
-            </button>
-            <button type="button" className="login-manager-link" onClick={() => { setCodeSent(false); setCode(''); setEmailError('') }}>
-              שנה מייל או שלח קוד מחדש
-            </button>
-          </form>
+          <p className="login-info">שלחנו קישור ל-{email.trim()} — פתח את המייל ולחץ עליו כדי להיכנס.</p>
         )}
-        {emailError && <p className="login-error">{emailError}</p>}
 
         <div className="login-divider"><span>או</span></div>
 
@@ -144,7 +147,7 @@ export default function Login() {
           {busy ? 'מתחבר...' : 'התחברות עם Google'}
         </button>
 
-        {/* Manager (dev test account) login — always visible. */}
+        {/* Manager (dev test account) login */}
         {!showManager ? (
           <button className="login-manager-link" onClick={() => setShowManager(true)}>
             כניסת מנהל
@@ -152,18 +155,16 @@ export default function Login() {
         ) : (
           <form className="login-manager-form" onSubmit={handleManagerLogin}>
             <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="current-password"
+              type="password" inputMode="numeric" autoComplete="current-password"
               placeholder="סיסמת מנהל"
-              value={password}
-              onChange={e => { setPassword(e.target.value); setError('') }}
+              value={mgrPwd}
+              onChange={e => { setMgrPwd(e.target.value); setMgrError('') }}
               autoFocus
             />
-            <button type="submit" className="btn-manager" disabled={busy || !password}>
+            <button type="submit" className="btn-manager" disabled={busy || !mgrPwd}>
               {busy ? 'מתחבר...' : 'כניסה'}
             </button>
-            {error && <p className="login-error">{error}</p>}
+            {mgrError && <p className="login-error">{mgrError}</p>}
           </form>
         )}
       </div>

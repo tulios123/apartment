@@ -1637,6 +1637,12 @@ input[type="date"] {
   color: var(--danger);
   font-size: 13px;
 }
+.login-info {
+  color: var(--success-text, #186a47);
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+}
 
 /* Email one-time-code form (mirrors the manager form's full-width column). */
 .login-email-form {
