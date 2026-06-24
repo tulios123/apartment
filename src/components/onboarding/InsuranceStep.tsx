@@ -6,7 +6,7 @@ import { useOnboarding } from './context'
 
 export function InsuranceStep() {
   const {
-    back, handleFinish, saving, error,
+    back, requestFinish, saving, pendingFinish, error,
     policies, editingPolicyIdx, setEditingPolicyIdx, setPolicyForm,
     showPolicyForm, setShowPolicyForm,
     addPolicy, savePolicyEdit, savePolicyAndOpenNew, removePolicy,
@@ -14,7 +14,7 @@ export function InsuranceStep() {
   } = useOnboarding()
 
   return (
-    <form onSubmit={e => { e.preventDefault(); handleFinish() }}>
+    <form onSubmit={e => { e.preventDefault(); requestFinish() }}>
       <StepHeader current="insurance" icon={<ShieldCheck size={44} color="var(--accent)" />} title="ביטוחים" />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
@@ -98,8 +98,8 @@ export function InsuranceStep() {
         {showFillExample && (
           <button type="button" className="btn-onboard-skip" onClick={fillTestInsurance}>מלא דוגמה</button>
         )}
-        <button type="submit" className="btn-onboard-primary" disabled={saving}>
-          {saving ? 'שומר...' : <><span>סיום</span><Check size={14} weight="bold" /></> }
+        <button type="submit" className="btn-onboard-primary" disabled={saving || pendingFinish}>
+          {saving ? 'שומר...' : pendingFinish ? 'רגע, קוראים…' : <><span>סיום</span><Check size={14} weight="bold" /></> }
         </button>
       </div>
     </form>

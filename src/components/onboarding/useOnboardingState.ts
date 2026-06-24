@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadDocument } from '../../lib/storage'
 import { createProperty, createContract } from '../../hooks/usePropertyData'
@@ -31,6 +31,10 @@ export function useOnboardingState(onComplete: () => void) {
   const [step, setStep] = useState<Step>('documents')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Set when the user asks to finish while a background AI extraction is still
+  // running — finishing is deferred until the read completes so the extracted
+  // data isn't silently dropped (see requestFinish + the effect below handleFinish).
+  const [pendingFinish, setPendingFinish] = useState(false)
   const [notifOn, setNotifOn] = useState(false)
   const [notifBusy, setNotifBusy] = useState(false)
 
@@ -621,6 +625,29 @@ export function useOnboardingState(onComplete: () => void) {
     }
   }
 
+  // ── Finish guard: don't finish while a doc is still being read ───────────────
+  // True whenever any of the three background extractions is in flight.
+  const anyAiBusy = purchaseAiBusy || mortgageAiBusy || rentalAiBusy
+
+  // The finish entry point used by the UI. If a document is still being read,
+  // defer the actual save until it resolves (the effect below fires it) so the
+  // extracted property/mortgage/rental data makes it into the save.
+  function requestFinish() {
+    if (anyAiBusy) { setPendingFinish(true); return }
+    handleFinish()
+  }
+
+  useEffect(() => {
+    // Once all reads have settled (success OR failure), run the deferred finish.
+    // The effect re-runs with fresh state, so handleFinish reads the just-filled
+    // tracks/fields rather than the stale snapshot from when the user tapped.
+    if (pendingFinish && !anyAiBusy) {
+      setPendingFinish(false)
+      handleFinish()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingFinish, anyAiBusy])
+
   // ── DEV fill helpers ─────────────────────────────────────────────────────────
   function fillTestPurchase() {
     setBuyerName('איתי שובי')
@@ -926,7 +953,7 @@ export function useOnboardingState(onComplete: () => void) {
     loanIsValid, loanDraftRate, loanTypeLabel,
     loansMonthlyPrincipal, loansBalloonTotal,
     // submit
-    handleFinish,
+    handleFinish, requestFinish, anyAiBusy, pendingFinish,
     // dev fill
     fillTestPurchase, fillTestMortgage, fillTestInvestment,
     fillTestRental, fillTestInsurance, fillTestLoans,

@@ -5,10 +5,10 @@ import { useOnboarding } from './context'
 // stop after Purchase instead of clicking "דלג" through five screens — the welcome
 // screen already promises "אפשר לדלג ולהוסיף בהמשך".
 export function FinishEarly() {
-  const { handleFinish, saving } = useOnboarding()
+  const { requestFinish, saving, pendingFinish } = useOnboarding()
   return (
-    <button type="button" className="onboarding-finish-early" onClick={handleFinish} disabled={saving}>
-      {saving ? 'שומר…' : 'סיים עכשיו · אפשר להשלים את השאר בהמשך'}
+    <button type="button" className="onboarding-finish-early" onClick={requestFinish} disabled={saving || pendingFinish}>
+      {saving ? 'שומר…' : pendingFinish ? 'רגע, מסיימים לקרוא את המסמכים…' : 'סיים עכשיו · אפשר להשלים את השאר בהמשך'}
     </button>
   )
 }
