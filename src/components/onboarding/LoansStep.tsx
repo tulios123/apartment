@@ -1,5 +1,6 @@
 import { HandCoins, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
+import { FillExampleTop } from './FillExampleTop'
 import { LoanForm } from './LoanForm'
 import { FinishEarly } from './FinishEarly'
 import { emptyLoan, formatCurrency } from './types'
@@ -12,12 +13,13 @@ export function LoansStep() {
     editingLoanIdx, setEditingLoanIdx, setLoanForm, showLoanForm, setShowLoanForm,
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
-    showFillExample, fillTestLoans,
+    fillTestLoans,
   } = useOnboarding()
 
   return (
     <form onSubmit={e => { e.preventDefault(); advance('investment') }}>
       <StepHeader current="loans" icon={<HandCoins size={44} color="var(--accent)" />} title="הלוואות" />
+      <FillExampleTop onFill={fillTestLoans} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
       {/* Saved loans list — click header to toggle edit in-place */}
@@ -107,9 +109,6 @@ export function LoansStep() {
 
       <div className="onboarding-actions">
         <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-        {showFillExample && (
-          <button type="button" className="btn-onboard-skip" onClick={fillTestLoans}>מלא דוגמה</button>
-        )}
         <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
       <FinishEarly />

@@ -12,7 +12,7 @@ import {
 import { syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/useRecurringItems'
 import { useAuth } from '../../contexts/AuthContext'
 import { UTILITIES } from '../../lib/constants'
-import { formatDate, formatCurrency } from '../../lib/format'
+import { formatDate, formatCurrency, monthDayISO } from '../../lib/format'
 import type { Contract, UtilityPayer } from '../../types'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -49,6 +49,27 @@ function ContractForm({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
+  // Manager/dev-only quick-fill, mirroring the onboarding "מלא דוגמה" affordance.
+  const { user } = useAuth()
+  const showFill = import.meta.env.DEV || user?.email === 'dev@test.local'
+  function fillExample() {
+    const start = new Date()
+    const end = new Date(start)
+    end.setFullYear(end.getFullYear() + 1)
+    end.setDate(end.getDate() - 1)
+    setForm({
+      company_name: 'שוכר לדוגמה',
+      contact_name: 'דנה כהן',
+      contact_phone: '050-1234567',
+      start_date: monthDayISO(start),
+      end_date: monthDayISO(end),
+      monthly_rent: '5500',
+      deposit: '11000',
+      payment_method: 'check',
+      requires_approval: true,
+    })
+  }
+
   function set(k: keyof typeof emptyContract, v: string) {
     setForm(f => ({ ...f, [k]: v }))
   }
@@ -77,6 +98,11 @@ function ContractForm({
 
   return (
     <form onSubmit={submit} className="form">
+      {showFill && (
+        <div className="onboarding-fill-top">
+          <button type="button" className="onboarding-fill-top-btn" onClick={fillExample}>מלא דוגמה</button>
+        </div>
+      )}
       <div className="form-row">
         <label>חברה / שוכר</label>
         <input type="text" value={form.company_name} onChange={e => set('company_name', e.target.value)} required autoFocus />

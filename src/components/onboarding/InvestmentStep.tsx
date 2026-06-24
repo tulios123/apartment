@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react'
 import { Coins, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
+import { FillExampleTop } from './FillExampleTop'
 import { FinishEarly } from './FinishEarly'
 import {
   formatNum, formatCurrency,
@@ -15,12 +16,13 @@ export function InvestmentStep() {
     focusedInput, setFocusedInput, equityAmount, equityPercent,
     balloonAmount, setBalloonAmount, balloonLender, setBalloonLender,
     costs, setCosts, extraCosts, setExtraCosts, costsTotal,
-    showFillExample, fillTestInvestment,
+    fillTestInvestment,
   } = useOnboarding()
 
   return (
     <form onSubmit={e => { e.preventDefault(); advance('rental') }}>
       <StepHeader current="investment" icon={<Coins size={44} color="var(--accent)" />} title="הון עצמי ועלויות" />
+      <FillExampleTop onFill={fillTestInvestment} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
       <div className="onboarding-form">
         {/* Equity */}
@@ -182,9 +184,6 @@ export function InvestmentStep() {
       </div>
       <div className="onboarding-actions">
         <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-        {showFillExample && (
-          <button type="button" className="btn-onboard-skip" onClick={fillTestInvestment}>מלא דוגמה</button>
-        )}
         <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
       <FinishEarly />

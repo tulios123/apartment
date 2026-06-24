@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Tag, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
+import { FillExampleTop } from './FillExampleTop'
 import { emptyTrack, formatPrice } from './types'
 import { useOnboarding } from './context'
 
@@ -13,7 +14,7 @@ export function PurchaseStep() {
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
     purchaseFile, setPurchaseFile, purchaseInputRef,
     purchaseAiBusy, purchaseAiErr, aiFillPurchase,
-    showFillExample, fillTestPurchase,
+    fillTestPurchase,
   } = useOnboarding()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
 
@@ -24,6 +25,7 @@ export function PurchaseStep() {
       advance('mortgage')
     }}>
       <StepHeader current="purchase" icon={<Tag size={44} color="var(--accent)" />} title="פרטי רכישה" />
+      <FillExampleTop onFill={fillTestPurchase} />
 
       <div className="onboarding-ai-fill">
         <button type="button" className="btn-onboard-ai" disabled={purchaseAiBusy}
@@ -99,9 +101,6 @@ export function PurchaseStep() {
       </div>
       <div className="onboarding-actions">
         <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-        {showFillExample && (
-          <button type="button" className="btn-onboard-skip" onClick={fillTestPurchase}>מלא דוגמה</button>
-        )}
         <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
     </form>

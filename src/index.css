@@ -2002,6 +2002,22 @@ input[type="date"] {
 .onboarding-finish-early:hover { color: var(--accent); text-decoration: underline; }
 .onboarding-finish-early:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Manager/dev "מלא דוגמה" affordance, pinned to the top of each onboarding step */
+.onboarding-fill-top { display: flex; justify-content: flex-end; margin: -4px 0 8px; }
+.onboarding-fill-top-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 5px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--t-fast) var(--ease);
+}
+.onboarding-fill-top-btn:active { background: var(--accent-soft-hover, var(--accent-soft)); }
+
 /* Documents-first screen — upload cards that kick off background extraction. */
 .onboarding-doc-cards {
   display: flex;

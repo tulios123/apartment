@@ -1,5 +1,6 @@
 import { ShieldCheck, ArrowRight, Check, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
+import { FillExampleTop } from './FillExampleTop'
 import { PolicyForm } from './PolicyForm'
 import { emptyPolicy, formatCurrency } from './types'
 import { useOnboarding } from './context'
@@ -10,12 +11,13 @@ export function InsuranceStep() {
     policies, editingPolicyIdx, setEditingPolicyIdx, setPolicyForm,
     showPolicyForm, setShowPolicyForm,
     addPolicy, savePolicyEdit, savePolicyAndOpenNew, removePolicy,
-    showFillExample, fillTestInsurance,
+    fillTestInsurance,
   } = useOnboarding()
 
   return (
     <form onSubmit={e => { e.preventDefault(); requestFinish() }}>
       <StepHeader current="insurance" icon={<ShieldCheck size={44} color="var(--accent)" />} title="ביטוחים" />
+      <FillExampleTop onFill={fillTestInsurance} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
       {/* Saved policies list — click header to toggle edit in-place */}
@@ -95,9 +97,6 @@ export function InsuranceStep() {
       {error && <p className="onboarding-error" role="alert">{error}</p>}
       <div className="onboarding-actions">
         <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-        {showFillExample && (
-          <button type="button" className="btn-onboard-skip" onClick={fillTestInsurance}>מלא דוגמה</button>
-        )}
         <button type="submit" className="btn-onboard-primary" disabled={saving || pendingFinish}>
           {saving ? 'שומר...' : pendingFinish ? 'רגע, קוראים…' : <><span>סיום</span><Check size={14} weight="bold" /></> }
         </button>

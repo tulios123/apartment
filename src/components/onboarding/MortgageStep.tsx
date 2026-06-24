@@ -1,5 +1,6 @@
 import { Bank, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
+import { FillExampleTop } from './FillExampleTop'
 import { TrackForm } from './TrackForm'
 import { FinishEarly } from './FinishEarly'
 import { emptyTrack, emptyLoan, formatCurrency } from './types'
@@ -13,7 +14,7 @@ export function MortgageStep() {
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
-    showFillExample, fillTestMortgage,
+    fillTestMortgage,
   } = useOnboarding()
 
   return (
@@ -23,6 +24,7 @@ export function MortgageStep() {
       advance('loans')
     }}>
       <StepHeader current="mortgage" icon={<Bank size={44} color="var(--accent)" />} title="משכנתא" />
+      <FillExampleTop onFill={fillTestMortgage} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
       <div className="onboarding-ai-fill">
@@ -133,9 +135,6 @@ export function MortgageStep() {
 
       <div className="onboarding-actions">
         <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-        {showFillExample && (
-          <button type="button" className="btn-onboard-skip" onClick={fillTestMortgage}>מלא דוגמה</button>
-        )}
         <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
       <FinishEarly />

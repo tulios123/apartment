@@ -39,7 +39,7 @@
   .padm-binder-value { font-size: 15px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; margin-top: 3px; }
   .padm-binder-lease { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: var(--r-pill); white-space: nowrap; }
   .padm-binder-lease.is-active { color: var(--success-text); background: var(--success-bg); }
-  .padm-binder-lease.is-none { color: var(--text-muted); background: var(--bg-alt); }
+  .padm-binder-lease.is-none { color: var(--warning-text); background: var(--warning-bg); }
 
   /* Read-only utility responsibility chips (contract card) */
   .padm-util-chips-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }

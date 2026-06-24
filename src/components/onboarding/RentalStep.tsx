@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { FileText, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
+import { FillExampleTop } from './FillExampleTop'
 import { FinishEarly } from './FinishEarly'
 import { formatNum } from './types'
 import { monthDayISO } from '../../lib/format'
@@ -14,13 +15,14 @@ export function RentalStep() {
     rentPaymentDay, setRentPaymentDay, addRentReminder, setAddRentReminder,
     rentalFile, setRentalFile, rentalInputRef,
     rentalAiBusy, rentalAiErr, aiFillRental,
-    showFillExample, fillTestRental,
+    fillTestRental,
   } = useOnboarding()
   const rentalDocRef = useRef<HTMLInputElement>(null)
 
   return (
     <form onSubmit={e => { e.preventDefault(); advance('insurance') }}>
       <StepHeader current="rental" icon={<FileText size={44} color="var(--accent)" />} title="פרטי השכירות" />
+      <FillExampleTop onFill={fillTestRental} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
       <div className="onboarding-ai-fill">
@@ -101,9 +103,6 @@ export function RentalStep() {
       </div>
       <div className="onboarding-actions">
         <button type="button" className="btn-onboard-skip" onClick={back}><ArrowRight size={16} /> חזור</button>
-        {showFillExample && (
-          <button type="button" className="btn-onboard-skip" onClick={fillTestRental}>מלא דוגמה</button>
-        )}
         <button type="submit" className="btn-onboard-primary">הבא <ArrowLeft size={16} /></button>
       </div>
       <FinishEarly />
