@@ -3684,6 +3684,61 @@ input[type="date"] {
   color: var(--warning-text, #8a5200);
 }
 
+/* Mortgage grace top-bar: one toggle + shared period; per-track marks live in each row. */
+.onboarding-grace-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 12px);
+  background: var(--accent-soft, rgba(10, 31, 68, 0.05));
+}
+.onboarding-grace-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.onboarding-grace-toggle input,
+.onboarding-track-grace input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+}
+.onboarding-grace-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.onboarding-grace-period input {
+  width: 56px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 8px);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: center;
+}
+.onboarding-grace-bar .onboarding-field-hint { flex-basis: 100%; }
+/* Per-track grace checkbox in a collapsed track row. */
+.onboarding-track-grace {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
 /* ── Onboarding "add" button inside inline form ── */
 .onboarding-add-btn {
   align-self: flex-start;

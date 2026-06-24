@@ -845,6 +845,19 @@ export function useOnboardingState(onComplete: () => void) {
     setTracks(prev => prev.filter((_, i) => i !== idx))
   }
 
+  // Grace controls driven from the mortgage step's top bar: one shared period, applied
+  // to all tracks at once or toggled per track (grace lives on each track's grace_months).
+  function setTrackGraceMonths(idx: number, months: string) {
+    setTracks(prev => prev.map((t, i) => i === idx ? { ...t, grace_months: months } : t))
+  }
+  function applyGraceToAllTracks(months: string) {
+    setTracks(prev => prev.map(t => ({ ...t, grace_months: months })))
+  }
+  // Period changed: re-apply it only to tracks that already have grace turned on.
+  function setGraceMonthsForActive(months: string) {
+    setTracks(prev => prev.map(t => (parseInt(t.grace_months) || 0) > 0 ? { ...t, grace_months: months } : t))
+  }
+
   function setTF<K extends keyof TrackDraft>(key: K, val: TrackDraft[K]) {
     setTrackForm(prev => ({ ...prev, [key]: val }))
   }
@@ -994,6 +1007,7 @@ export function useOnboardingState(onComplete: () => void) {
     tracks, setTracks, trackForm, setTrackForm, setTF,
     graceOn, setGraceOn, showTrackForm, setShowTrackForm, editingIdx, setEditingIdx,
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
+    setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
     trackEffectiveRate, trackMonthlyPayment, trackTypeLabel,
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
     effectiveTrackForm, previewMonthly, previewGrace,

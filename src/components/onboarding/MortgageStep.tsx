@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Bank, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -13,9 +14,17 @@ export function MortgageStep() {
     tracks, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
+    setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
     fillTestMortgage,
   } = useOnboarding()
+
+  // Shared grace period for the top bar; grace itself lives on each track's grace_months.
+  const [graceMonths, setGraceMonths] = useState(() => {
+    const g = tracks.find(t => (parseInt(t.grace_months) || 0) > 0)
+    return g ? g.grace_months : '12'
+  })
+  const anyGrace = tracks.some(t => (parseInt(t.grace_months) || 0) > 0)
 
   return (
     <form onSubmit={e => {
@@ -41,6 +50,26 @@ export function MortgageStep() {
         {mortgageAiErr && <p className="onboarding-error" role="alert">{mortgageAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר לבחור כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>
+
+      {/* Grace bar — one shared period; toggle on applies to all tracks, then mark per track */}
+      {tracks.length > 0 && (
+        <div className="onboarding-grace-bar">
+          <label className="onboarding-grace-toggle">
+            <input type="checkbox" checked={anyGrace}
+              onChange={e => applyGraceToAllTracks(e.target.checked ? (graceMonths || '12') : '0')} />
+            <span>גרייס — תשלום ריבית בלבד בהתחלה</span>
+          </label>
+          {anyGrace && (
+            <div className="onboarding-grace-period">
+              <span>תקופה</span>
+              <input type="number" min="1" max="60" value={graceMonths}
+                onChange={e => { setGraceMonths(e.target.value); setGraceMonthsForActive(e.target.value) }} />
+              <span>ח׳</span>
+            </div>
+          )}
+          {anyGrace && <p className="onboarding-field-hint" style={{ margin: '4px 0 0' }}>סמנו ליד כל מסלול אם הגרייס חל עליו</p>}
+        </div>
+      )}
 
       {/* Saved tracks list — click header to toggle edit in-place */}
       {tracks.length > 0 && (
@@ -86,6 +115,13 @@ export function MortgageStep() {
                     </div>
                   </div>
                   <div className="onboarding-list-row-actions">
+                    {anyGrace && (
+                      <label className="onboarding-track-grace" onClick={e => e.stopPropagation()} title="גרייס למסלול זה">
+                        <input type="checkbox" checked={(parseInt(d.grace_months) || 0) > 0}
+                          onChange={e => setTrackGraceMonths(i, e.target.checked ? (graceMonths || '12') : '0')} />
+                        <span>גרייס</span>
+                      </label>
+                    )}
                     <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>
                   </div>
                 </div>
