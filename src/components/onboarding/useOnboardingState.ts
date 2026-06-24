@@ -16,7 +16,7 @@ import type { TrackType, LoanRepaymentType, Contract } from '../../types'
 import {
   STEP_ORDER, TRACK_TYPES,
   emptyTrack, emptyPolicy, emptyLoan,
-  defaultLawyerCost, defaultBrokerageCost, defaultSelfEquityPct,
+  defaultLawyerCost, defaultBrokerageCost,
 } from './types'
 import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } from './types'
 
@@ -144,15 +144,16 @@ export function useOnboardingState(onComplete: () => void) {
 
   // ── Derived: equity ─────────────────────────────────────────────────────────
   const price = parseFloat(purchasePrice) || 0
-  // Equity is what's left of the price after all financing — derive it from the
-  // mortgage + loans already entered, rather than guessing a flat percentage.
+  // Equity = the down-payment beyond the bank mortgage: purchase price − mortgage.
+  // Balloon/other loans don't change what's needed beyond the mortgage — they change
+  // who funds it — so they're shown as offsets in the totals, not subtracted here.
   const totalMortgagePrincipal = tracks.reduce((s, t) => s + (parseFloat(t.principal) || 0), 0)
-  const totalLoanPrincipal = loans.reduce((s, l) => s + (parseFloat(l.principal) || 0), 0)
   const balloonTotal = balloonLoans.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0)
-  const derivedEquityAmount = Math.max(0, price - totalMortgagePrincipal - totalLoanPrincipal - balloonTotal)
+  const derivedEquityAmount = Math.max(0, price - totalMortgagePrincipal)
+  const derivedEquityPct = price > 0 ? Math.round(derivedEquityAmount / price * 100) : 0
   // effective = user value if typed, else the derived default (grey placeholder)
   const effEquity = equityValue || (equityMode === 'percent'
-    ? defaultSelfEquityPct()
+    ? (derivedEquityPct > 0 ? String(derivedEquityPct) : '')
     : (derivedEquityAmount > 0 ? String(derivedEquityAmount) : ''))
   const effLawyer = costs.lawyer || defaultLawyerCost(price)
   const effBrokerage = costs.brokerage || defaultBrokerageCost(price)
@@ -274,7 +275,7 @@ export function useOnboardingState(onComplete: () => void) {
     setLoanAiDone(false)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
-      const cacheKey = `apt_extract_loan_v1_${hashString(files.map(f => f.fileBase64).join(''))}`
+      const cacheKey = `apt_extract_loan_v2_${hashString(files.map(f => f.fileBase64).join(''))}`
       let data: { loans?: Record<string, unknown>[] } | null = null
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
@@ -302,7 +303,7 @@ export function useOnboardingState(onComplete: () => void) {
             margin: '',
             term_months: !isBalloon && l.term_months != null ? String(l.term_months) : '',
             grace_months: !isBalloon && l.grace_months != null ? String(l.grace_months) : '',
-            start_date: keyDeliveryDate || todayISO(),
+            start_date: l.start_date != null ? String(l.start_date) : (keyDeliveryDate || todayISO()),
           }
         })
       if (mapped.length === 0) {
@@ -329,7 +330,7 @@ export function useOnboardingState(onComplete: () => void) {
     setPurchaseAiDone(false)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
-      const cacheKey = `apt_extract_purchase_v2_${hashString(files.map(f => f.fileBase64).join(''))}`
+      const cacheKey = `apt_extract_purchase_v3_${hashString(files.map(f => f.fileBase64).join(''))}`
       let data: Record<string, unknown> | null = null
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
@@ -1004,7 +1005,7 @@ export function useOnboardingState(onComplete: () => void) {
     rentalAiBusy, rentalAiErr, aiFillRental,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
-    equityAmount, equityPercent, costsTotal,
+    equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,
     costs, setCosts, extraCosts, setExtraCosts,
     balloonLoans, setBalloonLoans, balloonTotal,
     // focused input

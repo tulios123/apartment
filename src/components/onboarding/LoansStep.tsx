@@ -75,6 +75,9 @@ export function LoansStep() {
                       {isMonthly && d.term_months && <><span>·</span><span>{d.term_months} ח׳</span></>}
                       {d.lender.trim() && <><span>·</span><span>{d.lender.trim()}</span></>}
                     </div>
+                    {isMonthly && (rate <= 0 || !d.term_months || !d.start_date) && (
+                      <div className="onboarding-track-missing">חסרים פרטים — לחצו להשלמה</div>
+                    )}
                   </div>
                   <div className="onboarding-list-row-actions">
                     <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeLoan(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>

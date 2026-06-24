@@ -37,6 +37,7 @@ no markdown:
       "annual_rate": nominal annual interest rate as a percent number (e.g. 6.5), or null if interest-free,
       "term_months": total repayment period in months as an integer, or null,
       "grace_months": leading interest-only months (גרייס) if any, else 0,
+      "start_date": "the loan start / origination date (תאריך תחילת ההלוואה / מתן ההלוואה / ההעמדה) in YYYY-MM-DD format, or null",
       "repayment_type": "monthly_fixed" for a normal amortizing loan repaid in monthly instalments, or "balloon" for a loan repaid in one lump sum at the end / on sale (בלון / בוליט / נפרעת במכירה)
     }
   ]

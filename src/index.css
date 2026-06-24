@@ -3651,6 +3651,39 @@ input[type="date"] {
   color: var(--text);
 }
 
+/* Collapsed balloon-loan row: a compact chip listing amount · lender, tap to edit. */
+.onboarding-balloon-chip {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 12px);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.onboarding-balloon-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* "Missing details" hint on a collapsed loan row — amber so it doesn't read as done. */
+.onboarding-track-missing {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warning-text, #8a5200);
+}
+
 /* ── Onboarding "add" button inside inline form ── */
 .onboarding-add-btn {
   align-self: flex-start;
