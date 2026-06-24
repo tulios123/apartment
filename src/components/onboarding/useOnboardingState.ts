@@ -122,6 +122,11 @@ export function useOnboardingState(onComplete: () => void) {
   const [purchaseAiDone, setPurchaseAiDone] = useState(false)
   const [rentalAiBusy, setRentalAiBusy] = useState(false)
   const [rentalAiErr, setRentalAiErr] = useState<string | null>(null)
+  const [rentalAiDone, setRentalAiDone] = useState(false)
+  // The actual files uploaded for mortgage/loan extraction — kept so they're stored
+  // as documents on finish (the extraction reads them, but the file itself must persist).
+  const [mortgageDocFiles, setMortgageDocFiles] = useState<File[]>([])
+  const [loanDocFiles, setLoanDocFiles] = useState<File[]>([])
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function dismissKeyboardAndScrollTop() {
@@ -222,6 +227,9 @@ export function useOnboardingState(onComplete: () => void) {
     setMortgageAiBusy(true)
     setMortgageAiErr(null)
     setMortgageAiDone(false)
+    // Keep the uploaded file(s) so they're saved as documents on finish. Re-uploading
+    // replaces the tracks, so replace the stored files too (mirror that behaviour).
+    setMortgageDocFiles(fileList)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       // Version the key so improving the extraction (model/prompt) invalidates stale cached
@@ -251,7 +259,10 @@ export function useOnboardingState(onComplete: () => void) {
           margin: t.margin != null ? String(t.margin) : '',
           term_months: t.term_months != null ? String(t.term_months) : '',
           grace_months: t.grace_months != null ? String(t.grace_months) : '',
-          start_date: keyDeliveryDate || todayISO(),
+          // Leave empty when key-delivery isn't extracted yet (the contract may still be
+          // reading in the background) — finish anchors it to key-delivery/signing, never
+          // "today", so the payment schedule starts on the real date and shows in the ledger.
+          start_date: keyDeliveryDate,
         }))
       if (mapped.length === 0) {
         setMortgageAiErr('לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הזינו ידנית.')
@@ -273,6 +284,9 @@ export function useOnboardingState(onComplete: () => void) {
     setLoanAiBusy(true)
     setLoanAiErr(null)
     setLoanAiDone(false)
+    // Keep the uploaded file(s) so they're saved as documents on finish (loans append,
+    // so the doc files append too).
+    setLoanDocFiles(prev => [...prev, ...fileList])
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       const cacheKey = `apt_extract_loan_v2_${hashString(files.map(f => f.fileBase64).join(''))}`
@@ -303,7 +317,9 @@ export function useOnboardingState(onComplete: () => void) {
             margin: '',
             term_months: !isBalloon && l.term_months != null ? String(l.term_months) : '',
             grace_months: !isBalloon && l.grace_months != null ? String(l.grace_months) : '',
-            start_date: l.start_date != null ? String(l.start_date) : (keyDeliveryDate || todayISO()),
+            // Use the doc's start date if it gave one; otherwise leave empty so finish
+            // anchors it to key-delivery/signing rather than "today".
+            start_date: l.start_date != null ? String(l.start_date) : keyDeliveryDate,
           }
         })
       if (mapped.length === 0) {
@@ -311,9 +327,20 @@ export function useOnboardingState(onComplete: () => void) {
         return
       }
       // Append (don't clobber) any loans the user already entered.
+      const base = loans.length
       setLoans(prev => [...prev, ...mapped])
-      setShowLoanForm(false)
-      setEditingLoanIdx(null)
+      // If the doc left a monthly loan missing key details, open it for completion right
+      // away instead of collapsing it to a tidy card that looks finished (false "ready").
+      const incompleteIdx = mapped.findIndex(l =>
+        l.repayment_type === 'monthly_fixed' && (loanDraftRate(l) <= 0 || !l.term_months || !l.start_date))
+      if (incompleteIdx >= 0) {
+        setLoanForm(mapped[incompleteIdx])
+        setEditingLoanIdx(base + incompleteIdx)
+        setShowLoanForm(false)
+      } else {
+        setShowLoanForm(false)
+        setEditingLoanIdx(null)
+      }
       setLoanAiDone(true)
     } catch {
       setLoanAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
@@ -330,7 +357,7 @@ export function useOnboardingState(onComplete: () => void) {
     setPurchaseAiDone(false)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
-      const cacheKey = `apt_extract_purchase_v3_${hashString(files.map(f => f.fileBase64).join(''))}`
+      const cacheKey = `apt_extract_purchase_v4_${hashString(files.map(f => f.fileBase64).join(''))}`
       let data: Record<string, unknown> | null = null
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
@@ -376,6 +403,7 @@ export function useOnboardingState(onComplete: () => void) {
     setRentalFile(fileList[0])
     setRentalAiBusy(true)
     setRentalAiErr(null)
+    setRentalAiDone(false)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       const cacheKey = `apt_extract_rental_v1_${hashString(files.map(f => f.fileBase64).join(''))}`
@@ -400,6 +428,7 @@ export function useOnboardingState(onComplete: () => void) {
       if (d.paymentMethod === 'check') { setRentPaymentMethod('check'); setAddRentReminder(true) }
       else if (d.paymentMethod === 'bank_transfer') setRentPaymentMethod('bank_transfer')
       if (d.paymentDay != null) setRentPaymentDay(String(d.paymentDay))
+      setRentalAiDone(true)
     } catch {
       setRentalAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
     } finally {
@@ -430,6 +459,12 @@ export function useOnboardingState(onComplete: () => void) {
         floor: floorNumber !== '' ? parseInt(floorNumber, 10) : null,
         rooms: rooms !== '' ? parseInt(rooms, 10) : null,
       })
+
+      // When payments begin: key-delivery is the real anchor for an off-plan buy;
+      // fall back to the signing date, and only then to today. Mortgage/loan drafts
+      // whose start_date wasn't set yet (extracted before the contract) inherit this,
+      // so their schedule starts on the real date and surfaces in the ledger/cashflow.
+      const paymentsAnchor = keyDeliveryDate || signingDate || todayISO()
 
       // Normalise track/loan data once before fanning out
       const normTrack = (d: TrackDraft): TrackDraft => ({
@@ -486,7 +521,7 @@ export function useOnboardingState(onComplete: () => void) {
                 margin: isAnchored ? (parseFloat(d.margin) || marginDefault) : null,
                 term_months: parseInt(d.term_months) || 360,
                 grace_months: parseInt(d.grace_months) || 0,
-                start_date: d.start_date,
+                start_date: d.start_date || paymentsAnchor,
               })
             }))
           } catch {
@@ -519,7 +554,7 @@ export function useOnboardingState(onComplete: () => void) {
                   margin: anchored ? (parseFloat(d.margin) || 0) : null,
                   term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
                   grace_months: isMonthly ? (parseInt(d.grace_months) || null) : null,
-                  start_date: isMonthly ? (d.start_date || null) : (d.start_date || keyDeliveryDate || null),
+                  start_date: d.start_date || paymentsAnchor,
                 })
               })
 
@@ -539,7 +574,7 @@ export function useOnboardingState(onComplete: () => void) {
                 margin: null,
                 term_months: null,
                 grace_months: null,
-                start_date: keyDeliveryDate || null,
+                start_date: paymentsAnchor,
               }))
             }
 
@@ -640,6 +675,37 @@ export function useOnboardingState(onComplete: () => void) {
           } catch {
             failures.push('קובץ חוזה רכישה')
           }
+        })(),
+
+        // Mortgage + loan files uploaded for extraction — persist them as documents
+        // (the extraction reads the file, but the file itself must be stored too).
+        (async () => {
+          await Promise.all([
+            ...mortgageDocFiles.map(async f => {
+              try {
+                const docId = crypto.randomUUID()
+                const path = await uploadDocument(f, docId)
+                await supabase.from('documents').insert({
+                  id: docId, owner_id: user.id, property_id: property.id,
+                  contract_id: null, transaction_id: null,
+                  type: 'mortgage_statement', name: f.name,
+                  storage_path: path, date: null,
+                })
+              } catch { failures.push('קובץ משכנתא') }
+            }),
+            ...loanDocFiles.map(async f => {
+              try {
+                const docId = crypto.randomUUID()
+                const path = await uploadDocument(f, docId)
+                await supabase.from('documents').insert({
+                  id: docId, owner_id: user.id, property_id: property.id,
+                  contract_id: null, transaction_id: null,
+                  type: 'loan_statement', name: f.name,
+                  storage_path: path, date: null,
+                })
+              } catch { failures.push('קובץ הלוואה') }
+            }),
+          ])
         })(),
       ])
 
@@ -1016,7 +1082,7 @@ export function useOnboardingState(onComplete: () => void) {
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
     // AI purchase + rental fill
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
-    rentalAiBusy, rentalAiErr, aiFillRental,
+    rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,

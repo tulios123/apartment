@@ -14,7 +14,7 @@ export function RentalStep() {
     monthlyRent, setMonthlyRent, rentPaymentMethod, setRentPaymentMethod,
     rentPaymentDay, setRentPaymentDay, addRentReminder, setAddRentReminder,
     rentalFile, setRentalFile, rentalInputRef,
-    rentalAiBusy, rentalAiErr, aiFillRental,
+    rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     fillTestRental,
   } = useOnboarding()
   const rentalDocRef = useRef<HTMLInputElement>(null)
@@ -26,9 +26,13 @@ export function RentalStep() {
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
 
       <div className="onboarding-ai-fill">
-        <button type="button" className="btn-onboard-ai" disabled={rentalAiBusy}
+        <button type="button" className={`btn-onboard-ai${rentalAiDone && !rentalAiBusy ? ' is-done' : ''}`} disabled={rentalAiBusy}
           onClick={() => rentalDocRef.current?.click()}>
-          {rentalAiBusy ? 'קורא את החוזה…' : '📄 העלו חוזה שכירות — מילוי אוטומטי'}
+          {rentalAiBusy
+            ? 'קורא את החוזה…'
+            : rentalAiDone
+              ? '✓ החוזה נקרא — בדקו למטה · לחצו להעלאה מחדש'
+              : '📄 העלו חוזה שכירות — מילוי אוטומטי'}
         </button>
         <input ref={rentalDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillRental(fs); e.target.value = '' }} />

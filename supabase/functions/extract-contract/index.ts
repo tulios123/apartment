@@ -11,7 +11,7 @@ Extract these fields and return ONLY a valid JSON object — no markdown, no exp
 {
   "buyerName": "full name of the buyer/purchaser (הרוכש/הקונה), or null",
   "street": "street name and house number of the PROPERTY BEING PURCHASED only (רחוב ומספר בית של הדירה הנמכרת) — WITHOUT the city, or null",
-  "city": "the city/locality where the PROPERTY BEING PURCHASED is located (עיר/יישוב הדירה — from the property/Gush-Helka description). This is NOT the buyer's home town or mailing address (מען/כתובת הקונה); if the buyer lives elsewhere, return the PROPERTY's city, or null",
+  "city": "the city/locality where the PROPERTY BEING PURCHASED physically sits (עיר/יישוב הדירה הנמכרת). CRITICAL: this is NOT (a) the buyer's home town / mailing address (מען/כתובת הקונה/הרוכש), NOT (b) the city of the Land Registry office (לשכת רישום המקרקעין / לשכת רישום בעיר X — e.g. 'לשכת רישום המקרקעין בבאר שבע' does NOT mean the property is in Beer Sheva; that office serves a whole region), and NOT (c) the city of a court, notary, lawyer's office or seller. Take it ONLY from the description of the property itself (the הואיל clauses / מהות הממכר / the address of the apartment). If the property's city is not explicitly stated next to the apartment's address (e.g. only Gush/Helka is given), return null — do NOT guess from any office/registry/party address.",
   "propertyAddress": "full address of the purchased property as 'street and number, city' (fallback only), or null",
   "blockParcel": "Gush and Helka (גוש וחלקה), e.g. 'גוש 6660 חלקה 84', or null",
   "purchasePrice": numeric purchase price (מחיר הרכישה/התמורה) as integer, or null. Do NOT use an existing mortgage/loan payoff amount (יתרה לסילוק) as the price,

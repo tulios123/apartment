@@ -3545,8 +3545,11 @@ input[type="date"] {
 .onboarding-list-row-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
+  /* Put the per-track grace checkbox flush on the left edge (delete sits just inside),
+     so grace toggles line up vertically down the track list. */
+  flex-direction: row-reverse;
 }
 
 .onboarding-track-summary {

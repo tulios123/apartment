@@ -218,9 +218,8 @@ export function InvestmentStep() {
           <div className="onboarding-running-total">
             {balloonTotal > 0 ? (
               <>
-                <div>סך השקעה בנכס (הון עצמי + עלויות): <strong>{formatCurrency(equityAmount + costsTotal)}</strong></div>
-                <div style={{ marginTop: 2 }}>פחות הלוואות בלון: <strong>−{formatCurrency(balloonTotal)}</strong></div>
-                <div style={{ marginTop: 2 }}>ההון שלך בפועל: <strong>{formatCurrency(equityAmount + costsTotal - balloonTotal)}</strong></div>
+                <div>סך ההשקעה: <strong>{formatCurrency(equityAmount + costsTotal)}</strong></div>
+                <div style={{ marginTop: 2 }}>ההון שלך בפועל בניכוי בלון: <strong>{formatCurrency(equityAmount + costsTotal - balloonTotal)}</strong></div>
               </>
             ) : (
               <>סה״כ הושקע: <strong>{formatCurrency(equityAmount + costsTotal)}</strong></>

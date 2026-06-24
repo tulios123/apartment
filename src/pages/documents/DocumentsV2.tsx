@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react'
-import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, X, Plus, Eye, Trash, UploadSimple, PencilSimple } from '@phosphor-icons/react'
+import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, X, Plus, Eye, Trash, UploadSimple, PencilSimple } from '@phosphor-icons/react'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
@@ -14,6 +14,8 @@ const DOC_TYPE_LABELS: Record<DocumentType, string> = {
   property_photos: 'תמונות נכס',
   rental_contract: 'חוזה שכירות',
   insurance_policy: 'פוליסת ביטוח',
+  mortgage_statement: 'משכנתא',
+  loan_statement: 'הלוואה',
   receipt: 'קבלה',
   invoice: 'חשבונית',
   other: 'אחר',
@@ -22,10 +24,11 @@ const DOC_TYPE_LABELS: Record<DocumentType, string> = {
 const DOC_TYPES = Object.entries(DOC_TYPE_LABELS) as [DocumentType, string][]
 
 // Display order for grouped sections
-const TYPE_ORDER: DocumentType[] = ['purchase_contract', 'rental_contract', 'insurance_policy', 'receipt', 'invoice', 'property_photos', 'other']
+const TYPE_ORDER: DocumentType[] = ['purchase_contract', 'rental_contract', 'mortgage_statement', 'loan_statement', 'insurance_policy', 'receipt', 'invoice', 'property_photos', 'other']
 
 const TYPE_TONE: Record<DocumentType, string> = {
   purchase_contract: 'blue', rental_contract: 'teal', insurance_policy: 'purple',
+  mortgage_statement: 'blue', loan_statement: 'teal',
   receipt: 'amber', invoice: 'amber', property_photos: 'blue', other: 'muted',
 }
 
@@ -189,6 +192,8 @@ function docIcon(type: DocumentType): React.ReactNode {
     case 'rental_contract': return <FileText size={24} weight="duotone" />
     case 'property_photos': return <ImageIcon size={24} weight="duotone" />
     case 'insurance_policy': return <ShieldCheck size={24} weight="duotone" />
+    case 'mortgage_statement':
+    case 'loan_statement': return <Bank size={24} weight="duotone" />
     case 'receipt':
     case 'invoice': return <Receipt size={24} weight="duotone" />
     default: return <File size={24} weight="duotone" />
