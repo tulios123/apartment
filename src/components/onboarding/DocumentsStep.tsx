@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, ArrowRight, SignOut } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, SignOut } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import { useAuth } from '../../contexts/AuthContext'
@@ -81,11 +81,9 @@ export function DocumentsStep() {
           busy={rentalAiBusy} err={rentalAiErr} doneText={rentalDone} onFiles={aiFillRental} />
       </div>
 
-      <div className="onboarding-actions" style={{ justifyContent: 'center' }}>
-        <button type="button" className="btn-onboard-primary" onClick={() => advance('purchase')}>
-          <ArrowRight size={16} /> {anyBusy ? 'המשך · נמשיך לקרוא ברקע' : 'המשך'}
-        </button>
-      </div>
+      <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => advance('purchase')}>
+        {anyBusy ? 'המשך · נמשיך לקרוא ברקע' : 'המשך'}
+      </button>
 
       {/* Sign-out — the documents step is the wizard entry point and has no "back",
           so this is the only way out to the login screen (e.g. wrong account). */}

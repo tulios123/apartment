@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bank, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
+import { Bank, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { TrackForm } from './TrackForm'
@@ -9,7 +9,7 @@ import { useOnboarding } from './context'
 
 export function MortgageStep() {
   const {
-    advance, back, keyDeliveryDate, setLoanForm,
+    advance, keyDeliveryDate, setLoanForm,
     mortgageAiBusy, mortgageDocRef, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     tracks, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
@@ -173,10 +173,7 @@ export function MortgageStep() {
         </div>
       )}
 
-      <div className="onboarding-actions">
-        <button type="submit" className="btn-onboard-primary"><ArrowRight size={16} /> הבא</button>
-        <button type="button" className="btn-onboard-skip" onClick={back}>חזור <ArrowLeft size={16} /></button>
-      </div>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
       <FinishEarly />
     </form>
   )

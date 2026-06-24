@@ -2,7 +2,7 @@ import type { TrackType, LoanRepaymentType } from '../../types'
 import { todayISO } from '../../lib/format'
 
 // ── Step types ────────────────────────────────────────────────────────────────
-export type Step = 'documents' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
+export type Step = 'welcome' | 'documents' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
 
 export const STEP_ORDER: Step[] = ['purchase', 'mortgage', 'loans', 'investment', 'rental', 'insurance']
 

@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Tag, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
+import { Tag } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { emptyTrack, formatPrice } from './types'
@@ -7,7 +7,7 @@ import { useOnboarding } from './context'
 
 export function PurchaseStep() {
   const {
-    advance, back, setTrackForm, keyDeliveryDate,
+    advance, setTrackForm, keyDeliveryDate,
     buyerName, setBuyerName, street, setStreet, city, setCity,
     rooms, setRooms, purchasePrice, setPurchasePrice,
     signingDate, setSigningDate, setKeyDeliveryDate,
@@ -103,10 +103,7 @@ export function PurchaseStep() {
             onChange={e => { const f = e.target.files?.[0]; if (f) setPurchaseFile(f) }} />
         </div>
       </div>
-      <div className="onboarding-actions">
-        <button type="submit" className="btn-onboard-primary"><ArrowRight size={16} /> הבא</button>
-        <button type="button" className="btn-onboard-skip" onClick={back}>חזור <ArrowLeft size={16} /></button>
-      </div>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
     </form>
   )
 }

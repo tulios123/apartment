@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { FileText, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
+import { FileText } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { FinishEarly } from './FinishEarly'
@@ -9,7 +9,7 @@ import { useOnboarding } from './context'
 
 export function RentalStep() {
   const {
-    advance, back,
+    advance,
     companyName, setCompanyName, startDate, setStartDate, endDate, setEndDate,
     monthlyRent, setMonthlyRent, rentPaymentMethod, setRentPaymentMethod,
     rentPaymentDay, setRentPaymentDay, addRentReminder, setAddRentReminder,
@@ -105,10 +105,7 @@ export function RentalStep() {
             onChange={e => { const f = e.target.files?.[0]; if (f) setRentalFile(f) }} />
         </div>
       </div>
-      <div className="onboarding-actions">
-        <button type="submit" className="btn-onboard-primary"><ArrowRight size={16} /> הבא</button>
-        <button type="button" className="btn-onboard-skip" onClick={back}>חזור <ArrowLeft size={16} /></button>
-      </div>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
       <FinishEarly />
     </form>
   )

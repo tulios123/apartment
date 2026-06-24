@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
-import { Coins, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
+import { Coins, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { FinishEarly } from './FinishEarly'
@@ -11,7 +11,7 @@ import { useOnboarding } from './context'
 
 export function InvestmentStep() {
   const {
-    advance, back, price,
+    advance, price,
     equityMode, setEquityMode, equityValue, setEquityValue,
     focusedInput, setFocusedInput, equityAmount, equityPercent,
     derivedEquityAmount, derivedEquityPct,
@@ -227,10 +227,7 @@ export function InvestmentStep() {
           </div>
         )}
       </div>
-      <div className="onboarding-actions">
-        <button type="submit" className="btn-onboard-primary"><ArrowRight size={16} /> הבא</button>
-        <button type="button" className="btn-onboard-skip" onClick={back}>חזור <ArrowLeft size={16} /></button>
-      </div>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
       <FinishEarly />
     </form>
   )

@@ -1,4 +1,4 @@
-import { ShieldCheck, ArrowLeft, Check, X } from '@phosphor-icons/react'
+import { ShieldCheck, Check, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { PolicyForm } from './PolicyForm'
@@ -7,7 +7,7 @@ import { useOnboarding } from './context'
 
 export function InsuranceStep() {
   const {
-    back, requestFinish, saving, pendingFinish, error,
+    requestFinish, saving, pendingFinish, error,
     policies, editingPolicyIdx, setEditingPolicyIdx, setPolicyForm,
     showPolicyForm, setShowPolicyForm,
     addPolicy, savePolicyEdit, savePolicyAndOpenNew, removePolicy,
@@ -95,12 +95,9 @@ export function InsuranceStep() {
       )}
 
       {error && <p className="onboarding-error" role="alert">{error}</p>}
-      <div className="onboarding-actions">
-        <button type="submit" className="btn-onboard-primary" disabled={saving || pendingFinish}>
-          {saving ? 'שומר...' : pendingFinish ? 'רגע, קוראים…' : <><Check size={14} weight="bold" /><span>סיום</span></> }
-        </button>
-        <button type="button" className="btn-onboard-skip" onClick={back}>חזור <ArrowLeft size={16} /></button>
-      </div>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full" disabled={saving || pendingFinish}>
+        {saving ? 'שומר...' : pendingFinish ? 'רגע, קוראים…' : <><Check size={14} weight="bold" /><span>סיום</span></> }
+      </button>
     </form>
   )
 }

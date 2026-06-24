@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { HandCoins, ArrowLeft, ArrowRight, X } from '@phosphor-icons/react'
+import { HandCoins, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { LoanForm } from './LoanForm'
@@ -9,7 +9,7 @@ import { useOnboarding } from './context'
 
 export function LoansStep() {
   const {
-    advance, back, keyDeliveryDate,
+    advance, keyDeliveryDate,
     loans, loanDraftRate, loanTypeLabel,
     editingLoanIdx, setEditingLoanIdx, setLoanForm, showLoanForm, setShowLoanForm,
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
@@ -148,10 +148,7 @@ export function LoansStep() {
         </div>
       )}
 
-      <div className="onboarding-actions">
-        <button type="submit" className="btn-onboard-primary"><ArrowRight size={16} /> הבא</button>
-        <button type="button" className="btn-onboard-skip" onClick={back}>חזור <ArrowLeft size={16} /></button>
-      </div>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
       <FinishEarly />
     </form>
   )

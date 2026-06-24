@@ -28,7 +28,7 @@ export function useOnboardingState(onComplete: () => void) {
   // "מלא דוגמה" buttons: shown in local dev and for the dev@test.local manager
   // account (so onboarding can be filled quickly when testing on the live app).
   const showFillExample = import.meta.env.DEV || user?.email === 'dev@test.local'
-  const [step, setStep] = useState<Step>('documents')
+  const [step, setStep] = useState<Step>('welcome')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Set when the user asks to finish while a background AI extraction is still
@@ -136,6 +136,7 @@ export function useOnboardingState(onComplete: () => void) {
 
   function back() {
     dismissKeyboardAndScrollTop()
+    if (step === 'documents') { setStep('welcome'); return }
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
     else setStep('documents')
