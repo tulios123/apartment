@@ -1,4 +1,4 @@
-import { CaretLeft } from '@phosphor-icons/react'
+import { CaretRight } from '@phosphor-icons/react'
 import { OnboardingContext } from '../components/onboarding/context'
 import { useOnboardingState } from '../components/onboarding/useOnboardingState'
 import { WelcomeStep } from '../components/onboarding/WelcomeStep'
@@ -28,7 +28,7 @@ export default function Onboarding({ onComplete }: Props) {
         <div className="onboarding-card">
           {showBack && (
             <button type="button" className="onboarding-back-chevron" onClick={back} aria-label="חזור">
-              <CaretLeft size={22} weight="bold" />
+              <CaretRight size={22} weight="bold" />
             </button>
           )}
           {/* key={step} remounts on each step change, re-triggering the slide/fade. */}

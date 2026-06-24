@@ -1950,11 +1950,11 @@ input[type="date"] {
   padding: 44px 40px 36px;
 }
 
-/* Back affordance — top-left chevron (owner preference: back = left, forward = right). */
+/* Back affordance — top-right chevron (native RTL: back goes toward the start = right). */
 .onboarding-back-chevron {
   position: absolute;
   top: 14px;
-  inset-inline-end: 14px;
+  inset-inline-start: 14px;
   width: 36px;
   height: 36px;
   display: flex;
