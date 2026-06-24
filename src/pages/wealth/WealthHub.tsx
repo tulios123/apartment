@@ -13,6 +13,8 @@ import { currentSplit, futureSplit, principalNext12Months } from '../../lib/equi
 import { formatCurrency } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './wealth.css'
 
 const fmt = (v: number) => formatCurrency(v)
@@ -63,7 +65,13 @@ export default function WealthHub() {
       </div>
 
       {statsLoading ? <SkeletonList rows={3} /> : !hasData ? (
-        <div className="wlth-empty">עדיין לא הוגדרו נכס, משכנתא או הלוואות. הוסף בעזרת כפתור העריכה.</div>
+        <EmptyState
+          icon={<ClayIllustration variant="bank" />}
+          title="עדיין לא הוגדרו נכס, משכנתא או הלוואות"
+          hint="הוסיפו פרטי מימון ועלויות כדי לראות את ההון העצמי שלכם"
+          actionLabel="ערוך מימון ועלויות"
+          onAction={() => setEditing(true)}
+        />
       ) : (
         <>
           {propertyValue > 0 && (

@@ -16,7 +16,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import type { Transaction, Contract, MortgageTrack, Loan } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
-import { PageError } from '../../components/ui/EmptyState'
+import { PageError, EmptyState } from '../../components/ui/EmptyState'
+import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './finances-v2.css'
 
 const MONTH_NAMES = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
@@ -500,14 +501,14 @@ export default function FinancesV2() {
           {loading ? (
             <SkeletonList rows={5} />
           ) : transactions.length === 0 && shownVirtual.length === 0 ? (
-            <div className="finv-empty"><p style={{ color: 'var(--text-muted)' }}>אין תנועות בחודש זה</p></div>
+            <EmptyState icon={<ClayIllustration variant="receipt" />} title="אין תנועות בחודש זה" />
           ) : (
             <>
               {shownVirtual.map(e => (
                 <div key={e.id} className="finv-tx projected">
                   <span className="finv-cat-icon" style={{ background: colorFor(e.category) }}>{e.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
                   <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{e.category}</span><span className="finv-tx-tag">תחזית</span></div><span className="finv-tx-meta">{formatDate(e.date)}{e.description ? ` · ${e.description}` : ''}</span></div>
-                  <div className="finv-tx-side"><span className={`finv-tx-amount ${e.direction}`}>{e.direction === 'income' ? '+' : '−'}{fmt(e.amount)}</span></div>
+                  <div className="finv-tx-side"><span className={`finv-tx-amount ${e.direction}`}>{formatSignedCurrency(e.direction === 'income' ? e.amount : -e.amount)}</span></div>
                 </div>
               ))}
               {transactions.map(t => {
@@ -518,7 +519,7 @@ export default function FinancesV2() {
                       <span className="finv-cat-icon" style={{ background: colorFor(t.category) || 'var(--text-muted)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
                       <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span></div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
                       <div className="finv-tx-side">
-                        <span className={`finv-tx-amount ${t.direction}`}>{t.direction === 'income' ? '+' : '−'}{fmt(Number(t.amount))}</span>
+                        <span className={`finv-tx-amount ${t.direction}`}>{formatSignedCurrency(t.direction === 'income' ? Number(t.amount) : -Number(t.amount))}</span>
                         <div className="finv-tx-actions">
                           {t.document_id && <button className="finv-icon-btn" aria-label="קבלה" onClick={() => openReceipt(t)}><Receipt size={15} /></button>}
                           <button className="finv-icon-btn" aria-label="עריכה" onClick={() => openEdit(t)}><PencilSimple size={15} /></button>
@@ -532,8 +533,6 @@ export default function FinancesV2() {
           )}
         </>
       )}
-
-      <button className="finv-fab" onClick={openNew} aria-label="הוסף תנועה"><Plus size={26} weight="bold" /></button>
 
       <div className={`finv-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside className={`finv-drawer ${drawerOpen ? 'open' : ''}`}

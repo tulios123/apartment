@@ -29,6 +29,10 @@
      selects, scrollbars, autofill) render light too — otherwise an OS dark-mode
      user sees dark-tinted native widgets clashing with the light UI. */
   color-scheme:light;
+  /* Tabular (monospaced) figures everywhere — a finance app is number-dense, and
+     equal-width digits keep amounts aligned in lists/tables and stop them jittering
+     when a value changes. Affects digits only; Hebrew text is untouched. */
+  font-variant-numeric:tabular-nums;
   -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
   /* Kill the rubber-band overscroll bounce that exposes the black area behind the
      document in standalone PWA mode (and in Safari). */

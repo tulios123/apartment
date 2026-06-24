@@ -409,7 +409,7 @@ export default function HomeScreen() {
                       <Coins size={15} weight="duotone" /> תשלומים קבועים
                       <span className="hs-chip auto">אוטומטי · הוצאה</span>
                     </span>
-                    <span className="hs-flow-amt muted out">−{fmt(fixedExpenses)}</span>
+                    <span className="hs-flow-amt muted out">{formatSignedCurrency(-fixedExpenses)}</span>
                   </div>
                 </div>
 
@@ -442,14 +442,14 @@ export default function HomeScreen() {
                         הוצאות נוספות החודש
                         <CaretDown className={`hs-flow-caret${extraOpen ? ' open' : ''}`} size={13} weight="bold" />
                       </span>
-                      <span className="hs-flow-amt muted out">−{fmt(extraExpenses)}</span>
+                      <span className="hs-flow-amt muted out">{formatSignedCurrency(-extraExpenses)}</span>
                     </button>
                     {extraOpen && (
                       <div className="hs-flow-sublist">
                         {extraTxs.map(t => (
                           <div key={t.id} className="hs-flow-subrow">
                             <span className="hs-flow-subcat">{t.category}{t.description ? ` · ${t.description}` : ''}</span>
-                            <span className="hs-flow-subamt">−{fmt(t.amount)}</span>
+                            <span className="hs-flow-subamt">{formatSignedCurrency(-t.amount)}</span>
                           </div>
                         ))}
                       </div>

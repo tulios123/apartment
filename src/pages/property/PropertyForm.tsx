@@ -88,17 +88,17 @@ export function PropertyForm({
         </div>
         <div className="form-row">
           <label>עיר</label>
-          <input type="text" value={city} onChange={e => setCity(e.target.value)} required placeholder="עיר" />
+          <input type="text" value={city} onChange={e => setCity(e.target.value)} required />
         </div>
       </div>
       <div className="form-2col">
         <div className="form-row">
           <label>גוש</label>
-          <input type="text" value={block} onChange={e => setBlock(e.target.value)} placeholder="גוש" />
+          <input type="text" value={block} onChange={e => setBlock(e.target.value)} inputMode="numeric" />
         </div>
         <div className="form-row">
           <label>חלקה</label>
-          <input type="text" value={parcel} onChange={e => setParcel(e.target.value)} placeholder="חלקה" />
+          <input type="text" value={parcel} onChange={e => setParcel(e.target.value)} inputMode="numeric" />
         </div>
       </div>
       <div className="form-3col">
