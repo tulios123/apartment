@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, ArrowLeft, Sun, CloudSun, MoonStars,
-  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, GearSix, CaretDown,
+  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, GearSix, CaretDown, CaretLeft,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
@@ -369,19 +369,31 @@ export default function HomeScreen() {
                   </span>
                 </div>
 
-                {/* Rent — actual progress, calm green only when cleared */}
-                <div className="hs-flow-line">
-                  <div className="hs-flow-line-top">
-                    <span className="hs-flow-name">
-                      שכר דירה
-                      {rentCleared && <span className="hs-chip ok"><Check size={11} weight="bold" /> התקבל</span>}
-                    </span>
-                    <span className="hs-flow-amt income">
-                      {fmt(rentReceived)}<span className="hs-flow-of"> / {fmt(monthlyRent)}</span>
-                    </span>
+                {/* Rent — actual progress when leased; an invitation to add a
+                    lease when not (no tenant = no income, the thing to fix). */}
+                {activeContract ? (
+                  <div className="hs-flow-line">
+                    <div className="hs-flow-line-top">
+                      <span className="hs-flow-name">
+                        שכר דירה
+                        {rentCleared && <span className="hs-chip ok"><Check size={11} weight="bold" /> התקבל</span>}
+                      </span>
+                      <span className="hs-flow-amt income">
+                        {fmt(rentReceived)}<span className="hs-flow-of"> / {fmt(monthlyRent)}</span>
+                      </span>
+                    </div>
+                    <div className="hs-track"><div className={`hs-track-fill${rentCleared ? ' ok' : ''}`} style={{ width: `${rentPct}%` }} /></div>
                   </div>
-                  <div className="hs-track"><div className={`hs-track-fill${rentCleared ? ' ok' : ''}`} style={{ width: `${rentPct}%` }} /></div>
-                </div>
+                ) : (
+                  <button type="button" className="hs-addlease" onClick={() => navigate('/property/rental')}>
+                    <span className="hs-addlease-icon"><HandCoins size={20} weight="duotone" /></span>
+                    <span className="hs-addlease-text">
+                      <span className="hs-addlease-title">אין חוזה שכירות פעיל</span>
+                      <span className="hs-addlease-sub">הוסיפו שוכר כדי לעקוב אחרי ההכנסה החודשית</span>
+                    </span>
+                    <span className="hs-addlease-cta">הוסף חוזה <CaretLeft size={13} weight="bold" /></span>
+                  </button>
+                )}
 
                 {/* Fixed expenses — neutral, tagged automatic, never red */}
                 <div className="hs-flow-line">
@@ -439,7 +451,9 @@ export default function HomeScreen() {
                 )}
 
                 <p className="hs-flow-note">
-                  {rentCleared
+                  {!activeContract
+                    ? 'הצפי כולל רק את ההוצאות הקבועות. הוסיפו חוזה שכירות כדי לראות גם את ההכנסה.'
+                    : rentCleared
                     ? 'שכר הדירה נכנס. התשלומים הקבועים יורדים אוטומטית — אין צורך לעשות דבר.'
                     : 'הסכום מבוסס על הצפי החודשי. הוא יתעדכן כששכר הדירה ייכנס בפועל.'}
                 </p>

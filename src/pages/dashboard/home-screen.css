@@ -103,6 +103,15 @@
   .hs-track-fill { height: 100%; border-radius: var(--r-pill); background: var(--border-strong); transition: width 0.6s var(--ease); }
   .hs-track-fill.ok { background: var(--success); }
 
+  /* No active lease — a calm invitation to add a contract (no tenant = no income) */
+  .hs-addlease { width: 100%; display: flex; align-items: center; gap: 11px; padding: 11px 12px; margin: 6px 0 2px; background: var(--accent-soft, rgba(10, 31, 68, .05)); border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; font-family: inherit; text-align: start; transition: background var(--t-base) var(--ease); }
+  .hs-addlease:active { background: var(--accent-soft-hover, rgba(10, 31, 68, .09)); }
+  .hs-addlease-icon { flex-shrink: 0; width: 34px; height: 34px; border-radius: var(--r-sm); background: var(--bg-card); display: inline-flex; align-items: center; justify-content: center; color: var(--accent); }
+  .hs-addlease-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+  .hs-addlease-title { font-size: 13.5px; font-weight: 700; color: var(--text); }
+  .hs-addlease-sub { font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
+  .hs-addlease-cta { flex-shrink: 0; display: inline-flex; align-items: center; gap: 2px; font-size: 12.5px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+
   /* Expandable extra-expenses */
   .hs-flow-expand { width: 100%; background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; }
   .hs-flow-caret { color: var(--text-muted); transition: transform var(--t-base) var(--ease); margin-inline-start: 4px; }
