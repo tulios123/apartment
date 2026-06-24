@@ -2494,7 +2494,12 @@ input[type="date"] {
      app screens — Onboarding/Login leave it off and keep their normal body scroll.
      100svh (the *small*, stable viewport) is used everywhere: unlike 100dvh it does
      NOT grow when the toolbars hide, so the shell never exceeds the visible area. */
-  body.app-locked {
+  /* Login is a short, non-scrolling centred card that renders outside .app-layout,
+     so it doesn't get Layout's lock — yet it suffers the same iOS toolbar jump on
+     drag. Lock it too (it never needs to scroll). Onboarding stays unlocked: its
+     long forms genuinely need to scroll. */
+  body.app-locked,
+  body.login-locked {
     position: fixed;
     inset: 0;
     width: 100%;

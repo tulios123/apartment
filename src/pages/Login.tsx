@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { House } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -11,6 +11,13 @@ export default function Login() {
   const [showManager, setShowManager] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+
+  // Lock the body like the app shell so iOS Safari doesn't pop its top/bottom
+  // toolbars on drag. Login never needs to scroll. Released on unmount (→ app/onboarding).
+  useEffect(() => {
+    document.body.classList.add('login-locked')
+    return () => document.body.classList.remove('login-locked')
+  }, [])
 
   const handleSignIn = async () => {
     setBusy(true)
