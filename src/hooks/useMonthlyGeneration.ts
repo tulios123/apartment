@@ -43,6 +43,10 @@ async function runGeneration() {
   const month = now.getMonth() + 1
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
   const monthEnd = monthEndISO(year, month)
+  // Clamp a recurring item's day_of_month to the month's length, so e.g. a "31st"
+  // item in February yields the 28th — not the invalid "2026-02-31", which would
+  // reject the whole batch insert and silently skip ALL generation that month.
+  const lastDayOfMonth = Number(monthEnd.slice(8, 10))
 
   const { data: items } = await supabase
     .from('recurring_items')
@@ -78,7 +82,8 @@ async function runGeneration() {
   const newTasks: object[] = []
 
   for (const item of items) {
-    const txDate = `${year}-${String(month).padStart(2, '0')}-${String(item.day_of_month).padStart(2, '0')}`
+    const day = Math.min(item.day_of_month, lastDayOfMonth)
+    const txDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
     if (item.execution_type === 'automatic') {
       if (!generatedIds.has(item.id)) {

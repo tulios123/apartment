@@ -41,7 +41,7 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 | 9  | Wealth (הון) | — | — | — | not started |
 | 10 | Property Admin | — | — | — | not started |
 | 11 | Settings | — | — | — | not started |
-| 12 | Recurring / monthly generation / reminders | — | — | — | not started |
+| 12 | Recurring / monthly generation / reminders | — | code-read | **1 bug (#9 🔴) fixed** + 1 🟡 logged | core generation audited; renewal-dup left for owner |
 | 13 | Cross-cutting UI (states/RTL/responsive/dark/format) | — | — | — | not started |
 | 14 | PWA (manifest/SW/push/offline/install) | — | — | — | not started |
 | 15 | Code quality / error handling / edge cases | — | — | — | not started |
@@ -364,6 +364,12 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 
 ## Findings log
 *(Bugs found while executing, with severity + fix commit. Newest first.)*
+
+### BUG #9 🔴 — monthly generation built invalid dates for end-of-month recurring items — FIXED
+`useMonthlyGeneration` built `txDate = year-month-day_of_month` with no clamp. A recurring item with `day_of_month` 29/30/31 produces an **invalid date** in a shorter month (e.g. `"2026-02-31"`), which rejects the whole batch `transactions.insert` (and the tasks insert) → **ALL automatic transactions + approval tasks for that month silently fail to generate**, and (catch block) it retries forever without setting the month key. Reachable for anyone whose rent/mortgage/loan day is past the 28th. Fixed: clamp `day = min(day_of_month, lastDayOfMonth)` via the already-tested `monthEndISO`. Verified by reasoning + build (the hook is Supabase-coupled; the clamp rests on tested `monthEndISO`).
+
+### 🟡 OBSERVED (not auto-fixed) — renewal alert can re-create across months
+The "skip if existing renewal task" guard filters `due_date >= today`; since each renewal task is created with `due_date = today`, a contract still in its renewal window the following month gets a *new* renewal task while the old one stays open → duplicates accumulate monthly. Defensible as "re-remind", but the guard probably should match any OPEN renewal task for the property regardless of due_date. Owner decision. (`useMonthlyGeneration.ts:141`)
 
 ### BUG #8 🟠 — `activeContract` skewed the lease active/inactive at the day boundary — FIXED
 `projections.ts activeContract` compared `new Date(c.start_date)` (UTC midnight) against a LOCAL `asOf` instant. On a contract's exact start/end date, the lease read inactive for part of the day in Israel (e.g. expired ~04:00 on its last valid day). Drives the Home rent action and Wealth monthly rent. Test (boundary at 00:30 start / 10:00 end) caught it; fixed to inclusive LOCAL date-string comparison.
