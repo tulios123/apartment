@@ -18,7 +18,7 @@ import {
   emptyTrack, emptyPolicy, emptyLoan,
   defaultLawyerCost, defaultBrokerageCost, defaultSelfEquityPct,
 } from './types'
-import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost } from './types'
+import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } from './types'
 
 // The wizard's entire brain: all state, derived values and mutations. Steps and
 // form components read this through OnboardingContext, so the shared type stays
@@ -99,8 +99,9 @@ export function useOnboardingState(onComplete: () => void) {
   const [loans, setLoans] = useState<LoanDraft[]>([])
   // Balloon loan (interest-free, repaid only on sale — e.g. from family). Entered
   // in the investment/equity step since it offsets self-equity, not a monthly debt.
-  const [balloonAmount, setBalloonAmount] = useState('')
-  const [balloonLender, setBalloonLender] = useState('')
+  // Balloon loans: a list so several family lenders (50 from mom, 50 from dad…) can
+  // be captured separately, each interest-free and repaid on sale.
+  const [balloonLoans, setBalloonLoans] = useState<BalloonRow[]>([])
   const [loanForm, setLoanForm] = useState<LoanDraft>(emptyLoan())
   const [loanGraceOn, setLoanGraceOn] = useState(false)
   const [showLoanForm, setShowLoanForm] = useState(true)
@@ -143,7 +144,8 @@ export function useOnboardingState(onComplete: () => void) {
   // mortgage + loans already entered, rather than guessing a flat percentage.
   const totalMortgagePrincipal = tracks.reduce((s, t) => s + (parseFloat(t.principal) || 0), 0)
   const totalLoanPrincipal = loans.reduce((s, l) => s + (parseFloat(l.principal) || 0), 0)
-  const derivedEquityAmount = Math.max(0, price - totalMortgagePrincipal - totalLoanPrincipal - (parseFloat(balloonAmount) || 0))
+  const balloonTotal = balloonLoans.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0)
+  const derivedEquityAmount = Math.max(0, price - totalMortgagePrincipal - totalLoanPrincipal - balloonTotal)
   // effective = user value if typed, else the derived default (grey placeholder)
   const effEquity = equityValue || (equityMode === 'percent'
     ? defaultSelfEquityPct()
@@ -457,13 +459,14 @@ export function useOnboardingState(onComplete: () => void) {
                 })
               })
 
-            const balloonVal = parseFloat(balloonAmount) || 0
-            if (balloonVal > 0) {
+            for (const b of balloonLoans) {
+              const balloonVal = parseFloat(b.amount) || 0
+              if (balloonVal <= 0) continue
               loanWrites.push(upsertLoan({
                 owner_id: user.id,
                 property_id: property.id,
-                label: balloonLender.trim() || 'הלוואת בלון',
-                lender: balloonLender.trim() || null,
+                label: b.lender.trim() || 'הלוואת בלון',
+                lender: b.lender.trim() || null,
                 repayment_type: 'balloon',
                 track_type: null,
                 principal: balloonVal,
@@ -939,7 +942,7 @@ export function useOnboardingState(onComplete: () => void) {
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal,
     costs, setCosts, extraCosts, setExtraCosts,
-    balloonAmount, setBalloonAmount, balloonLender, setBalloonLender,
+    balloonLoans, setBalloonLoans, balloonTotal,
     // focused input
     focusedInput, setFocusedInput,
     // rental

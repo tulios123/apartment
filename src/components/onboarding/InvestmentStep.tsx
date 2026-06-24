@@ -14,7 +14,7 @@ export function InvestmentStep() {
     advance, back, price,
     equityMode, setEquityMode, equityValue, setEquityValue,
     focusedInput, setFocusedInput, equityAmount, equityPercent,
-    balloonAmount, setBalloonAmount, balloonLender, setBalloonLender,
+    balloonLoans, setBalloonLoans, balloonTotal,
     costs, setCosts, extraCosts, setExtraCosts, costsTotal,
     fillTestInvestment,
   } = useOnboarding()
@@ -84,20 +84,34 @@ export function InvestmentStep() {
           )}
         </div>
 
-        {/* Balloon loan — interest-free, repaid only on sale; offsets equity */}
-        <div className="onboarding-row">
-          <div className="onboarding-field">
-            <label>הלוואת בלון <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>· ללא ריבית, נפרעת במכירה</span></label>
-            <input type="text" inputMode="numeric" placeholder="0"
-              value={formatNum(balloonAmount)}
-              onChange={e => setBalloonAmount(e.target.value.replace(/[^\d]/g, ''))} />
-          </div>
-          <div className="onboarding-field">
-            <label>ממי (אופציונלי)</label>
-            <input type="text" placeholder="למשל: הורים"
-              value={balloonLender}
-              onChange={e => setBalloonLender(e.target.value)} />
-          </div>
+        {/* Balloon loans — interest-free, repaid only on sale; offset equity. A list so
+            several family lenders (50 from mom, 50 from dad…) can be captured separately. */}
+        <div className="onboarding-field">
+          <label>הלוואות בלון <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>· ללא ריבית, נפרעות במכירה</span></label>
+          {balloonLoans.map((b, i) => (
+            <div className="onboarding-row" key={i} style={{ marginBottom: 8 }}>
+              <div className="onboarding-field">
+                <input type="text" inputMode="numeric" placeholder="סכום"
+                  value={formatNum(b.amount)}
+                  onChange={e => setBalloonLoans(prev => prev.map((r, j) => j === i ? { ...r, amount: e.target.value.replace(/[^\d]/g, '') } : r))} />
+              </div>
+              <div className="onboarding-field">
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input type="text" placeholder="ממי (למשל: אמא)"
+                    value={b.lender}
+                    onChange={e => setBalloonLoans(prev => prev.map((r, j) => j === i ? { ...r, lender: e.target.value } : r))} />
+                  <button type="button" onClick={() => setBalloonLoans(prev => prev.filter((_, j) => j !== i))}
+                    style={{ flexShrink: 0, padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', cursor: 'pointer' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          <button type="button" className="btn-onboard-skip onboarding-add-btn"
+            onClick={() => setBalloonLoans(prev => [...prev, { amount: '', lender: '' }])}>
+            + הוסף הלוואת בלון
+          </button>
         </div>
 
         <p className="onboarding-subhead">עלויות רכישה ונלוות</p>
@@ -178,7 +192,14 @@ export function InvestmentStep() {
 
         {(equityAmount + costsTotal) > 0 && (
           <div className="onboarding-running-total">
-            סה״כ הושקע: <strong>{formatCurrency(equityAmount + costsTotal)}</strong>
+            {balloonTotal > 0 ? (
+              <>
+                <div>ההון שלך (בלי בלון): <strong>{formatCurrency(equityAmount + costsTotal)}</strong></div>
+                <div style={{ marginTop: 2 }}>סך כולל הלוואות בלון: <strong>{formatCurrency(equityAmount + costsTotal + balloonTotal)}</strong></div>
+              </>
+            ) : (
+              <>סה״כ הושקע: <strong>{formatCurrency(equityAmount + costsTotal)}</strong></>
+            )}
           </div>
         )}
       </div>

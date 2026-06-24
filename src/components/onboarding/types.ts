@@ -42,6 +42,9 @@ export type LoanDraft = {
 
 export type ExtraCost = { name: string; amount: string }
 
+// A single balloon loan (interest-free, repaid on sale) — e.g. 50k from each parent.
+export type BalloonRow = { amount: string; lender: string }
+
 export function emptyTrack(startDate?: string): TrackDraft {
   return {
     track_type: 'fixed_unlinked',
