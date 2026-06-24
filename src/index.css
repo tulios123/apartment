@@ -1950,11 +1950,11 @@ input[type="date"] {
   padding: 44px 40px 36px;
 }
 
-/* Back affordance — top-right chevron (native RTL: back goes toward the start = right). */
+/* Back affordance — top-left chevron (owner preference: back = left, forward = right). */
 .onboarding-back-chevron {
   position: absolute;
   top: 14px;
-  inset-inline-start: 14px;
+  inset-inline-end: 14px;
   width: 36px;
   height: 36px;
   display: flex;
@@ -1986,7 +1986,7 @@ input[type="date"] {
 .onboarding-welcome {
   display: flex;
   flex-direction: column;
-  min-height: calc(100svh - 210px);
+  min-height: calc(100svh - 250px);
 }
 .onboarding-welcome-top { text-align: center; padding-top: 6px; }
 .onboarding-welcome-mark {
@@ -2019,16 +2019,16 @@ input[type="date"] {
 .onboarding-welcome-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 30px;
 }
 .onboarding-welcome-row {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 14px;
 }
 .onboarding-welcome-icon {
-  width: 36px;
-  height: 36px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -2038,16 +2038,16 @@ input[type="date"] {
   flex-shrink: 0;
 }
 .onboarding-welcome-label {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
 }
 .onboarding-welcome-rowsub {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-muted);
-  margin-top: 1px;
+  margin-top: 2px;
 }
-.onboarding-welcome-spacer { flex: 1; min-height: 24px; }
+.onboarding-welcome-spacer { flex: 1; min-height: 10px; }
 
 /* Step dots */
 .onboarding-dots {

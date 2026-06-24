@@ -26,7 +26,7 @@ export function WelcomeStep() {
       <div className="onboarding-welcome-list">
         {ITEMS.map(({ Icon, label, sub }) => (
           <div className="onboarding-welcome-row" key={label}>
-            <div className="onboarding-welcome-icon"><Icon size={18} color="var(--accent)" /></div>
+            <div className="onboarding-welcome-icon"><Icon size={22} color="var(--accent)" /></div>
             <div>
               <div className="onboarding-welcome-label">{label}</div>
               <div className="onboarding-welcome-rowsub">{sub}</div>
