@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, ArrowLeft } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, ArrowLeft } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 
@@ -36,6 +36,7 @@ export function DocumentsStep() {
     advance,
     aiFillPurchase, purchaseAiBusy, purchaseAiErr, street, city, price, purchasePrice,
     aiFillMortgage, mortgageAiBusy, mortgageAiErr, tracks,
+    aiFillLoans, loanAiBusy, loanAiErr, loans,
     aiFillRental, rentalAiBusy, rentalAiErr, companyName, monthlyRent,
   } = useOnboarding()
 
@@ -43,11 +44,12 @@ export function DocumentsStep() {
     ? `${[street, city].filter(Boolean).join(', ') || 'נכס'}${price > 0 ? ` · ${formatCurrency(price)}` : ''}`
     : ''
   const mortgageDone = tracks.length ? `${tracks.length} מסלולים זוהו` : ''
+  const loansDone = loans.length ? (loans.length === 1 ? 'הלוואה זוהתה' : `${loans.length} הלוואות זוהו`) : ''
   const rentalDone = (companyName || monthlyRent)
     ? `${companyName || 'שוכר'}${monthlyRent ? ` · ₪${formatNum(monthlyRent)}` : ''}`
     : ''
 
-  const anyBusy = purchaseAiBusy || mortgageAiBusy || rentalAiBusy
+  const anyBusy = purchaseAiBusy || mortgageAiBusy || loanAiBusy || rentalAiBusy
 
   return (
     <div>
@@ -67,6 +69,10 @@ export function DocumentsStep() {
           icon={<Bank size={26} weight="duotone" color="var(--accent)" />}
           title="אישור משכנתא" hint="קובץ או צילומי מסך מהבנק"
           busy={mortgageAiBusy} err={mortgageAiErr} doneText={mortgageDone} onFiles={aiFillMortgage} />
+        <DocCard
+          icon={<HandCoins size={26} weight="duotone" color="var(--accent)" />}
+          title="הלוואה" hint="מסמך או צילום מסך"
+          busy={loanAiBusy} err={loanAiErr} doneText={loansDone} onFiles={aiFillLoans} />
         <DocCard
           icon={<FileText size={26} weight="duotone" color="var(--accent)" />}
           title="חוזה שכירות" hint="קובץ או צילומי מסך"
