@@ -52,7 +52,11 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   // ── Purchase fields ──
-  const [purchaseFile, setPurchaseFile] = useState<File | null>(null)
+  // Files are tracked as a list (so the documents step can show/add/remove them);
+  // purchaseFile/setPurchaseFile stay as a single-file view for the later detail step.
+  const [purchaseDocFiles, setPurchaseDocFiles] = useState<File[]>([])
+  const purchaseFile = purchaseDocFiles[0] ?? null
+  const setPurchaseFile = (f: File | null) => setPurchaseDocFiles(f ? [f] : [])
   const [buyerName, setBuyerName] = useState('')
   const [street, setStreet] = useState('')
   const [city, setCity] = useState('')
@@ -80,7 +84,9 @@ export function useOnboardingState(onComplete: () => void) {
   const [focusedInput, setFocusedInput] = useState<string | null>(null)
 
   // ── Rental fields ──
-  const [rentalFile, setRentalFile] = useState<File | null>(null)
+  const [rentalDocFiles, setRentalDocFiles] = useState<File[]>([])
+  const rentalFile = rentalDocFiles[0] ?? null
+  const setRentalFile = (f: File | null) => setRentalDocFiles(f ? [f] : [])
   const [companyName, setCompanyName] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -228,9 +234,9 @@ export function useOnboardingState(onComplete: () => void) {
     setMortgageAiBusy(true)
     setMortgageAiErr(null)
     setMortgageAiDone(false)
-    // Keep the uploaded file(s) so they're saved as documents on finish. Re-uploading
-    // replaces the tracks, so replace the stored files too (mirror that behaviour).
-    setMortgageDocFiles(fileList)
+    // Append the uploaded file(s) to the list (the documents step shows/manages them);
+    // they're saved as documents on finish. A fresh extraction still replaces the tracks.
+    setMortgageDocFiles(prev => [...prev, ...fileList])
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       // Version the key so improving the extraction (model/prompt) invalidates stale cached
@@ -354,7 +360,7 @@ export function useOnboardingState(onComplete: () => void) {
 
   // ── AI fill: purchase contract → property fields ─────────────────────────────
   async function aiFillPurchase(fileList: File[]) {
-    setPurchaseFile(fileList[0])
+    setPurchaseDocFiles(prev => [...prev, ...fileList])
     setPurchaseAiBusy(true)
     setPurchaseAiErr(null)
     setPurchaseAiDone(false)
@@ -403,7 +409,7 @@ export function useOnboardingState(onComplete: () => void) {
 
   // ── AI fill: rental agreement → rental fields ────────────────────────────────
   async function aiFillRental(fileList: File[]) {
-    setRentalFile(fileList[0])
+    setRentalDocFiles(prev => [...prev, ...fileList])
     setRentalAiBusy(true)
     setRentalAiErr(null)
     setRentalAiDone(false)
@@ -439,6 +445,16 @@ export function useOnboardingState(onComplete: () => void) {
     }
   }
 
+  // Remove one already-picked file from a category's list (documents step manage view).
+  // Only drops the file from what gets saved; any data already auto-filled is kept.
+  function removeDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental', index: number) {
+    const setters = {
+      purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
+      loan: setLoanDocFiles, rental: setRentalDocFiles,
+    } as const
+    setters[category](prev => prev.filter((_, i) => i !== index))
+  }
+
   // Background upload of the supplementary document files (purchase / mortgage / loan /
   // rental). Called WITHOUT await from handleFinish so "done" shows immediately; each
   // upload is independent and non-critical, so failures are swallowed (re-uploadable
@@ -456,10 +472,10 @@ export function useOnboardingState(onComplete: () => void) {
       } catch { /* non-critical — re-uploadable from Documents */ }
     }
     const jobs: Promise<void>[] = []
-    if (purchaseFile) jobs.push(put(purchaseFile, 'purchase_contract', signingDate || null, null))
+    for (const f of purchaseDocFiles) jobs.push(put(f, 'purchase_contract', signingDate || null, null))
     for (const f of mortgageDocFiles) jobs.push(put(f, 'mortgage_statement', null, null))
     for (const f of loanDocFiles) jobs.push(put(f, 'loan_statement', null, null))
-    if (rentalFile) jobs.push(put(rentalFile, 'rental_contract', startDate || null, contractId))
+    for (const f of rentalDocFiles) jobs.push(put(f, 'rental_contract', startDate || null, contractId))
     await Promise.all(jobs)
   }
 
@@ -1049,6 +1065,8 @@ export function useOnboardingState(onComplete: () => void) {
     // AI purchase + rental fill
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
+    // Uploaded document files per category + remove (documents step manage view)
+    purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,

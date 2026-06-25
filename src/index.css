@@ -2497,6 +2497,45 @@ input[type="date"] {
 }
 @keyframes onboarding-spin { to { transform: rotate(360deg); } }
 
+/* Expandable file-manage panel: once a topic has files, the card toggles this list
+   so the user can review each file, remove it, or add more. */
+.onboarding-doc-caret { transition: transform .18s var(--ease, ease); }
+.onboarding-doc-caret.is-open { transform: rotate(180deg); }
+.onboarding-doc-card.has-files.is-empty { border-style: solid; }
+.onboarding-doc-files {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--bg-alt);
+  border-radius: var(--r-md, 14px);
+  animation: onboarding-doc-files-in .18s var(--ease, ease) both;
+}
+@keyframes onboarding-doc-files-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.onboarding-doc-file {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 10px);
+  padding: 8px 10px;
+}
+.onboarding-doc-file > svg { color: var(--text-muted); flex-shrink: 0; }
+.onboarding-doc-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.onboarding-doc-file-del {
+  flex-shrink: 0; width: 30px; height: 30px; display: grid; place-items: center;
+  border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 50%;
+  transition: color var(--t-fast, .15s) var(--ease, ease), background var(--t-fast, .15s) var(--ease, ease);
+}
+.onboarding-doc-file-del:hover { color: var(--danger); background: var(--danger-soft, rgba(224, 83, 61, .08)); }
+.onboarding-doc-file-add {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  border: 1px dashed var(--border-strong, var(--border)); background: transparent;
+  color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600;
+  padding: 7px 12px; border-radius: var(--r-pill); cursor: pointer; margin-top: 2px;
+  transition: border-color var(--t-fast, .15s) var(--ease, ease), background var(--t-fast, .15s) var(--ease, ease);
+}
+.onboarding-doc-file-add:hover { border-color: var(--accent); background: var(--accent-soft, rgba(10, 31, 68, .06)); }
+
 .onboarding-error {
   color: var(--danger);
   font-size: 13px;
