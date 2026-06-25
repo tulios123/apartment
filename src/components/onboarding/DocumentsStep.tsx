@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, SignOut } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, SignOut, UploadSimple, CheckCircle } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import { useAuth } from '../../contexts/AuthContext'
@@ -20,11 +20,13 @@ function DocCard({ icon, title, hint, busy, err, doneText, onFiles }: {
       <div className="onboarding-doc-card-body">
         <div className="onboarding-doc-card-title">{title}</div>
         <div className="onboarding-doc-card-status">
-          {busy ? 'קורא את המסמך…' : err ? 'לא נקרא — אפשר למלא ידנית' : doneText ? `✓ ${doneText}` : hint}
+          {busy ? 'קורא את המסמך…' : err ? 'לא נקרא — אפשר למלא ידנית' : doneText ? doneText : hint}
         </div>
       </div>
       <span className="onboarding-doc-card-mark" aria-hidden>
-        {busy ? <span className="onboarding-doc-spinner" /> : state === 'done' ? '✓' : '+'}
+        {busy ? <span className="onboarding-doc-spinner" />
+          : state === 'done' ? <CheckCircle size={24} weight="fill" />
+          : <UploadSimple size={18} weight="bold" />}
       </span>
       <input ref={ref} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
         onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) onFiles(fs); e.target.value = '' }} />
@@ -58,9 +60,13 @@ export function DocumentsStep() {
       <div className="onboarding-icon"><House size={40} color="var(--accent)" /></div>
       <h1 className="onboarding-title">המסמכים שלך</h1>
       <p className="onboarding-subtitle">
-        העלו מה שיש לכם ונמלא את הפרטים אוטומטית — הקריאה רצה ברקע בזמן שתמשיכו.<br />
-        אפשר גם לדלג ולמלא ידנית.
+        יש לכם מסמך? העלו אותו ונמלא את הפרטים אוטומטית — הקריאה רצה ברקע בזמן שתמשיכו.
       </p>
+
+      <div className="onboarding-doc-hint">
+        <UploadSimple size={15} weight="bold" />
+        <span>הקישו על מסמך כדי להעלות · לא חובה, אפשר גם למלא ידנית</span>
+      </div>
 
       <div className="onboarding-doc-cards">
         <DocCard

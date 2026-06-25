@@ -2419,11 +2419,24 @@ input[type="date"] {
 .onboarding-fill-top-btn:active { background: var(--accent-soft-hover, var(--accent-soft)); }
 
 /* Documents-first screen — upload cards that kick off background extraction. */
+/* Action-hint row: tells the user the cards below are tap-to-upload (and optional),
+   separating the "what/why" instructions above from the "do it here" zone. */
+.onboarding-doc-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 14px 2px 8px;
+}
+.onboarding-doc-hint svg { color: var(--accent); flex-shrink: 0; }
+
 .onboarding-doc-cards {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin: 8px 0 20px;
+  margin: 0 0 20px;
 }
 .onboarding-doc-card {
   display: flex;
@@ -2437,9 +2450,15 @@ input[type="date"] {
   cursor: pointer;
   font-family: inherit;
   text-align: right;
-  transition: border-color var(--t-fast, .15s) var(--ease, ease), background var(--t-fast, .15s) var(--ease, ease);
+  transition: border-color var(--t-fast, .15s) var(--ease, ease), background var(--t-fast, .15s) var(--ease, ease), transform .12s var(--ease, ease);
 }
+/* Empty (not-yet-uploaded) cards use a dashed "drop zone" border so they read as
+   an action to take, not an info row. Filled/reading/error states go solid. */
+.onboarding-doc-card.is-empty { border-style: dashed; }
 .onboarding-doc-card:hover:not(:disabled) { border-color: var(--accent); }
+.onboarding-doc-card:active:not(:disabled) { transform: scale(0.985); }
+.onboarding-doc-card.is-empty:hover:not(:disabled) .onboarding-doc-card-mark,
+.onboarding-doc-card.is-empty:active:not(:disabled) .onboarding-doc-card-mark { background: var(--accent); color: #fff; }
 .onboarding-doc-card:disabled { cursor: wait; }
 .onboarding-doc-card-icon {
   flex-shrink: 0;
@@ -2456,12 +2475,13 @@ input[type="date"] {
 }
 .onboarding-doc-card-mark {
   flex-shrink: 0;
-  width: 28px; height: 28px;
+  width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
-  background: var(--bg);
-  font-size: 18px; font-weight: 600; line-height: 1;
+  background: var(--accent-soft, rgba(10, 31, 68, .08));
+  line-height: 1;
   color: var(--accent);
+  transition: background var(--t-fast, .15s) var(--ease, ease), color var(--t-fast, .15s) var(--ease, ease);
 }
 .onboarding-doc-card.is-done { border-color: var(--success, #1a7f37); background: var(--success-soft, rgba(26, 127, 55, .05)); }
 .onboarding-doc-card.is-done .onboarding-doc-card-mark { background: var(--success); color: #fff; }
