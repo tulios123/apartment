@@ -18,10 +18,11 @@ import {
 } from '../lib/push'
 
 const GENERATION_KEY = 'monthly_generation'
-const ADMIN_EMAIL = 'itai.shubi@gmail.com'
-// The dev/test account (reached via the ?manager login) keeps the reset tools on
-// the live app so onboarding can be re-tested there — family accounts never see them.
-const TEST_ACCOUNT_EMAIL = 'dev@test.local'
+// The dev/test account (reached via the ?manager login) is the manager console:
+// it keeps the reset tools on the live app AND reads everyone's feedback. Family
+// accounts (incl. the owner's personal email) never see these. Must stay in sync
+// with the feedback table's RLS admin email (see migration 031).
+const MANAGER_EMAIL = 'dev@test.local'
 
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
@@ -41,10 +42,10 @@ export default function Settings() {
   const [pushBusy, setPushBusy] = useState(false)
   const [feedback, setFeedback] = useState<FeedbackRow[]>([])
 
-  const isAdmin = user?.email === ADMIN_EMAIL
-  // Technical/debug controls (reset, manual generation re-run) — owner/dev only, never
-  // shown to family accounts.
-  const showDevTools = import.meta.env.DEV || user?.email === TEST_ACCOUNT_EMAIL || isAdmin
+  const isAdmin = user?.email === MANAGER_EMAIL
+  // Technical/debug controls (reset, manual generation re-run) — manager/dev only,
+  // never shown to family accounts.
+  const showDevTools = import.meta.env.DEV || isAdmin
   // Real provider, not a hardcoded "Google" — magic-link users sign in via email.
   const providerLabel = user?.app_metadata?.provider === 'google' ? 'Google' : 'אימייל'
 
