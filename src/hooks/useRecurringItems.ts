@@ -130,7 +130,9 @@ export async function syncRentRecurringItem(
     await supabase.from('recurring_items').insert({
       ...fields,
       owner_id: ownerId,
-      day_of_month: opts?.dayOfMonth ?? 1,
+      // The schema constrains day_of_month to 1–28; the number input's max isn't
+      // enforced on typed values, so clamp to keep the insert from being rejected.
+      day_of_month: Math.min(28, Math.max(1, opts?.dayOfMonth ?? 1)),
       renewal_alert_days: [90, 30],
     })
   }

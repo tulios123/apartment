@@ -31,7 +31,7 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 | Ch | Area | Items | Done | Bugs found/fixed | Status |
 |----|------|-------|------|------------------|--------|
 | 1  | Financial calculation core | ~40 | **72 tests** | **9 bugs fixed** | nominal model fully tested; **CPI-indexation + prepayment NOT modelled (🟡 owner decision)** |
-| 2  | Database & data integrity | — | — | — | not started |
+| 2  | Database & data integrity | ~18 | **18 checked** | **1 bug (#10) fixed** | schema/cascades/owner-row audited; 🟡 recurring `contract_id` SET-NULL + migration 031 left for owner |
 | 3  | Security & access isolation | — | partial | XSS ✅ safe · storage-orphan ✅ audited | RLS/anon live-check still TODO |
 | 4  | Auth & Login | — | — | — | not started |
 | 5  | Onboarding | — | — | — | not started |
@@ -124,27 +124,28 @@ thorough tests for each function, and fix every bug a failing test reveals.*
 Use the read-only REST API for live checks; read migrations for schema truth.*
 
 ### 2.1 Schema vs code
-- [ ] Every `.from('<table>')` table exists in migrations (15 tables).
-- [ ] Every column written by the hooks exists in the schema (no silent dropped fields).
-- [ ] Enums (document_type incl. mortgage_statement/loan_statement; repayment_type; payer) match code.
-- [ ] Local migrations == remote (`supabase db push --dry-run` says up to date).
+- [x] Every `.from('<table>')` table exists in migrations (15 client tables ✓; +push_log/reminder_log are service-role only, correctly never in client `.from`).
+- [x] Every column written by the hooks exists in the schema. Spot-checked the higher-risk writes (recurring_items.payment_method → 003; loans track_type/annual_rate/grace_months/prime_rate/margin → 016/019/020/023/024; properties onboarding cols → 011; tasks completed_at/due_time → 021/030; documents task_id → 022). Client is untyped so tsc can't catch drift, but the live app exercises every main write path and PostgREST 400s on an unknown column — none observed.
+- [x] Enums match code: document_type (incl. mortgage_statement/loan_statement via 028); utility_payer (tenant/owner); direction; execution_type; task_status/source. `repayment_type` is a plain `text` column (not an enum) — code controls 'monthly_fixed'/'balloon'.
+- [~] Local migrations == remote — can't run the classifier-gated `supabase db push`. Migration **031** (feedback admin → dev@test.local) was pending per the prior session. **Owner:** `cd /Users/itaishubi/ai/Apartment && npx supabase db push --dry-run` to compare (or drop `--dry-run` to apply 031).
 
 ### 2.2 Foreign keys & cascades
-- [ ] `properties` delete → contracts/mortgage_tracks/etc. cascade or SET NULL as intended.
-- [ ] `loans` have own owner_id + SET NULL property FK → not orphaned on property delete (regression: reset must clear loans — verify still fixed).
-- [ ] `contracts` delete → contract_utilities + rent recurring_items cleaned (no orphan rent tasks).
-- [ ] `transactions.recurring_item_id` / `document_id` nullable FKs behave on parent delete.
-- [ ] `documents` delete also removes storage objects (no orphaned files).
+- [x] `properties` delete → contracts cascade (001); only reachable via Settings reset-all, which deletes every table explicitly in child→parent order.
+- [x] `loans`: owner_id cascade + property_id **SET NULL** (018) → not deleted on property delete; reset-all clears loans explicitly (Settings.tsx:147). Regression still fixed.
+- [!] `contracts` delete → contract_utilities cascade (001); rent recurring_items cleaned **explicitly** via `deleteRentRecurringItems` (Rental.tsx:266) before contract delete. 🟡 `recurring_items.contract_id` is **SET NULL not CASCADE**, so a failed explicit cleanup (or a raw contract delete) would leave an orphan rent item still generating monthly approval tasks. App always cleans + reset-all is comprehensive, so low-risk; a migration to `ON DELETE CASCADE` would be a belt-and-suspenders fix — **owner decision** (schema change). See BUG #10 for the related day_of_month fix.
+- [x] `transactions.recurring_item_id` / `document_id` are nullable FKs with `on delete set null` (001) — parent delete unlinks, doesn't fail.
+- [x] `documents` delete removes storage objects — verified in the Ch.3 storage-orphan audit (findings log).
 
 ### 2.3 Defaults, nullability, types
-- [ ] Date columns are `date` (date-only) — confirms the string-compare approach is safe.
-- [ ] Numeric columns (amounts, rates) precision is adequate (no rounding surprise).
-- [ ] `renewal_alert_days` array default; `requires_approval` default.
-- [ ] created_at / completed_at timestamps populated.
+- [x] Date columns are `date` (start/end/due/date/purchase_date/key_delivery_date) — date-only, string-compare safe.
+- [x] Numeric precision adequate: amounts numeric(10,2)/(14,2); rates numeric(6,3); property_size_sqm numeric(8,2); estimated_value/rooms/floor integer.
+- [x] `renewal_alert_days` default '{90,30}'; `requires_approval` default false; `execution_type` default 'automatic'.
+- [x] created_at default now() everywhere; tasks.completed_at nullable (021).
+- [!] **day_of_month** constrained `between 1 and 28`, but the rent-day number input's `max="28"` isn't enforced on typed values → a typed 29–31 would 400 the rent recurring-item insert. Fixed (BUG #10).
 
 ### 2.4 Owner-row invariant
-- [ ] Every user gets an `owners` row (ensureOwnerRow upsert) before any FK insert.
-- [ ] No write path inserts a child row before the owner row exists.
+- [x] `ensureOwnerRow` upserts the owners row on SIGNED_IN (awaited, AuthContext.tsx:66) and idempotently on session-restore (:48, fire-and-forget but the row already exists for a returning user).
+- [x] No child insert before the owner row: the only first-time child writes are onboarding, gated by manual step-through after the awaited upsert.
 
 ---
 
@@ -364,6 +365,9 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 
 ## Findings log
 *(Bugs found while executing, with severity + fix commit. Newest first.)*
+
+### BUG #10 🟠 — rent recurring-item insert could be rejected for a typed payment day > 28 — FIXED
+`recurring_items.day_of_month` has a DB `check (day_of_month between 1 and 28)`. The onboarding rent-day field is `<input type="number" max="28">`, but the `max` attribute is **not enforced on typed values** — a user can type 29/30/31. `syncRentRecurringItem` then inserted `day_of_month: parseInt(rentPaymentDay)` unclamped → the insert **violates the constraint and 400s**, so the rent recurring item (the monthly "גביית שכ\"ד" approval task source) is never created. Fixed at the single write boundary (`useRecurringItems.ts`): `day_of_month: Math.min(28, Math.max(1, opts?.dayOfMonth ?? 1))`, covering every caller. (Related: this is why BUG #9's end-of-month clamp matters — but the constraint means day is now always ≤28, so generation dates are always valid.)
 
 ### Critique audit (2026-06-25) — external review of gaps
 Investigated each claim against the code; outcomes:
