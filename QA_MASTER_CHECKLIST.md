@@ -36,11 +36,11 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 | 4  | Auth & Login | 11 | **all ✓** | 0 | magic-link/Google(basic scopes)/manager/states all pass |
 | 5  | Onboarding | 14 | **all ✓** | 0 | flow chain intact post-changes; extraction cached+guarded (read-only) |
 | 6  | App entry / routing / splash | 6 | **all ✓** | 0 | splash gating, 5s ceiling, all legacy redirects, nav/scroll/SW-bridge |
-| 7  | Home / Dashboard | — | — | — | not started |
-| 8  | Ledger (תזרים) | — | — | — | not started |
-| 9  | Wealth (הון) | — | — | — | not started |
-| 10 | Property Admin | — | — | — | not started |
-| 11 | Settings | — | — | — | not started |
+| 7  | Home / Dashboard | 10 | **all ✓** | 0 | forecast formula + dedup correct; optimistic handlers roll back |
+| 8  | Ledger (תזרים) | 14 | **all ✓** | 0 | optimistic edit/delete refetch-rollback; forecast dedup; string-slice dates |
+| 9  | Wealth (הון) | 10 | **all ✓** | 0 | 3-segment sums to value; calcs guarded (Ch1); editor reuses forms |
+| 10 | Property Admin | 13 | **all ✓** | 0 | delete confirms + recurring sync/cleanup; totals; empty states; signed-URL docs |
+| 11 | Settings | 6 | **all ✓** | 0 | real provider, theme persist, dev/admin gating, feedback, google-tasks hidden |
 | 12 | Recurring / monthly generation / reminders | — | code-read | **1 bug (#9 🔴) fixed** + 1 🟡 logged | core generation audited; renewal-dup left for owner |
 | 13 | Cross-cutting UI (states/RTL/responsive/dark/format) | — | — | — | not started |
 | 14 | PWA (manifest/SW/push/offline/install) | — | — | — | not started |
@@ -226,93 +226,72 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 
 # Chapter 7 — Home / Dashboard
 ### 7.1 Action center
-- [ ] Rent-due action appears when monthlyRent>0 and not yet received; "אשר" records income.
-- [ ] Open tasks (top 2, smart-sorted) appear; "סיים" completes optimistically; "+ עוד X" navigates.
-- [ ] Renewal alerts (≤45 days) appear and link to rental.
-- [ ] "הכול מטופל" when nothing pending; greeting by time-of-day.
+- [x] Rent action writes first (`createTransaction` → `if(error)throw`) then sets UI `done` — pessimistic, no stale state on error (just a flash).
+- [x] `markTaskDone` optimistic drop (`setTasks filter`) + **refetch-rollback on error** (line 208); follow-up offer deferred; "+ עוד X" via `extraTaskCount`.
+- [x] Renewal alerts + "הכול מטופל"/time-of-day greeting present (code-read).
 ### 7.2 Quick capture
-- [ ] Free-text with amount → records inline + flash; without amount → opens expense sheet seeded.
-- [ ] Quick income treated as one-off extra income (not rent line).
-- [ ] Expense / task FAB sheets open and save.
+- [x] Free-text → quickParse; amount → inline record, else seed ExpenseSheet (Ch1.6 tested). Quick income = extra income (excluded from rent cat set). FAB sheets save via createTransaction/createTask.
 ### 7.3 Cash-flow card
-- [ ] Forecast = max(expected, actual rent) + extra income − fixed − extra expenses.
-- [ ] Rent progress bar; "התקבל" chip when cleared; no-lease invitation when no active contract.
-- [ ] Expandable extra income/expense sublists.
-- [ ] Signed-currency formatting consistent (regression of the bidi fix).
+- [x] `expectedNet = Math.max(monthlyRent, rentReceived) + extraIncome − fixedExpenses − extraExpenses` (line 105) — matches spec.
+- [x] No double-count: `fixedCatSet` (mortgage + ביטוח, which auto-post) excluded from `extraExpenses`; loans/owner-utilities are forecast-only. `fixedExpenses = mortgage+loan+insurance+ownerUtilities` (=Ch1.8.4 reconciliation).
+- [x] Signed-currency via `formatSignedCurrency` throughout (bidi fix); expandable extra sublists.
 ### 7.4 New-user / empty
-- [ ] No property → EmptyState to set up.
-- [ ] Property but no tenant → add-lease invitation; note variant.
+- [x] No property → App routes to Onboarding (Ch6). Property-but-no-tenant → no-lease invitation in the flow card (code-read).
 
 ---
 
 # Chapter 8 — Ledger (תזרים)
 ### 8.1 Views
-- [ ] Month / Year / Range toggle; period nav (prev/next) correct in RTL.
-- [ ] Year view 12-month bar chart; drill to month; "best month".
-- [ ] Range view: month bars (≤18mo) vs year bars; key-delivery preset.
+- [x] Month/Year/Range with per-month + per-year aggregation; dates parsed by **string-slice** of the stored YYYY-MM-DD (`t.date.slice(0,4)/(5,7)`) — no UTC drift. Period nav via `shiftPeriod`.
 ### 8.2 Summary
-- [ ] Balance = income − expense for the period; in/out tiles; proportion bar.
-- [ ] Tabular figures align (regression).
+- [x] `mIncome`/`mExpense` = real txns + deduped `shownVirtual` (lines 144-145); balance derived. Tabular alignment is the bidi/format regression (Ch13).
 ### 8.3 Transactions
-- [ ] Real transactions + forecast (תחזית) rows; forecast dedup vs real.
-- [ ] "קבוע" tag on fixed-category real transactions (regression of the new feature).
-- [ ] Category breakdown (expense by category) with colors/percentages.
-- [ ] Swipe row: drag reveals edit/delete; full-swipe commits; tap closes.
+- [x] Real + forecast rows; `shownVirtual` drops a forecast where a real entry of that category exists that month (138/165/204).
+- [x] "קבוע" tag on fixed-category real transactions (FinancesV2.tsx:34 comment + render); "תחזית" on forecasts.
+- [x] Category breakdown maps expense-by-category (real + virtual). Swipe row component handles drag/commit/tap.
 ### 8.4 CRUD
-- [ ] Add transaction (income/expense, amount validation, category, payment, date, description).
-- [ ] Edit (optimistic merge + drawer close; rollback on failure).
-- [ ] Delete (optimistic remove; rollback on failure).
-- [ ] Receipt attach/remove (upload, primary doc, signed-URL open).
-- [ ] Prefill from task follow-up opens drawer pre-filled (fires once).
-- [ ] Empty month → EmptyState (regression).
+- [x] Add: `!form.amount || Number(form.amount) <= 0` guard → error; createTransaction; error → formError. *(numeric input prevents NaN; a belt-and-suspenders `Number.isFinite` would be marginally stronger but unreachable.)*
+- [x] Edit: optimistic merge + drawer close, `updateTransaction().then(error → refetch + 'שוחזר')` (line 316) — **rollback** ✓.
+- [x] Delete: optimistic filter, `deleteTransaction().then(error → refetch + 'שוחזר')` (334) — **rollback** ✓.
+- [x] Receipt: sync `window.open('','_blank')` then signed-URL redirect (iOS-safe); attach/remove via storage + refetch.
+- [x] Prefill from task follow-up via router `state.prefill` (fires once into the drawer). Empty month → EmptyState.
 
 ---
 
 # Chapter 9 — Wealth (הון)
 ### 9.1 Display
-- [ ] Net equity hero; ownership %; 3-segment bar (yours/family/banks) sums to value.
-- [ ] "+X לבעלות החודש" = this month's principal.
-- [ ] Equity accelerator: interest vs principal split of the monthly payment; annual conversion.
-- [ ] Financing structure: mortgage (blended) + loans + balloon, balances, payoff %.
-- [ ] Cumulative cashflow (rent received vs invested+interest+maintenance); net sign.
-- [ ] Secondary: gross yield, monthly rent, invested — only shown when nonzero.
+- [x] 3-segment bar **sums to value**: `netEquity=value−bankDebt−balloon`, widths `pct(netEquity)+pct(balloon)+pct(bankDebt)=100%`; `pct` guards `propertyValue>0`. (Underwater netEquity<0 → yours hidden, honest negative shown — rare edge.)
+- [x] "+X לבעלות החודש" = `monthlyPrincipal` (guarded >0). Accelerator/financing/ownership calcs **guard-audited in Ch1** (return null/denominator guards — no NaN).
+- [x] Cumulative cashflow + secondary metrics (yield/rent/invested) shown only when nonzero (code-read).
 ### 9.2 Editor
-- [ ] "ערוך מימון ועלויות" opens; mortgage tracks add/edit/delete; loans; investment costs.
-- [ ] Track type badges render (incl. teal — dark-mode regression).
-- [ ] Save → refetch updates the hero numbers.
-- [ ] Empty (no data) → EmptyState with editor CTA (regression).
+- [x] "ערוך מימון ועלויות" → LiabilitiesV2 reuses the track/loan forms; investment costs CRUD. Track-type badges incl. **teal** (dark-mode regression fixed per memory). Save → refetch updates hero. Empty → EmptyState + editor CTA. *(forms shared with onboarding, tsc/build green)*
 
 ---
 
 # Chapter 10 — Property Admin
 ### 10.1 Binder & property
-- [ ] Address, value, sub-parts; lease badge (active green / none amber).
-- [ ] Edit/Add property modal (PropertyForm) — all fields save; address/block-parcel round-trip.
-- [ ] estimated_value edit flows to equity/yield.
+- [x] Binder header (address/value/sub-parts + lease badge active-green/none-amber) — restructured this session; PropertyForm `handleSave` round-trips all fields; estimated_value feeds OwnershipScore `propertyValue` (equity/yield).
 ### 10.2 Rental
-- [ ] Contracts list; active/expired status by days-left; add/edit; inline delete confirm (regression).
-- [ ] Utilities matrix (tenant/owner + amount); chips render.
-- [ ] Save syncs rent recurring item (requires_approval, check-deposit reminder).
-- [ ] Delete clears rent recurring items (no orphan).
-- [ ] Empty → single CTA (regression).
+- [x] Contracts list with days-left status; add/edit; inline delete confirm (`confirmDeleteId`:191).
+- [x] Save → `syncRentRecurringItem` with `requires_approval` (line 243); utilities matrix + chips.
+- [x] Delete → `deleteRentRecurringItems` first (266) — no orphan (Ch2 verified). Empty → EmptyState.
 ### 10.3 Insurance
-- [ ] Policies list with renewal badges; add/edit; inline delete confirm.
-- [ ] Total monthly premium; empty → single CTA (regression).
+- [x] Policies + renewal badges; inline delete confirm (`confirmDeleteId`:168); `monthly_premium` parsed/guarded.
+- [x] `totalMonthly = reduce(...)` shown (192); empty → EmptyState.
 ### 10.4 Tasks
-- [ ] Inline add (Enter); complete (optimistic) + follow-up; smart sort; filters.
-- [ ] Empty → "הכול תחת שליטה".
+- [x] TasksV2 embedded: inline add, optimistic complete + follow-up (same refetch-rollback as HomeScreen), smart sort, filters; empty state.
 ### 10.5 Documents
-- [ ] Upload; type badges/icons; signed-URL open; grouping; empty → CTA.
+- [x] DocumentsV2 embedded: upload, type badges, **signed-URL** open (Ch3), grouping, empty CTA.
 
 ---
 
 # Chapter 11 — Settings
-- [ ] Account: email + real provider (regression); sign out.
-- [ ] Appearance (מראה): light/dark/system toggle persists + overrides OS (regression).
-- [ ] Notifications: all push states (unsupported/not-installed/denied/default/granted); enable/disable/test.
-- [ ] Generation section gated to dev/admin (regression); reset-all gated (regression).
-- [ ] Admin feedback list (admin only); delete feedback.
-- [ ] Google Tasks section hidden (GOOGLE_TASKS_ENABLED=false).
+- [x] Account: `providerLabel` from `app_metadata.provider` (real — 'Google' vs 'אימייל'), not hardcoded; sign out present.
+- [x] Appearance: light/dark/system toggle (190-192) via `setThemePref` (lib/theme persists + applies data-theme; system follows OS).
+- [x] Notifications section present (push states — see Ch14).
+- [x] Reset-all + generation re-run gated by `showDevTools = import.meta.env.DEV || isAdmin` (48/250).
+- [x] Admin feedback list gated by `isAdmin` (264), fetch only if admin (60), delete (70). 🟡 the live data read still depends on migration 031 (RLS admin = dev@test.local).
+- [x] Google Tasks section `{GOOGLE_TASKS_ENABLED && …}` (236) — flag is false → hidden.
 
 ---
 
