@@ -2005,6 +2005,23 @@ input[type="date"] {
    top/bottom margins are symmetric instead of sticking to the top. */
 .onboarding-wrap--center { align-items: center; }
 
+/* Welcome is full-screen: no page padding, no card "bubble" — the step fills the
+   viewport edge-to-edge so the navy band meets the status bar. */
+.onboarding-wrap--full { padding: 0; align-items: stretch; }
+/* Scoped under the wrap so it beats the responsive `.onboarding-card` padding. */
+.onboarding-wrap--full .onboarding-card--full {
+  max-width: none;
+  width: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
+}
+.onboarding-wrap--full .onboarding-card--full .onboarding-step-anim { flex: 1; display: flex; flex-direction: column; }
+
 .onboarding-card {
   position: relative;
   background: var(--surface);
@@ -2047,22 +2064,17 @@ input[type="date"] {
   font-size: 15px;
 }
 
-/* Welcome step — navy brand band + a contained, connected preview of the setup. */
+/* Welcome step — full-screen: navy band at the top, an airy connected stepper in
+   the middle, and the CTA anchored low. No card "bubble". */
 .onboarding-welcome {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
-/* Brand band — bleeds to the card edges, lifted over the body for depth so the
-   navy/content seam reads as an intentional layered header. */
 .onboarding-welcome-hero {
-  position: relative;
-  z-index: 1;
-  margin: -44px -40px 0;
-  padding: 30px 24px 24px;
   background: var(--hero-navy);
-  border-radius: 20px 20px 0 0;
+  padding: max(44px, calc(env(safe-area-inset-top, 0px) + 30px)) 28px 30px;
   text-align: center;
-  box-shadow: 0 14px 28px -16px rgba(10, 31, 68, 0.55);
 }
 /* Logo badge — the real house mark on a white tile, so it pops as a crafted mark. */
 .onboarding-welcome-logo {
@@ -2102,56 +2114,47 @@ input[type="date"] {
 }
 .onboarding-welcome-time svg { color: var(--accent-teal); flex-shrink: 0; }
 
+/* Middle area — centers the preview in whatever space is left above the CTA. */
+.onboarding-welcome-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 28px;
+}
 .onboarding-welcome-lead {
   text-align: center;
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
-  margin: 22px 0 14px;
+  margin: 0 0 18px;
 }
 
-/* The four themes live inside one contained card, joined by an accent rail so
-   they read as a short, designed roadmap instead of floating rows. */
-.onboarding-welcome-list {
-  position: relative;
-  background: var(--bg-alt);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 6px 16px;
-  margin-bottom: 22px;
-}
-.onboarding-welcome-list::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: 35px;
-  top: 36px;
-  bottom: 36px;
-  width: 2px;
-  border-radius: 1px;
-  background: var(--accent);
-  opacity: 0.3;
-}
+/* Minimal stepper — plain accent icons, a connecting down-arrow between steps. */
 .onboarding-welcome-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 11px 0;
 }
 .onboarding-welcome-icon {
-  position: relative;
-  z-index: 1;
   width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--accent-light);
-  border: 1px solid var(--border);
   display: flex;
-  align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
+.onboarding-welcome-arrow {
+  display: flex;
+}
+.onboarding-welcome-arrow-lane {
+  width: 40px;
+  display: flex;
+  justify-content: center;
+  padding: 7px 0;
+  color: var(--accent);
+  opacity: 0.55;
+}
 .onboarding-welcome-label {
-  font-size: 15px;
+  font-size: 15.5px;
   font-weight: 600;
   color: var(--text);
 }
@@ -2159,6 +2162,10 @@ input[type="date"] {
   font-size: 12.5px;
   color: var(--text-muted);
   margin-top: 2px;
+}
+
+.onboarding-welcome-cta-wrap {
+  padding: 16px 28px max(24px, calc(env(safe-area-inset-bottom, 0px) + 18px));
 }
 
 /* Step dots */

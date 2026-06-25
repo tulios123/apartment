@@ -23,12 +23,14 @@ export default function Onboarding({ onComplete }: Props) {
   // Hidden on the bookends — welcome has nowhere to go back to, done is terminal.
   const showBack = step !== 'welcome' && step !== 'done'
 
-  const centered = step === 'welcome' || step === 'done'
+  // Welcome is a full-screen bookend (no card "bubble"); done still hugs a centered card.
+  const isWelcome = step === 'welcome'
+  const centered = step === 'done'
 
   return (
     <OnboardingContext.Provider value={state}>
-      <div className={`onboarding-wrap${centered ? ' onboarding-wrap--center' : ''}`}>
-        <div className="onboarding-card">
+      <div className={`onboarding-wrap${centered ? ' onboarding-wrap--center' : ''}${isWelcome ? ' onboarding-wrap--full' : ''}`}>
+        <div className={`onboarding-card${isWelcome ? ' onboarding-card--full' : ''}`}>
           {showBack && (
             <button type="button" className="onboarding-back-chevron" onClick={back} aria-label="חזור">
               <CaretRight size={22} weight="bold" />

@@ -1,10 +1,10 @@
-import { FileText, Bank, Coins, Key, Clock } from '@phosphor-icons/react'
+import { Fragment } from 'react'
+import { FileText, Bank, Coins, Key, Clock, CaretDown } from '@phosphor-icons/react'
 import { useOnboarding } from './context'
 
-// First bookend after login. A navy brand band (logo + wordmark, tying it to the
-// Login hero and the status bar) sits above a short, bounded preview of the four
-// setup themes — connected by a rail so it reads as a quick roadmap, not a menu.
-// The time pill makes the "3 minutes, optional" promise impossible to miss.
+// First bookend after login — a full-screen intro (no card "bubble"). A navy brand
+// band reaches the top of the screen, then a minimal, airy stepper previews the four
+// setup themes with a connecting arrow between each, and a single CTA anchored low.
 const ITEMS = [
   { Icon: FileText, label: 'הנכס', sub: 'חוזה רכישה, כתובת, מחיר ושטח' },
   { Icon: Bank, label: 'מימון', sub: 'מסלולי משכנתא, גרייס והלוואות' },
@@ -32,23 +32,34 @@ export function WelcomeStep() {
         </div>
       </div>
 
-      <div className="onboarding-welcome-lead">נגדיר את הדירה שלך בארבעה נושאים קצרים</div>
+      <div className="onboarding-welcome-content">
+        <div className="onboarding-welcome-lead">נגדיר את הדירה שלך בארבעה נושאים קצרים</div>
 
-      <div className="onboarding-welcome-list">
-        {ITEMS.map(({ Icon, label, sub }) => (
-          <div className="onboarding-welcome-row" key={label}>
-            <div className="onboarding-welcome-icon"><Icon size={22} weight="duotone" color="var(--accent)" /></div>
-            <div>
-              <div className="onboarding-welcome-label">{label}</div>
-              <div className="onboarding-welcome-rowsub">{sub}</div>
-            </div>
-          </div>
-        ))}
+        <div className="onboarding-welcome-steps">
+          {ITEMS.map(({ Icon, label, sub }, i) => (
+            <Fragment key={label}>
+              <div className="onboarding-welcome-row">
+                <div className="onboarding-welcome-icon"><Icon size={26} weight="duotone" color="var(--accent)" /></div>
+                <div>
+                  <div className="onboarding-welcome-label">{label}</div>
+                  <div className="onboarding-welcome-rowsub">{sub}</div>
+                </div>
+              </div>
+              {i < ITEMS.length - 1 && (
+                <div className="onboarding-welcome-arrow">
+                  <span className="onboarding-welcome-arrow-lane"><CaretDown size={15} weight="bold" /></span>
+                </div>
+              )}
+            </Fragment>
+          ))}
+        </div>
       </div>
 
-      <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => advance('documents')}>
-        מתחילים
-      </button>
+      <div className="onboarding-welcome-cta-wrap">
+        <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => advance('documents')}>
+          מתחילים
+        </button>
+      </div>
     </div>
   )
 }
