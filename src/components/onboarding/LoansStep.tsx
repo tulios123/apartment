@@ -4,6 +4,7 @@ import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { LoanForm } from './LoanForm'
 import { FinishEarly } from './FinishEarly'
+import { Modal } from '../ui/Modal'
 import { emptyLoan, formatCurrency } from './types'
 import { useOnboarding } from './context'
 
@@ -19,10 +20,11 @@ export function LoansStep() {
   } = useOnboarding()
 
   const [continuePrompt, setContinuePrompt] = useState(false)
+  // Bumped on every blocked collapse/save attempt to re-flash the "missing" line.
+  const [alertPulse, setAlertPulse] = useState(0)
 
   // The only required loan details are amount + (for a monthly loan) rate + term.
-  // A row with all of those is "ready": it can collapse and the user can trust it
-  // without opening it. The loan-giver name is optional and never blocks anything.
+  // Lender/description are optional (a placeholder default counts) and never block.
   const loanMissing = (d: (typeof loans)[number]) => {
     const m: string[] = []
     if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
@@ -34,19 +36,27 @@ export function LoansStep() {
   }
   const loanReady = (d: (typeof loans)[number]) => loanMissing(d).length === 0
 
-  // On entering this step, re-sync the shared form to the row flagged for editing (a
-  // loan auto-flagged in the documents step), otherwise open the first loan still
-  // missing a required field so it never hides collapsed behind a "done"-looking card.
+  // The open row's live truth is the working form, not its last-saved snapshot.
+  const effectiveLoans = loans.map((l, i) => (i === editingLoanIdx ? loanForm : l))
+  const incompleteLoans = effectiveLoans.filter(l => !loanReady(l))
+
+  // Finalize the open loan: save + collapse when ready, otherwise flash what's missing.
+  const finalizeLoan = (i: number) => {
+    if (loanReady(loanForm)) saveLoanEdit(i)
+    else setAlertPulse(p => p + 1)
+  }
+
+  // On entering this step a loan is always opened for review (from the documents-step
+  // flag if set, otherwise the first one) — a fresh upload never lands collapsed.
   useEffect(() => {
     if (editingLoanIdx !== null) {
       if (loans[editingLoanIdx]) setLoanForm({ ...loans[editingLoanIdx] })
       return
     }
     if (showLoanForm) return
-    const idx = loans.findIndex(l => !loanReady(l))
-    if (idx >= 0) {
-      setEditingLoanIdx(idx)
-      setLoanForm({ ...loans[idx] })
+    if (loans.length > 0) {
+      setEditingLoanIdx(0)
+      setLoanForm({ ...loans[0] })
     }
     // Run once on entering the step.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,8 +65,9 @@ export function LoansStep() {
   return (
     <form onSubmit={e => {
       e.preventDefault()
-      // Block advancing past a loan that's still missing a required field — ask first.
-      if (loans.some(l => !loanReady(l))) { setContinuePrompt(true); return }
+      // Block advancing past a loan still missing a required field — ask first.
+      if (incompleteLoans.length > 0) { setContinuePrompt(true); return }
+      if (editingLoanIdx !== null && loanReady(loanForm)) saveLoanEdit(editingLoanIdx)
       advance('investment')
     }}>
       <StepHeader current="loans" icon={<HandCoins size={44} color="var(--accent)" />} title="הלוואות" />
@@ -78,26 +89,23 @@ export function LoansStep() {
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>
 
-      {/* Saved loans list — click header to toggle edit in-place */}
+      {/* Saved loans list — tap the header to open; tap again to save + collapse */}
       {loans.length > 0 && (
         <div className="onboarding-list">
           {loans.map((d, i) => {
             const isMonthly = d.repayment_type === 'monthly_fixed'
             const rate = loanDraftRate(d)
             const isEditing = editingLoanIdx === i
+            // While open, reflect the live form so "missing" updates as the user types.
+            const view = isEditing ? loanForm : d
+            const missing = loanMissing(view)
             return (
               <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                 <div className="onboarding-list-row-header"
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
-                    if (isEditing) {
-                      // Only a ready loan (amount + rate + term) may collapse.
-                      if (loanReady(d)) setEditingLoanIdx(null)
-                    } else {
-                      setEditingLoanIdx(i)
-                      setLoanForm({ ...d })
-                      setShowLoanForm(false)
-                    }
+                    if (isEditing) finalizeLoan(i)            // tap top = save + collapse (alert if incomplete)
+                    else { setEditingLoanIdx(i); setLoanForm({ ...d }); setShowLoanForm(false) }
                   }}>
                   <div className="onboarding-track-summary">
                     <div className="onboarding-track-summary-top">
@@ -116,8 +124,11 @@ export function LoansStep() {
                       {isMonthly && d.term_months && <><span>·</span><span>{d.term_months} ח׳</span></>}
                       {d.lender.trim() && <><span>·</span><span>{d.lender.trim()}</span></>}
                     </div>
-                    {!loanReady(d) && (
-                      <div className="onboarding-track-missing">חסר {loanMissing(d).join(' · ')}</div>
+                    {missing.length > 0 && (
+                      <div className="onboarding-track-missing onboarding-track-missing--flash"
+                        key={isEditing ? `m-${i}-${alertPulse}` : `m-${i}`}>
+                        חסר {missing.join(' · ')}
+                      </div>
                     )}
                   </div>
                   <div className="onboarding-list-row-actions">
@@ -125,7 +136,7 @@ export function LoansStep() {
                   </div>
                 </div>
                 {isEditing && <LoanForm
-                  onSave={() => { saveLoanEdit(i); if (!loanReady(loanForm)) setEditingLoanIdx(i) }}
+                  onSave={() => finalizeLoan(i)}
                   onCancel={() => setEditingLoanIdx(null)} />}
               </div>
             )
@@ -169,35 +180,36 @@ export function LoansStep() {
         </div>
       )}
 
-      {continuePrompt && (
-        <div className="onboarding-continue-banner" role="alert">
-          <div className="onboarding-continue-banner-head">
-            <WarningCircle size={20} weight="fill" />
-            <span>הלוואה עם פרטים חסרים לא תישמר אם תמשיכו</span>
-          </div>
-          <ul className="onboarding-continue-banner-list">
-            {loans.filter(l => !loanReady(l)).map((l, idx) => (
-              <li key={idx}>{l.label.trim() || loanTypeLabel(l.repayment_type)} — חסר {loanMissing(l).join(', ')}</li>
-            ))}
-          </ul>
-          <div className="onboarding-continue-banner-actions">
-            <button type="button" className="btn-onboard-skip" onClick={() => {
-              const idx = loans.findIndex(l => !loanReady(l))
-              setContinuePrompt(false)
-              if (idx >= 0) { setEditingLoanIdx(idx); setLoanForm({ ...loans[idx] }); setShowLoanForm(false) }
-            }}>חזרה להשלמה</button>
-            <button type="button" className="btn-onboard-primary" onClick={() => {
-              setLoans(prev => prev.filter(loanReady))
-              setEditingLoanIdx(null)
-              setContinuePrompt(false)
-              advance('investment')
-            }}>המשך בלי לשמור</button>
-          </div>
-        </div>
-      )}
-
       <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
       <FinishEarly />
+
+      {continuePrompt && (
+        <Modal title="חסרים פרטים בהלוואה" onClose={() => setContinuePrompt(false)}>
+          <div className="onboarding-loan-confirm">
+            <p className="onboarding-loan-confirm-lead">אם תמשיכו, ההלוואה הזו לא תישמר:</p>
+            <ul className="onboarding-loan-confirm-list">
+              {incompleteLoans.map((l, idx) => (
+                <li key={idx}>
+                  <strong>{l.label.trim() || loanTypeLabel(l.repayment_type)}</strong> — חסר {loanMissing(l).join(', ')}
+                </li>
+              ))}
+            </ul>
+            <div className="onboarding-loan-confirm-actions">
+              <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => {
+                const idx = loans.findIndex(l => !loanReady(l))
+                setContinuePrompt(false)
+                if (idx >= 0) { setEditingLoanIdx(idx); setLoanForm({ ...loans[idx] }); setShowLoanForm(false) }
+              }}>חזרה להשלמה</button>
+              <button type="button" className="btn-onboard-skip onboarding-cta-full" onClick={() => {
+                setLoans(prev => prev.filter(loanReady))
+                setEditingLoanIdx(null)
+                setContinuePrompt(false)
+                advance('investment')
+              }}>המשך בלי לשמור</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </form>
   )
 }
