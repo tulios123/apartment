@@ -7,6 +7,8 @@ import {
 } from '@phosphor-icons/react'
 import { useTransactions, createTransaction, updateTransaction, deleteTransaction } from '../../hooks/useTransactions'
 import { usePropertyData } from '../../hooks/usePropertyData'
+import { useMortgageData } from '../../hooks/useMortgageData'
+import { useLoansData } from '../../hooks/useLoansData'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { monthlyVirtualEntries } from '../../lib/projections'
 import type { VirtualEntry } from '../../lib/projections'
@@ -14,7 +16,7 @@ import { supabase } from '../../lib/supabase'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import type { Transaction, Contract, MortgageTrack, Loan } from '../../types'
+import type { Transaction } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError, EmptyState } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
@@ -48,7 +50,7 @@ export default function FinancesV2() {
   const [month, setMonth] = useState(today.getMonth() + 1)
 
   // Custom range. Defaults to key-delivery → today once the property loads.
-  const { property } = usePropertyData()
+  const { property, contracts } = usePropertyData()
   const [rangeFrom, setRangeFrom] = useState(`${today.getFullYear() - 4}-01-01`)
   const [rangeTo, setRangeTo] = useState(todayISO())
   const [rangeTouched, setRangeTouched] = useState(false)
@@ -62,17 +64,11 @@ export default function FinancesV2() {
     view === 'month' ? { year, month } : view === 'year' ? { year } : { from: rangeFrom, to: rangeTo }
   )
 
-  const [contracts, setContracts] = useState<Contract[]>([])
-  const [mortgageTracks, setMortgageTracks] = useState<MortgageTrack[]>([])
-  const [loans, setLoans] = useState<Loan[]>([])
-  useEffect(() => {
-    if (!user) return
-    Promise.all([
-      supabase.from('contracts').select('*').eq('owner_id', user.id),
-      supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id),
-      supabase.from('loans').select('*').eq('owner_id', user.id),
-    ]).then(([c, t, l]) => { setContracts((c.data ?? []) as Contract[]); setMortgageTracks((t.data ?? []) as MortgageTrack[]); setLoans((l.data ?? []) as Loan[]) })
-  }, [user?.id])
+  // Virtual cashflow entries (rent, mortgage, loan payments) come from the same
+  // cached hooks the other screens use — no separate uncached fetch here, so a
+  // revisit to this tab is instant instead of re-querying contracts/tracks/loans.
+  const { tracks: mortgageTracks } = useMortgageData()
+  const { loans } = useLoansData()
 
   const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month, loans), [year, month, contracts, mortgageTracks, loans])
 
