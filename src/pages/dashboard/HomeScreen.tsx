@@ -111,7 +111,9 @@ export default function HomeScreen() {
       list.push({
         id: 'rent',
         kind: 'rent',
-        title: 'האם התקבל שכר הדירה החודש?',
+        title: activeContract?.payment_method === 'check'
+          ? 'האם הופקד צ׳ק שכר הדירה?'
+          : 'האם התקבל שכר הדירה החודש?',
         sub: `${activeContract?.company_name ?? 'הדייר'} · ${fmt(monthlyRent)}`,
         amount: monthlyRent - rentReceived,
       })

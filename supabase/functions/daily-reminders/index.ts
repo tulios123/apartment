@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       // 1) Approval items whose due day has passed and aren't recorded this month.
       const { data: items } = await supabase
         .from('recurring_items')
-        .select('id, direction, category, payee, day_of_month, start_date, end_date')
+        .select('id, direction, category, payee, payment_method, day_of_month, start_date, end_date')
         .eq('owner_id', ownerId)
         .eq('execution_type', 'requires_approval')
         .lte('start_date', today)
@@ -104,8 +104,13 @@ Deno.serve(async (req) => {
         const recorded = new Set((txThisMonth ?? []).map((t) => t.recurring_item_id))
         for (const it of dueItems) {
           if (recorded.has(it.id)) continue
-          const label = it.direction === 'income' ? 'גביית' : 'תשלום'
-          lines.push(`${label} ${it.category}${it.payee ? ` – ${it.payee}` : ''}`)
+          // Post-dated-check rent → remind to DEPOSIT the check, not "collect rent".
+          if (it.direction === 'income' && it.payment_method === 'check') {
+            lines.push(`הפקדת צ׳ק שכר דירה${it.payee ? ` – ${it.payee}` : ''}`)
+          } else {
+            const label = it.direction === 'income' ? 'גביית' : 'תשלום'
+            lines.push(`${label} ${it.category}${it.payee ? ` – ${it.payee}` : ''}`)
+          }
         }
       }
 

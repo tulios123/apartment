@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { monthEndISO, todayISO } from '../lib/format'
-import { RENEWAL_WINDOW_DAYS } from '../lib/constants'
+import { RENEWAL_WINDOW_DAYS, RENT_CATEGORIES } from '../lib/constants'
 
 const GENERATION_KEY = 'monthly_generation'
+const RENT_SET = new Set(RENT_CATEGORIES as readonly string[])
 
 // Guards against concurrent runs (React StrictMode double-invokes effects in
 // dev, and two mounts/tabs could race) — without this both runs read "no
@@ -101,13 +102,13 @@ async function runGeneration() {
         })
       }
     } else {
-      if (!taskIds.has(item.id)) {
-        // Rent paid by post-dated checks → the monthly action is depositing the
-        // check, so label it that way (taskFollowup still treats it as rent income).
-        const isCheckDeposit = item.direction === 'income' && item.payment_method === 'check'
-        const title = isCheckDeposit
-          ? `הפקדת צ׳ק שכר דירה${item.payee ? ` – ${item.payee}` : ''}`
-          : `${item.direction === 'income' ? 'גביית' : 'תשלום'} ${item.category}${item.payee ? ` – ${item.payee}` : ''}`
+      // Rent (incl. post-dated-check deposits) is approved directly on the dashboard
+      // (the "אשר שכר דירה" action), so a rent item must NOT also create a task —
+      // that was the duplicate. Approval tasks are only for non-rent items
+      // (e.g. the monthly transfer to dad). The check-deposit *reminder* is the push.
+      const isRent = item.direction === 'income' && RENT_SET.has(item.category)
+      if (!isRent && !taskIds.has(item.id)) {
+        const title = `${item.direction === 'income' ? 'גביית' : 'תשלום'} ${item.category}${item.payee ? ` – ${item.payee}` : ''}`
         newTasks.push({
           owner_id: ownerId,
           recurring_item_id: item.id,
