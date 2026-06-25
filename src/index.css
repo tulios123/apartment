@@ -2114,27 +2114,33 @@ input[type="date"] {
 }
 .onboarding-welcome-time svg { color: var(--accent-teal); flex-shrink: 0; }
 
-/* Middle area — centers the preview in whatever space is left above the CTA. */
+/* Middle area — lead at the top, the stepper fills the rest down to the CTA. */
 .onboarding-welcome-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 24px 28px;
+  padding: 22px 28px 24px;
 }
 .onboarding-welcome-lead {
   text-align: center;
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
-  margin: 0 0 18px;
+  margin: 0 0 8px;
 }
 
-/* Minimal stepper — plain accent icons, a connecting down-arrow between steps. */
+/* Stepper fills the space below the lead; the connecting line + arrowhead stretch
+   in each gap so the four steps spread down the screen as one clear flow. */
+.onboarding-welcome-steps {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 .onboarding-welcome-row {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-shrink: 0;
 }
 .onboarding-welcome-icon {
   width: 40px;
@@ -2143,16 +2149,31 @@ input[type="date"] {
   flex-shrink: 0;
 }
 .onboarding-welcome-arrow {
+  flex: 1;
+  min-height: 34px;
   display: flex;
 }
 .onboarding-welcome-arrow-lane {
+  position: relative;
   width: 40px;
   display: flex;
+  align-items: flex-end;
   justify-content: center;
-  padding: 7px 0;
+  padding-bottom: 2px;
   color: var(--accent);
-  opacity: 0.55;
 }
+.onboarding-welcome-arrow-lane::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  bottom: 12px;
+  inset-inline-start: 50%;
+  width: 2px;
+  margin-inline-start: -1px;
+  background: var(--accent);
+  opacity: 0.35;
+}
+.onboarding-welcome-arrow-lane svg { position: relative; }
 .onboarding-welcome-label {
   font-size: 15.5px;
   font-weight: 600;

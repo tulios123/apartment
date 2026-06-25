@@ -47,7 +47,7 @@ export function WelcomeStep() {
               </div>
               {i < ITEMS.length - 1 && (
                 <div className="onboarding-welcome-arrow">
-                  <span className="onboarding-welcome-arrow-lane"><CaretDown size={15} weight="bold" /></span>
+                  <span className="onboarding-welcome-arrow-lane"><CaretDown size={18} weight="bold" /></span>
                 </div>
               )}
             </Fragment>
