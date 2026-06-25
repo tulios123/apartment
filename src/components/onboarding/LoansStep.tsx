@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { HandCoins, X } from '@phosphor-icons/react'
+import { useEffect, useState } from 'react'
+import { HandCoins, X, WarningCircle } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { LoanForm } from './LoanForm'
@@ -10,7 +10,7 @@ import { useOnboarding } from './context'
 export function LoansStep() {
   const {
     advance, keyDeliveryDate,
-    loans, loanDraftRate, loanTypeLabel,
+    loans, setLoans, loanDraftRate, loanTypeLabel,
     editingLoanIdx, setEditingLoanIdx, setLoanForm, loanForm, showLoanForm, setShowLoanForm,
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
@@ -18,25 +18,32 @@ export function LoansStep() {
     fillTestLoans,
   } = useOnboarding()
 
-  // A loan "tab" counts as done (and may collapse) only when ALL its details are
-  // present — principal + lender, plus rate + term for a monthly loan. Anything
-  // missing keeps the row open so it never hides behind a tidy "done"-looking card.
-  const loanComplete = (d: (typeof loans)[number]) => {
-    const hasBase = (parseFloat(d.principal) || 0) > 0 && d.lender.trim() !== ''
-    return d.repayment_type === 'monthly_fixed'
-      ? hasBase && loanDraftRate(d) > 0 && !!d.term_months
-      : hasBase
+  const [continuePrompt, setContinuePrompt] = useState(false)
+
+  // The only required loan details are amount + (for a monthly loan) rate + term.
+  // A row with all of those is "ready": it can collapse and the user can trust it
+  // without opening it. The loan-giver name is optional and never blocks anything.
+  const loanMissing = (d: (typeof loans)[number]) => {
+    const m: string[] = []
+    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
+    if (d.repayment_type === 'monthly_fixed') {
+      if (loanDraftRate(d) <= 0) m.push('ריבית')
+      if (!d.term_months) m.push('תקופה')
+    }
+    return m
   }
+  const loanReady = (d: (typeof loans)[number]) => loanMissing(d).length === 0
 
   // On entering this step, re-sync the shared form to the row flagged for editing (a
-  // loan auto-flagged in the documents step), otherwise open the first incomplete loan.
+  // loan auto-flagged in the documents step), otherwise open the first loan still
+  // missing a required field so it never hides collapsed behind a "done"-looking card.
   useEffect(() => {
     if (editingLoanIdx !== null) {
       if (loans[editingLoanIdx]) setLoanForm({ ...loans[editingLoanIdx] })
       return
     }
     if (showLoanForm) return
-    const idx = loans.findIndex(l => !loanComplete(l))
+    const idx = loans.findIndex(l => !loanReady(l))
     if (idx >= 0) {
       setEditingLoanIdx(idx)
       setLoanForm({ ...loans[idx] })
@@ -46,7 +53,12 @@ export function LoansStep() {
   }, [])
 
   return (
-    <form onSubmit={e => { e.preventDefault(); advance('investment') }}>
+    <form onSubmit={e => {
+      e.preventDefault()
+      // Block advancing past a loan that's still missing a required field — ask first.
+      if (loans.some(l => !loanReady(l))) { setContinuePrompt(true); return }
+      advance('investment')
+    }}>
       <StepHeader current="loans" icon={<HandCoins size={44} color="var(--accent)" />} title="הלוואות" />
       <FillExampleTop onFill={fillTestLoans} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
@@ -79,8 +91,8 @@ export function LoansStep() {
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
                     if (isEditing) {
-                      // Only let a complete loan collapse — incomplete ones stay open.
-                      if (loanComplete(d)) setEditingLoanIdx(null)
+                      // Only a ready loan (amount + rate + term) may collapse.
+                      if (loanReady(d)) setEditingLoanIdx(null)
                     } else {
                       setEditingLoanIdx(i)
                       setLoanForm({ ...d })
@@ -104,8 +116,8 @@ export function LoansStep() {
                       {isMonthly && d.term_months && <><span>·</span><span>{d.term_months} ח׳</span></>}
                       {d.lender.trim() && <><span>·</span><span>{d.lender.trim()}</span></>}
                     </div>
-                    {!loanComplete(d) && (
-                      <div className="onboarding-track-missing">חסרים פרטים — לחצו להשלמה</div>
+                    {!loanReady(d) && (
+                      <div className="onboarding-track-missing">חסר {loanMissing(d).join(' · ')}</div>
                     )}
                   </div>
                   <div className="onboarding-list-row-actions">
@@ -113,7 +125,7 @@ export function LoansStep() {
                   </div>
                 </div>
                 {isEditing && <LoanForm
-                  onSave={() => { saveLoanEdit(i); if (!loanComplete(loanForm)) setEditingLoanIdx(i) }}
+                  onSave={() => { saveLoanEdit(i); if (!loanReady(loanForm)) setEditingLoanIdx(i) }}
                   onCancel={() => setEditingLoanIdx(null)} />}
               </div>
             )
@@ -154,6 +166,33 @@ export function LoansStep() {
               <strong>{formatCurrency(loansBalloonTotal)}</strong>
             </div>
           )}
+        </div>
+      )}
+
+      {continuePrompt && (
+        <div className="onboarding-continue-banner" role="alert">
+          <div className="onboarding-continue-banner-head">
+            <WarningCircle size={20} weight="fill" />
+            <span>הלוואה עם פרטים חסרים לא תישמר אם תמשיכו</span>
+          </div>
+          <ul className="onboarding-continue-banner-list">
+            {loans.filter(l => !loanReady(l)).map((l, idx) => (
+              <li key={idx}>{l.label.trim() || loanTypeLabel(l.repayment_type)} — חסר {loanMissing(l).join(', ')}</li>
+            ))}
+          </ul>
+          <div className="onboarding-continue-banner-actions">
+            <button type="button" className="btn-onboard-skip" onClick={() => {
+              const idx = loans.findIndex(l => !loanReady(l))
+              setContinuePrompt(false)
+              if (idx >= 0) { setEditingLoanIdx(idx); setLoanForm({ ...loans[idx] }); setShowLoanForm(false) }
+            }}>חזרה להשלמה</button>
+            <button type="button" className="btn-onboard-primary" onClick={() => {
+              setLoans(prev => prev.filter(loanReady))
+              setEditingLoanIdx(null)
+              setContinuePrompt(false)
+              advance('investment')
+            }}>המשך בלי לשמור</button>
+          </div>
         </div>
       )}
 

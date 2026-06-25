@@ -4390,6 +4390,33 @@ input[type="date"] {
   color: var(--warning-text, #8a5200);
 }
 
+/* Banner shown when advancing past a loan that's still missing a required field. */
+.onboarding-continue-banner {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.onboarding-continue-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--warning-text);
+}
+.onboarding-continue-banner-head svg { flex-shrink: 0; }
+.onboarding-continue-banner-list {
+  margin: 8px 0 12px;
+  padding-inline-start: 20px;
+  font-size: 13px;
+  color: var(--text);
+}
+.onboarding-continue-banner-list li { margin: 2px 0; }
+.onboarding-continue-banner-actions { display: flex; gap: 10px; }
+.onboarding-continue-banner-actions button { flex: 1; margin: 0; }
+
 /* Mortgage grace top-bar: one toggle + shared period; per-track marks live in each row. */
 .onboarding-grace-bar {
   display: flex;
