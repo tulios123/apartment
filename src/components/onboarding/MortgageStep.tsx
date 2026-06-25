@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bank, X } from '@phosphor-icons/react'
+import { Bank, X, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { TrackForm } from './TrackForm'
@@ -27,6 +27,7 @@ export function MortgageStep() {
     return g ? g.grace_months : '12'
   })
   const anyGrace = tracks.some(t => (parseInt(t.grace_months) || 0) > 0)
+  const [showDocs, setShowDocs] = useState(false)
 
   return (
     <form onSubmit={e => {
@@ -40,16 +41,17 @@ export function MortgageStep() {
 
       <div className="onboarding-ai-fill">
         <button type="button" className={`btn-onboard-ai${mortgageAiDone && !mortgageAiBusy ? ' is-done' : ''}`} disabled={mortgageAiBusy}
-          onClick={() => mortgageDocRef.current?.click()}>
+          onClick={() => { if (mortgageAiBusy) return; mortgageDocFiles.length ? setShowDocs(o => !o) : mortgageDocRef.current?.click() }}
+          aria-expanded={mortgageDocFiles.length ? showDocs : undefined}>
           {mortgageAiBusy
             ? 'קורא את המסמך…'
-            : mortgageAiDone
-              ? '✓ נקראו המסלולים — בדקו למטה · לחצו להעלאה מחדש'
+            : mortgageDocFiles.length
+              ? <>📎 {mortgageDocFiles.length} {mortgageDocFiles.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
               : '📄 העלו אישור מהבנק או צילומי מסך — מילוי אוטומטי'}
         </button>
         <input ref={mortgageDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillMortgage(fs); e.target.value = '' }} />
-        <DocFileList files={mortgageDocFiles} onFiles={aiFillMortgage} onRemove={i => removeDocFile('mortgage', i)} onRename={(i, name) => renameDocFile('mortgage', i, name)} />
+        {showDocs && <DocFileList files={mortgageDocFiles} onFiles={aiFillMortgage} onRemove={i => removeDocFile('mortgage', i)} onRename={(i, name) => renameDocFile('mortgage', i, name)} />}
         {mortgageAiErr && <p className="onboarding-error" role="alert">{mortgageAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר לבחור כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>

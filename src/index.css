@@ -4439,8 +4439,10 @@ input[type="date"] {
 .onboarding-dialog-actions { display: flex; flex-direction: column; gap: 10px; }
 .onboarding-dialog-actions button { margin: 0; }
 
-/* Inline uploaded-files list under a step's upload button. */
+/* Inline uploaded-files list under a step's upload button (toggled open). */
 .onboarding-doc-files--inline { margin-top: 10px; }
+.onboarding-ai-caret { vertical-align: middle; transition: transform var(--t-fast, .15s) var(--ease, ease); }
+.onboarding-ai-caret.is-open { transform: rotate(180deg); }
 
 /* Mortgage grace top-bar: one toggle + shared period; per-track marks live in each row. */
 .onboarding-grace-bar {

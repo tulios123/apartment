@@ -1,5 +1,5 @@
-import { useRef } from 'react'
-import { FileText } from '@phosphor-icons/react'
+import { useRef, useState } from 'react'
+import { FileText, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { FinishEarly } from './FinishEarly'
@@ -20,6 +20,7 @@ export function RentalStep() {
     fillTestRental,
   } = useOnboarding()
   const rentalDocRef = useRef<HTMLInputElement>(null)
+  const [showDocs, setShowDocs] = useState(false)
 
   return (
     <form onSubmit={e => { e.preventDefault(); advance('insurance') }}>
@@ -29,16 +30,17 @@ export function RentalStep() {
 
       <div className="onboarding-ai-fill">
         <button type="button" className={`btn-onboard-ai${rentalAiDone && !rentalAiBusy ? ' is-done' : ''}`} disabled={rentalAiBusy}
-          onClick={() => rentalDocRef.current?.click()}>
+          onClick={() => { if (rentalAiBusy) return; rentalDocFiles.length ? setShowDocs(o => !o) : rentalDocRef.current?.click() }}
+          aria-expanded={rentalDocFiles.length ? showDocs : undefined}>
           {rentalAiBusy
             ? 'קורא את החוזה…'
-            : rentalAiDone
-              ? '✓ החוזה נקרא — בדקו למטה · לחצו להעלאה מחדש'
+            : rentalDocFiles.length
+              ? <>📎 {rentalDocFiles.length} {rentalDocFiles.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
               : '📄 העלו חוזה שכירות — מילוי אוטומטי'}
         </button>
         <input ref={rentalDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillRental(fs); e.target.value = '' }} />
-        <DocFileList files={rentalDocFiles} onFiles={aiFillRental} onRemove={i => removeDocFile('rental', i)} onRename={(i, name) => renameDocFile('rental', i, name)} />
+        {showDocs && <DocFileList files={rentalDocFiles} onFiles={aiFillRental} onRemove={i => removeDocFile('rental', i)} onRename={(i, name) => renameDocFile('rental', i, name)} />}
         {rentalAiErr && <p className="onboarding-error" role="alert">{rentalAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>

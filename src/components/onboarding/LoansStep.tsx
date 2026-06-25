@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { HandCoins, X } from '@phosphor-icons/react'
+import { HandCoins, X, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { LoanForm } from './LoanForm'
@@ -22,6 +22,8 @@ export function LoansStep() {
   } = useOnboarding()
 
   const [continuePrompt, setContinuePrompt] = useState(false)
+  // Toggles the uploaded-files panel — files show only when the button is tapped.
+  const [showDocs, setShowDocs] = useState(false)
   // Bumped on every blocked collapse/save attempt to re-flash the "missing" line.
   const [alertPulse, setAlertPulse] = useState(0)
   // True after a blocked save on the open loan — shows the orange note by its button.
@@ -81,16 +83,17 @@ export function LoansStep() {
 
       <div className="onboarding-ai-fill">
         <button type="button" className={`btn-onboard-ai${loanAiDone && !loanAiBusy ? ' is-done' : ''}`} disabled={loanAiBusy}
-          onClick={() => loanDocRef.current?.click()}>
+          onClick={() => { if (loanAiBusy) return; loanDocFiles.length ? setShowDocs(o => !o) : loanDocRef.current?.click() }}
+          aria-expanded={loanDocFiles.length ? showDocs : undefined}>
           {loanAiBusy
             ? 'קורא את המסמך…'
-            : loanAiDone
-              ? '✓ ההלוואה נקראה — בדקו למטה · לחצו להעלאה מחדש'
+            : loanDocFiles.length
+              ? <>📎 {loanDocFiles.length} {loanDocFiles.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
               : '📄 העלו מסמך הלוואה או צילום מסך — מילוי אוטומטי'}
         </button>
         <input ref={loanDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillLoans(fs); e.target.value = '' }} />
-        <DocFileList files={loanDocFiles} onFiles={aiFillLoans} onRemove={i => removeDocFile('loan', i)} onRename={(i, name) => renameDocFile('loan', i, name)} />
+        {showDocs && <DocFileList files={loanDocFiles} onFiles={aiFillLoans} onRemove={i => removeDocFile('loan', i)} onRename={(i, name) => renameDocFile('loan', i, name)} />}
         {loanAiErr && <p className="onboarding-error" role="alert">{loanAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>

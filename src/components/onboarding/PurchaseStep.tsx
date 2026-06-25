@@ -1,5 +1,5 @@
-import { useRef } from 'react'
-import { Tag } from '@phosphor-icons/react'
+import { useRef, useState } from 'react'
+import { Tag, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { DocFileList } from './DocFileList'
@@ -19,6 +19,7 @@ export function PurchaseStep() {
     fillTestPurchase,
   } = useOnboarding()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
+  const [showDocs, setShowDocs] = useState(false)
 
   return (
     <form onSubmit={e => {
@@ -31,16 +32,17 @@ export function PurchaseStep() {
 
       <div className="onboarding-ai-fill">
         <button type="button" className={`btn-onboard-ai${purchaseAiDone && !purchaseAiBusy ? ' is-done' : ''}`} disabled={purchaseAiBusy}
-          onClick={() => purchaseDocRef.current?.click()}>
+          onClick={() => { if (purchaseAiBusy) return; purchaseDocFiles.length ? setShowDocs(o => !o) : purchaseDocRef.current?.click() }}
+          aria-expanded={purchaseDocFiles.length ? showDocs : undefined}>
           {purchaseAiBusy
             ? 'קורא את החוזה…'
-            : purchaseAiDone
-              ? '✓ נקרא — בדקו את הפרטים למטה · לחצו להעלאה מחדש'
+            : purchaseDocFiles.length
+              ? <>📎 {purchaseDocFiles.length} {purchaseDocFiles.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
               : '📄 העלו חוזה רכישה — מילוי אוטומטי'}
         </button>
         <input ref={purchaseDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillPurchase(fs); e.target.value = '' }} />
-        <DocFileList files={purchaseDocFiles} onFiles={aiFillPurchase} onRemove={i => removeDocFile('purchase', i)} onRename={(i, name) => renameDocFile('purchase', i, name)} />
+        {showDocs && <DocFileList files={purchaseDocFiles} onFiles={aiFillPurchase} onRemove={i => removeDocFile('purchase', i)} onRename={(i, name) => renameDocFile('purchase', i, name)} />}
         {purchaseAiErr && <p className="onboarding-error" role="alert">{purchaseAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>
