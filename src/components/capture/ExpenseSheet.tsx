@@ -131,6 +131,9 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
   const numeric = Number(amount)
   const canContinue = numeric > 0
+  // Only let a swipe-down dock the sheet once the user has actually put something
+  // in; an untouched sheet should just close.
+  const hasData = amount !== '' || desc.trim() !== '' || receipt !== null
   const dateLabel = date === today ? 'היום' : date === yesterday ? 'אתמול' : formatDate(date)
 
   async function save() {
@@ -166,7 +169,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="הוצאה חדשה">
+    <BottomSheet open={open} onClose={onClose} title="הוצאה חדשה" minimizable={hasData}>
       <div className="cap-steps-wrap" style={trackH ? { height: trackH } : undefined}>
         <div className="cap-steps" style={{ direction: 'ltr', transform: `translateX(${(step - 1) * -100}%)` }}>
 

@@ -96,6 +96,7 @@ export interface Task {
   google_task_id: string | null
   title: string
   due_date: string | null
+  due_time: string | null
   category: string
   status: TaskStatus
   source: TaskSource

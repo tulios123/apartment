@@ -157,12 +157,12 @@ Deno.serve(async (req) => {
       // 3) Open tasks due today or overdue.
       const { data: tasks } = await supabase
         .from('tasks')
-        .select('title, due_date')
+        .select('title, due_date, due_time')
         .eq('owner_id', ownerId)
         .eq('status', 'open')
         .not('due_date', 'is', null)
         .lte('due_date', today)
-      for (const t of tasks ?? []) lines.push(t.title)
+      for (const t of tasks ?? []) lines.push(t.due_time ? `${t.title} – ${String(t.due_time).slice(0, 5)}` : t.title)
 
       if (lines.length === 0) {
         // Nothing pending — release the day-claim so a later run today can still notify.

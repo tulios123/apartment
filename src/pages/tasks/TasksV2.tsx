@@ -19,7 +19,7 @@ const CAT_ICON: Record<string, typeof Wrench> = {
   'כללי': ListChecks,
 }
 
-const emptyEdit = { title: '', category: TASK_CATEGORIES[0] as string, due_date: '', status: 'open' as Task['status'] }
+const emptyEdit = { title: '', category: TASK_CATEGORIES[0] as string, due_date: '', due_time: '', status: 'open' as Task['status'] }
 
 const todayStr = () => todayISO()
 
@@ -84,7 +84,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     if (!addingTitle.trim()) return
     setSaving(true)
     await createTask({
-      title: addingTitle.trim(), category: 'כללי', due_date: null,
+      title: addingTitle.trim(), category: 'כללי', due_date: null, due_time: null,
       status: 'open', source: 'manual', is_recurring: false, recurrence_days: null,
       property_id: null, recurring_item_id: null, transaction_id: null,
     })
@@ -94,7 +94,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   }
 
   function openEdit(t: Task) {
-    setEditForm({ title: t.title, category: t.category, due_date: t.due_date ?? '', status: t.status })
+    setEditForm({ title: t.title, category: t.category, due_date: t.due_date ?? '', due_time: t.due_time?.slice(0, 5) ?? '', status: t.status })
     setEditing(t); setDrawerOpen(true)
   }
 
@@ -103,7 +103,9 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     setSaving(true)
     await updateTask(editing.id, {
       title: editForm.title.trim(), category: editForm.category,
-      due_date: editForm.due_date || null, status: editForm.status,
+      due_date: editForm.due_date || null,
+      due_time: (editForm.due_date && editForm.due_time) ? editForm.due_time : null,
+      status: editForm.status,
     })
     setDrawerOpen(false); setEditing(null); setSaving(false)
     refetch()
@@ -171,7 +173,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
                     <div className="tav-task-title">{t.title}</div>
                     <div className="tav-task-meta">
                       <span className="tav-task-cat"><Icon size={13} weight="duotone" /> {t.category}</span>
-                      {t.due_date && <span className={`tav-task-due${overdue ? ' overdue' : ''}`}>{formatDate(t.due_date)}</span>}
+                      {t.due_date && <span className={`tav-task-due${overdue ? ' overdue' : ''}`}>{formatDate(t.due_date)}{t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ''}</span>}
                       {t.source !== 'manual' && <span className="tav-task-badge">{t.source === 'recurring_item' ? 'קבוע' : 'חידוש'}</span>}
                     </div>
                   </div>
@@ -230,7 +232,8 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           <span>תאריך יעד</span>
           <div className="tav-daterow">
             <input type="date" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))} />
-            {editForm.due_date && <button type="button" className="tav-dateclear" onClick={() => setEditForm(f => ({ ...f, due_date: '' }))} aria-label="הסר תאריך"><X size={16} /></button>}
+            {editForm.due_date && <input type="time" className="tav-timeinput" value={editForm.due_time} onChange={e => setEditForm(f => ({ ...f, due_time: e.target.value }))} aria-label="שעת יעד" />}
+            {editForm.due_date && <button type="button" className="tav-dateclear" onClick={() => setEditForm(f => ({ ...f, due_date: '', due_time: '' }))} aria-label="הסר תאריך"><X size={16} /></button>}
           </div>
         </div>
         <div className="tav-field">

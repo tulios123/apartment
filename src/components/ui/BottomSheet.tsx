@@ -8,6 +8,13 @@ type Props = {
   onClose: () => void
   title?: string
   children: React.ReactNode
+  /**
+   * What a swipe-down past the threshold does. `true` (default) docks the sheet
+   * at the bottom (minimized, page usable) so in-progress input is preserved;
+   * `false` closes it outright. Pass a dynamic value to only keep the sheet when
+   * the form actually holds data (see ExpenseSheet).
+   */
+  minimizable?: boolean
 }
 
 /**
@@ -15,7 +22,7 @@ type Props = {
  * stacking/RTL/overflow context. Bottom-anchored slide, grab handle with
  * swipe-down-to-dismiss, scrim-tap + Esc to close, body scroll-lock.
  */
-export default function BottomSheet({ open, onClose, title, children }: Props) {
+export default function BottomSheet({ open, onClose, title, children, minimizable = true }: Props) {
   // Keep mounted through the slide-out, then unmount to keep the DOM clean.
   const [mounted, setMounted] = useState(open)
   const [minimized, setMinimized] = useState(false)
@@ -72,7 +79,9 @@ export default function BottomSheet({ open, onClose, title, children }: Props) {
     else if (minimized && delta < 0) setDragY(delta)
   }
   function onTouchEnd() {
-    if (!minimized && dragY > 90) setMinimized(true)
+    // Past the downward threshold: dock the sheet if it's allowed to stay
+    // (preserves typed-in data), otherwise just close it.
+    if (!minimized && dragY > 90) { if (minimizable) setMinimized(true); else onClose() }
     else if (minimized && dragY < -40) setMinimized(false)
     setDragY(0)
     startY.current = null

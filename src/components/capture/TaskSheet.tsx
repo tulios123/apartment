@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CircleNotch, Check, CalendarPlus, CalendarBlank, X } from '@phosphor-icons/react'
+import { CircleNotch, Check, CalendarPlus, CalendarBlank, Clock, X } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { createTask } from '../../hooks/useTasks'
@@ -16,12 +16,13 @@ type Props = {
 export default function TaskSheet({ open, onClose, onDone }: Props) {
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
+  const [time, setTime] = useState('')
   const [calOpen, setCalOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
-    if (open) { setTitle(''); setDue(''); setCalOpen(false); setState('idle'); setErr(null) }
+    if (open) { setTitle(''); setDue(''); setTime(''); setCalOpen(false); setState('idle'); setErr(null) }
   }, [open])
 
   const canSave = title.trim().length > 0 && state === 'idle'
@@ -32,19 +33,19 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
     setState('saving')
     const { error } = await createTask({
       property_id: null, recurring_item_id: null, transaction_id: null,
-      title: title.trim(), due_date: due || null,
+      title: title.trim(), due_date: due || null, due_time: (due && time) ? time : null,
       category: 'כללי', status: 'open', source: 'manual',
       is_recurring: false, recurrence_days: null,
     })
     if (error) { setState('idle'); setErr('לא הצלחנו לשמור — נסו שוב'); return }
     setState('done')
     tap(18)
-    onDone(due ? 'נוספה משימה לתזמון ✓' : 'נוספה לתוכנית העבודה ✓')
+    onDone(due ? `נוספה משימה לתזמון${time ? ` · ${time}` : ''} ✓` : 'נוספה לתוכנית העבודה ✓')
     setTimeout(onClose, 480)
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="משימה חדשה">
+    <BottomSheet open={open} onClose={onClose} title="משימה חדשה" minimizable={false}>
       <input
         className="cap-title"
         value={title}
@@ -59,7 +60,12 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
           <button className="cap-datechip" type="button" onClick={() => setCalOpen(true)}>
             <CalendarBlank size={18} weight="duotone" /> {formatDate(due)}
           </button>
-          <button className="cap-date-clear" onClick={() => setDue('')} aria-label="הסר תאריך"><X size={18} /></button>
+          <label className={`cap-timechip${time ? ' on' : ''}`}>
+            <Clock size={17} weight="duotone" />
+            <span>{time || 'הוסף שעה'}</span>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)} aria-label="שעת יעד" />
+          </label>
+          <button className="cap-date-clear" onClick={() => { setDue(''); setTime('') }} aria-label="הסר תאריך"><X size={18} /></button>
         </div>
       ) : (
         <button className="cap-ghost-date" onClick={() => setCalOpen(true)}>

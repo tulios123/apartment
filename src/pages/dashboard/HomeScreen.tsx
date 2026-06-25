@@ -128,18 +128,19 @@ export default function HomeScreen() {
     })
     sortedTasks
       .slice(0, 2)
-      .forEach(t =>
+      .forEach(t => {
+        const tm = t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ''
         list.push({
           id: `task-${t.id}`,
           kind: 'task',
           title: t.title,
           sub: !t.due_date ? `ללא תאריך · ${t.category}`
-            : t.due_date < todayStr ? `באיחור · ${formatDate(t.due_date)}`
-            : t.due_date === todayStr ? 'להיום'
-            : formatDate(t.due_date),
+            : t.due_date < todayStr ? `באיחור · ${formatDate(t.due_date)}${tm}`
+            : t.due_date === todayStr ? `להיום${tm}`
+            : `${formatDate(t.due_date)}${tm}`,
           taskId: t.id,
         })
-      )
+      })
     upcomingRenewals
       .filter(r => r.daysLeft <= RENEWAL_WINDOW_DAYS)
       .forEach(({ contract, daysLeft }) =>

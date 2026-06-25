@@ -100,6 +100,7 @@
   /* Date row with clear button */
   .tav-daterow { display: flex; align-items: center; gap: 8px; }
   .tav-daterow input { flex: 1; }
+  .tav-daterow .tav-timeinput { flex: 0 0 auto; width: 112px; }
   .tav-dateclear { flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--bg-alt); color: var(--text-muted); cursor: pointer; display: grid; place-items: center; }
   .tav-dateclear:hover { color: var(--danger-text); border-color: var(--danger-text); }
 
