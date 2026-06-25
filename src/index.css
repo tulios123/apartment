@@ -1054,28 +1054,39 @@ input[type="date"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
 .contract-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .contract-company {
   font-weight: 600;
   font-size: 15px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .contract-status-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 12px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: var(--r-pill);
   background: var(--success-bg);
   color: var(--success-text);
-  font-weight: 500;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
+
 
 .contract-status-badge.warning {
   background: var(--warning-bg);
@@ -1095,6 +1106,7 @@ input[type="date"] {
 .contract-card-actions {
   display: flex;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .contract-fields {
