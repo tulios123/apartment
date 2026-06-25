@@ -27,11 +27,6 @@ export async function uploadReceipt(file: File, transactionId: string): Promise<
   return path
 }
 
-export function getReceiptUrl(path: string): string {
-  const { data } = supabase.storage.from('documents').getPublicUrl(path)
-  return data.publicUrl
-}
-
 export async function getReceiptSignedUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage
     .from('documents')

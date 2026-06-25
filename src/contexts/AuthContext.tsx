@@ -4,7 +4,10 @@ import { supabase } from '../lib/supabase'
 import { GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { clearQueryCache } from '../lib/queryCache'
 
-const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
+// Dev-only auto-login. Gated on import.meta.env.DEV so it is compiled out of ANY
+// production build (vite build ⇒ DEV=false) — even if the env var were misconfigured
+// on the host, a prod bundle can never auto-login to the dev account.
+const DEV_BYPASS = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
 const DEV_EMAIL = import.meta.env.VITE_DEV_USER_EMAIL as string
 const DEV_PASSWORD = import.meta.env.VITE_DEV_USER_PASSWORD as string
 

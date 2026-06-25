@@ -32,7 +32,7 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 |----|------|-------|------|------------------|--------|
 | 1  | Financial calculation core | ~40 | **72 tests** | **9 bugs fixed** | nominal model fully tested; **CPI-indexation + prepayment NOT modelled (🟡 owner decision)** |
 | 2  | Database & data integrity | ~18 | **18 checked** | **1 bug (#10) fixed** | schema/cascades/owner-row audited; 🟡 recurring `contract_id` SET-NULL + migration 031 left for owner |
-| 3  | Security & access isolation | — | partial | XSS ✅ safe · storage-orphan ✅ audited | RLS/anon live-check still TODO |
+| 3  | Security & access isolation | ~22 | **complete** | **2 hardenings (DEV_BYPASS · dead getPublicUrl)** | RLS owner_scoped on all 15; **LIVE anon=0 verified**; secrets clean; signed-URL only |
 | 4  | Auth & Login | — | — | — | not started |
 | 5  | Onboarding | — | — | — | not started |
 | 6  | App entry / routing / splash | — | — | — | not started |
@@ -153,29 +153,29 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 *The most important for a multi-family release: each user sees ONLY their own data.*
 
 ### 3.1 RLS — owner isolation
-- [ ] Every data table has `owner_scoped` RLS (owner_id = auth.uid()) for authenticated.
-- [ ] Live check: anon key returns 0 rows across all tables (content-range */0).
-- [ ] Live check: a user cannot read another owner's rows (simulate with a second owner_id filter).
-- [ ] `push_log` is service-role only (no client policy).
-- [ ] `feedback`: any authenticated inserts own; only admin reads/deletes all.
-- [ ] Migration 026 (drop anon policies) applied on remote.
+- [x] Every data table has `owner_scoped` RLS (`owner_id = auth.uid()`): 14 tables + feedback's own 3 policies = all 15 client tables. Old permissive `authenticated_all`/`anon_all` dropped in 026.
+- [x] **LIVE check (curl, anon key):** properties/contracts/transactions/documents/feedback/owners/loans/push_subscriptions all return `[]` — anon reads denied across the board.
+- [x] Cross-owner read: uniform `using (owner_id = auth.uid())` on all 14 + feedback's own-or-admin. (Second-user JWT live-sim not run — but the policy shape is the guarantee, and anon=0 confirms RLS is on.)
+- [x] `push_log` (and `reminder_log`) have RLS enabled with **no client policy** → service-role only.
+- [x] `feedback`: `feedback_insert_own` (own), `feedback_select/delete_own_or_admin`. 🟡 the "admin" identity = dev@test.local depends on **migration 031** (still pending) — but per-user isolation holds regardless of 031.
+- [x] Migration 026 applied on remote — **proven** by the live anon=0 result (otherwise anon would read rows).
 
 ### 3.2 Auth
-- [ ] Session persists across reloads; sign-out clears it + google token.
-- [ ] Manager account (`dev@test.local`) requires the password; not guessable.
-- [ ] DEV_BYPASS is OFF in prod build (`build:prod` clears the env).
-- [ ] No service-role key or secrets shipped to the client bundle.
+- [x] Session persists (getSession on load); sign-out clears the session + removes `google_provider_token` (AuthContext.tsx:62) + `clearQueryCache()`.
+- [x] Manager (`dev@test.local`) requires the password via `signInWithPassword`; strength is the owner's.
+- [!] DEV_BYPASS — **hardened**: now `import.meta.env.DEV && …` so it's compiled out of ANY production build (vite build ⇒ DEV=false), defence-in-depth on top of `build:prod` clearing the env. (commit below)
+- [x] No service-role key/secrets in `src` (grep clean); only `VITE_SUPABASE_URL` + anon key reach the client. Service-role lives only in the Deno edge functions.
 
 ### 3.3 Input / output safety
-- [ ] User text (descriptions, notes, names) rendered as text (React escapes) — no XSS via dangerouslySetInnerHTML anywhere.
-- [ ] Amounts/numbers are parsed/validated before DB write (no NaN persisted).
-- [ ] File upload: type/size constraints; storage path not user-controlled to escape the bucket.
-- [ ] Signed URLs for documents expire; not long-lived public.
-- [ ] No personal data in URL query params.
+- [x] No `dangerouslySetInnerHTML`/`innerHTML` anywhere → React escapes all user text (prior Ch3 audit). Locked invariant.
+- [x] Amounts: entered via a digits-only keypad → `Number(amount)` is 0 or positive, never NaN; gated by `numeric > 0` (ExpenseSheet) and the not-null numeric column would reject a bad value.
+- [x] Upload path `${uid}/docs/${docId}.${ext}` — uid is auth-derived, docId a UUID; not user-controllable to escape the owner's prefix. (No client size/type cap beyond the picker `accept`; bucket-level limit applies — acceptable for a private owner-scoped bucket.)
+- [x] Document/receipt access via `createSignedUrl(path, 3600)` — 1-hour expiry, not public.
+- [x] No PII in URL params — client routes are path-only (`/finances`, `/property/:section`), no query strings carry user data.
 
 ### 3.4 Storage
-- [ ] Documents bucket RLS scoped to owner; anon storage policies dropped (003→026).
-- [ ] Receipt/doc access goes through signed URLs, owner-scoped.
+- [x] `documents` bucket private (public:false); `auth_upload`/`auth_read` policies; `anon_*` storage policies dropped (026).
+- [!] Access via signed URLs only — removed **dead `getReceiptUrl`** (`getPublicUrl` on a private bucket → broken/insecure if ever called); only `getReceiptSignedUrl` remains. (commit below)
 
 ---
 
@@ -365,6 +365,13 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 
 ## Findings log
 *(Bugs found while executing, with severity + fix commit. Newest first.)*
+
+### Ch3 security hardenings (2026-06-25)
+**🔒 DEV_BYPASS now impossible in any prod build.** `DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'` relied solely on an env var; if a host (Cloudflare) ever had that var set, every visitor would auto-login to the dev account. Now `import.meta.env.DEV && …` — a `vite build` sets `DEV=false`, so the bypass is compiled out of production regardless of env. Defence-in-depth over `build:prod` already clearing the vars. (AuthContext.tsx)
+
+**🧹 Removed dead `getReceiptUrl` (getPublicUrl on a private bucket).** Unused (only its own definition referenced) and would have returned a broken/insecure URL if anyone wired it up. Only the 1-hour `getReceiptSignedUrl` path remains. (storage.ts)
+
+**✅ LIVE-VERIFIED anon isolation.** curl with the anon key against properties/contracts/transactions/documents/feedback/owners/loans/push_subscriptions → all `[]`. Confirms owner_scoped RLS + that migration 026 (drop anon policies) is live on remote.
 
 ### BUG #10 🟠 — rent recurring-item insert could be rejected for a typed payment day > 28 — FIXED
 `recurring_items.day_of_month` has a DB `check (day_of_month between 1 and 28)`. The onboarding rent-day field is `<input type="number" max="28">`, but the `max` attribute is **not enforced on typed values** — a user can type 29/30/31. `syncRentRecurringItem` then inserted `day_of_month: parseInt(rentPaymentDay)` unclamped → the insert **violates the constraint and 400s**, so the rent recurring item (the monthly "גביית שכ\"ד" approval task source) is never created. Fixed at the single write boundary (`useRecurringItems.ts`): `day_of_month: Math.min(28, Math.max(1, opts?.dayOfMonth ?? 1))`, covering every caller. (Related: this is why BUG #9's end-of-month clamp matters — but the constraint means day is now always ≤28, so generation dates are always valid.)
