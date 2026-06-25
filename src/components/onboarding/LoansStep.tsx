@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { HandCoins, X, WarningCircle } from '@phosphor-icons/react'
+import { HandCoins, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { LoanForm } from './LoanForm'
