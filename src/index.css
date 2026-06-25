@@ -2047,55 +2047,91 @@ input[type="date"] {
   font-size: 15px;
 }
 
-/* Welcome step — light, informative intro (the first bookend after login). */
+/* Welcome step — navy brand band + a short, bounded preview of the setup. */
 .onboarding-welcome {
   display: flex;
   flex-direction: column;
 }
-.onboarding-welcome-top { text-align: center; padding-top: 6px; }
-.onboarding-welcome-mark {
-  width: 54px;
-  height: 54px;
+/* Brand band — bleeds to the card edges, ties the screen to the Login hero. */
+.onboarding-welcome-hero {
+  margin: -44px -40px 0;
+  padding: 34px 24px 26px;
+  background: var(--hero-navy);
+  border-radius: 20px 20px 0 0;
+  text-align: center;
+}
+.onboarding-welcome-logo {
+  width: 58px;
+  height: 58px;
   margin: 0 auto 14px;
-  background: var(--accent-light);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 17px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.onboarding-welcome-title {
-  font-size: 22px;
+.onboarding-welcome-brand {
+  font-size: 24px;
   font-weight: 700;
-  color: var(--brand-navy);
-  margin: 0;
+  color: #fff;
+  letter-spacing: 0.4px;
 }
-.onboarding-welcome-sub {
+.onboarding-welcome-brandsub {
   font-size: 13px;
-  color: var(--text-muted);
-  margin-top: 6px;
-  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 5px;
 }
-.onboarding-welcome-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 24px 0 20px;
+.onboarding-welcome-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 6px 13px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12.5px;
+  font-weight: 600;
 }
+.onboarding-welcome-time svg { color: var(--accent-teal); flex-shrink: 0; }
+
+.onboarding-welcome-lead {
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 26px 0 18px;
+}
+
+/* The four themes, connected by a rail so they read as one short roadmap. */
 .onboarding-welcome-list {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  margin-bottom: 26px;
+}
+.onboarding-welcome-list::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 21px;
+  top: 28px;
+  bottom: 28px;
+  width: 2px;
+  background: var(--border);
 }
 .onboarding-welcome-row {
   display: flex;
   align-items: center;
   gap: 14px;
+  padding: 7px 0;
 }
 .onboarding-welcome-icon {
-  width: 46px;
-  height: 46px;
+  position: relative;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--accent-light);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2111,7 +2147,6 @@ input[type="date"] {
   color: var(--text-muted);
   margin-top: 2px;
 }
-.onboarding-welcome-spacer { min-height: 18px; }
 
 /* Step dots */
 .onboarding-dots {
