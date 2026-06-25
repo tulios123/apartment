@@ -6,7 +6,7 @@ import { useOnboarding } from './context'
 
 // Inline editor for a single mortgage track. Used both for adding a new track
 // and editing a saved one (the parent supplies onSave/onCancel).
-export function TrackForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+export function TrackForm({ onSave, onCancel, alert }: { onSave: () => void; onCancel: () => void; alert?: string[] | null }) {
   const {
     trackForm, setTF, price, focusedInput, setFocusedInput,
     graceOn, setGraceOn, previewMonthly, previewGrace,
@@ -104,6 +104,9 @@ export function TrackForm({ onSave, onCancel }: { onSave: () => void; onCancel: 
             <div>תשלום חודשי משוער: <strong>{formatCurrency(previewMonthly)}</strong></div>
           )}
         </div>
+      )}
+      {alert && alert.length > 0 && (
+        <div className="onboarding-loan-form-alert" role="alert">חסר {alert.join(' · ')}</div>
       )}
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>

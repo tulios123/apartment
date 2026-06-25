@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Bank, X, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -13,7 +14,7 @@ export function MortgageStep() {
     advance, keyDeliveryDate, setLoanForm,
     mortgageAiBusy, mortgageDocRef, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     mortgageDocFiles, removeDocFile, renameDocFile,
-    tracks, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
+    tracks, setTracks, trackForm, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
@@ -28,10 +29,48 @@ export function MortgageStep() {
   })
   const anyGrace = tracks.some(t => (parseInt(t.grace_months) || 0) > 0)
   const [showDocs, setShowDocs] = useState(false)
+  const [continuePrompt, setContinuePrompt] = useState(false)
+  const [alertPulse, setAlertPulse] = useState(0)
+  const [saveAttempted, setSaveAttempted] = useState(false)
+
+  // A track is "ready" only with all required details: principal + rate + term (months).
+  const trackMissing = (d: (typeof tracks)[number]) => {
+    const m: string[] = []
+    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
+    if (trackEffectiveRate(d) <= 0) m.push('ריבית')
+    if (!d.term_months) m.push('תקופה')
+    return m
+  }
+  const trackReady = (d: (typeof tracks)[number]) => trackMissing(d).length === 0
+  const effectiveTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
+  const incompleteTracks = effectiveTracks.filter(t => !trackReady(t))
+
+  // Save + collapse the open track when ready, otherwise flag exactly what's missing.
+  const finalizeTrack = (i: number) => {
+    if (trackReady(trackForm)) { saveTrackEdit(i); setSaveAttempted(false) }
+    else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
+  }
+
+  // On arrival a track is always opened for review (never lands collapsed from upload).
+  useEffect(() => {
+    if (editingIdx !== null) {
+      if (tracks[editingIdx]) setTrackForm({ ...tracks[editingIdx] })
+      return
+    }
+    if (showTrackForm) return
+    if (tracks.length > 0) {
+      setEditingIdx(0)
+      setTrackForm({ ...tracks[0] })
+      setGraceOn((parseInt(tracks[0].grace_months) || 0) > 0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <form onSubmit={e => {
       e.preventDefault()
+      if (incompleteTracks.length > 0) { setContinuePrompt(true); return }
+      if (editingIdx !== null && trackReady(trackForm)) saveTrackEdit(editingIdx)
       setLoanForm(emptyLoan(keyDeliveryDate || undefined))
       advance('loans')
     }}>
@@ -85,18 +124,20 @@ export function MortgageStep() {
               ? (parseFloat(d.principal) || 0) * (trackEffectiveRate(d) / 100 / 12)
               : 0
             const isEditing = editingIdx === i
+            const view = isEditing ? trackForm : d
+            const missing = trackMissing(view)
             return (
               <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                 <div className="onboarding-list-row-header"
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
-                    if (isEditing) {
-                      setEditingIdx(null)
-                    } else {
+                    if (isEditing) finalizeTrack(i)            // tap top = save + collapse (alert if incomplete)
+                    else {
                       setEditingIdx(i)
                       setTrackForm({ ...d })
                       setGraceOn((parseInt(d.grace_months) || 0) > 0)
                       setShowTrackForm(false)
+                      setSaveAttempted(false)
                     }
                   }}>
                   <div className="onboarding-track-summary">
@@ -118,6 +159,12 @@ export function MortgageStep() {
                       <span>{d.term_months} ח׳</span>
                       {(parseInt(d.grace_months) || 0) > 0 && <><span>·</span><span>גרייס {d.grace_months} ח׳</span></>}
                     </div>
+                    {missing.length > 0 && (
+                      <div className="onboarding-track-missing onboarding-track-missing--flash"
+                        key={isEditing ? `m-${i}-${alertPulse}` : `m-${i}`}>
+                        חסר {missing.join(' · ')}
+                      </div>
+                    )}
                   </div>
                   <div className="onboarding-list-row-actions">
                     {anyGrace && (
@@ -130,7 +177,10 @@ export function MortgageStep() {
                     <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>
                   </div>
                 </div>
-                {isEditing && <TrackForm onSave={() => saveTrackEdit(i)} onCancel={() => setEditingIdx(null)} />}
+                {isEditing && <TrackForm
+                  onSave={() => finalizeTrack(i)}
+                  onCancel={() => { setEditingIdx(null); setSaveAttempted(false) }}
+                  alert={saveAttempted ? trackMissing(trackForm) : null} />}
               </div>
             )
           })}
@@ -180,6 +230,42 @@ export function MortgageStep() {
 
       <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
       <FinishEarly />
+
+      {continuePrompt && createPortal(
+        <div className="onboarding-dialog-overlay" onClick={() => setContinuePrompt(false)}>
+          <div className="onboarding-dialog" onClick={e => e.stopPropagation()}>
+            <div className="onboarding-dialog-title">חסרים פרטים במסלול</div>
+            <p className="onboarding-dialog-lead">אם תמשיכו, המסלול הזה לא יישמר:</p>
+            <ul className="onboarding-dialog-list">
+              {incompleteTracks.map((t, idx) => (
+                <li key={idx}>
+                  <strong>{trackTypeLabel(t.track_type)}</strong> — חסר {trackMissing(t).join(', ')}
+                </li>
+              ))}
+            </ul>
+            <div className="onboarding-dialog-actions">
+              <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => {
+                const idx = tracks.findIndex(t => !trackReady(t))
+                setContinuePrompt(false)
+                if (idx >= 0) {
+                  setEditingIdx(idx)
+                  setTrackForm({ ...tracks[idx] })
+                  setGraceOn((parseInt(tracks[idx].grace_months) || 0) > 0)
+                  setShowTrackForm(false)
+                }
+              }}>חזרה להשלמה</button>
+              <button type="button" className="btn-onboard-skip onboarding-cta-full" onClick={() => {
+                setTracks(prev => prev.filter(trackReady))
+                setEditingIdx(null)
+                setContinuePrompt(false)
+                setLoanForm(emptyLoan(keyDeliveryDate || undefined))
+                advance('loans')
+              }}>המשך בלי לשמור</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </form>
   )
 }
