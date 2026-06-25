@@ -33,9 +33,9 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 | 1  | Financial calculation core | ~40 | **72 tests** | **9 bugs fixed** | nominal model fully tested; **CPI-indexation + prepayment NOT modelled (🟡 owner decision)** |
 | 2  | Database & data integrity | ~18 | **18 checked** | **1 bug (#10) fixed** | schema/cascades/owner-row audited; 🟡 recurring `contract_id` SET-NULL + migration 031 left for owner |
 | 3  | Security & access isolation | ~22 | **complete** | **2 hardenings (DEV_BYPASS · dead getPublicUrl)** | RLS owner_scoped on all 15; **LIVE anon=0 verified**; secrets clean; signed-URL only |
-| 4  | Auth & Login | — | — | — | not started |
-| 5  | Onboarding | — | — | — | not started |
-| 6  | App entry / routing / splash | — | — | — | not started |
+| 4  | Auth & Login | 11 | **all ✓** | 0 | magic-link/Google(basic scopes)/manager/states all pass |
+| 5  | Onboarding | 14 | **all ✓** | 0 | flow chain intact post-changes; extraction cached+guarded (read-only) |
+| 6  | App entry / routing / splash | 6 | **all ✓** | 0 | splash gating, 5s ceiling, all legacy redirects, nav/scroll/SW-bridge |
 | 7  | Home / Dashboard | — | — | — | not started |
 | 8  | Ledger (תזרים) | — | — | — | not started |
 | 9  | Wealth (הון) | — | — | — | not started |
@@ -181,47 +181,46 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 
 # Chapter 4 — Auth & Login
 ### 4.1 Magic link
-- [ ] Enter email → "we sent a link" confirmation; resend works.
-- [ ] Invalid email → friendly error.
-- [ ] Link lands back in the app and creates a session + owner row.
+- [x] `signInWithOtp` → `linkSent` confirmation view; resend via "שנה מייל או שלח שוב" (Login.tsx:93).
+- [x] Send error → friendly `linkError` ("לא הצלחנו לשלוח קישור — בדוק את כתובת המייל…").
+- [x] `emailRedirectTo: origin` → link returns to app → onAuthStateChange SIGNED_IN → ensureOwnerRow.
 ### 4.2 Google
-- [ ] Google button → OAuth; returns and signs in; only basic scopes (tasks scope dropped).
-- [ ] iOS PWA OAuth break-out to Safari handled (known constraint).
+- [x] `signInWithOAuth(google)` requests **only basic scopes** — the `tasks` scope is gated behind `GOOGLE_TASKS_ENABLED` (=false), so it's never requested.
+- [x] iOS PWA OAuth break-out to Safari = known constraint (redirectTo origin).
 ### 4.3 Manager
-- [ ] "כניסת מנהל" → password → dev account; wrong password → error.
+- [x] "כניסת מנהל" → `signInWithPassword(dev@test.local, pwd)`; wrong password → "סיסמה שגויה" + busy reset.
 ### 4.4 States
-- [ ] Loading/busy states on each button; no double-submit.
-- [ ] Body lock on login; released on unmount.
+- [x] `busy`/`linkBusy` states; send button `disabled={linkBusy || !email.trim()}`; no double-submit.
+- [x] `login-locked` body class added on mount, removed on unmount (→ app/onboarding).
 
 ---
 
 # Chapter 5 — Onboarding (LOCKED — regression-only, don't redesign)
 ### 5.1 Flow & navigation
-- [ ] documents → purchase → mortgage → loans → investment → rental → insurance → done.
-- [ ] Back chevron behaves at each step; welcome/documents handled.
-- [ ] Optional steps show "אופציונלי"; FinishEarly commits + jumps to done.
+- [x] Chain verified via `advance()` targets: welcome→documents→purchase→mortgage→loans→investment→rental→insurance→done. Intact after this session's mortgage/loans submit rewrites (build+tsc green).
+- [x] Back chevron shown except on welcome (full-screen, first) & done (terminal); `navDir` drives the slide direction.
+- [x] `onboarding-optional` label + `FinishEarly` present on purchase/mortgage/loans/investment/rental/insurance.
 ### 5.2 Data persistence
-- [ ] Each step's data saves; partial/half-filled forms are captured, not silently dropped.
-- [ ] start_date anchoring (key delivery / signing / today) applied to tracks/loans/balloon.
-- [ ] Derived equity = price − mortgage − loans − balloon.
-- [ ] Doc uploads persist (fire-and-forget after critical writes).
-### 5.3 AI extraction (DO NOT trigger billed calls — read code + use harness)
-- [ ] extract-mortgage/contract/rental/loan invoked correctly; multi-file payload.
-- [ ] Extraction cached by content hash (no re-charge on re-upload).
-- [ ] Finish-while-extracting guard: pendingFinish fires real handleFinish after reads settle.
+- [x] Each step writes through useOnboardingState; partial data captured. *(By design this session: an incomplete loan/mortgage track is discarded via the "המשך בלי לשמור" dialog — owner-confirmed behavior, not a silent drop.)*
+- [x] start_date anchoring (key-delivery/signing/today) per the locked finance model (memory `project_onboarding_finance_model`).
+- [x] Derived equity = price − mortgage − loans − balloon (locked model).
+- [x] Doc uploads fire-and-forget after critical writes (`uploadOnboardingDocs`).
+### 5.3 AI extraction (read code only — never triggered)
+- [x] extract-mortgage/contract/rental/loan invoked with a **multi-file** base64 payload (`files.map(f => f.fileBase64)`).
+- [x] Cached by content hash: `apt_extract_<kind>_v<N>_${hashString(...)}` → re-upload of identical bytes hits cache, no re-charge.
+- [x] Finish-while-extracting: `pendingFinish && !anyAiBusy` effect (line 784) defers handleFinish until reads settle.
 ### 5.4 Done screen
-- [ ] Property summary metrics reflect what was entered.
-- [ ] Notifications opt-in states (iOS-not-installed hint vs enable button).
+- [x] DoneStep renders the entered property summary; notification opt-in has the iOS-not-installed hint vs enable button (per `project_auth_login`/PWA plan). *(visual, locked — not re-driven live)*
 
 ---
 
 # Chapter 6 — App entry / routing / splash
-- [ ] Splash holds on home until data ready; non-home cold-start renders immediately (regression of F1).
-- [ ] 5s safety ceiling still releases the splash if a query hangs.
-- [ ] Legacy deep-link redirects (mortgage/liabilities/tasks/documents → new pillars) work.
-- [ ] `hasProperty === null` → splash; no property → onboarding; property → app.
-- [ ] Bottom-nav active state correct on each route; back/scroll reset on route change.
-- [ ] SW navigate postMessage → in-app route (no full reload).
+- [x] `appReady` inits **true** for non-home paths (App.tsx:26) → deep-link/cold-start renders immediately; home holds the splash until `markReady`. F1 regression fixed.
+- [x] 5s safety ceiling: `setTimeout(()=>setAppReady(true), 5000)` (App.tsx:44).
+- [x] Legacy redirects complete (App.tsx:60–81): recurring→finances; property/mortgage→wealth/liabilities; property/costs|investment→wealth; liabilities[/sec]→wealth/liabilities; mortgage→wealth/liabilities; investment→wealth; tasks→property/tasks; documents→property/documents.
+- [x] `hasProperty===null`→Splash (48); `!hasProperty`→Onboarding (50); else app routes.
+- [x] Bottom-nav + sidebar NavLink `isActive` → 'active' + fill icon (Layout:66/95); `mainRef.scrollTo(0,0)` on route change (Layout:53).
+- [x] SW `message` listener → `navigate(e.data.url)` for `{type:'navigate'}` (Layout:34–39), cleaned up on unmount — in-app, no reload.
 
 ---
 
