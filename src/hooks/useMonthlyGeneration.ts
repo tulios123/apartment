@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { monthEndISO, todayISO } from '../lib/format'
+import { RENEWAL_WINDOW_DAYS } from '../lib/constants'
 
 const GENERATION_KEY = 'monthly_generation'
 
@@ -138,11 +139,14 @@ async function runGeneration() {
 
   for (const contract of contracts ?? []) {
     const daysLeft = Math.ceil((new Date(contract.end_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    const alertDays: number[] = contract.renewal_alert_days ?? [90, 30]
-    const maxAlert = Math.max(...alertDays)
-    if (daysLeft > maxAlert) continue
+    // Renewal task pops ~2 months out (RENEWAL_WINDOW_DAYS). One open task per
+    // property is kept (the dedup below); the recurring monthly/fortnightly
+    // *push* reminders are handled by the daily-reminders edge function.
+    if (daysLeft > RENEWAL_WINDOW_DAYS) continue
 
-    // Skip if an open renewal task already exists for this property
+    // One persistent renewal task per property: skip if ANY open renewal task
+    // already exists (don't re-create it monthly — the recurring push reminders are
+    // handled by the daily-reminders edge function on their own cadence).
     const { data: existing } = await supabase
       .from('tasks')
       .select('id')
@@ -150,7 +154,6 @@ async function runGeneration() {
       .eq('source', 'renewal')
       .eq('property_id', contract.property_id)
       .eq('status', 'open')
-      .gte('due_date', todayStr)
       .limit(1)
 
     if (existing && existing.length > 0) continue

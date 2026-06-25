@@ -4,6 +4,13 @@ export const MORTGAGE_CATEGORIES = ['משכנתא', 'משכנתא – בנק', '
 export const INTEREST_CATEGORY = 'ריבית'
 export const MAINTENANCE_CATEGORY = 'תיקונים'
 
+// Lease lifecycle reminders: a renewal task/alert pops this many days before a
+// contract ends (≈2 months), then reminders repeat monthly until it ends; once
+// there's no active contract, a "no lease" reminder repeats fortnightly.
+export const RENEWAL_WINDOW_DAYS = 60
+export const RENEWAL_REPEAT_DAYS = 28      // ~monthly push while in the window
+export const NO_LEASE_REPEAT_DAYS = 14     // fortnightly push when no active lease
+
 // Categories for one-time transactions
 export const INCOME_CATEGORIES = ['שכר דירה', 'אחר'] as const
 export const EXPENSE_CATEGORIES = ['תיקונים', 'ריבית', 'אחר'] as const

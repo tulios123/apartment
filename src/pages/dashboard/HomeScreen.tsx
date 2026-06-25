@@ -16,7 +16,7 @@ import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { gracePeriodPayment } from '../../lib/mortgage'
 import { activeContract as findActiveContract } from '../../lib/projections'
-import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
+import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick } from '../../lib/quickParse'
 import { taskCompletionFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -139,7 +139,7 @@ export default function HomeScreen() {
         })
       )
     upcomingRenewals
-      .filter(r => r.daysLeft <= 45)
+      .filter(r => r.daysLeft <= RENEWAL_WINDOW_DAYS)
       .forEach(({ contract, daysLeft }) =>
         list.push({
           id: `renewal-${contract.id}`,

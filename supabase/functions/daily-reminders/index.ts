@@ -27,6 +27,12 @@ function json(obj: unknown) {
   })
 }
 
+// Lease-lifecycle reminder cadence (mirrors src/lib/constants.ts). The cron runs
+// daily, but these reminders are throttled via the reminder_log table.
+const RENEWAL_WINDOW_DAYS = 60   // renewal reminder starts ~2 months before the end
+const RENEWAL_REPEAT_DAYS = 28   // then repeats ~monthly while still in the window
+const NO_LEASE_REPEAT_DAYS = 14  // "no active lease" reminder repeats fortnightly
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -103,17 +109,43 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 2) Contract renewals within the alert window.
-      const { data: contracts } = await supabase
+      // 2) Lease lifecycle — throttled via reminder_log, NOT sent daily.
+      const { data: rlog } = await supabase
+        .from('reminder_log').select('kind, last_sent').eq('owner_id', ownerId)
+      const lastSent = new Map((rlog ?? []).map((r) => [r.kind as string, r.last_sent as string]))
+      const cadenceDue = (kind: string, days: number) => {
+        const ls = lastSent.get(kind)
+        return !ls || daysBetween(ls, today) >= days
+      }
+      let logRenewal = false
+      let logNoLease = false
+
+      // Contracts still active or upcoming (ending today or later).
+      const { data: liveContracts } = await supabase
         .from('contracts')
-        .select('company_name, end_date, renewal_alert_days')
+        .select('company_name, start_date, end_date')
         .eq('owner_id', ownerId)
         .gte('end_date', today)
-      for (const c of contracts ?? []) {
-        const alertDays: number[] = c.renewal_alert_days ?? [90, 30]
-        const left = daysBetween(today, c.end_date)
-        if (left <= Math.max(...alertDays)) {
-          lines.push(`חידוש חוזה עם ${c.company_name} – נותרו ${left} ימים`)
+
+      // 2a) Renewal: an already-started contract ending within ~2 months → remind
+      // ~monthly until it ends.
+      const renewing = (liveContracts ?? [])
+        .filter((c) => c.start_date <= today && daysBetween(today, c.end_date) <= RENEWAL_WINDOW_DAYS)
+        .sort((a, b) => a.end_date.localeCompare(b.end_date))
+      if (renewing.length > 0 && cadenceDue('renewal', RENEWAL_REPEAT_DAYS)) {
+        const c = renewing[0]
+        lines.push(`חידוש חוזה עם ${c.company_name} – נותרו ${daysBetween(today, c.end_date)} ימים`)
+        logRenewal = true
+      }
+
+      // 2b) No active/upcoming lease at all → fortnightly nudge (only when the owner
+      // actually has a property, so a brand-new user isn't nagged).
+      if ((liveContracts ?? []).length === 0) {
+        const { count } = await supabase
+          .from('properties').select('id', { count: 'exact', head: true }).eq('owner_id', ownerId)
+        if ((count ?? 0) > 0 && cadenceDue('no-lease', NO_LEASE_REPEAT_DAYS)) {
+          lines.push('אין חוזה שכירות פעיל — מומלץ להוסיף שוכר חדש')
+          logNoLease = true
         }
       }
 
@@ -156,8 +188,15 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (delivered > 0) sentOwners++
-      else await supabase.from('push_log').delete().eq('owner_id', ownerId).eq('sent_on', today)
+      if (delivered > 0) {
+        sentOwners++
+        // Record cadence only after the push actually went out (else it retries
+        // tomorrow). upsert so the next eligible day is RENEWAL/NO_LEASE_REPEAT_DAYS off.
+        if (logRenewal) await supabase.from('reminder_log').upsert({ owner_id: ownerId, kind: 'renewal', last_sent: today }, { onConflict: 'owner_id,kind' })
+        if (logNoLease) await supabase.from('reminder_log').upsert({ owner_id: ownerId, kind: 'no-lease', last_sent: today }, { onConflict: 'owner_id,kind' })
+      } else {
+        await supabase.from('push_log').delete().eq('owner_id', ownerId).eq('sent_on', today)
+      }
     }
 
     return json({ ok: true, owners: byOwner.size, sentOwners })
