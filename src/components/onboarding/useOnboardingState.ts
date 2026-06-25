@@ -460,6 +460,20 @@ export function useOnboardingState(onComplete: () => void) {
     setters[category](prev => prev.filter((_, i) => i !== index))
   }
 
+  // Rename a chosen file in place. A File's name is immutable, so we rebuild it from
+  // the same bytes — content (and therefore the extraction cache key) is unchanged,
+  // so no re-read is triggered; only the stored document's filename changes.
+  function renameDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental', index: number, newName: string) {
+    const name = newName.trim()
+    if (!name) return
+    const setters = {
+      purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
+      loan: setLoanDocFiles, rental: setRentalDocFiles,
+    } as const
+    setters[category](prev => prev.map((f, i) =>
+      i === index ? new File([f], name, { type: f.type, lastModified: f.lastModified }) : f))
+  }
+
   // Background upload of the supplementary document files (purchase / mortgage / loan /
   // rental). Called WITHOUT await from handleFinish so "done" shows immediately; each
   // upload is independent and non-critical, so failures are swallowed (re-uploadable
@@ -1071,7 +1085,7 @@ export function useOnboardingState(onComplete: () => void) {
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     // Uploaded document files per category + remove (documents step manage view)
-    purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile,
+    purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,

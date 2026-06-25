@@ -2612,7 +2612,12 @@ input[type="date"] {
   padding: 8px 10px;
 }
 .onboarding-doc-file > svg { color: var(--text-muted); flex-shrink: 0; }
-.onboarding-doc-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.onboarding-doc-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; }
+.onboarding-doc-file-edit {
+  flex: 1; min-width: 0; font: inherit; color: var(--text);
+  background: var(--bg-alt); border: 1px solid var(--accent);
+  border-radius: var(--r-xs, 6px); padding: 4px 8px; outline: none;
+}
 .onboarding-doc-file-del {
   flex-shrink: 0; width: 30px; height: 30px; display: grid; place-items: center;
   border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 50%;

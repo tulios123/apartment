@@ -11,26 +11,32 @@ export function LoansStep() {
   const {
     advance, keyDeliveryDate,
     loans, loanDraftRate, loanTypeLabel,
-    editingLoanIdx, setEditingLoanIdx, setLoanForm, showLoanForm, setShowLoanForm,
+    editingLoanIdx, setEditingLoanIdx, setLoanForm, loanForm, showLoanForm, setShowLoanForm,
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
     fillTestLoans,
   } = useOnboarding()
 
-  // A loan read in the documents step may have been auto-flagged for completion
-  // (editingLoanIdx set), but the mortgage step resets the shared working form on its
-  // way here — which would open the card showing empty placeholder fields. On entering
-  // this step, re-sync the form to the row marked for editing so it opens with the
-  // loan's real values; if nothing is flagged, open the first loan still missing
-  // rate/term so an incomplete loan never hides behind a tidy "done"-looking card.
+  // A loan "tab" counts as done (and may collapse) only when ALL its details are
+  // present — principal + lender, plus rate + term for a monthly loan. Anything
+  // missing keeps the row open so it never hides behind a tidy "done"-looking card.
+  const loanComplete = (d: (typeof loans)[number]) => {
+    const hasBase = (parseFloat(d.principal) || 0) > 0 && d.lender.trim() !== ''
+    return d.repayment_type === 'monthly_fixed'
+      ? hasBase && loanDraftRate(d) > 0 && !!d.term_months
+      : hasBase
+  }
+
+  // On entering this step, re-sync the shared form to the row flagged for editing (a
+  // loan auto-flagged in the documents step), otherwise open the first incomplete loan.
   useEffect(() => {
     if (editingLoanIdx !== null) {
       if (loans[editingLoanIdx]) setLoanForm({ ...loans[editingLoanIdx] })
       return
     }
     if (showLoanForm) return
-    const idx = loans.findIndex(l => l.repayment_type === 'monthly_fixed' && (loanDraftRate(l) <= 0 || !l.term_months))
+    const idx = loans.findIndex(l => !loanComplete(l))
     if (idx >= 0) {
       setEditingLoanIdx(idx)
       setLoanForm({ ...loans[idx] })
@@ -73,7 +79,8 @@ export function LoansStep() {
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
                     if (isEditing) {
-                      setEditingLoanIdx(null)
+                      // Only let a complete loan collapse — incomplete ones stay open.
+                      if (loanComplete(d)) setEditingLoanIdx(null)
                     } else {
                       setEditingLoanIdx(i)
                       setLoanForm({ ...d })
@@ -97,7 +104,7 @@ export function LoansStep() {
                       {isMonthly && d.term_months && <><span>·</span><span>{d.term_months} ח׳</span></>}
                       {d.lender.trim() && <><span>·</span><span>{d.lender.trim()}</span></>}
                     </div>
-                    {isMonthly && (rate <= 0 || !d.term_months) && (
+                    {!loanComplete(d) && (
                       <div className="onboarding-track-missing">חסרים פרטים — לחצו להשלמה</div>
                     )}
                   </div>
@@ -105,7 +112,9 @@ export function LoansStep() {
                     <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeLoan(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>
                   </div>
                 </div>
-                {isEditing && <LoanForm onSave={() => saveLoanEdit(i)} onCancel={() => setEditingLoanIdx(null)} />}
+                {isEditing && <LoanForm
+                  onSave={() => { saveLoanEdit(i); if (!loanComplete(loanForm)) setEditingLoanIdx(i) }}
+                  onCancel={() => setEditingLoanIdx(null)} />}
               </div>
             )
           })}
