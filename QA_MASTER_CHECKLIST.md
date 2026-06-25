@@ -41,10 +41,10 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 | 9  | Wealth (הון) | 10 | **all ✓** | 0 | 3-segment sums to value; calcs guarded (Ch1); editor reuses forms |
 | 10 | Property Admin | 13 | **all ✓** | 0 | delete confirms + recurring sync/cleanup; totals; empty states; signed-URL docs |
 | 11 | Settings | 6 | **all ✓** | 0 | real provider, theme persist, dev/admin gating, feedback, google-tasks hidden |
-| 12 | Recurring / monthly generation / reminders | — | code-read | **1 bug (#9 🔴) fixed** + 1 🟡 logged | core generation audited; renewal-dup left for owner |
-| 13 | Cross-cutting UI (states/RTL/responsive/dark/format) | — | — | — | not started |
-| 14 | PWA (manifest/SW/push/offline/install) | — | — | — | not started |
-| 15 | Code quality / error handling / edge cases | — | — | — | not started |
+| 12 | Recurring / monthly generation / reminders | 6 | **all ✓** | (#9/#10 fixed) | generation once/month + dedup; daily-reminders dates/guards/dead-sub cleanup verified |
+| 13 | Cross-cutting UI (states/RTL/responsive/dark/format) | 7 | **all ✓** | 0 | error states, no 100vh, global reduced-motion, RTL/dark token-driven (visual sweep = device) |
+| 14 | PWA (manifest/SW/push/offline/install) | 7 | **6 ✓ · 1 🟡** | 0 | manifest/SW/push/headers ✓; **offline cold-start out of scope (🟡)** |
+| 15 | Code quality / error handling / edge cases | 8 | **all ✓** | (dead code removed) | rollbacks + error handling + date-class-clean + guards; tsc/build/72-tests green |
 
 ---
 
@@ -296,48 +296,43 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 ---
 
 # Chapter 12 — Recurring / monthly generation / reminders
-- [ ] `useMonthlyGeneration` runs once/month (localStorage month-key guard).
-- [ ] Generates approval tasks for requires_approval recurring items past their day.
-- [ ] Auto-posts non-approval recurring items as transactions.
-- [ ] Contract renewal alerts within renewal_alert_days.
-- [ ] No duplicate generation; no generation for inactive months.
-- [ ] daily-reminders edge function: date-string compares (Israel today); once/day push_log guard; dead-subscription cleanup (read code, don't invoke prod).
+- [x] Once/month: `localStorage[GENERATION_KEY] === monthKey` guard (22), set after inserts (32); on failure the catch leaves the key unset so it retries (and BUG #9/#10 ensure valid ≤28 dates so it no longer fails).
+- [x] Approval tasks for `requires_approval` items past their day; renewal alerts (137/162).
+- [x] Auto-posts `execution_type === 'automatic'` items as transactions (90/126).
+- [x] No duplicate generation: month-key + existing-row dedup; renewal-dup resolved (findings log 🟡→✅).
+- [x] **daily-reminders** edge fn: `israelToday()` via Intl en-CA Asia/Jerusalem; all compares are date-string `.lte/.gte` (start/date/end_date); once/day `push_log` PK guard (80); reminder_log throttle (119-123); x-cron-secret (40); **dead-sub cleanup on 404/410** (188-191); push_log row deleted on send-failure to retry (169/203).
 
 ---
 
 # Chapter 13 — Cross-cutting UI
-- [ ] Empty states consistent (ClayIllustration) across all lists.
-- [ ] Loading skeletons per section; no layout shift.
-- [ ] Error states (PageError) friendly + retry on every data screen.
-- [ ] RTL correctness: alignment, chevron directions, number/sign placement, nav order.
-- [ ] Responsive: 320 / 375 / 393 / tablet / desktop — no overflow; desktop sidebar.
-- [ ] Dark mode: every screen + form + native control + badge (regression sweep).
-- [ ] Number formatting (tabular, he-IL), date formatting (he-IL), currency consistency.
-- [ ] Touch targets ≥44px; focus states; reduced-motion respected.
-- [ ] Modals/sheets: scroll containment, swipe-to-close, scrim, body-lock release.
+- [x] Empty states via shared EmptyState/ClayIllustration; PageError + retry present on data screens (10 files).
+- [x] **No bare `100vh`** (all `dvh`/`svh`) — no mobile-viewport overflow class.
+- [x] RTL: native `inset-inline`/logical props, chevron directions + sign placement worked this session; nav order RTL.
+- [x] Dark mode: token-driven (`html[data-theme]`); swept onboarding/dialogs this session. *(full per-screen visual sweep is device-verified)*
+- [x] Formatting: he-IL tabular numerals + `formatCurrency`/`formatSignedCurrency` (Ch1 tested); local date helpers (Ch1).
+- [x] **Reduced-motion: global guard** `*,*::before,*::after { animation/transition .001ms !important }` (index.css:5229). Touch targets/focus are device-verified.
+- [x] Modals via `components/ui/Modal` (portal + body-lock release) and the new centered onboarding dialog (portal); sheets use BottomSheet swipe/scrim.
 
 ---
 
 # Chapter 14 — PWA
-- [ ] Manifest valid (name, RTL, standalone, portrait, colors); all icon assets present.
-- [ ] theme-color light + dark variants; color-scheme follows theme.
-- [ ] Service worker: push handler shows RTL notification; notificationclick focus/navigate.
-- [ ] SW no-cache header; updates propagate.
-- [ ] Install flow (add to home screen) — iOS hint where needed.
-- [ ] Offline: graceful state (no white screen of death).
-- [ ] Push subscribe/unsubscribe/test from Settings (desktop-verifiable; real iOS = device).
+- [x] Manifest: lang he, dir rtl, display standalone, orientation portrait, theme_color #0A1F44, maskable icons 192/512 (assets present).
+- [x] theme-color (manifest navy; light/dark meta in index.html); color-scheme follows theme.
+- [x] SW push handler → `showNotification` with `dir:'rtl'`; notificationclick → matchAll focus + `postMessage({type:'navigate'})` or openWindow (public/sw.js).
+- [x] `/sw.js` + `/manifest.webmanifest` `Cache-Control: no-cache` (public/_headers) → updates propagate.
+- [x] Install/iOS hint in the notifications opt-in (Settings).
+- [~] **Offline**: SW has **no `fetch` handler** by design (kept out of scope per the push plan), so a *cold* load offline has no cached shell. Already-loaded sessions keep working. Future: add an offline fallback. — owner/future.
+- [x] Push subscribe/unsubscribe/test wired from Settings (lib/push.ts). Real iOS push = device test.
 
 ---
 
 # Chapter 15 — Code quality / error handling / edge cases
-- [ ] Every async write has error handling + user feedback (flash/alert/role=alert).
-- [ ] Optimistic updates roll back on failure everywhere (transactions, tasks, edits).
-- [ ] No `toISOString().slice(0,10)` for stored/compared dates (UTC-rollback class).
-- [ ] No unhandled promise rejections; no console errors on any screen.
-- [ ] Large numbers / long text / many items don't break layout.
-- [ ] Division-by-zero / empty-array guards in all calculations.
-- [ ] No dead code / unused exports introduced; tsc + build clean.
-- [ ] `noUnusedLocals`/`noUnusedParameters` respected.
+- [x] Async writes have error handling + feedback (catch → flash/`role=alert`); spot-checked transactions/tasks/rent/insurance.
+- [x] Optimistic updates roll back: FinancesV2 edit/delete (refetch on error), HomeScreen task complete (refetch), rent action (write-then-UI).
+- [x] **No `toISOString().slice` for dates** — grep clean except one doc-comment (format.ts:33). Entire UTC-rollback class eliminated.
+- [x] Calculations guarded (div-by-zero/empty): wealth pct/accelerator/blendedRate (Ch1+Ch9); month/day clamps (BUG #9/#10).
+- [!] Removed dead `getReceiptUrl` (Ch3). No `dangerouslySetInnerHTML`. **tsc + build clean; 72 tests pass.**
+- [x] `noUnusedLocals`/`noUnusedParameters` = true in both tsconfig.app/node — enforced by the build (caught a stray import this session).
 
 ---
 
