@@ -22,14 +22,14 @@ export function LoanForm({ onSave, onCancel }: { onSave: () => void; onCancel: (
           </div>
           <div className="onboarding-field">
             <label>נותן ההלוואה</label>
-            <input type="text" placeholder="בנק" value={loanForm.lender}
+            <input type="text" value={loanForm.lender}
               onChange={e => setLF('lender', e.target.value)} />
           </div>
         </div>
       ) : (
         <div className="onboarding-field">
           <label>שם</label>
-          <input type="text" placeholder="הורים" value={loanForm.lender}
+          <input type="text" value={loanForm.lender}
             onChange={e => setLF('lender', e.target.value)} />
         </div>
       )}

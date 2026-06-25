@@ -46,7 +46,7 @@ export function PurchaseStep() {
         <div className="onboarding-field">
           <label>שם הרוכש</label>
           <input type="text" placeholder="שם מלא" value={buyerName}
-            onChange={e => setBuyerName(e.target.value)} autoFocus />
+            onChange={e => setBuyerName(e.target.value)} />
         </div>
         <div className="onboarding-row">
           <div className="onboarding-field">
