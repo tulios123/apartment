@@ -48,6 +48,25 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 
 ---
 
+## Overnight full-audit summary (2026-06-25)
+**All 15 chapters worked in one pass. tsc + build + 72 tests green; every change committed & pushed.**
+
+**Fixed this pass (live now):**
+- **BUG #10 🟠** — rent recurring-item insert could 400 for a typed payment day > 28 (DB `check(1..28)` vs unenforced input `max`). Clamped at the write boundary.
+- **🔒 DEV_BYPASS hardened** — now gated on `import.meta.env.DEV`, so it can never auto-login the dev account in a production build, regardless of host env.
+- **🧹 Removed dead `getReceiptUrl`** (getPublicUrl on a private bucket → broken/insecure if used).
+- **✅ LIVE-VERIFIED** anon isolation: curl with the anon key → `[]` on every table (RLS + migration 026 confirmed on remote).
+
+**Owner action items (not auto-done):**
+1. **Apply migration 031** (feedback admin → dev@test.local): `cd /Users/itaishubi/ai/Apartment && npx supabase db push`. Until then dev@test.local reads only its own feedback.
+2. **🟡 schema decision** — `recurring_items.contract_id` is `SET NULL` on contract delete; a migration to `ON DELETE CASCADE` would be a belt-and-suspenders against orphan rent items (app already cleans explicitly).
+3. **🟡 offline cold-start** — the SW has no fetch handler by design; add an offline shell fallback if desired.
+4. Pre-existing 🟡 (unchanged): CPI indexation (nominal-only), partial prepayments — future features.
+
+No correctness bugs found in Ch4–9, 11, 13 (auth, onboarding, routing, dashboard, ledger, wealth, settings, UI) — they're well-built. The only code bug this pass was BUG #10; the rest were a security hardening + a dead-code removal.
+
+---
+
 # Chapter 1 — Financial calculation core (HIGHEST PRIORITY)
 *The math that moves real money, currently with zero test coverage. Set up Vitest, write
 thorough tests for each function, and fix every bug a failing test reveals.*
