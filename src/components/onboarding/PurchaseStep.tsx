@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Tag } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
+import { DocFileList } from './DocFileList'
 import { emptyTrack, formatPrice } from './types'
 import { useOnboarding } from './context'
 
@@ -14,6 +15,7 @@ export function PurchaseStep() {
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
     purchaseFile, setPurchaseFile, purchaseInputRef,
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
+    purchaseDocFiles, removeDocFile, renameDocFile,
     fillTestPurchase,
   } = useOnboarding()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
@@ -38,6 +40,7 @@ export function PurchaseStep() {
         </button>
         <input ref={purchaseDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillPurchase(fs); e.target.value = '' }} />
+        <DocFileList files={purchaseDocFiles} onFiles={aiFillPurchase} onRemove={i => removeDocFile('purchase', i)} onRename={(i, name) => renameDocFile('purchase', i, name)} />
         {purchaseAiErr && <p className="onboarding-error" role="alert">{purchaseAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>

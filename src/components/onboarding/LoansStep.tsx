@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { HandCoins, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { LoanForm } from './LoanForm'
 import { FinishEarly } from './FinishEarly'
-import { Modal } from '../ui/Modal'
+import { DocFileList } from './DocFileList'
 import { emptyLoan, formatCurrency } from './types'
 import { useOnboarding } from './context'
 
@@ -16,12 +17,15 @@ export function LoansStep() {
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
+    loanDocFiles, removeDocFile, renameDocFile,
     fillTestLoans,
   } = useOnboarding()
 
   const [continuePrompt, setContinuePrompt] = useState(false)
   // Bumped on every blocked collapse/save attempt to re-flash the "missing" line.
   const [alertPulse, setAlertPulse] = useState(0)
+  // True after a blocked save on the open loan — shows the orange note by its button.
+  const [saveAttempted, setSaveAttempted] = useState(false)
 
   // The only required loan details are amount + (for a monthly loan) rate + term.
   // Lender/description are optional (a placeholder default counts) and never block.
@@ -40,10 +44,11 @@ export function LoansStep() {
   const effectiveLoans = loans.map((l, i) => (i === editingLoanIdx ? loanForm : l))
   const incompleteLoans = effectiveLoans.filter(l => !loanReady(l))
 
-  // Finalize the open loan: save + collapse when ready, otherwise flash what's missing.
+  // Finalize the open loan: save + collapse when ready, otherwise flash what's missing
+  // (both in the header line and as an orange note next to the save button).
   const finalizeLoan = (i: number) => {
-    if (loanReady(loanForm)) saveLoanEdit(i)
-    else setAlertPulse(p => p + 1)
+    if (loanReady(loanForm)) { saveLoanEdit(i); setSaveAttempted(false) }
+    else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
   }
 
   // On entering this step a loan is always opened for review (from the documents-step
@@ -85,6 +90,7 @@ export function LoansStep() {
         </button>
         <input ref={loanDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillLoans(fs); e.target.value = '' }} />
+        <DocFileList files={loanDocFiles} onFiles={aiFillLoans} onRemove={i => removeDocFile('loan', i)} onRename={(i, name) => renameDocFile('loan', i, name)} />
         {loanAiErr && <p className="onboarding-error" role="alert">{loanAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>
@@ -105,7 +111,7 @@ export function LoansStep() {
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
                     if (isEditing) finalizeLoan(i)            // tap top = save + collapse (alert if incomplete)
-                    else { setEditingLoanIdx(i); setLoanForm({ ...d }); setShowLoanForm(false) }
+                    else { setEditingLoanIdx(i); setLoanForm({ ...d }); setShowLoanForm(false); setSaveAttempted(false) }
                   }}>
                   <div className="onboarding-track-summary">
                     <div className="onboarding-track-summary-top">
@@ -137,7 +143,8 @@ export function LoansStep() {
                 </div>
                 {isEditing && <LoanForm
                   onSave={() => finalizeLoan(i)}
-                  onCancel={() => setEditingLoanIdx(null)} />}
+                  onCancel={() => { setEditingLoanIdx(null); setSaveAttempted(false) }}
+                  alert={saveAttempted ? loanMissing(loanForm) : null} />}
               </div>
             )
           })}
@@ -183,18 +190,19 @@ export function LoansStep() {
       <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
       <FinishEarly />
 
-      {continuePrompt && (
-        <Modal title="חסרים פרטים בהלוואה" onClose={() => setContinuePrompt(false)}>
-          <div className="onboarding-loan-confirm">
-            <p className="onboarding-loan-confirm-lead">אם תמשיכו, ההלוואה הזו לא תישמר:</p>
-            <ul className="onboarding-loan-confirm-list">
+      {continuePrompt && createPortal(
+        <div className="onboarding-dialog-overlay" onClick={() => setContinuePrompt(false)}>
+          <div className="onboarding-dialog" onClick={e => e.stopPropagation()}>
+            <div className="onboarding-dialog-title">חסרים פרטים בהלוואה</div>
+            <p className="onboarding-dialog-lead">אם תמשיכו, ההלוואה הזו לא תישמר:</p>
+            <ul className="onboarding-dialog-list">
               {incompleteLoans.map((l, idx) => (
                 <li key={idx}>
                   <strong>{l.label.trim() || loanTypeLabel(l.repayment_type)}</strong> — חסר {loanMissing(l).join(', ')}
                 </li>
               ))}
             </ul>
-            <div className="onboarding-loan-confirm-actions">
+            <div className="onboarding-dialog-actions">
               <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => {
                 const idx = loans.findIndex(l => !loanReady(l))
                 setContinuePrompt(false)
@@ -208,7 +216,8 @@ export function LoansStep() {
               }}>המשך בלי לשמור</button>
             </div>
           </div>
-        </Modal>
+        </div>,
+        document.body,
       )}
     </form>
   )

@@ -5,7 +5,7 @@ import { formatNum } from './types'
 import { useOnboarding } from './context'
 
 // Inline editor for a single supplementary/balloon loan.
-export function LoanForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCancel: () => void; alert?: string[] | null }) {
   const { loanForm, setLF, loanGraceOn, setLoanGraceOn } = useOnboarding()
   const isMonthly = loanForm.repayment_type === 'monthly_fixed'
   const isAnchored = loanForm.track_type === 'prime' || loanForm.track_type === 'variable'
@@ -113,6 +113,9 @@ export function LoanForm({ onSave, onCancel }: { onSave: () => void; onCancel: (
         <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
           הלוואת בלון ללא ריבית — נפרעת במכירה. תופיע בהיבט ההשקעה ומקטינה את ההון העצמי נטו.
         </p>
+      )}
+      {alert && alert.length > 0 && (
+        <div className="onboarding-loan-form-alert" role="alert">חסר {alert.join(' · ')}</div>
       )}
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
