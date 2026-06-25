@@ -29,6 +29,9 @@ export function useOnboardingState(onComplete: () => void) {
   // account (so onboarding can be filled quickly when testing on the live app).
   const showFillExample = import.meta.env.DEV || user?.email === 'dev@test.local'
   const [step, setStep] = useState<Step>('welcome')
+  // Direction of the last step change, so the wizard can slide forward vs back
+  // (native RTL: forward enters from the leading edge, back from the trailing one).
+  const [navDir, setNavDir] = useState<'fwd' | 'back'>('fwd')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Set when the user asks to finish while a background AI extraction is still
@@ -142,6 +145,7 @@ export function useOnboardingState(onComplete: () => void) {
 
   function back() {
     dismissKeyboardAndScrollTop()
+    setNavDir('back')
     if (step === 'documents') { setStep('welcome'); return }
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
@@ -150,6 +154,7 @@ export function useOnboardingState(onComplete: () => void) {
 
   function advance(next: Step) {
     dismissKeyboardAndScrollTop()
+    setNavDir('fwd')
     setError(null)
     setStep(next)
   }
@@ -1041,7 +1046,7 @@ export function useOnboardingState(onComplete: () => void) {
     user,
     showFillExample,
     // wizard nav
-    step, setStep, advance, back, currentStepIndex, stepTotal,
+    step, setStep, advance, back, navDir, currentStepIndex, stepTotal,
     saving, error,
     // notifications
     notifOn, notifBusy, enableNotifications,

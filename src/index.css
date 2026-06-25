@@ -2188,16 +2188,20 @@ input[type="date"] {
   line-height: 1;
 }
 
-/* Slide/fade each step in on change (re-triggered via key={step}). */
+/* Clear directional slide between steps (re-triggered via key={step}).
+   Native RTL: forward enters from the leading edge (right), back from the left. */
 .onboarding-step-anim {
-  animation: onboarding-step-in 0.26s var(--ease, cubic-bezier(.4, 0, .2, 1));
+  animation: onboarding-step-in 0.34s var(--ease, cubic-bezier(.22, .61, .36, 1)) both;
 }
+.onboarding-step-anim.is-fwd { --step-from: -40px; }
+.onboarding-step-anim.is-back { --step-from: 40px; }
 @keyframes onboarding-step-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateX(var(--step-from, 40px)); }
+  to { opacity: 1; transform: translateX(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .onboarding-step-anim { animation: none; }
+  .onboarding-step-anim { animation: onboarding-step-fade 0.2s ease both; }
+  @keyframes onboarding-step-fade { from { opacity: 0; } to { opacity: 1; } }
 }
 
 /* Section sub-header inside a dense step. */

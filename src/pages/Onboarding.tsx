@@ -18,7 +18,7 @@ interface Props { onComplete: () => void }
 // brain); each step is its own component reading it through OnboardingContext.
 export default function Onboarding({ onComplete }: Props) {
   const state = useOnboardingState(onComplete)
-  const { step, back } = state
+  const { step, back, navDir } = state
   // Back lives as a top-right chevron (native RTL: "back" goes toward the start = right).
   // Hidden on the bookends — welcome has nowhere to go back to, done is terminal.
   const showBack = step !== 'welcome' && step !== 'done'
@@ -34,8 +34,9 @@ export default function Onboarding({ onComplete }: Props) {
               <CaretRight size={22} weight="bold" />
             </button>
           )}
-          {/* key={step} remounts on each step change, re-triggering the slide/fade. */}
-          <div className="onboarding-step-anim" key={step}>
+          {/* key={step} remounts on each step change, re-triggering the slide.
+              navDir picks forward vs back so the slide direction matches the move. */}
+          <div className={`onboarding-step-anim is-${navDir}`} key={step}>
             {step === 'welcome' && <WelcomeStep />}
             {step === 'documents' && <DocumentsStep />}
             {step === 'purchase' && <PurchaseStep />}
