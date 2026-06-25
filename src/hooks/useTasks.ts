@@ -65,9 +65,14 @@ async function getOwnerId(): Promise<string> {
 export async function createTask(data: Omit<Task, 'id' | 'owner_id' | 'created_at' | 'google_task_id' | 'completed_at'>) {
   const ownerId = await getOwnerId()
 
+  // due_time is only sent when actually set, so the column stays additive: core
+  // task creation keeps working even if migration 030 hasn't been applied yet.
+  const { due_time, ...rest } = data
+  const insert = { ...rest, owner_id: ownerId, ...(due_time != null ? { due_time } : {}) }
+
   const { data: created, error } = await supabase
     .from('tasks')
-    .insert({ ...data, owner_id: ownerId })
+    .insert(insert)
     .select()
     .single()
 
@@ -91,10 +96,14 @@ export async function updateTask(
 ) {
   const ownerId = await getOwnerId()
 
+  // Drop a null due_time from the update so an edit that doesn't set a time never
+  // touches the column (keeps it additive until migration 030 is applied).
+  const cleaned = data.due_time == null ? (() => { const { due_time, ...r } = data; return r })() : data
+
   // Stamp/clear the completion time alongside any status change (powers the logbook).
-  const payload = data.status !== undefined
-    ? { ...data, completed_at: data.status === 'done' ? new Date().toISOString() : null }
-    : data
+  const payload = cleaned.status !== undefined
+    ? { ...cleaned, completed_at: cleaned.status === 'done' ? new Date().toISOString() : null }
+    : cleaned
 
   // The write itself is the only thing the UI waits on. Mirroring to Google
   // Tasks (which needs its own lookup round trip) runs in the background so a
