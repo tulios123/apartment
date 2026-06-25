@@ -18,9 +18,9 @@ export function WelcomeStep() {
     <div className="onboarding-welcome">
       <div className="onboarding-welcome-hero">
         <div className="onboarding-welcome-logo">
-          <svg width="36" height="36" viewBox="0 0 512 512" aria-hidden="true">
-            <path d="M120 250 L246 130 a14 14 0 0 1 20 0 L392 250 Z" fill="#fff" />
-            <rect x="158" y="236" width="196" height="160" rx="18" fill="#fff" />
+          <svg width="32" height="32" viewBox="0 0 512 512" aria-hidden="true">
+            <path d="M120 250 L246 130 a14 14 0 0 1 20 0 L392 250 Z" fill="var(--hero-navy)" />
+            <rect x="158" y="236" width="196" height="160" rx="18" fill="var(--hero-navy)" />
             <rect x="230" y="312" width="52" height="84" rx="12" fill="#2A7DE1" />
             <rect x="196" y="284" width="38" height="38" rx="9" fill="#2A7DE1" />
           </svg>

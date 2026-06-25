@@ -2047,38 +2047,44 @@ input[type="date"] {
   font-size: 15px;
 }
 
-/* Welcome step — navy brand band + a short, bounded preview of the setup. */
+/* Welcome step — navy brand band + a contained, connected preview of the setup. */
 .onboarding-welcome {
   display: flex;
   flex-direction: column;
 }
-/* Brand band — bleeds to the card edges, ties the screen to the Login hero. */
+/* Brand band — bleeds to the card edges, lifted over the body for depth so the
+   navy/content seam reads as an intentional layered header. */
 .onboarding-welcome-hero {
+  position: relative;
+  z-index: 1;
   margin: -44px -40px 0;
-  padding: 34px 24px 26px;
+  padding: 30px 24px 24px;
   background: var(--hero-navy);
   border-radius: 20px 20px 0 0;
   text-align: center;
+  box-shadow: 0 14px 28px -16px rgba(10, 31, 68, 0.55);
 }
+/* Logo badge — the real house mark on a white tile, so it pops as a crafted mark. */
 .onboarding-welcome-logo {
-  width: 58px;
-  height: 58px;
-  margin: 0 auto 14px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 17px;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 13px;
+  background: #fff;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 8px 18px -6px rgba(0, 0, 0, 0.4);
 }
 .onboarding-welcome-brand {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
   color: #fff;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
 }
 .onboarding-welcome-brandsub {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.7);
   margin-top: 5px;
 }
 .onboarding-welcome-time {
@@ -2086,9 +2092,10 @@ input[type="date"] {
   align-items: center;
   gap: 6px;
   margin-top: 16px;
-  padding: 6px 13px;
+  padding: 6px 14px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.92);
   font-size: 12.5px;
   font-weight: 600;
@@ -2097,41 +2104,47 @@ input[type="date"] {
 
 .onboarding-welcome-lead {
   text-align: center;
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
-  margin: 26px 0 18px;
+  margin: 22px 0 14px;
 }
 
-/* The four themes, connected by a rail so they read as one short roadmap. */
+/* The four themes live inside one contained card, joined by an accent rail so
+   they read as a short, designed roadmap instead of floating rows. */
 .onboarding-welcome-list {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 26px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 6px 16px;
+  margin-bottom: 22px;
 }
 .onboarding-welcome-list::before {
   content: '';
   position: absolute;
-  inset-inline-start: 21px;
-  top: 28px;
-  bottom: 28px;
+  inset-inline-start: 35px;
+  top: 36px;
+  bottom: 36px;
   width: 2px;
-  background: var(--border);
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0.3;
 }
 .onboarding-welcome-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 7px 0;
+  padding: 11px 0;
 }
 .onboarding-welcome-icon {
   position: relative;
   z-index: 1;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   background: var(--accent-light);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
