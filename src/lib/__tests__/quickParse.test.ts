@@ -16,6 +16,12 @@ describe('parseQuick — amount + description', () => {
   it('falls back to "אחר" when no description remains', () => {
     expect(parseQuick('שילמתי 350 ₪')?.desc).toBe('אחר')
   })
+  it('multi-sentence: takes the FIRST amount and only the first sentence as description', () => {
+    const r = parseQuick('שילמתי 350 שח על אינסטלטור. הוא אמר שהמחיר הרגיל הוא 500.')
+    expect(r?.amount).toBe(350)          // first number, not the 500 in sentence 2
+    expect(r?.desc).toBe('אינסטלטור')
+    expect(r?.desc).not.toContain('500')
+  })
 })
 
 describe('parseQuick — currency words', () => {

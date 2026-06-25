@@ -30,9 +30,9 @@ security. Built to be worked through **one chapter at a time**, autonomously.
 ## Progress tracker
 | Ch | Area | Items | Done | Bugs found/fixed | Status |
 |----|------|-------|------|------------------|--------|
-| 1  | Financial calculation core | ~40 | **70 tests ✅** | **7 bugs (UTC-date), all fixed** | ✅ DONE — format/mortgage/loans/equity/projections/quickParse/taskFollowup all covered |
+| 1  | Financial calculation core | ~40 | **72 tests** | **9 bugs fixed** | nominal model fully tested; **CPI-indexation + prepayment NOT modelled (🟡 owner decision)** |
 | 2  | Database & data integrity | — | — | — | not started |
-| 3  | Security & access isolation | — | — | — | not started |
+| 3  | Security & access isolation | — | partial | XSS ✅ safe · storage-orphan ✅ audited | RLS/anon live-check still TODO |
 | 4  | Auth & Login | — | — | — | not started |
 | 5  | Onboarding | — | — | — | not started |
 | 6  | App entry / routing / splash | — | — | — | not started |
@@ -364,6 +364,19 @@ Use the read-only REST API for live checks; read migrations for schema truth.*
 
 ## Findings log
 *(Bugs found while executing, with severity + fix commit. Newest first.)*
+
+### Critique audit (2026-06-25) — external review of gaps
+Investigated each claim against the code; outcomes:
+
+**FIXED — `quickParse` multi-sentence description noise.** The amount was already correct (always the FIRST number, so "…350… הרגיל 500" → 350, not 500). But the *description* dragged in the later sentence. Now cut to the first sentence (`split(/[.\n]+/)[0]`): "שילמתי 350 שח על אינסטלטור. …500." → desc "אינסטלטור". Test added. (quickParse.ts)
+
+**🟡 OPEN — needs owner decision: CPI indexation (הצמדה למדד) NOT modelled.** The amortization (`mortgage.ts`/`loans.ts`) reads only `annual_rate` and never `track_type`, so a **קבועה צמודה / variable צמוד** track is computed as *nominal* — the real balance grows with the CPI, so the app **understates debt and overstates equity** over time for indexed tracks. Modelling it needs a CPI assumption (input or fixed estimate) — a product call. Until then, consider a UI disclaimer ("לא כולל הצמדה למדד") on linked tracks. (Not auto-changed — would require inventing a CPI rate.)
+
+**🟡 OPEN — feature gap: partial prepayments (פירעון מוקדם).** No way to record a lump-sum prepayment (shorten term vs. lower payment). "נפרעו %" assumes the standard schedule. Future feature.
+
+**✅ VERIFIED SAFE — XSS / cross-tenant.** No `dangerouslySetInnerHTML`/`innerHTML` in the codebase → React escapes all interpolated text (descriptions, notes, **feedback** read by the admin). Combined with per-owner RLS (User B never loads User A's rows), an injected `<script>` renders as literal text. Locked as a Ch.3 invariant.
+
+**✅ VERIFIED (mostly) — storage orphan on delete.** `documents` parent FKs are `ON DELETE SET NULL` (rows are NOT cascaded by property/contract/transaction delete — the file stays *tracked*, just unlinked). Every user-facing document delete (`useDocuments.deleteDocument`, `FinancesV2.removeReceipt`, Settings reset-all) `storage.remove()`s the file first. The only true orphan path is **owner/account deletion** (`documents.owner_id … on delete cascade` removes rows but not Storage files) — but account deletion isn't an app flow. Note for a future "delete account" feature: purge the bucket prefix first.
 
 ### BUG #9 🔴 — monthly generation built invalid dates for end-of-month recurring items — FIXED
 `useMonthlyGeneration` built `txDate = year-month-day_of_month` with no clamp. A recurring item with `day_of_month` 29/30/31 produces an **invalid date** in a shorter month (e.g. `"2026-02-31"`), which rejects the whole batch `transactions.insert` (and the tasks insert) → **ALL automatic transactions + approval tasks for that month silently fail to generate**, and (catch block) it retries forever without setting the month key. Reachable for anyone whose rent/mortgage/loan day is past the 28th. Fixed: clamp `day = min(day_of_month, lastDayOfMonth)` via the already-tested `monthEndISO`. Verified by reasoning + build (the hook is Supabase-coupled; the clamp rests on tested `monthEndISO`).

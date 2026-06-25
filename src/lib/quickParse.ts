@@ -39,6 +39,11 @@ export function parseQuick(raw: string): ParsedQuick | null {
     .replace(CONNECTOR_RE, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim()
+    // First sentence only — multi-sentence input (e.g. "…350 על ברז. הרגיל הוא 500.")
+    // must not drag a later sentence (and its number) into the description. The
+    // amount is already the FIRST number in the text, so this just trims the noise.
+    .split(/[.\n]+/)[0]
+    .trim()
 
   return { amount, desc: desc || 'אחר', income }
 }
