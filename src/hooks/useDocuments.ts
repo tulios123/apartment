@@ -1,17 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { readCache, writeCache } from '../lib/queryCache'
 import type { Document } from '../types'
 
 export function useDocuments() {
   const { user } = useAuth()
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = user ? `documents:${user.id}` : null
+  const [documents, setDocuments] = useState<Document[]>(() => readCache<Document[]>(cacheKey) ?? [])
+  const [loading, setLoading] = useState(() => readCache<Document[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    const cached = readCache<Document[]>(cacheKey)
+    if (cached) setDocuments(cached)
+    setLoading(cached == null)
     setError(null)
     const { data, error } = await supabase
       .from('documents')
@@ -19,9 +23,9 @@ export function useDocuments() {
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false })
     if (error) setError(error.message)
-    else setDocuments(data ?? [])
+    else { setDocuments(data ?? []); writeCache<Document[]>(cacheKey, data ?? []) }
     setLoading(false)
-  }, [user])
+  }, [user, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { loanBalance, loanInterestToDate, loanMonthlyPayment } from '../lib/loans'
+import { readCache, writeCache } from '../lib/queryCache'
 import type { Loan, LoanRepaymentType, TrackType } from '../types'
 
 export interface LoansSummary {
@@ -27,13 +28,16 @@ export interface LoansData {
 
 export function useLoansData(): LoansData {
   const { user } = useAuth()
-  const [loans, setLoans] = useState<Loan[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = user ? `loans:${user.id}` : null
+  const [loans, setLoans] = useState<Loan[]>(() => readCache<Loan[]>(cacheKey) ?? [])
+  const [loading, setLoading] = useState(() => readCache<Loan[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    const cached = readCache<Loan[]>(cacheKey)
+    if (cached) setLoans(cached)
+    setLoading(cached == null)
     setError(null)
     try {
       const { data, error: err } = await supabase
@@ -42,13 +46,15 @@ export function useLoansData(): LoansData {
         .eq('owner_id', user.id)
         .order('created_at')
       if (err) throw err
-      setLoans((data ?? []) as Loan[])
+      const next = (data ?? []) as Loan[]
+      setLoans(next)
+      writeCache<Loan[]>(cacheKey, next)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

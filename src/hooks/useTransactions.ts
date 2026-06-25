@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { readCache, writeCache } from '../lib/queryCache'
 import { monthEndISO } from '../lib/format'
 import type { Transaction } from '../types'
 
@@ -13,13 +14,20 @@ interface Filters {
 
 export function useTransactions(filters: Filters = {}) {
   const { user } = useAuth()
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = user
+    ? `tx:${user.id}:${filters.from ?? ''}:${filters.to ?? ''}:${filters.year ?? ''}:${filters.month ?? ''}`
+    : null
+  const [transactions, setTransactions] = useState<Transaction[]>(() => readCache<Transaction[]>(cacheKey) ?? [])
+  const [loading, setLoading] = useState(() => readCache<Transaction[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    // Seed from cache for this exact filter key (instant on tab/month revisit);
+    // only show a skeleton when this slice has never been loaded.
+    const cached = readCache<Transaction[]>(cacheKey)
+    if (cached) setTransactions(cached)
+    setLoading(cached == null)
     setError(null)
 
     let query = supabase
@@ -42,9 +50,9 @@ export function useTransactions(filters: Filters = {}) {
 
     const { data, error } = await query
     if (error) setError(error.message)
-    else setTransactions(data ?? [])
+    else { setTransactions(data ?? []); writeCache<Transaction[]>(cacheKey, data ?? []) }
     setLoading(false)
-  }, [user?.id, filters.year, filters.month, filters.from, filters.to])
+  }, [user?.id, cacheKey, filters.year, filters.month, filters.from, filters.to])
 
   useEffect(() => { fetch() }, [fetch])
 

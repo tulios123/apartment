@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { readCache, writeCache } from '../lib/queryCache'
 import type { Property, Contract, ContractUtility, UtilityPayer } from '../types'
+
+type PropertySnapshot = { property: Property | null; contracts: Contract[]; utilities: ContractUtility[] }
 
 export interface PropertyData {
   property: Property | null
@@ -15,16 +18,22 @@ export interface PropertyData {
 
 export function usePropertyData(): PropertyData {
   const { user } = useAuth()
-  const [property, setProperty] = useState<Property | null>(null)
-  const [contracts, setContracts] = useState<Contract[]>([])
-  const [utilities, setUtilities] = useState<ContractUtility[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = user ? `property:${user.id}` : null
+  const [property, setProperty] = useState<Property | null>(() => readCache<PropertySnapshot>(cacheKey)?.property ?? null)
+  const [contracts, setContracts] = useState<Contract[]>(() => readCache<PropertySnapshot>(cacheKey)?.contracts ?? [])
+  const [utilities, setUtilities] = useState<ContractUtility[]>(() => readCache<PropertySnapshot>(cacheKey)?.utilities ?? [])
+  const [loading, setLoading] = useState(() => readCache<PropertySnapshot>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
-  const initialized = useRef(false)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    if (!initialized.current) setLoading(true)
+    // Show cached data immediately and refresh silently; only block on a skeleton
+    // when there's nothing cached yet for this account.
+    const cached = readCache<PropertySnapshot>(cacheKey)
+    if (cached) {
+      setProperty(cached.property); setContracts(cached.contracts); setUtilities(cached.utilities)
+    }
+    setLoading(cached == null)
     setError(null)
     try {
       const { data: props, error: pe } = await supabase
@@ -35,8 +44,9 @@ export function usePropertyData(): PropertyData {
         .limit(1)
       if (pe) throw pe
       const prop = props?.[0] ?? null
-      setProperty(prop)
 
+      let nextContracts: Contract[] = []
+      let nextUtilities: ContractUtility[] = []
       if (prop) {
         const { data: ctrcts, error: ce } = await supabase
           .from('contracts')
@@ -44,30 +54,25 @@ export function usePropertyData(): PropertyData {
           .eq('property_id', prop.id)
           .order('end_date', { ascending: false })
         if (ce) throw ce
-        const cs = ctrcts ?? []
-        setContracts(cs)
+        nextContracts = ctrcts ?? []
 
-        if (cs.length > 0) {
+        if (nextContracts.length > 0) {
           const { data: utils, error: ue } = await supabase
             .from('contract_utilities')
             .select('*')
-            .in('contract_id', cs.map(c => c.id))
+            .in('contract_id', nextContracts.map(c => c.id))
           if (ue) throw ue
-          setUtilities(utils ?? [])
-        } else {
-          setUtilities([])
+          nextUtilities = utils ?? []
         }
-      } else {
-        setContracts([])
-        setUtilities([])
       }
+      setProperty(prop); setContracts(nextContracts); setUtilities(nextUtilities)
+      writeCache<PropertySnapshot>(cacheKey, { property: prop, contracts: nextContracts, utilities: nextUtilities })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
-      initialized.current = true
       setLoading(false)
     }
-  }, [user])
+  }, [user, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

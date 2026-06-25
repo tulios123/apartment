@@ -4,8 +4,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { interestToDate } from '../lib/mortgage'
 import { loanInterestToDate } from '../lib/loans'
 import { rentReceivedToDate } from '../lib/projections'
+import { readCache, writeCache } from '../lib/queryCache'
 import { INTEREST_CATEGORY, MAINTENANCE_CATEGORY } from '../lib/constants'
 import type { InvestmentCost, MortgageTrack, Contract, Loan } from '../types'
+
+type InvestmentSnapshot = { costs: InvestmentCost[]; rentReceived: number; interestPaid: number; maintenance: number }
 
 export interface InvestmentData {
   costs: InvestmentCost[]
@@ -20,16 +23,22 @@ export interface InvestmentData {
 
 export function useInvestmentData(): InvestmentData {
   const { user } = useAuth()
-  const [costs, setCosts] = useState<InvestmentCost[]>([])
-  const [rentReceived, setRentReceived] = useState(0)
-  const [interestPaid, setInterestPaid] = useState(0)
-  const [maintenance, setMaintenance] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const cacheKey = user ? `investment:${user.id}` : null
+  const [costs, setCosts] = useState<InvestmentCost[]>(() => readCache<InvestmentSnapshot>(cacheKey)?.costs ?? [])
+  const [rentReceived, setRentReceived] = useState(() => readCache<InvestmentSnapshot>(cacheKey)?.rentReceived ?? 0)
+  const [interestPaid, setInterestPaid] = useState(() => readCache<InvestmentSnapshot>(cacheKey)?.interestPaid ?? 0)
+  const [maintenance, setMaintenance] = useState(() => readCache<InvestmentSnapshot>(cacheKey)?.maintenance ?? 0)
+  const [loading, setLoading] = useState(() => readCache<InvestmentSnapshot>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    const cached = readCache<InvestmentSnapshot>(cacheKey)
+    if (cached) {
+      setCosts(cached.costs); setRentReceived(cached.rentReceived)
+      setInterestPaid(cached.interestPaid); setMaintenance(cached.maintenance)
+    }
+    setLoading(cached == null)
     setError(null)
     try {
       const [costsRes, txRes, tracksRes, contractsRes, loansRes] = await Promise.all([
@@ -42,24 +51,29 @@ export function useInvestmentData(): InvestmentData {
       if (costsRes.error) throw costsRes.error
       if (txRes.error) throw txRes.error
 
-      setCosts(costsRes.data ?? [])
-
       const txs = txRes.data ?? []
       const mortgageTracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
       const contracts = (contractsRes.error ? [] : (contractsRes.data ?? [])) as Contract[]
       const loans = (loansRes.error ? [] : (loansRes.data ?? [])) as Loan[]
 
-      setRentReceived(rentReceivedToDate(contracts))
+      const nextCosts = costsRes.data ?? []
+      const nextRent = rentReceivedToDate(contracts)
       const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === INTEREST_CATEGORY).reduce((s, t) => s + t.amount, 0)
       const loansInterest = loans.reduce((s, l) => s + loanInterestToDate(l), 0)
-      setInterestPaid(manualInterest + interestToDate(mortgageTracks) + loansInterest)
-      setMaintenance(txs.filter(t => t.direction === 'expense' && t.category === MAINTENANCE_CATEGORY).reduce((s, t) => s + t.amount, 0))
+      const nextInterest = manualInterest + interestToDate(mortgageTracks) + loansInterest
+      const nextMaintenance = txs.filter(t => t.direction === 'expense' && t.category === MAINTENANCE_CATEGORY).reduce((s, t) => s + t.amount, 0)
+
+      setCosts(nextCosts)
+      setRentReceived(nextRent)
+      setInterestPaid(nextInterest)
+      setMaintenance(nextMaintenance)
+      writeCache<InvestmentSnapshot>(cacheKey, { costs: nextCosts, rentReceived: nextRent, interestPaid: nextInterest, maintenance: nextMaintenance })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

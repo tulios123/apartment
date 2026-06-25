@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { createGoogleTask, updateGoogleTask, deleteGoogleTask, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { syncGoogleTasks } from './useGoogleTasksSync'
+import { readCache, writeCache } from '../lib/queryCache'
 import type { Task } from '../types'
 
 interface Filters {
@@ -11,14 +12,17 @@ interface Filters {
 
 export function useTasks(filters: Filters = {}) {
   const { user } = useAuth()
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = user ? `tasks:${user.id}:${filters.status ?? 'open'}` : null
+  const [tasks, setTasks] = useState<Task[]>(() => readCache<Task[]>(cacheKey) ?? [])
+  const [loading, setLoading] = useState(() => readCache<Task[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    const cached = readCache<Task[]>(cacheKey)
+    if (cached) setTasks(cached)
+    setLoading(cached == null)
     setError(null)
 
     let query = supabase
@@ -36,9 +40,9 @@ export function useTasks(filters: Filters = {}) {
 
     const { data, error } = await query
     if (error) setError(error.message)
-    else setTasks(data ?? [])
+    else { setTasks(data ?? []); writeCache<Task[]>(cacheKey, data ?? []) }
     setLoading(false)
-  }, [user?.id, filters.status])
+  }, [user?.id, cacheKey, filters.status])
 
   useEffect(() => {
     if (!user || !GOOGLE_TASKS_ENABLED) return

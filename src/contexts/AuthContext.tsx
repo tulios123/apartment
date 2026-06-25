@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
+import { clearQueryCache } from '../lib/queryCache'
 
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
 const DEV_EMAIL = import.meta.env.VITE_DEV_USER_EMAIL as string
@@ -88,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
+    clearQueryCache()
     await supabase.auth.signOut()
   }
 

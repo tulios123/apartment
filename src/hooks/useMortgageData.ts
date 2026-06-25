@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { monthlyPayment, combineSchedules, interestToDate, trackSchedule } from '../lib/mortgage'
+import { readCache, writeCache } from '../lib/queryCache'
 import { todayISO } from '../lib/format'
 import type { Mortgage, MortgageTrack, TrackType } from '../types'
 import type { ScheduleRow } from '../lib/mortgage'
@@ -24,16 +25,21 @@ export interface MortgageData {
   refetch: () => Promise<void>
 }
 
+type MortgageSnapshot = { mortgage: Mortgage | null; tracks: MortgageTrack[] }
+
 export function useMortgageData(): MortgageData {
   const { user } = useAuth()
-  const [mortgage, setMortgage] = useState<Mortgage | null>(null)
-  const [tracks, setTracks] = useState<MortgageTrack[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = user ? `mortgage:${user.id}` : null
+  const [mortgage, setMortgage] = useState<Mortgage | null>(() => readCache<MortgageSnapshot>(cacheKey)?.mortgage ?? null)
+  const [tracks, setTracks] = useState<MortgageTrack[]>(() => readCache<MortgageSnapshot>(cacheKey)?.tracks ?? [])
+  const [loading, setLoading] = useState(() => readCache<MortgageSnapshot>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    const cached = readCache<MortgageSnapshot>(cacheKey)
+    if (cached) { setMortgage(cached.mortgage); setTracks(cached.tracks) }
+    setLoading(cached == null)
     setError(null)
     try {
       const [mortgageRes, tracksRes] = await Promise.all([
@@ -42,14 +48,17 @@ export function useMortgageData(): MortgageData {
       ])
       if (mortgageRes.error) throw mortgageRes.error
       if (tracksRes.error) throw tracksRes.error
-      setMortgage(mortgageRes.data?.[0] ?? null)
-      setTracks((tracksRes.data ?? []) as MortgageTrack[])
+      const nextMortgage = mortgageRes.data?.[0] ?? null
+      const nextTracks = (tracksRes.data ?? []) as MortgageTrack[]
+      setMortgage(nextMortgage)
+      setTracks(nextTracks)
+      writeCache<MortgageSnapshot>(cacheKey, { mortgage: nextMortgage, tracks: nextTracks })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

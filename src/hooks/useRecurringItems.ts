@@ -1,18 +1,22 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { readCache, writeCache } from '../lib/queryCache'
 import { RENT_CATEGORIES } from '../lib/constants'
 import type { RecurringItem } from '../types'
 
 export function useRecurringItems() {
   const { user } = useAuth()
-  const [items, setItems] = useState<RecurringItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = user ? `recurring:${user.id}` : null
+  const [items, setItems] = useState<RecurringItem[]>(() => readCache<RecurringItem[]>(cacheKey) ?? [])
+  const [loading, setLoading] = useState(() => readCache<RecurringItem[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!user) return
-    setLoading(true)
+    const cached = readCache<RecurringItem[]>(cacheKey)
+    if (cached) setItems(cached)
+    setLoading(cached == null)
     setError(null)
     const { data, error } = await supabase
       .from('recurring_items')
@@ -21,9 +25,9 @@ export function useRecurringItems() {
       .order('direction', { ascending: false })
       .order('created_at', { ascending: true })
     if (error) setError(error.message)
-    else setItems(data ?? [])
+    else { setItems(data ?? []); writeCache<RecurringItem[]>(cacheKey, data ?? []) }
     setLoading(false)
-  }, [user?.id])
+  }, [user?.id, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 
