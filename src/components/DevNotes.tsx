@@ -1,22 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Note, CaretDown, Trash } from '@phosphor-icons/react'
+import { screenLabel } from '../lib/screenLabel'
 
 const STORAGE_KEY = 'dev-notes-v1'
-
-function screenLabel(pathname: string): string {
-  if (pathname === '/') return 'מסך ראשי'
-  if (pathname.startsWith('/finances/recurring')) return 'תזרים — חוזרים'
-  if (pathname.startsWith('/finances')) return 'תזרים'
-  if (pathname.startsWith('/wealth/liabilities')) return 'הון — התחייבויות'
-  if (pathname.startsWith('/wealth')) return 'הון'
-  if (pathname.startsWith('/property/tasks')) return 'ניהול — משימות'
-  if (pathname.startsWith('/property/documents')) return 'ניהול — מסמכים'
-  if (pathname.startsWith('/property/rental')) return 'ניהול — שכירות'
-  if (pathname.startsWith('/property')) return 'ניהול'
-  if (pathname.startsWith('/settings')) return 'הגדרות'
-  return pathname
-}
 
 function loadNotes(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') } catch { return {} }

@@ -1,20 +1,24 @@
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
 import { Lightbulb, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { screenLabel } from '../lib/screenLabel'
 import './feedback.css'
 
 // A small always-available "suggest an improvement" button. Notes land in the
 // `feedback` table; the app owner reads them from Settings (admin-only section).
-export default function FeedbackButton() {
+// `screen` lets a host that isn't a plain route (the onboarding wizard) record
+// exactly which step the note is about; otherwise we use the live pathname so the
+// captured screen is always accurate.
+export default function FeedbackButton({ screen }: { screen?: string } = {}) {
   const { user } = useAuth()
-  const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [err, setErr] = useState(false)
+
+  const path = screen ?? (typeof window !== 'undefined' ? window.location.pathname : '')
 
   async function submit() {
     if (!note.trim() || !user) return
@@ -24,7 +28,7 @@ export default function FeedbackButton() {
       owner_id: user.id,
       email: user.email ?? null,
       note: note.trim(),
-      path: pathname,
+      path,
       user_agent: navigator.userAgent,
     })
     setSending(false)
@@ -44,7 +48,7 @@ export default function FeedbackButton() {
         <div className="fb-overlay" onClick={() => setOpen(false)}>
           <div className="fb-sheet" onClick={e => e.stopPropagation()}>
             <div className="fb-head">
-              <span>הצעה לשיפור</span>
+              <span>הצעה לשיפור<span className="fb-screen">{screenLabel(path)}</span></span>
               <button className="fb-close" onClick={() => setOpen(false)} aria-label="סגור"><X size={16} /></button>
             </div>
             {sent ? (

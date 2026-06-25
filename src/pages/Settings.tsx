@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
+import { screenLabel } from '../lib/screenLabel'
 import {
   pushSupported,
   pushConfigured,
@@ -270,7 +271,7 @@ export default function Settings() {
                   <div key={f.id} className="settings-feedback-row">
                     <p className="settings-feedback-note">{f.note}</p>
                     <div className="settings-feedback-meta">
-                      <span>{f.email ?? '—'} · {new Date(f.created_at).toLocaleDateString('he-IL')}{f.path ? ` · ${f.path}` : ''}</span>
+                      <span>{f.path && <span className="settings-feedback-screen">{screenLabel(f.path)}</span>}{f.email ?? '—'} · {new Date(f.created_at).toLocaleDateString('he-IL')}</span>
                       <button className="settings-feedback-del" onClick={() => deleteFeedback(f.id)} aria-label="מחק">✕</button>
                     </div>
                   </div>

@@ -1,4 +1,5 @@
 import { CaretRight } from '@phosphor-icons/react'
+import FeedbackButton from '../components/FeedbackButton'
 import { OnboardingContext } from '../components/onboarding/context'
 import { useOnboardingState } from '../components/onboarding/useOnboardingState'
 import { WelcomeStep } from '../components/onboarding/WelcomeStep'
@@ -47,6 +48,7 @@ export default function Onboarding({ onComplete }: Props) {
           </div>
         </div>
       </div>
+      <FeedbackButton screen={`/onboarding/${step}`} />
     </OnboardingContext.Provider>
   )
 }

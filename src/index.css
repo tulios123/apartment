@@ -1295,7 +1295,7 @@ input[type="date"] {
   gap: 10px;
 }
 .settings-feedback-row {
-  background: var(--surface-2, #f7f8fa);
+  background: var(--bg-alt);
   border: 1px solid var(--border, #e2e4e8);
   border-radius: var(--r-md, 12px);
   padding: 10px 12px;
@@ -1314,6 +1314,15 @@ input[type="date"] {
   gap: 8px;
   font-size: 11.5px;
   color: var(--text-muted);
+}
+.settings-feedback-screen {
+  display: inline-block;
+  margin-inline-end: 8px;
+  padding: 1px 8px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--accent-light, rgba(42, 125, 225, 0.12));
+  color: var(--accent, #0A1F44);
+  font-weight: 600;
 }
 .settings-feedback-del {
   border: none;

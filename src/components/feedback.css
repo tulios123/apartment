@@ -59,6 +59,18 @@
   color: var(--text, #1a1a1a);
   margin-bottom: 12px;
 }
+/* The precise screen the note is about — a quiet pill beside the title. */
+.fb-screen {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--accent-light, rgba(42, 125, 225, 0.12));
+  color: var(--accent, #0A1F44);
+  font-size: 11.5px;
+  font-weight: 600;
+  vertical-align: middle;
+}
 .fb-close {
   border: none;
   background: transparent;
@@ -78,7 +90,7 @@
   font: inherit;
   font-size: 14px;
   resize: vertical;
-  background: var(--surface-2, #f7f8fa);
+  background: var(--bg-alt);
   color: var(--text, #1a1a1a);
 }
 .fb-sheet textarea:focus { outline: none; border-color: var(--accent, #0A1F44); }
