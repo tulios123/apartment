@@ -95,18 +95,16 @@ export default function PropertyAdminHub() {
                 {propertyValue > 0 && <div className="padm-binder-value">{fmt(propertyValue)}</div>}
                 {subParts.length > 0 && <div className="padm-binder-sub">{subParts.join(' · ')}</div>}
               </div>
-              <div className="padm-binder-side">
-                {property && (
-                  <div className={`padm-binder-lease${activeTenant ? ' is-active' : ' is-none'}`}>
-                    <UserCircle size={15} weight="duotone" />
-                    {activeTenant ? `${activeTenant} · חוזה פעיל` : 'אין חוזה שכירות'}
-                  </div>
-                )}
-                <button className="padm-binder-edit" onClick={() => setShowModal(true)}>
-                  <PencilSimple size={14} /> {property ? 'עריכה' : 'הוסף נכס'}
-                </button>
-              </div>
+              <button className="padm-binder-edit" onClick={() => setShowModal(true)}>
+                <PencilSimple size={14} /> {property ? 'עריכה' : 'הוסף נכס'}
+              </button>
             </div>
+            {property && (
+              <div className={`padm-binder-lease${activeTenant ? ' is-active' : ' is-none'}`}>
+                <UserCircle size={15} weight="duotone" />
+                <span>{activeTenant ? `${activeTenant} · חוזה פעיל` : 'אין חוזה שכירות'}</span>
+              </div>
+            )}
             {(extraParts.length > 0 || property?.notes) && (
               <div className="padm-binder-foot">
                 {extraParts.length > 0 && <span className="padm-binder-extra">{extraParts.join(' · ')}</span>}
