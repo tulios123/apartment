@@ -25,7 +25,7 @@ export function InvestmentStep() {
   const [editBalloon, setEditBalloon] = useState<number | null>(null)
 
   return (
-    <form onSubmit={e => { e.preventDefault(); advance('rental') }}>
+    <form noValidate onSubmit={e => { e.preventDefault(); advance('rental') }}>
       <StepHeader current="investment" icon={<Coins size={44} color="var(--accent)" />} title="הון עצמי ועלויות" />
       <FillExampleTop onFill={fillTestInvestment} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>

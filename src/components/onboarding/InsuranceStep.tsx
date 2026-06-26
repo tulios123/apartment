@@ -15,7 +15,7 @@ export function InsuranceStep() {
   } = useOnboarding()
 
   return (
-    <form onSubmit={e => { e.preventDefault(); requestFinish() }}>
+    <form noValidate onSubmit={e => { e.preventDefault(); requestFinish() }}>
       <StepHeader current="insurance" icon={<ShieldCheck size={44} color="var(--accent)" />} title="ביטוחים" />
       <FillExampleTop onFill={fillTestInsurance} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>

@@ -26,7 +26,7 @@ export function PurchaseStep() {
       e.preventDefault()
       setTrackForm(emptyTrack(keyDeliveryDate || undefined))
       advance('mortgage')
-    }}>
+    }} noValidate>
       <StepHeader current="purchase" icon={<Tag size={44} color="var(--accent)" />} title="פרטי רכישה" />
       <FillExampleTop onFill={fillTestPurchase} />
 

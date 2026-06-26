@@ -73,7 +73,7 @@ export function MortgageStep() {
       if (editingIdx !== null && trackReady(trackForm)) saveTrackEdit(editingIdx)
       setLoanForm(emptyLoan(keyDeliveryDate || undefined))
       advance('loans')
-    }}>
+    }} noValidate>
       <StepHeader current="mortgage" icon={<Bank size={44} color="var(--accent)" />} title="משכנתא" />
       <FillExampleTop onFill={fillTestMortgage} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>

@@ -23,7 +23,7 @@ export function RentalStep() {
   const [showDocs, setShowDocs] = useState(false)
 
   return (
-    <form onSubmit={e => { e.preventDefault(); advance('insurance') }}>
+    <form noValidate onSubmit={e => { e.preventDefault(); advance('insurance') }}>
       <StepHeader current="rental" icon={<FileText size={44} color="var(--accent)" />} title="פרטי השכירות" />
       <FillExampleTop onFill={fillTestRental} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>

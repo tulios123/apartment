@@ -76,7 +76,7 @@ export function LoansStep() {
       if (incompleteLoans.length > 0) { setContinuePrompt(true); return }
       if (editingLoanIdx !== null && loanReady(loanForm)) saveLoanEdit(editingLoanIdx)
       advance('investment')
-    }}>
+    }} noValidate>
       <StepHeader current="loans" icon={<HandCoins size={44} color="var(--accent)" />} title="הלוואות" />
       <FillExampleTop onFill={fillTestLoans} />
       <p className="onboarding-subtitle onboarding-optional">אופציונלי — ניתן להוסיף גם אחר כך</p>
