@@ -85,11 +85,11 @@
 - **UX-05 · No focus trap/restore.** `BottomSheet` traps Tab + restores focus on close; `Modal` gains `role="dialog"`/`aria-modal`, Esc-to-close, and focus restore.
 - **UX-07 · No offline messaging.** New `src/components/OfflineBanner.tsx` mounted at the app root (`navigator.onLine` + online/offline events).
 
-## Owner-gated (cannot apply from here)
+## Infra steps — DONE (executed this session)
 
-- **C1 / A4** — apply migration 031 (feedback admin → dev@test.local): `cd /Users/itaishubi/ai/Apartment && npx supabase db push` (also applies **032**, the generation-idempotency indexes).
-- **C6** — redeploy the edge function after the dedup change: `cd /Users/itaishubi/ai/Apartment && npx supabase functions deploy daily-reminders --no-verify-jwt`.
-- **A5 / SECURITY** — verify `026_drop_anon_policies` is live (anon key returns 0 rows on every table). Verification only.
+- **C1 / A4 · migrations 031 + 032 applied.** `supabase migration list` showed Local == Remote for 001–032; `supabase db push` → "Remote database is up to date." Feedback admin RLS (031) and generation-idempotency indexes (032) are live.
+- **C6 · daily-reminders redeployed.** `supabase functions deploy daily-reminders --no-verify-jwt` → "Deployed Functions on project …: daily-reminders." The push de-dup is now in effect.
+- **A5 / SECURITY · 026 verified live.** Anon-key REST queries against `properties`, `transactions`, `contracts`, `feedback` all return `[]` — RLS blocks anonymous access; data is not world-readable.
 
 ## Documented non-issues / intentionally deferred (no code change)
 
