@@ -79,7 +79,7 @@ function InsuranceForm({
   }
 
   return (
-    <form onSubmit={submit} className="form">
+    <form onSubmit={submit} className="form" noValidate>
       {showFill && (
         <div className="onboarding-fill-top">
           <button type="button" className="onboarding-fill-top-btn" onClick={fillExample}>מלא דוגמה</button>

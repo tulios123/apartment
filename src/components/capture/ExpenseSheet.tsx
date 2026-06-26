@@ -136,7 +136,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   // Keep "המשך" tappable so it's never a silent dead button — tell the user why
   // it can't proceed (no amount) instead of leaving them stuck on a greyed button.
   function goStep2() {
-    if (!canContinue) { setErr('יש להזין סכום לפני שממשיכים'); return }
+    if (!canContinue) { setErr('יש להזין סכום כדי להמשיך'); return }
     setErr(null)
     setStep(2)
   }

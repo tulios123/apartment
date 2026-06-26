@@ -86,11 +86,11 @@ function ContractForm({
   // Shown on save attempt so the button is never a silent dead-end (the user sees
   // exactly what's missing or wrong — e.g. an end date before the start date).
   function validate(): string | null {
-    if (!form.company_name.trim()) return 'יש להזין שם חברה או שוכר'
-    if (!form.start_date) return 'יש לבחור תאריך תחילת חוזה'
-    if (!form.end_date) return 'יש לבחור תאריך סיום חוזה'
+    if (!form.company_name.trim()) return 'יש להזין את שם החברה או השוכר'
+    if (!form.start_date) return 'יש לבחור את תאריך תחילת החוזה'
+    if (!form.end_date) return 'יש לבחור את תאריך סיום החוזה'
     if (form.end_date < form.start_date) return 'לא ניתן לשמור: תאריך הסיום מוקדם מתאריך ההתחלה'
-    if (!form.monthly_rent || Number(form.monthly_rent) <= 0) return 'יש להזין שכר דירה חודשי'
+    if (!form.monthly_rent || Number(form.monthly_rent) <= 0) return 'יש להזין את סכום שכר הדירה החודשי'
     return null
   }
 
@@ -110,7 +110,7 @@ function ContractForm({
   }
 
   return (
-    <form onSubmit={submit} className="form">
+    <form onSubmit={submit} className="form" noValidate>
       {showFill && (
         <div className="onboarding-fill-top">
           <button type="button" className="onboarding-fill-top-btn" onClick={fillExample}>מלא דוגמה</button>

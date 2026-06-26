@@ -52,9 +52,16 @@ export function PropertyForm({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
+  function validate(): string | null {
+    if (!street.trim()) return 'יש להזין את הרחוב'
+    if (!city.trim()) return 'יש להזין את העיר'
+    return null
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!street.trim() || !city.trim()) return
+    const problem = validate()
+    if (problem) { setErr(problem); return }
     setSaving(true)
     setErr(null)
     try {
@@ -79,7 +86,7 @@ export function PropertyForm({
   }
 
   return (
-    <form onSubmit={submit} className="form">
+    <form onSubmit={submit} className="form" noValidate>
       <div className="form-section-label">פרטי הנכס</div>
       <div className="form-2col">
         <div className="form-row">
