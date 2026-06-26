@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { rentReceivedToDate, mortgagePaidToDate } from '../lib/projections'
 import { readCache, writeCache } from '../lib/queryCache'
-import { todayISO, monthDayISO } from '../lib/format'
+import { todayISO, monthDayISO, daysBetween } from '../lib/format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import type { Transaction, Task, Contract, MortgageTrack } from '../types'
 
@@ -29,6 +29,8 @@ export interface DashboardStats {
   upcomingRenewals: UpcomingRenewal[]
   loading: boolean
   error: string | null
+  /** A secondary query (contracts/tracks) failed — totals may be partial (C7-B). */
+  partial: boolean
 }
 
 export function useDashboardStats(): DashboardStats {
@@ -42,6 +44,7 @@ export function useDashboardStats(): DashboardStats {
   const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[]>(() => readCache<StatsSnapshot>(cacheKey)?.upcomingRenewals ?? [])
   const [loading, setLoading] = useState(cached0 == null)
   const [error, setError] = useState<string | null>(null)
+  const [partial, setPartial] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -50,6 +53,7 @@ export function useDashboardStats(): DashboardStats {
       // Already showing cached numbers? Refresh silently. First-ever load shows the skeleton.
       setLoading(readCache<StatsSnapshot>(cacheKey) == null)
       setError(null)
+      setPartial(false)
       try {
         const todayStr = todayISO() // LOCAL date — not toISOString (UTC rolls back a day)
         const in90 = new Date(); in90.setDate(in90.getDate() + 90)
@@ -82,9 +86,14 @@ export function useDashboardStats(): DashboardStats {
         if (tasksRes.error) throw tasksRes.error
         if (renewalRes.error) throw renewalRes.error
 
-        const txs = txRes.data ?? []
+        // EDGE-23/14: coerce amounts to finite numbers at the boundary so a bad row
+        // can't poison the all-time totals.
+        const txs = (txRes.data ?? []).map(t => ({ ...t, amount: Number(t.amount) || 0 }))
         const allContracts = (allContractsRes.data ?? []) as Contract[]
         const tracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
+        // C7-B: surface (don't silently swallow) a secondary-query failure — rather
+        // than computing rent/mortgage totals on empty arrays and showing ₪0 as if real.
+        if (allContractsRes.error || tracksRes.error) setPartial(true)
 
         const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
         const mortCatSet = new Set(MORTGAGE_CATEGORIES as readonly string[])
@@ -95,10 +104,11 @@ export function useDashboardStats(): DashboardStats {
         const nextExpense = txExpense + mortgagePaidToDate(tracks, todayStr)
         const nextRecent = txs.slice(0, 5)
         const nextTasks = tasksRes.data ?? []
-        const now = Date.now()
+        // EDGE-02: whole-day string diff (matches the edge function / monthly generation)
+        // instead of mixing a UTC-midnight Date with an absolute `now`.
         const nextRenewals = (renewalRes.data ?? []).map(c => ({
           contract: c,
-          daysLeft: Math.ceil((new Date(c.end_date).getTime() - now) / (1000 * 60 * 60 * 24)),
+          daysLeft: daysBetween(todayStr, c.end_date),
         }))
 
         setTotalIncome(nextIncome)
@@ -120,5 +130,5 @@ export function useDashboardStats(): DashboardStats {
     load()
   }, [user, cacheKey])
 
-  return { totalIncome, totalExpense, balance: totalIncome - totalExpense, recentTransactions, openTasks, upcomingRenewals, loading, error }
+  return { totalIncome, totalExpense, balance: totalIncome - totalExpense, recentTransactions, openTasks, upcomingRenewals, loading, error, partial }
 }

@@ -50,7 +50,13 @@ export function useTransactions(filters: Filters = {}) {
 
     const { data, error } = await query
     if (error) setError(error.message)
-    else { setTransactions(data ?? []); writeCache<Transaction[]>(cacheKey, data ?? []) }
+    else {
+      // EDGE-23/14: coerce `amount` to a finite number at the boundary so a null/NaN
+      // row can't poison a downstream total (with no error boundary that NaN would
+      // crash a .toLocaleString) or flip a money comparison.
+      const rows = (data ?? []).map(t => ({ ...t, amount: Number(t.amount) || 0 }))
+      setTransactions(rows); writeCache<Transaction[]>(cacheKey, rows)
+    }
     setLoading(false)
   }, [user?.id, cacheKey, filters.year, filters.month, filters.from, filters.to])
 

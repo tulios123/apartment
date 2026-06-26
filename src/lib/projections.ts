@@ -1,14 +1,16 @@
 import { trackSchedule } from './mortgage'
 import { loanPaymentForMonth } from './loans'
-import { monthEndISO, todayISO } from './format'
+import { monthEndISO, todayISO, parseLocalISO } from './format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
 import type { Contract, MortgageTrack, Loan } from '../types'
 
 /** Number of months elapsed between startStr and endStr (or now if endStr is null/future). */
 export function elapsedMonths(startStr: string | null, endStr: string | null): number {
   if (!startStr) return 0
-  const start = new Date(startStr)
-  const end = endStr ? new Date(Math.min(new Date(endStr).getTime(), Date.now())) : new Date()
+  // EDGE-03: parse stored dates as LOCAL (mirrors mortgage.ts/loans.ts), not UTC,
+  // so month boundaries don't skew for runtimes behind UTC.
+  const start = parseLocalISO(startStr)
+  const end = endStr ? new Date(Math.min(parseLocalISO(endStr).getTime(), Date.now())) : new Date()
   if (end <= start) return 0
   return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
 }
@@ -46,8 +48,9 @@ export function activeContract<T extends { start_date: string; end_date: string 
 export function rentReceivedToDate(contracts: Contract[], asOf: Date = new Date()): number {
   let total = 0
   for (const c of contracts) {
-    const start = new Date(c.start_date)
-    const cap = new Date(Math.min(new Date(c.end_date).getTime(), asOf.getTime()))
+    // EDGE-03: LOCAL parse, consistent with the rest of the date math.
+    const start = parseLocalISO(c.start_date)
+    const cap = new Date(Math.min(parseLocalISO(c.end_date).getTime(), asOf.getTime()))
     if (cap < start) continue
     const months = (cap.getFullYear() - start.getFullYear()) * 12 + (cap.getMonth() - start.getMonth()) + 1
     total += Math.max(0, months) * c.monthly_rent

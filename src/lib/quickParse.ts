@@ -2,7 +2,10 @@
 
 export type ParsedQuick = { amount: number; desc: string; income: boolean }
 
-const INCOME_RE = /קיבלתי|התקבל|הכנס|נכנס|שכר[\s-]?דירה|שכ["']?ד|שכירות|החזר|זיכוי|הפקד|משכורת|תשלום\s+מהשוכר|שוכר\s+שילם/
+// EDGE-19: dropped the ambiguous הפקד / החזר / זיכוי tokens — "הפקדתי 500 בבנק"
+// (moving money) was wrongly classified as income. Only unambiguous income phrasings
+// remain; the quick-capture defaults to expense otherwise.
+const INCOME_RE = /קיבלתי|התקבל|הכנס|נכנס|שכר[\s-]?דירה|שכ["']?ד|שכירות|משכורת|תשלום\s+מהשוכר|שוכר\s+שילם/
 // ₪ and "nis" are safe to strip anywhere. The Hebrew currency words (ש"ח, שקל)
 // must only match as standalone tokens — bounded by non-Hebrew on both sides —
 // or they mangle ordinary words that merely contain them (שחור→"ור", משחק→"מק").

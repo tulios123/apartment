@@ -41,6 +41,12 @@ export default function Settings() {
   const [pushState, setPushState] = useState<PushState>('loading')
   const [pushBusy, setPushBusy] = useState(false)
   const [feedback, setFeedback] = useState<FeedbackRow[]>([])
+  // UX-04: inline, auto-dismissing status toast instead of the native blocking alert().
+  const [status, setStatus] = useState<string | null>(null)
+  function showStatus(msg: string) {
+    setStatus(msg)
+    setTimeout(() => setStatus(null), 3500)
+  }
 
   const isAdmin = user?.email === MANAGER_EMAIL
   // Technical/debug controls (reset, manual generation re-run) — manager/dev only,
@@ -92,7 +98,7 @@ export default function Settings() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       if (msg === 'denied') setPushState('denied')
-      else alert('שגיאה בהפעלת התראות: ' + msg)
+      else showStatus('שגיאה בהפעלת התראות: ' + msg)
     } finally {
       setPushBusy(false)
     }
@@ -104,7 +110,7 @@ export default function Settings() {
       await disablePush()
       setPushState('default')
     } catch (e) {
-      alert('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
+      showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
       setPushBusy(false)
     }
@@ -114,14 +120,14 @@ export default function Settings() {
     try {
       await sendTestNotification()
     } catch (e) {
-      alert('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
+      showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
     }
   }
 
   function resetGenerationCache() {
     localStorage.removeItem(GENERATION_KEY)
     resetListCache()
-    alert('מטמון אופס — הגנרציה החודשית תרוץ מחדש בטעינה הבאה')
+    showStatus('המטמון אופס — הגנרציה החודשית תרוץ מחדש בטעינה הבאה')
   }
 
   async function resetAllData() {
@@ -154,7 +160,7 @@ export default function Settings() {
       localStorage.removeItem(GENERATION_KEY)
       window.location.reload()
     } catch (e) {
-      alert('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
+      showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
       setResetting(false)
       setConfirmReset(false)
     }
@@ -240,7 +246,7 @@ export default function Settings() {
             סנכרון דו-כיווני עם רשימת &quot;apartment&quot; ב-Google Tasks. הטוקן תקף כשעה אחרי ההתחברות — אם הסנכרון נפסק, יש להתחבר מחדש.
           </p>
           <div className="settings-actions">
-            <button className="btn-secondary" onClick={() => { resetListCache(); alert('מטמון רשימת Google אופס') }}>
+            <button className="btn-secondary" onClick={() => { resetListCache(); showStatus('מטמון רשימת Google אופס') }}>
               אפס מטמון רשימה
             </button>
           </div>
@@ -306,6 +312,8 @@ export default function Settings() {
         </section>
         )}
       </div>
+
+      {status && <div className="settings-toast" role="status" aria-live="polite">{status}</div>}
     </div>
   )
 }

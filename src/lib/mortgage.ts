@@ -14,9 +14,14 @@ export interface ScheduleRow {
  * annualRate is PERCENT (5.25 → 5.25%). graceMonths is subtracted from termMonths.
  */
 export function monthlyPayment(principal: number, annualRate: number, termMonths: number, graceMonths = 0): number {
-  const effectiveTerm = termMonths - graceMonths
+  // EDGE-12: clamp grace below the term so there is always ≥1 amortizing month.
+  // grace ≥ term would make effectiveTerm ≤ 0 → payment 0 → a schedule whose balance
+  // never reaches zero (a never-amortizing loan). EDGE-13: a net-negative rate
+  // (e.g. an over-large "prime minus" margin) is floored to 0 so the math stays sane.
+  const grace = Math.min(Math.max(0, graceMonths), Math.max(0, termMonths - 1))
+  const effectiveTerm = termMonths - grace
   if (effectiveTerm <= 0 || principal <= 0) return 0
-  const r = annualRate / 100 / 12
+  const r = Math.max(0, annualRate) / 100 / 12
   if (r === 0) return principal / effectiveTerm
   const f = Math.pow(1 + r, effectiveTerm)
   return (principal * r * f) / (f - 1)
@@ -32,9 +37,12 @@ function addMonths(iso: string, months: number): string {
 
 /** Full month-by-month schedule for a single track, including any grace period. */
 export function trackSchedule(track: MortgageTrack): ScheduleRow[] {
-  const { principal, annual_rate, term_months, start_date, grace_months = 0 } = track
+  const { principal, annual_rate, term_months, start_date } = track
   if (term_months <= 0 || principal <= 0) return []
-  const r = annual_rate / 100 / 12
+  // EDGE-12/13: clamp grace below the term (always ≥1 amortizing month) and floor a
+  // net-negative rate to 0, so the schedule always reaches a zero balance.
+  const grace_months = Math.min(Math.max(0, track.grace_months ?? 0), Math.max(0, term_months - 1))
+  const r = Math.max(0, annual_rate) / 100 / 12
   // Post-grace Shpitzer payment (on full principal for remaining term)
   const postGracePay = monthlyPayment(principal, annual_rate, term_months, grace_months)
   const rows: ScheduleRow[] = []
@@ -105,7 +113,7 @@ export function gracePeriodPayment(tracks: MortgageTrack[]): number {
   const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
   if (!hasGrace) return 0
   return tracks.reduce((s, t) => {
-    const r = t.annual_rate / 100 / 12
+    const r = Math.max(0, t.annual_rate) / 100 / 12   // EDGE-13: floor negative rate
     return s + ((t.grace_months ?? 0) > 0
       ? t.principal * r
       : monthlyPayment(t.principal, t.annual_rate, t.term_months, 0))

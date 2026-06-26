@@ -15,7 +15,30 @@ export function formatSignedCurrency(amount: number): string {
 
 export function formatDate(date: string | null): string {
   if (!date) return ''
-  return new Date(date).toLocaleDateString('he-IL')
+  // EDGE-04: `new Date('YYYY-MM-DD')` parses as UTC midnight, so a viewer behind UTC
+  // would render every stored date one day early. Build a LOCAL date from the parts
+  // (date columns are date-only) so the displayed day matches what was stored.
+  const [y, m, d] = date.slice(0, 10).split('-').map(Number)
+  if (!y || !m || !d) return ''
+  return new Date(y, m - 1, d).toLocaleDateString('he-IL')
+}
+
+/** Parse a stored `YYYY-MM-DD` as LOCAL midnight (not UTC) — matches mortgage.ts/loans.ts. */
+export function parseLocalISO(iso: string): Date {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y || 1970, (m || 1) - 1, d || 1)
+}
+
+/**
+ * Whole-day difference between two `YYYY-MM-DD` strings, both anchored at UTC
+ * midnight so there is no hour drift. Positive when `toISO` is after `fromISO`.
+ * Mirrors the daily-reminders edge function so client and server agree on "days left"
+ * (EDGE-01/02) rather than diverging by a day near local midnight.
+ */
+export function daysBetween(fromISO: string, toISO: string): number {
+  const [fy, fm, fd] = fromISO.slice(0, 10).split('-').map(Number)
+  const [ty, tm, td] = toISO.slice(0, 10).split('-').map(Number)
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000)
 }
 
 /** Today as a LOCAL `YYYY-MM-DD` string (avoids the UTC roll-back of toISOString). */

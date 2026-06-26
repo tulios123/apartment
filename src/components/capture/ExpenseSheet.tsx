@@ -3,7 +3,7 @@ import { Backspace, CircleNotch, Check, ArrowRight, CalendarBlank, Paperclip, X 
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { createTransaction } from '../../hooks/useTransactions'
-import { uploadDocument } from '../../lib/storage'
+import { uploadDocument, MAX_UPLOAD_BYTES } from '../../lib/storage'
 import { supabase } from '../../lib/supabase'
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../../lib/constants'
 import { predictCategory } from '../../lib/quickParse'
@@ -93,12 +93,10 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
     if (h) setTrackH(h)
   }, [open, step])
 
-  // Focus the description input only after the slide settles → no keyboard/layout thrash.
-  useEffect(() => {
-    if (step !== 2) return
-    const t = setTimeout(() => descRef.current?.focus(), 380)
-    return () => clearTimeout(t)
-  }, [step])
+  // UX-01: deliberately NOT auto-focusing the description on step 2. Auto-focus pops
+  // the iOS keyboard over the category/payment/date chips and the save button — a
+  // keyboard trap — and the user explicitly dislikes the keyboard opening on its own.
+  // They tap the field when they want to type; the chips stay reachable.
 
   function press(k: string) {
     if (err) setErr(null)
@@ -123,6 +121,9 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
   // Long-press backspace = clear the whole amount (works on every platform).
   function backHoldStart() {
+    // EDGE-16: start each press sequence clean, so a prior long-press whose trailing
+    // click never fired can't leave backCleared=true and swallow this backspace.
+    backCleared.current = false
     backTimer.current = setTimeout(() => { backCleared.current = true; setAmount(''); tap(18) }, 450)
   }
   function backHoldEnd() {
@@ -148,6 +149,9 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
     if (error) { setState('idle'); setErr('לא הצלחנו לשמור — נסו שוב'); return }
 
     // Attach the receipt (non-fatal): upload, create a document row, link it.
+    // C7-A: a failure here used to be swallowed silently while the expense showed
+    // "נשמר ✓" — the user believed the receipt was attached. Surface it instead.
+    let receiptFailed = false
     if (receipt && tx) {
       try {
         const { data: { user } } = await supabase.auth.getUser()
@@ -159,12 +163,17 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
           type: 'receipt', name: receipt.name, storage_path: path, date,
         })
         await supabase.from('transactions').update({ document_id: docId }).eq('id', tx.id)
-      } catch { /* receipt failed — the expense itself was saved */ }
+      } catch {
+        // The expense itself was saved — flag so the user knows to re-attach.
+        receiptFailed = true
+      }
     }
 
     setState('done')
     tap(18)
-    onDone(`נרשמה הוצאה · ₪${numeric.toLocaleString()}${desc.trim() ? ` · ${desc.trim()}` : ''}`)
+    onDone(receiptFailed
+      ? `ההוצאה נשמרה, אך הקבלה לא צורפה — נסו שוב מהמסך`
+      : `נרשמה הוצאה · ₪${numeric.toLocaleString()}${desc.trim() ? ` · ${desc.trim()}` : ''}`)
     setTimeout(onClose, 480)
   }
 
@@ -254,7 +263,13 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
               )}
               <input ref={receiptRef} type="file" accept="image/*,.pdf,.heic"
                 style={{ display: 'none' }}
-                onChange={e => { const f = e.target.files?.[0]; if (f) setReceipt(f); e.target.value = '' }} />
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  // EDGE-17: reject oversized receipts up front with a clear message.
+                  if (f && f.size > MAX_UPLOAD_BYTES) setErr('הקובץ גדול מדי (עד 15MB)')
+                  else if (f) { setErr(null); setReceipt(f) }
+                  e.target.value = ''
+                }} />
             </div>
             {err && <p className="cap-error" role="alert">{err}</p>}
             <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={state !== 'idle'} onClick={save}>

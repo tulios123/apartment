@@ -25,7 +25,13 @@ describe('monthlyPayment (Shpitzer annuity)', () => {
   it('guards degenerate inputs (no NaN/Infinity)', () => {
     expect(monthlyPayment(0, 6, 120)).toBe(0)
     expect(monthlyPayment(100000, 6, 0)).toBe(0)
-    expect(monthlyPayment(100000, 6, 12, 12)).toBe(0) // grace == term → effectiveTerm 0
+    // EDGE-12: grace ≥ term is clamped to term-1 (always ≥1 amortizing month) so it
+    // never produces a never-amortizing (zero) schedule. 12-month / 12-grace → 1 month.
+    const clamped = monthlyPayment(100000, 6, 12, 12)
+    expect(clamped).toBeGreaterThan(0)
+    expect(Number.isFinite(clamped)).toBe(true)
+    // EDGE-13: a net-negative rate is floored to 0 → straight-line, never NaN.
+    expect(monthlyPayment(120000, -3, 12)).toBeCloseTo(10000, 6)
   })
 })
 

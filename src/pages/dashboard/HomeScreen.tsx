@@ -16,12 +16,13 @@ import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { gracePeriodPayment } from '../../lib/mortgage'
 import { activeContract as findActiveContract } from '../../lib/projections'
-import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
-import { parseQuick } from '../../lib/quickParse'
-import { taskCompletionFollowup } from '../../lib/taskFollowup'
+import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS, UTILITIES } from '../../lib/constants'
+import { parseQuick, predictCategory } from '../../lib/quickParse'
+import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import ExpenseSheet from '../../components/capture/ExpenseSheet'
 import TaskSheet from '../../components/capture/TaskSheet'
 import './home-screen.css'
@@ -47,7 +48,7 @@ export default function HomeScreen() {
   const year = now.getFullYear()
   const month = now.getMonth() + 1
 
-  const { upcomingRenewals, loading: loadingStats, error } = useDashboardStats()
+  const { upcomingRenewals, loading: loadingStats, error, partial } = useDashboardStats()
   const { summary, tracks, loading: loadingMortgage } = useMortgageData()
   const { property, contracts, utilities, loading: loadingProperty } = usePropertyData()
   const { summary: loansSummary, loading: loadingLoans } = useLoansData()
@@ -63,6 +64,9 @@ export default function HomeScreen() {
   const [sheetSeed, setSheetSeed] = useState('')
   const [extraOpen, setExtraOpen] = useState(false)
   const [incomeOpen, setIncomeOpen] = useState(false)
+  // Money follow-up after completing a money-implying task — shown as an in-app
+  // dialog (not a native confirm), and only after the completion actually persisted.
+  const [followup, setFollowup] = useState<TaskFollowup | null>(null)
 
   const firstName =
     (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ||
@@ -72,9 +76,10 @@ export default function HomeScreen() {
 
   const todayStr = todayISO()
   const rentCatSet = useMemo(() => new Set(RENT_CATEGORIES as readonly string[]), [])
-  // Categories already represented in fixedExpenses (mortgage + insurance auto-post
-  // as real transactions via the generator) — exclude them so they aren't counted twice.
-  const fixedCatSet = useMemo(() => new Set([...MORTGAGE_CATEGORIES, 'ביטוח'] as string[]), [])
+  // Categories already represented in fixedExpenses — exclude them from the "extra"
+  // (hand-recorded) actuals so they aren't counted twice (audit C8). Must mirror EVERY
+  // component of fixedExpenses: mortgage + insurance + loan ('הלוואה') + owner utilities.
+  const fixedCatSet = useMemo(() => new Set([...MORTGAGE_CATEGORIES, 'ביטוח', 'הלוואה', ...UTILITIES] as string[]), [])
 
   // ── Fixed (expected) monthly expenses — calm, never red ──
   const activeContract = findActiveContract(contracts)
@@ -98,7 +103,8 @@ export default function HomeScreen() {
   // Actual income that isn't the monthly rent (one-off income added by hand).
   const extraIncomeTxs = transactions.filter(t => t.direction === 'income' && !rentCatSet.has(t.category))
   const extraIncome = extraIncomeTxs.reduce((s, t) => s + t.amount, 0)
-  const rentCleared = monthlyRent > 0 && rentReceived >= monthlyRent
+  // EDGE-14: compare with a half-shekel epsilon so float drift can't flip "cleared".
+  const rentCleared = monthlyRent > 0 && rentReceived + 0.5 >= monthlyRent
   const rentPct = monthlyRent > 0 ? Math.min(100, (rentReceived / monthlyRent) * 100) : 0
   // Forecast uses the greater of expected vs actual rent, plus any extra income,
   // so anything you add by hand is reflected in the bottom line.
@@ -205,16 +211,13 @@ export default function HomeScreen() {
     setFlash('משימה הושלמה ✓')
     setTimeout(() => setFlash(null), 2600)
     updateTask(id, { status: 'done' }).then(r => {
-      if (r.error) { setFlash('לא הצלחנו לעדכן, נסה שוב'); refetchTasks() }
+      if (r.error) { setFlash('לא הצלחנו לעדכן, נסה שוב'); refetchTasks(); return }
+      // C5: only offer the money follow-up once completion actually persisted — so an
+      // offline/failed completion never navigates the user to log money for a task
+      // that bounces back. In-app dialog, not a blocking native confirm().
+      const f = task ? taskCompletionFollowup(task) : null
+      if (f) setFollowup(f)
     })
-
-    // Same follow-up the Tasks hub offers, deferred so the checkmark paints first.
-    const followup = task ? taskCompletionFollowup(task) : null
-    if (followup) {
-      setTimeout(() => {
-        if (confirm(followup.msg)) navigate('/finances', { state: { prefill: followup.prefill } })
-      }, 80)
-    }
   }
 
   function showFlash(msg: string) {
@@ -241,7 +244,9 @@ export default function HomeScreen() {
       recurring_item_id: null, document_id: null,
       direction: parsed.income ? 'income' : 'expense',
       amount: parsed.amount, date: todayStr,
-      category: 'אחר',
+      // EDGE-19: classify expenses like the full sheet does instead of always 'אחר'
+      // (e.g. "תיקון ברז 350" → תיקונים). One-off income stays 'אחר' (rent has its own flow).
+      category: parsed.income ? 'אחר' : predictCategory(parsed.desc),
       description: parsed.desc, payment_method: null,
     })
     if (error) { setQuick(text); showFlash('לא הצלחנו לרשום, נסה שוב'); return }
@@ -274,6 +279,12 @@ export default function HomeScreen() {
       </header>
 
       {flash && <div className="hs-flash" role="status">{flash}</div>}
+
+      {/* C7-B: a secondary query (contracts/tracks) failed — numbers may be partial.
+          Soft, non-fatal note instead of silently computing on empty arrays. */}
+      {partial && (
+        <div className="data-partial-note" role="status">חלק מהנתונים לא נטענו — ייתכן שחלק מהמספרים חסרים.</div>
+      )}
 
       {!property && !loadingProperty ? (
         <EmptyState
@@ -483,6 +494,18 @@ export default function HomeScreen() {
         open={sheet === 'task'}
         onClose={() => setSheet(null)}
         onDone={async (label) => { showFlash(label); await refetchTasks() }}
+      />
+
+      <ConfirmDialog
+        open={!!followup}
+        message={followup?.msg ?? ''}
+        confirmLabel="כן, לרישום"
+        cancelLabel="דלג"
+        onConfirm={() => {
+          if (followup) navigate('/finances', { state: { prefill: followup.prefill } })
+          setFollowup(null)
+        }}
+        onCancel={() => setFollowup(null)}
       />
     </div>
   )

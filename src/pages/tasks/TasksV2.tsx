@@ -8,9 +8,10 @@ import { useAuth } from '../../contexts/AuthContext'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
-import { taskCompletionFollowup } from '../../lib/taskFollowup'
+import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import './tasks-v2.css'
 
 const CAT_ICON: Record<string, typeof Wrench> = {
@@ -41,6 +42,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const [addingTitle, setAddingTitle] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [attaching, setAttaching] = useState(false)
+  const [followup, setFollowup] = useState<TaskFollowup | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const taskDocs = editing ? documents.filter(d => d.task_id === editing.id) : []
@@ -122,16 +124,13 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     setTasks(prev => prev.map(x => x.id === t.id
       ? { ...x, status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null }
       : x))
-    updateTask(t.id, { status: newStatus }).then(r => { if (r.error) refetch() })
-
-    // Any follow-up prompt is deferred so React can paint the checkmark first —
-    // a synchronous confirm() here would freeze the tap and make it feel dead.
-    const followup = newStatus === 'done' ? taskCompletionFollowup(t) : null
-    if (followup) {
-      setTimeout(() => {
-        if (confirm(followup.msg)) navigate('/finances', { state: { prefill: followup.prefill } })
-      }, 80)
-    }
+    updateTask(t.id, { status: newStatus }).then(r => {
+      if (r.error) { refetch(); return }
+      // C5: only prompt the money follow-up once completion persisted — an in-app
+      // dialog (not a blocking native confirm() that freezes the tap).
+      const f = newStatus === 'done' ? taskCompletionFollowup(t) : null
+      if (f) setFollowup(f)
+    })
   }
 
   return (
@@ -263,6 +262,18 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         </div>
         <button className="tav-save" disabled={saving} onClick={handleEditSave}>{saving ? 'שומר…' : 'שמירה'}</button>
       </aside>
+
+      <ConfirmDialog
+        open={!!followup}
+        message={followup?.msg ?? ''}
+        confirmLabel="כן, לרישום"
+        cancelLabel="דלג"
+        onConfirm={() => {
+          if (followup) navigate('/finances', { state: { prefill: followup.prefill } })
+          setFollowup(null)
+        }}
+        onCancel={() => setFollowup(null)}
+      />
     </div>
   )
 }

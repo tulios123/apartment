@@ -39,9 +39,10 @@ interface LoanRow {
 function loanSchedule(loan: Loan): LoanRow[] {
   if (loan.repayment_type !== 'monthly_fixed') return []
   const principal = loan.principal
-  const rate = loan.annual_rate ?? 0
+  const rate = Math.max(0, loan.annual_rate ?? 0)            // EDGE-13: floor negative rate
   const term = loan.term_months ?? 0
-  const grace = loan.grace_months ?? 0
+  // EDGE-12: clamp grace below the term so the loan always amortizes to zero.
+  const grace = Math.min(Math.max(0, loan.grace_months ?? 0), Math.max(0, term - 1))
   const start = loan.start_date
   if (principal <= 0 || term <= 0 || !start) return []
   const r = rate / 100 / 12

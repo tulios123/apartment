@@ -82,6 +82,9 @@ Deno.serve(async (req) => {
       if (logErr) continue
 
       const lines: string[] = []
+      // Recurring items that produced an approval line here, so section 3 can skip
+      // their generated task and not list the same thing twice (audit C6).
+      const section1ItemIds = new Set<string>()
 
       // 1) Approval items whose due day has passed and aren't recorded this month.
       const { data: items } = await supabase
@@ -104,6 +107,7 @@ Deno.serve(async (req) => {
         const recorded = new Set((txThisMonth ?? []).map((t) => t.recurring_item_id))
         for (const it of dueItems) {
           if (recorded.has(it.id)) continue
+          section1ItemIds.add(it.id)
           // Post-dated-check rent → remind to DEPOSIT the check, not "collect rent".
           if (it.direction === 'income' && it.payment_method === 'check') {
             lines.push(`הפקדת צ׳ק שכר דירה${it.payee ? ` – ${it.payee}` : ''}`)
@@ -157,23 +161,33 @@ Deno.serve(async (req) => {
       // 3) Open tasks due today or overdue.
       const { data: tasks } = await supabase
         .from('tasks')
-        .select('title, due_date, due_time')
+        .select('title, due_date, due_time, source, recurring_item_id')
         .eq('owner_id', ownerId)
         .eq('status', 'open')
         .not('due_date', 'is', null)
         .lte('due_date', today)
-      for (const t of tasks ?? []) lines.push(t.due_time ? `${t.title} – ${String(t.due_time).slice(0, 5)}` : t.title)
+      for (const t of tasks ?? []) {
+        // C6: skip tasks already covered above — renewal tasks (handled by 2a with a
+        // live day count, so the frozen task title doesn't double it) and approval
+        // tasks whose recurring item already produced a section-1 line.
+        if (t.source === 'renewal') continue
+        if (t.recurring_item_id && section1ItemIds.has(t.recurring_item_id)) continue
+        lines.push(t.due_time ? `${t.title} – ${String(t.due_time).slice(0, 5)}` : t.title)
+      }
 
-      if (lines.length === 0) {
+      // C6 belt-and-suspenders: collapse any remaining identical lines before composing.
+      const finalLines = [...new Set(lines)]
+
+      if (finalLines.length === 0) {
         // Nothing pending — release the day-claim so a later run today can still notify.
         await supabase.from('push_log').delete().eq('owner_id', ownerId).eq('sent_on', today)
         continue
       }
 
       const body =
-        lines.length === 1
-          ? lines[0]
-          : `${lines.length} דברים דורשים טיפול\n• ${lines.slice(0, 3).join('\n• ')}`
+        finalLines.length === 1
+          ? finalLines[0]
+          : `${finalLines.length} דברים דורשים טיפול\n• ${finalLines.slice(0, 3).join('\n• ')}`
       const payload = JSON.stringify({ title: 'ניהול דירה', body, url: '/', tag: 'apt-daily' })
 
       let delivered = 0

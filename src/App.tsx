@@ -14,10 +14,17 @@ import PropertyAdminHub from './pages/property/PropertyAdminHub'
 import FinancesHub from './pages/finances/FinancesHub'
 import Settings from './pages/Settings'
 import DevNotes from './components/DevNotes'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { OfflineBanner } from './components/OfflineBanner'
+import { pushNotifTarget } from './lib/notifNav'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
   const [hasProperty, setHasProperty] = useState<boolean | null>(null)
+  // After repeated property-check failures, show a manual retry screen instead of
+  // falling through to Onboarding (which would create a duplicate property — C3).
+  const [propertyError, setPropertyError] = useState(false)
+  const [retryNonce, setRetryNonce] = useState(0)
   // Keep the splash up until the first screen's data has loaded (markReady), so the
   // user goes straight from splash to a fully-populated app — no skeleton flash.
   // Only the home route signals ready, so only hold the splash when we actually land
@@ -28,14 +35,46 @@ function AppRoutes() {
   const readyValue = useMemo(() => ({ markReady }), [markReady])
 
   useEffect(() => {
-    if (!user) { setHasProperty(null); return }
-    supabase
-      .from('properties')
-      .select('id')
-      .eq('owner_id', user.id)
-      .limit(1)
-      .then(({ data }) => setHasProperty((data?.length ?? 0) > 0))
-  }, [user])
+    if (!user) { setHasProperty(null); setPropertyError(false); return }
+    let cancelled = false
+    let attempt = 0
+    let timer: ReturnType<typeof setTimeout>
+
+    async function check() {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('owner_id', user!.id)
+        .limit(1)
+      if (cancelled) return
+      if (error) {
+        // C3: an errored check is UNKNOWN, never "no property". Keep hasProperty
+        // null (stay on Splash) and retry with capped backoff; after a few
+        // failures surface a manual retry rather than routing to Onboarding.
+        attempt++
+        if (attempt >= 4) { setPropertyError(true); return }
+        timer = setTimeout(check, Math.min(1000 * 2 ** (attempt - 1), 8000))
+        return
+      }
+      setPropertyError(false)
+      setHasProperty((data?.length ?? 0) > 0)
+    }
+
+    check()
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [user, retryNonce])
+
+  // EDGE-08: capture notification-tap navigations at the app root (always mounted —
+  // unlike the authed Layout), buffering the target until a Router-bound consumer
+  // (Layout) subscribes, so a tap on Login/Onboarding/cold-start still routes correctly.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'navigate' && typeof e.data.url === 'string') pushNotifTarget(e.data.url)
+    }
+    navigator.serviceWorker.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker.removeEventListener('message', onMsg)
+  }, [])
 
   // Safety ceiling: never trap the user behind the splash if no screen signals ready
   // (e.g. a query error, or a first route that isn't Home).
@@ -45,8 +84,23 @@ function AppRoutes() {
     return () => clearTimeout(t)
   }, [appReady, loading, user, hasProperty])
 
-  if (loading || (user && hasProperty === null)) return <Splash />
+  if (loading) return <Splash />
   if (!user) return <Login />
+  if (propertyError) return (
+    <div className="error-boundary" role="alert">
+      <div className="error-boundary-card">
+        <div className="error-boundary-title">לא הצלחנו לטעון</div>
+        <div className="error-boundary-text">בדקו את החיבור לאינטרנט ונסו שוב.</div>
+        <button
+          className="error-boundary-btn"
+          onClick={() => { setPropertyError(false); setRetryNonce((n) => n + 1) }}
+        >
+          נסו שוב
+        </button>
+      </div>
+    </div>
+  )
+  if (hasProperty === null) return <Splash />
   if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
 
   return (
@@ -100,7 +154,10 @@ function DevNotesGate() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <OfflineBanner />
+      <ErrorBoundary boundary="root">
+        <AppRoutes />
+      </ErrorBoundary>
       <DevNotesGate />
     </AuthProvider>
   )

@@ -9,7 +9,10 @@ import {
 import type { Icon } from '@phosphor-icons/react'
 import { useMonthlyGeneration } from '../../hooks/useMonthlyGeneration'
 import { useAuth } from '../../contexts/AuthContext'
+import { subscribeNotifTarget } from '../../lib/notifNav'
+import { ensurePushFresh } from '../../lib/push'
 import FeedbackButton from '../FeedbackButton'
+import { ErrorBoundary } from '../ErrorBoundary'
 
 type NavItem = { to: string; label: string; icon: Icon; end?: boolean }
 
@@ -28,16 +31,16 @@ export default function Layout() {
   const navigate = useNavigate()
   const mainRef = useRef<HTMLElement>(null)
 
-  // A notification tap, when the app is already open, postMessages from the
-  // service worker — route in-app (SPA) instead of triggering a full reload.
+  // A notification tap routes in-app (SPA) via the root-level bridge, which also
+  // replays a target buffered before the Router mounted (EDGE-08).
+  useEffect(() => subscribeNotifTarget((url) => navigate(url)), [navigate])
+
+  // EDGE-11: if the browser rotated/expired the push endpoint, the stored
+  // subscription is dead and pushes silently stop. When the app opens and
+  // permission is still granted, transparently re-subscribe so delivery resumes.
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return
-    const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === 'navigate' && typeof e.data.url === 'string') navigate(e.data.url)
-    }
-    navigator.serviceWorker.addEventListener('message', onMessage)
-    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
-  }, [navigate])
+    if (user) ensurePushFresh(user.id)
+  }, [user])
 
   // Lock the body to the viewport while inside the app shell (mobile), so iOS
   // Safari can't scroll the body and toggle its toolbars. Removed on unmount so
@@ -80,7 +83,11 @@ export default function Layout() {
       </nav>
 
       <main className="main-content" ref={mainRef}>
-        <Outlet />
+        {/* Per-route boundary: a crash in one screen keeps the shell + nav intact
+            and resets when the user navigates to another tab (keyed on pathname). */}
+        <ErrorBoundary variant="inline" boundary={pathname} key={pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       <FeedbackButton />

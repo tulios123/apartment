@@ -1,6 +1,22 @@
 import { supabase } from './supabase'
 
+// EDGE-17: client-side ceiling so an oversized upload fails fast with a clear message
+// instead of erroring deep in storage (and being swallowed). Receipts/scans are well
+// under this; HEIC photos rarely exceed a few MB.
+export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024 // 15MB
+
+// EDGE-18: a file with no dot in its name would make `split('.').pop()` return the
+// whole name as the "extension". Fall back to a generic extension instead.
+function fileExt(name: string): string {
+  return name.includes('.') ? (name.split('.').pop() || 'bin') : 'bin'
+}
+
+function assertSize(file: File) {
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error('הקובץ גדול מדי (עד 15MB)')
+}
+
 export async function uploadDocument(file: File, docId: string, userId?: string): Promise<string> {
+  assertSize(file)
   // getUser() is a network round-trip that validates the token. Callers that already
   // hold the user id (e.g. onboarding uploading several files) can pass it to skip
   // the redundant call — meaningful when uploading multiple files back-to-back.
@@ -10,18 +26,17 @@ export async function uploadDocument(file: File, docId: string, userId?: string)
     if (!user) throw new Error('Not authenticated')
     uid = user.id
   }
-  const ext = file.name.split('.').pop()
-  const path = `${uid}/docs/${docId}.${ext}`
+  const path = `${uid}/docs/${docId}.${fileExt(file.name)}`
   const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
   if (error) throw error
   return path
 }
 
 export async function uploadReceipt(file: File, transactionId: string): Promise<string> {
+  assertSize(file)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
-  const ext = file.name.split('.').pop()
-  const path = `${user.id}/receipts/${transactionId}.${ext}`
+  const path = `${user.id}/receipts/${transactionId}.${fileExt(file.name)}`
   const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
   if (error) throw error
   return path

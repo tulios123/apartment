@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { monthEndISO, todayISO } from '../lib/format'
+import { monthEndISO, todayISO, daysBetween } from '../lib/format'
 import { RENEWAL_WINDOW_DAYS, RENT_CATEGORIES } from '../lib/constants'
 
 const GENERATION_KEY = 'monthly_generation'
@@ -14,6 +14,16 @@ let inFlight = false
 function currentMonthKey() {
   const d = new Date()
   return `${d.getFullYear()}-${d.getMonth() + 1}`
+}
+
+// EDGE-07: insert generated rows race-safely. With the unique index (migration 032)
+// applied, ON CONFLICT DO NOTHING silently drops a duplicate produced by a concurrent
+// device/tab; if the index isn't present yet, fall back to a plain insert (today's
+// behavior) so generation never breaks in the window before the migration is pushed.
+async function insertGenerated(table: 'transactions' | 'tasks', rows: object[], onConflict: string) {
+  if (rows.length === 0) return
+  const { error } = await supabase.from(table).upsert(rows, { onConflict, ignoreDuplicates: true })
+  if (error) await supabase.from(table).insert(rows)
 }
 
 export function useMonthlyGeneration() {
@@ -123,13 +133,12 @@ async function runGeneration() {
     }
   }
 
-  if (newTransactions.length > 0) await supabase.from('transactions').insert(newTransactions)
-  if (newTasks.length > 0) await supabase.from('tasks').insert(newTasks)
+  await insertGenerated('transactions', newTransactions, 'owner_id,recurring_item_id,date')
+  await insertGenerated('tasks', newTasks, 'owner_id,recurring_item_id,due_date')
 
   // Renewal alerts: create a task when a contract is within its alert window.
   // todayStr must be the LOCAL date (Israel UTC+2/+3) — toISOString() is UTC and
   // would roll back a day in the small hours, mis-dating the alert and its window.
-  const today = new Date()
   const todayStr = todayISO()
 
   const { data: contracts } = await supabase
@@ -139,7 +148,9 @@ async function runGeneration() {
     .gte('end_date', todayStr)
 
   for (const contract of contracts ?? []) {
-    const daysLeft = Math.ceil((new Date(contract.end_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    // EDGE-01: whole-day string diff (matches the edge function) so the client task
+    // title and the server push line never disagree by a day near local midnight.
+    const daysLeft = daysBetween(todayStr, contract.end_date)
     // Renewal task pops ~2 months out (RENEWAL_WINDOW_DAYS). One open task per
     // property is kept (the dedup below); the recurring monthly/fortnightly
     // *push* reminders are handled by the daily-reminders edge function.
@@ -162,7 +173,10 @@ async function runGeneration() {
     await supabase.from('tasks').insert({
       owner_id: ownerId,
       property_id: contract.property_id,
-      title: `חידוש חוזה עם ${contract.company_name} – נותרו ${daysLeft} ימים`,
+      // UX-14: don't bake the day count into the title — the task is created once and
+      // never updated, so a frozen "נותרו X ימים" goes stale immediately. The live
+      // count still shows on the home renewal card (recomputed each render).
+      title: `חידוש חוזה עם ${contract.company_name}`,
       due_date: todayStr,
       category: 'כללי',
       status: 'open',

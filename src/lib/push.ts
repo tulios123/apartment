@@ -86,6 +86,27 @@ export async function enablePush(ownerId: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * EDGE-11: opportunistic re-subscribe. The browser can rotate or expire a push
+ * endpoint at any time; the stored subscription then goes dead and the daily
+ * function prunes it on a 404/410 — silently ending pushes until the user toggles
+ * them off/on. Called on app open: if permission is still granted but there's no
+ * live subscription, re-subscribe + re-upsert (no permission prompt, since granted).
+ */
+export async function ensurePushFresh(ownerId: string): Promise<void> {
+  if (!pushSupported() || !pushConfigured()) return
+  if (Notification.permission !== 'granted') return
+  try {
+    const reg = await navigator.serviceWorker.getRegistration()
+    if (!reg) return
+    const sub = await reg.pushManager.getSubscription()
+    if (sub) return // still alive — nothing to do
+    await enablePush(ownerId)
+  } catch {
+    // Best-effort recovery — never block app start on it.
+  }
+}
+
 /** Remove this device's subscription from the server and unsubscribe locally. */
 export async function disablePush(): Promise<void> {
   if (!pushSupported()) return

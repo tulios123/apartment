@@ -39,11 +39,15 @@ describe('parseQuick — income detection', () => {
   it('detects income verbs/nouns', () => {
     expect(parseQuick('קיבלתי 5000 שכר דירה')?.income).toBe(true)
     expect(parseQuick('הופקד 6200 שכירות')?.income).toBe(true)
-    expect(parseQuick('החזר 300 ארנונה')?.income).toBe(true)
+    expect(parseQuick('משכורת 12000')?.income).toBe(true)
   })
   it('treats plain payments as expense', () => {
     expect(parseQuick('שילמתי 350 על תיקון')?.income).toBe(false)
     expect(parseQuick('200 דלק')?.income).toBe(false)
+    // EDGE-19: ambiguous deposit/refund/credit words no longer force income —
+    // "הפקדתי 500 בבנק" (moving money) was wrongly classified as income.
+    expect(parseQuick('הפקדתי 500 בבנק')?.income).toBe(false)
+    expect(parseQuick('החזר 300 ארנונה')?.income).toBe(false)
   })
 })
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from '@phosphor-icons/react'
 import './bottom-sheet.css'
@@ -29,6 +29,29 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
   const [dragY, setDragY] = useState(0)
   const [kbInset, setKbInset] = useState(0)
   const startY = useRef<number | null>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
+
+  // UX-05: remember what had focus when the sheet opened and restore it on close,
+  // so keyboard/VoiceOver users aren't dumped at the top of the page.
+  useEffect(() => {
+    if (!open) return
+    restoreFocusRef.current = document.activeElement as HTMLElement | null
+    return () => { restoreFocusRef.current?.focus?.() }
+  }, [open])
+
+  // UX-05: trap Tab within the sheet so focus can't wander to the page behind it.
+  function trapTab(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab' || !sheetRef.current) return
+    const f = sheetRef.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    if (f.length === 0) return
+    const first = f[0]
+    const last = f[f.length - 1]
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+  }
 
   useEffect(() => {
     if (open) { setMounted(true); setMinimized(false) }
@@ -46,13 +69,21 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
     return () => { document.body.style.overflow = prev }
   }, [open, minimized])
 
-  // Esc to close.
+  // UX-02: a scrim-tap / Esc shouldn't silently discard typed data. When the sheet
+  // is minimizable (i.e. it holds data worth keeping — ExpenseSheet passes this only
+  // once the form has input) dock it instead of closing; otherwise close outright.
+  const dismiss = useCallback(() => {
+    if (minimizable && !minimized) setMinimized(true)
+    else onClose()
+  }, [minimizable, minimized, onClose])
+
+  // Esc to dismiss.
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') dismiss() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open, dismiss])
 
   // Lift the sheet above the soft keyboard. On iOS the keyboard overlays a
   // bottom-anchored fixed element (it doesn't reflow the layout viewport), so a
@@ -98,13 +129,15 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
 
   return createPortal(
     <div className={`bsheet-root${open ? ' open' : ''}${minimized ? ' minimized' : ''}`}>
-      <div className="bsheet-scrim" onClick={onClose} />
+      <div className="bsheet-scrim" onClick={dismiss} />
       <div
+        ref={sheetRef}
         className="bsheet"
         style={sheetStyle}
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        onKeyDown={trapTab}
       >
         <div
           className="bsheet-grab"

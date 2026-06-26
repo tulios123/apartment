@@ -11,14 +11,35 @@ import { supabase } from '../../lib/supabase'
 import { enablePush } from '../../lib/push'
 import { monthlyPayment } from '../../lib/mortgage'
 import { todayISO } from '../../lib/format'
+import { loadOnboardingDraft, saveOnboardingDraft, clearOnboardingDraft } from '../../lib/onboardingDraft'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
-import type { TrackType, LoanRepaymentType, Contract, DocumentType } from '../../types'
+import type { TrackType, LoanRepaymentType, Contract, DocumentType, Property } from '../../types'
 import {
   STEP_ORDER, TRACK_TYPES,
   emptyTrack, emptyPolicy, emptyLoan,
   defaultLawyerCost, defaultBrokerageCost,
 } from './types'
 import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } from './types'
+
+// Serializable snapshot of the wizard for crash-safe persistence (C2). Mirrors the
+// data-bearing state below; transient UI state (refs, AI-busy flags, error/saving)
+// and File objects are intentionally excluded.
+type OnboardingDraft = {
+  step: Step
+  buyerName: string; street: string; city: string; rooms: string
+  purchasePrice: string; signingDate: string; keyDeliveryDate: string
+  propertySizeSqm: string; floorNumber: string
+  tracks: TrackDraft[]; trackForm: TrackDraft; graceOn: boolean
+  showTrackForm: boolean; editingIdx: number | null
+  equityMode: 'amount' | 'percent'; equityValue: string
+  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string }
+  extraCosts: ExtraCost[]
+  companyName: string; startDate: string; endDate: string; monthlyRent: string
+  rentPaymentMethod: 'check' | 'bank_transfer'; rentPaymentDay: string; addRentReminder: boolean
+  policies: PolicyDraft[]; policyForm: PolicyDraft; showPolicyForm: boolean; editingPolicyIdx: number | null
+  loans: LoanDraft[]; balloonLoans: BalloonRow[]; loanForm: LoanDraft; loanGraceOn: boolean
+  showLoanForm: boolean; editingLoanIdx: number | null
+}
 
 // The wizard's entire brain: all state, derived values and mutations. Steps and
 // form components read this through OnboardingContext, so the shared type stays
@@ -28,7 +49,15 @@ export function useOnboardingState(onComplete: () => void) {
   // "מלא דוגמה" buttons: shown in local dev and for the dev@test.local manager
   // account (so onboarding can be filled quickly when testing on the live app).
   const showFillExample = import.meta.env.DEV || user?.email === 'dev@test.local'
-  const [step, setStep] = useState<Step>('welcome')
+
+  // C2: rehydrate an in-progress wizard from localStorage so an interruption
+  // doesn't wipe everything. Loaded once; each data field lazy-inits from it and a
+  // debounced effect re-persists. Files are excluded (can't be serialized).
+  const draftRef = useRef<Partial<OnboardingDraft> | null | undefined>(undefined)
+  if (draftRef.current === undefined) draftRef.current = loadOnboardingDraft<OnboardingDraft>(user?.id)
+  const d0 = draftRef.current
+
+  const [step, setStep] = useState<Step>(d0?.step && d0.step !== 'done' ? d0.step : 'welcome')
   // Direction of the last step change, so the wizard can slide forward vs back
   // (native RTL: forward enters from the leading edge, back from the trailing one).
   const [navDir, setNavDir] = useState<'fwd' | 'back'>('fwd')
@@ -60,28 +89,28 @@ export function useOnboardingState(onComplete: () => void) {
   const [purchaseDocFiles, setPurchaseDocFiles] = useState<File[]>([])
   const purchaseFile = purchaseDocFiles[0] ?? null
   const setPurchaseFile = (f: File | null) => setPurchaseDocFiles(f ? [f] : [])
-  const [buyerName, setBuyerName] = useState('')
-  const [street, setStreet] = useState('')
-  const [city, setCity] = useState('')
-  const [rooms, setRooms] = useState('')
-  const [purchasePrice, setPurchasePrice] = useState('')
-  const [signingDate, setSigningDate] = useState('')
-  const [keyDeliveryDate, setKeyDeliveryDate] = useState('')
-  const [propertySizeSqm, setPropertySizeSqm] = useState('')
-  const [floorNumber, setFloorNumber] = useState('')
+  const [buyerName, setBuyerName] = useState(d0?.buyerName ?? '')
+  const [street, setStreet] = useState(d0?.street ?? '')
+  const [city, setCity] = useState(d0?.city ?? '')
+  const [rooms, setRooms] = useState(d0?.rooms ?? '')
+  const [purchasePrice, setPurchasePrice] = useState(d0?.purchasePrice ?? '')
+  const [signingDate, setSigningDate] = useState(d0?.signingDate ?? '')
+  const [keyDeliveryDate, setKeyDeliveryDate] = useState(d0?.keyDeliveryDate ?? '')
+  const [propertySizeSqm, setPropertySizeSqm] = useState(d0?.propertySizeSqm ?? '')
+  const [floorNumber, setFloorNumber] = useState(d0?.floorNumber ?? '')
 
   // ── Mortgage tracks ──
-  const [tracks, setTracks] = useState<TrackDraft[]>([])
-  const [trackForm, setTrackForm] = useState<TrackDraft>(emptyTrack())
-  const [graceOn, setGraceOn] = useState(false)
-  const [showTrackForm, setShowTrackForm] = useState(true)
-  const [editingIdx, setEditingIdx] = useState<number | null>(null)
+  const [tracks, setTracks] = useState<TrackDraft[]>(d0?.tracks ?? [])
+  const [trackForm, setTrackForm] = useState<TrackDraft>(d0?.trackForm ?? emptyTrack())
+  const [graceOn, setGraceOn] = useState(d0?.graceOn ?? false)
+  const [showTrackForm, setShowTrackForm] = useState(d0?.showTrackForm ?? true)
+  const [editingIdx, setEditingIdx] = useState<number | null>(d0?.editingIdx ?? null)
 
   // ── Investment / equity ──
-  const [equityMode, setEquityMode] = useState<'amount' | 'percent'>('amount')
-  const [equityValue, setEquityValue] = useState('')
-  const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '' })
-  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([])
+  const [equityMode, setEquityMode] = useState<'amount' | 'percent'>(d0?.equityMode ?? 'amount')
+  const [equityValue, setEquityValue] = useState(d0?.equityValue ?? '')
+  const [costs, setCosts] = useState(d0?.costs ?? { lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '' })
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(d0?.extraCosts ?? [])
 
   // ── Focused input tracking (for grey-placeholder UX) ──
   const [focusedInput, setFocusedInput] = useState<string | null>(null)
@@ -90,31 +119,31 @@ export function useOnboardingState(onComplete: () => void) {
   const [rentalDocFiles, setRentalDocFiles] = useState<File[]>([])
   const rentalFile = rentalDocFiles[0] ?? null
   const setRentalFile = (f: File | null) => setRentalDocFiles(f ? [f] : [])
-  const [companyName, setCompanyName] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [monthlyRent, setMonthlyRent] = useState('')
-  const [rentPaymentMethod, setRentPaymentMethod] = useState<'check' | 'bank_transfer'>('check')
-  const [rentPaymentDay, setRentPaymentDay] = useState('1')
-  const [addRentReminder, setAddRentReminder] = useState(false)
+  const [companyName, setCompanyName] = useState(d0?.companyName ?? '')
+  const [startDate, setStartDate] = useState(d0?.startDate ?? '')
+  const [endDate, setEndDate] = useState(d0?.endDate ?? '')
+  const [monthlyRent, setMonthlyRent] = useState(d0?.monthlyRent ?? '')
+  const [rentPaymentMethod, setRentPaymentMethod] = useState<'check' | 'bank_transfer'>(d0?.rentPaymentMethod ?? 'check')
+  const [rentPaymentDay, setRentPaymentDay] = useState(d0?.rentPaymentDay ?? '1')
+  const [addRentReminder, setAddRentReminder] = useState(d0?.addRentReminder ?? false)
 
   // ── Insurance policies ──
-  const [policies, setPolicies] = useState<PolicyDraft[]>([])
-  const [policyForm, setPolicyForm] = useState<PolicyDraft>(emptyPolicy())
-  const [showPolicyForm, setShowPolicyForm] = useState(true)
-  const [editingPolicyIdx, setEditingPolicyIdx] = useState<number | null>(null)
+  const [policies, setPolicies] = useState<PolicyDraft[]>(d0?.policies ?? [])
+  const [policyForm, setPolicyForm] = useState<PolicyDraft>(d0?.policyForm ?? emptyPolicy())
+  const [showPolicyForm, setShowPolicyForm] = useState(d0?.showPolicyForm ?? true)
+  const [editingPolicyIdx, setEditingPolicyIdx] = useState<number | null>(d0?.editingPolicyIdx ?? null)
 
   // ── Loans ──
-  const [loans, setLoans] = useState<LoanDraft[]>([])
+  const [loans, setLoans] = useState<LoanDraft[]>(d0?.loans ?? [])
   // Balloon loan (interest-free, repaid only on sale — e.g. from family). Entered
   // in the investment/equity step since it offsets self-equity, not a monthly debt.
   // Balloon loans: a list so several family lenders (50 from mom, 50 from dad…) can
   // be captured separately, each interest-free and repaid on sale.
-  const [balloonLoans, setBalloonLoans] = useState<BalloonRow[]>([])
-  const [loanForm, setLoanForm] = useState<LoanDraft>(emptyLoan())
-  const [loanGraceOn, setLoanGraceOn] = useState(false)
-  const [showLoanForm, setShowLoanForm] = useState(true)
-  const [editingLoanIdx, setEditingLoanIdx] = useState<number | null>(null)
+  const [balloonLoans, setBalloonLoans] = useState<BalloonRow[]>(d0?.balloonLoans ?? [])
+  const [loanForm, setLoanForm] = useState<LoanDraft>(d0?.loanForm ?? emptyLoan())
+  const [loanGraceOn, setLoanGraceOn] = useState(d0?.loanGraceOn ?? false)
+  const [showLoanForm, setShowLoanForm] = useState(d0?.showLoanForm ?? true)
+  const [editingLoanIdx, setEditingLoanIdx] = useState<number | null>(d0?.editingLoanIdx ?? null)
 
   const purchaseInputRef = useRef<HTMLInputElement>(null)
   const rentalInputRef = useRef<HTMLInputElement>(null)
@@ -508,19 +537,30 @@ export function useOnboardingState(onComplete: () => void) {
       // 1. Property — fatal: if this fails, stay on the step
       const address = [street.trim(), city.trim()].filter(Boolean).join(', ') || 'הנכס שלי'
 
-      const property = await createProperty({
-        owner_id: user.id,
-        address,
-        notes: null,
-        buyer_name: buyerName.trim() || null,
-        block_parcel: null,
-        purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
-        purchase_date: signingDate || null,
-        key_delivery_date: keyDeliveryDate || null,
-        property_size_sqm: propertySizeSqm ? parseFloat(propertySizeSqm) : null,
-        floor: floorNumber !== '' ? parseInt(floorNumber, 10) : null,
-        rooms: rooms !== '' ? parseInt(rooms, 10) : null,
-      })
+      // A3 (C3 belt-and-suspenders): never insert a 2nd property for an owner who
+      // already has one (e.g. if onboarding was somehow re-entered) — reuse it so
+      // finishing twice can't corrupt the account with duplicate property data.
+      const { data: existingProps } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('owner_id', user.id)
+        .limit(1)
+
+      const property = existingProps && existingProps.length > 0
+        ? (existingProps[0] as Property)
+        : await createProperty({
+            owner_id: user.id,
+            address,
+            notes: null,
+            buyer_name: buyerName.trim() || null,
+            block_parcel: null,
+            purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
+            purchase_date: signingDate || null,
+            key_delivery_date: keyDeliveryDate || null,
+            property_size_sqm: propertySizeSqm ? parseFloat(propertySizeSqm) : null,
+            floor: floorNumber !== '' ? parseInt(floorNumber, 10) : null,
+            rooms: rooms !== '' ? parseInt(rooms, 10) : null,
+          })
 
       // When payments begin: key-delivery is the real anchor for an off-plan buy;
       // fall back to the signing date, and only then to today. Mortgage/loan drafts
@@ -756,6 +796,9 @@ export function useOnboardingState(onComplete: () => void) {
       // instead of waiting on several storage round-trips. They keep uploading while the
       // user is on the done screen; fetch isn't tied to React so unmount won't abort them.
       uploadOnboardingDocs(user.id, property.id, contract ? (contract as Contract).id : null)
+      // C2: data is now persisted server-side — drop the local draft so a later
+      // visit doesn't rehydrate a stale wizard.
+      clearOnboardingDraft(user.id)
       setStep('done')
     } catch (e) {
       // Only createProperty throws here — stay on step so the user can retry
@@ -787,6 +830,36 @@ export function useOnboardingState(onComplete: () => void) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingFinish, anyAiBusy])
+
+  // ── C2: debounced persistence of the serializable wizard state ───────────────
+  // Skip 'welcome' (nothing entered yet) and 'done' (already saved to the DB, draft
+  // is cleared on finish). Files aren't included — re-pick-only, free to re-extract.
+  useEffect(() => {
+    if (step === 'welcome' || step === 'done') return
+    const id = setTimeout(() => {
+      saveOnboardingDraft<OnboardingDraft>(user?.id, {
+        step, buyerName, street, city, rooms, purchasePrice, signingDate,
+        keyDeliveryDate, propertySizeSqm, floorNumber,
+        tracks, trackForm, graceOn, showTrackForm, editingIdx,
+        equityMode, equityValue, costs, extraCosts,
+        companyName, startDate, endDate, monthlyRent, rentPaymentMethod,
+        rentPaymentDay, addRentReminder,
+        policies, policyForm, showPolicyForm, editingPolicyIdx,
+        loans, balloonLoans, loanForm, loanGraceOn, showLoanForm, editingLoanIdx,
+      })
+    }, 400)
+    return () => clearTimeout(id)
+  }, [
+    step, buyerName, street, city, rooms, purchasePrice, signingDate,
+    keyDeliveryDate, propertySizeSqm, floorNumber,
+    tracks, trackForm, graceOn, showTrackForm, editingIdx,
+    equityMode, equityValue, costs, extraCosts,
+    companyName, startDate, endDate, monthlyRent, rentPaymentMethod,
+    rentPaymentDay, addRentReminder,
+    policies, policyForm, showPolicyForm, editingPolicyIdx,
+    loans, balloonLoans, loanForm, loanGraceOn, showLoanForm, editingLoanIdx,
+    user?.id,
+  ])
 
   // ── DEV fill helpers ─────────────────────────────────────────────────────────
   function fillTestPurchase() {
