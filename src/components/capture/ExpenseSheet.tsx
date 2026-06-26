@@ -132,6 +132,14 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
 
   const numeric = Number(amount)
   const canContinue = numeric > 0
+
+  // Keep "המשך" tappable so it's never a silent dead button — tell the user why
+  // it can't proceed (no amount) instead of leaving them stuck on a greyed button.
+  function goStep2() {
+    if (!canContinue) { setErr('יש להזין סכום לפני שממשיכים'); return }
+    setErr(null)
+    setStep(2)
+  }
   // Only let a swipe-down dock the sheet once the user has actually put something
   // in; an untouched sheet should just close.
   const hasData = amount !== '' || desc.trim() !== '' || receipt !== null
@@ -204,7 +212,8 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
                 </button>
               ))}
             </div>
-            <button className="cap-save" disabled={!canContinue} onClick={() => setStep(2)}>
+            {err && <p className="cap-error" role="alert">{err}</p>}
+            <button className="cap-save" disabled={state !== 'idle'} onClick={goStep2}>
               המשך
             </button>
           </div>

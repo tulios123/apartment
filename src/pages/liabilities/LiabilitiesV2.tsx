@@ -86,7 +86,9 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     setSaving(true); setFormError(null)
     try {
       if (kind === 'mortgage') {
-        if (!tForm.principal || Number(tForm.principal) <= 0) throw new Error('יש להזין קרן תקינה')
+        if (!tForm.principal || Number(tForm.principal) <= 0) throw new Error('יש להזין קרן (סכום ההלוואה)')
+        if (Number(tForm.term_months || 0) <= 0) throw new Error('יש להזין תקופה (מספר חודשים)')
+        if (graceOn && Number(tForm.grace_months || 0) >= Number(tForm.term_months || 0)) throw new Error('תקופת הגרייס חייבת להיות קצרה מהתקופה הכוללת')
         const mortgageId = mortgage?.id ?? (await ensureMortgage(user.id)).id
         await upsertMortgageTrack({
           id: editId ?? undefined, mortgage_id: mortgageId, owner_id: user.id,
@@ -96,8 +98,12 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         })
         refetchM()
       } else {
-        if (!lForm.principal || Number(lForm.principal) <= 0) throw new Error('יש להזין קרן תקינה')
+        if (!lForm.principal || Number(lForm.principal) <= 0) throw new Error('יש להזין קרן (סכום ההלוואה)')
         const isMonthly = lForm.repayment_type === 'monthly_fixed'
+        if (isMonthly) {
+          if (Number(lForm.term_months || 0) <= 0) throw new Error('יש להזין תקופה (מספר חודשים)')
+          if (graceOn && Number(lForm.grace_months || 0) >= Number(lForm.term_months || 0)) throw new Error('תקופת הגרייס חייבת להיות קצרה מהתקופה הכוללת')
+        }
         const anchored = isMonthly && isAnchoredType(lForm.track_type)
         // Prime/variable: effective rate = anchor + margin (margin can be negative, "prime minus").
         const effRate = anchored ? Number(lForm.prime_rate || 0) + Number(lForm.margin || 0) : Number(lForm.annual_rate || 0)

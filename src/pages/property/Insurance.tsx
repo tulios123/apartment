@@ -55,8 +55,18 @@ function InsuranceForm({
     setForm(f => ({ ...f, [k]: v }))
   }
 
+  function validate(): string | null {
+    if (!form.company.trim() && !form.monthly_premium) return 'יש להזין לפחות חברת ביטוח או פרמיה חודשית'
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
+      return 'לא ניתן לשמור: תאריך הסיום מוקדם מתאריך ההתחלה'
+    }
+    return null
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    const problem = validate()
+    if (problem) { setErr(problem); return }
     setSaving(true)
     setErr(null)
     try {

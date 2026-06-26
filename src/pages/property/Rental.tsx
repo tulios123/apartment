@@ -82,9 +82,22 @@ function ContractForm({
     setUtils(us => us.map(u => u.utility === utility ? { ...u, amount: val ? Number(val) : null } : u))
   }
 
+  // Return a specific, human-readable reason the contract can't be saved, or null.
+  // Shown on save attempt so the button is never a silent dead-end (the user sees
+  // exactly what's missing or wrong — e.g. an end date before the start date).
+  function validate(): string | null {
+    if (!form.company_name.trim()) return 'יש להזין שם חברה או שוכר'
+    if (!form.start_date) return 'יש לבחור תאריך תחילת חוזה'
+    if (!form.end_date) return 'יש לבחור תאריך סיום חוזה'
+    if (form.end_date < form.start_date) return 'לא ניתן לשמור: תאריך הסיום מוקדם מתאריך ההתחלה'
+    if (!form.monthly_rent || Number(form.monthly_rent) <= 0) return 'יש להזין שכר דירה חודשי'
+    return null
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.company_name.trim() || !form.start_date || !form.end_date || !form.monthly_rent) return
+    const problem = validate()
+    if (problem) { setErr(problem); return }
     setSaving(true)
     setErr(null)
     try {

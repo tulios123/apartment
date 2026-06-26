@@ -25,10 +25,10 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
     if (open) { setTitle(''); setDue(''); setTime(''); setCalOpen(false); setState('idle'); setErr(null) }
   }, [open])
 
-  const canSave = title.trim().length > 0 && state === 'idle'
-
   async function save() {
-    if (!canSave) return
+    if (state !== 'idle') return
+    // Active button + a clear reason beats a silent greyed-out one.
+    if (!title.trim()) { setErr('יש להזין כותרת למשימה'); return }
     setErr(null)
     setState('saving')
     const { error } = await createTask({
@@ -75,7 +75,7 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
       )}
 
       {err && <p className="cap-error" role="alert">{err}</p>}
-      <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={!canSave} onClick={save}>
+      <button className={`cap-save${state === 'done' ? ' ok' : ''}`} disabled={state !== 'idle'} onClick={save}>
         {state === 'saving' ? <CircleNotch className="spin" size={20} weight="bold" />
           : state === 'done' ? <><Check size={20} weight="bold" /> נשמר</>
           : 'הוספת משימה'}

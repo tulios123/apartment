@@ -39,6 +39,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const [editForm, setEditForm] = useState(emptyEdit)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editErr, setEditErr] = useState<string | null>(null)
   const [addingTitle, setAddingTitle] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [attaching, setAttaching] = useState(false)
@@ -97,11 +98,14 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
   function openEdit(t: Task) {
     setEditForm({ title: t.title, category: t.category, due_date: t.due_date ?? '', due_time: t.due_time?.slice(0, 5) ?? '', status: t.status })
+    setEditErr(null)
     setEditing(t); setDrawerOpen(true)
   }
 
   async function handleEditSave() {
     if (!editing) return
+    if (!editForm.title.trim()) { setEditErr('יש להזין כותרת למשימה'); return }
+    setEditErr(null)
     setSaving(true)
     await updateTask(editing.id, {
       title: editForm.title.trim(), category: editForm.category,
@@ -225,7 +229,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       <div className={`tav-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside className={`tav-drawer ${drawerOpen ? 'open' : ''}`}>
         <div className="tav-drawer-head"><h2>עריכת משימה</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
-        <label className="tav-field"><span>כותרת</span><input type="text" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} /></label>
+        <label className="tav-field"><span>כותרת</span><input type="text" value={editForm.title} onChange={e => { if (editErr) setEditErr(null); setEditForm(f => ({ ...f, title: e.target.value })) }} /></label>
         <label className="tav-field"><span>קטגוריה</span><select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}>{TASK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
         <div className="tav-field">
           <span>תאריך יעד</span>
@@ -260,6 +264,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
             <Paperclip size={15} /> {attaching ? 'מעלה…' : 'צרף מסמך/תמונה'}
           </button>
         </div>
+        {editErr && <div className="form-error" role="alert">{editErr}</div>}
         <button className="tav-save" disabled={saving} onClick={handleEditSave}>{saving ? 'שומר…' : 'שמירה'}</button>
       </aside>
 
