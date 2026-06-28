@@ -98,6 +98,7 @@
   .liav-scan-summary-head { display: flex; align-items: center; gap: 10px; color: var(--accent); }
   .liav-scan-summary-title { font-size: 15px; font-weight: 700; }
   .liav-scan-summary-sub { font-size: 13px; opacity: 0.85; }
+  .liav-scan-summary-demo { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--accent); opacity: 0.75; }
   .liav-scan-summary-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
   .liav-scan-summary-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--surface); border-radius: var(--r-sm); padding: 9px 11px; font-size: 13.5px; }
   .liav-scan-summary-row > span:last-child { color: var(--text-muted); }

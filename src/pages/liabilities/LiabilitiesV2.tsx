@@ -26,6 +26,17 @@ const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '',
 const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()) }
 const isAnchoredType = (t: TrackType) => t === 'prime' || t === 'variable'
 
+// Manager/dev fixtures: in local dev or the dev@test.local manager account, the AI
+// scan returns these instead of calling the billed extract-* edge functions — so
+// testing the scan flow never costs money. Real users always hit the real model.
+const MOCK_MORTGAGE_TRACKS: Record<string, unknown>[] = [
+  { track_type: 'prime', principal: 600000, prime_rate: 6, margin: -0.5, term_months: 360, grace_months: 0 },
+  { track_type: 'fixed_unlinked', principal: 217500, annual_rate: 4.9, term_months: 360, grace_months: 0 },
+]
+const MOCK_LOANS: Record<string, unknown>[] = [
+  { lender: 'בנק לאומי', principal: 120000, annual_rate: 6, term_months: 60, repayment_type: 'monthly_fixed' },
+]
+
 export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth()
   const { mortgage, tracks, summary, loading: loadingM, error: errorM, refetch: refetchM } = useMortgageData()
@@ -187,7 +198,11 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     setAiBusy('mortgage'); setAiErr(null)
     try {
       persistScanFiles(files, 'mortgage_statement')
-      const drafts = (await extractMortgageTracks(files)).map(mapTrack)
+      // Manager/dev: skip the billed extraction entirely and use demo data.
+      let raw: Record<string, unknown>[]
+      if (showFill) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_MORTGAGE_TRACKS }
+      else raw = await extractMortgageTracks(files)
+      const drafts = raw.map(mapTrack)
       if (drafts.length === 0) { setAiErr({ kind: 'mortgage', msg: 'לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
       setScanResult({ kind: 'mortgage', drafts })
     } catch {
@@ -199,7 +214,11 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     setAiBusy('loan'); setAiErr(null)
     try {
       persistScanFiles(files, 'loan_statement')
-      const drafts = (await extractLoans(files)).map(mapLoan)
+      // Manager/dev: skip the billed extraction entirely and use demo data.
+      let raw: Record<string, unknown>[]
+      if (showFill) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_LOANS }
+      else raw = await extractLoans(files)
+      const drafts = raw.map(mapLoan)
       if (drafts.length === 0) { setAiErr({ kind: 'loan', msg: 'לא זוהתה הלוואה במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
       setScanResult({ kind: 'loan', drafts })
     } catch {
@@ -341,6 +360,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                       <div className="liav-scan-summary-sub">זוהו {scanResult.drafts.length} {scanResult.drafts.length === 1 ? 'מסלול' : 'מסלולים'} — בדקו ואשרו</div>
                     </div>
                   </div>
+                  {showFill && <div className="liav-scan-summary-demo">מצב מנהל · נתוני דמו (לא נקרא דרך AI)</div>}
                   <div className="liav-scan-summary-list">
                     {scanResult.drafts.slice(0, 4).map((d, i) => {
                       const t = d as TrackDraft
@@ -420,6 +440,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                       <div className="liav-scan-summary-sub">זוהו {scanResult.drafts.length} {scanResult.drafts.length === 1 ? 'הלוואה' : 'הלוואות'} — בדקו ואשרו</div>
                     </div>
                   </div>
+                  {showFill && <div className="liav-scan-summary-demo">מצב מנהל · נתוני דמו (לא נקרא דרך AI)</div>}
                   <div className="liav-scan-summary-list">
                     {scanResult.drafts.slice(0, 4).map((d, i) => {
                       const l = d as LoanDraft
