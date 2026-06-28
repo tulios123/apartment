@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Bank, HandCoins, Scales, Plus, X, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch, CheckCircle } from '@phosphor-icons/react'
+import { Bank, HandCoins, Scales, Plus, X, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
 import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
 import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
 import { usePropertyData } from '../../hooks/usePropertyData'
@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
 import { ScanDocList } from './ScanDocList'
+import { ScanReview, type ScanDraft } from './ScanReview'
 import type { MortgageTrack, Loan, TrackType, LoanRepaymentType } from '../../types'
 import './liabilities-v2.css'
 
@@ -61,15 +62,10 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   type LoanDraft = typeof emptyLoan
   const [aiBusy, setAiBusy] = useState<'mortgage' | 'loan' | null>(null)
   const [aiErr, setAiErr] = useState<{ kind: 'mortgage' | 'loan'; msg: string } | null>(null)
-  // Items detected in the document but not yet reviewed (the current one sits in the
-  // open drawer; saving it loads the next, so a multi-track statement is confirmed
-  // one at a time). reviewTotal/reviewIndex drive the "X מתוך Y" header hint.
-  const [reviewQueue, setReviewQueue] = useState<(TrackDraft | LoanDraft)[]>([])
-  const [reviewTotal, setReviewTotal] = useState(0)
-  const [reviewIndex, setReviewIndex] = useState(0)
-  // After a scan we first show a summary ("read the document, found N…") before
-  // opening the review drawer — so nothing pops up without context.
-  const [scanResult, setScanResult] = useState<{ kind: 'mortgage' | 'loan'; drafts: (TrackDraft | LoanDraft)[] } | null>(null)
+  // After a scan we show a smart review card (ScanReview): inline-editable rows with
+  // completeness badges + a gated "add" button — instead of popping a bare form.
+  const [scanResult, setScanResult] = useState<{ kind: 'mortgage' | 'loan'; drafts: ScanDraft[] } | null>(null)
+  const [scanSaving, setScanSaving] = useState(false)
   const mortgageDocRef = useRef<HTMLInputElement>(null)
   const loanDocRef = useRef<HTMLInputElement>(null)
 
@@ -103,26 +99,22 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     return { balance, interestPaid, interestLeft, endYear, pay, paidPct }
   }
 
-  function openAddMortgage() { resetReview(); setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
-  function openAddLoan() { resetReview(); setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
+  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
+  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
   function editTrack(t: MortgageTrack) {
-    resetReview()
     setKind('mortgage'); setEditId(t.id); setFormError(null)
     setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
     setGraceOn((t.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }
   function editLoan(l: Loan) {
-    resetReview()
     setKind('loan'); setEditId(l.id); setFormError(null)
     setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? monthDayISO(new Date()) })
     setGraceOn((l.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }
 
-  function resetReview() { setReviewQueue([]); setReviewTotal(0); setReviewIndex(0) }
-
-  function closeDrawer() { setDrawerOpen(false); resetReview() }
+  function closeDrawer() { setDrawerOpen(false) }
 
   // Map an extracted record to the drawer's form shape. For an anchored mortgage
   // track (prime/variable) the track form holds one effective rate, so fold
@@ -157,19 +149,47 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     }
   }
 
-  function loadDraft(k: 'mortgage' | 'loan', d: TrackDraft | LoanDraft) {
-    setKind(k); setEditId(null); setFormError(null)
-    if (k === 'mortgage') { setTForm(d as TrackDraft); setGraceOn(Number((d as TrackDraft).grace_months) > 0) }
-    else { setLForm(d as LoanDraft); setGraceOn(Number((d as LoanDraft).grace_months) > 0) }
-  }
-
-  // Open the review drawer on the first detected item; the rest queue up behind it.
-  function startReview(k: 'mortgage' | 'loan', drafts: (TrackDraft | LoanDraft)[]) {
-    setScanResult(null)
-    const [first, ...rest] = drafts
-    loadDraft(k, first)
-    setReviewQueue(rest); setReviewTotal(drafts.length); setReviewIndex(1)
-    setDrawerOpen(true)
+  // Persist every reviewed draft at once from the smart review card, then clear it.
+  async function saveScannedDrafts(drafts: ScanDraft[]) {
+    if (!user || !scanResult) return
+    setScanSaving(true)
+    try {
+      if (scanResult.kind === 'mortgage') {
+        const mortgageId = mortgage?.id ?? (await ensureMortgage(user.id)).id
+        await Promise.all(drafts.map(d => {
+          const t = d as TrackDraft
+          return upsertMortgageTrack({
+            mortgage_id: mortgageId, owner_id: user.id,
+            label: t.label || null, track_type: t.track_type,
+            principal: Number(t.principal) || 0, annual_rate: Number(t.annual_rate || 0),
+            term_months: Number(t.term_months || 0), grace_months: Number(t.grace_months || 0),
+            start_date: t.start_date,
+          })
+        }))
+        refetchM()
+      } else {
+        await Promise.all(drafts.map(d => {
+          const l = d as LoanDraft
+          const isMonthly = l.repayment_type === 'monthly_fixed'
+          return upsertLoan({
+            owner_id: user.id, label: l.label || null, lender: l.lender || null,
+            repayment_type: l.repayment_type, track_type: isMonthly ? l.track_type : null,
+            principal: Number(l.principal) || 0,
+            annual_rate: isMonthly ? Number(l.annual_rate || 0) : null,
+            prime_rate: null, margin: null,
+            term_months: isMonthly ? (Number(l.term_months) || 0) : null,
+            grace_months: isMonthly ? (Number(l.grace_months) || 0) : 0,
+            start_date: l.start_date,
+          })
+        }))
+        refetchL()
+      }
+      setScanResult(null)
+    } catch {
+      setAiErr({ kind: scanResult.kind, msg: 'לא הצלחנו לשמור — נסו שוב.' })
+    } finally {
+      setScanSaving(false)
+    }
   }
 
   // Persist the scanned file(s) as documents so they're not lost and show in the
@@ -264,15 +284,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         })
         refetchL()
       }
-      // Reviewing a multi-item document: load the next detected item instead of
-      // closing, so the user confirms each one in turn.
-      if (reviewQueue.length > 0) {
-        const [next, ...rest] = reviewQueue
-        setReviewQueue(rest); setReviewIndex((i) => i + 1)
-        loadDraft(kind, next)
-      } else {
-        closeDrawer()
-      }
+      closeDrawer()
     } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
     setSaving(false)
   }
@@ -351,29 +363,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanMortgageDoc(fs); e.target.value = '' }} />
               {aiErr?.kind === 'mortgage' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
               {scanResult?.kind === 'mortgage' && (
-                <div className="liav-scan-summary">
-                  <button className="liav-scan-summary-x" onClick={() => setScanResult(null)} aria-label="סגור"><X size={16} /></button>
-                  <div className="liav-scan-summary-head">
-                    <CheckCircle size={24} weight="fill" />
-                    <div>
-                      <div className="liav-scan-summary-title">קראתי את המסמך</div>
-                      <div className="liav-scan-summary-sub">זוהו {scanResult.drafts.length} {scanResult.drafts.length === 1 ? 'מסלול' : 'מסלולים'} — בדקו ואשרו</div>
-                    </div>
-                  </div>
-                  {showFill && <div className="liav-scan-summary-demo">מצב מנהל · נתוני דמו (לא נקרא דרך AI)</div>}
-                  <div className="liav-scan-summary-list">
-                    {scanResult.drafts.slice(0, 4).map((d, i) => {
-                      const t = d as TrackDraft
-                      return (
-                        <div key={i} className="liav-scan-summary-row">
-                          <span>{TRACK_LABEL[t.track_type]}</span>
-                          <span>{t.principal ? fmt(Number(t.principal)) : ''}{t.term_months ? ` · ${Math.round(Number(t.term_months) / 12)} שנה` : ''}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <button className="liav-scan-summary-cta" onClick={() => startReview('mortgage', scanResult!.drafts)}>בדקו ואשרו את הפרטים</button>
-                </div>
+                <ScanReview kind="mortgage" initial={scanResult.drafts} saving={scanSaving} demo={showFill}
+                  onConfirm={saveScannedDrafts} onCancel={() => setScanResult(null)} />
               )}
               {mortgageDocs.length > 0 && (
                 <ScanDocList docs={mortgageDocs} busy={aiBusy === 'mortgage'} addLabel="הוספת מסמך משכנתא" onOpen={openDoc} onRename={renameDoc} onRemove={removeDoc} onAdd={() => mortgageDocRef.current?.click()} />
@@ -431,29 +422,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanLoanDoc(fs); e.target.value = '' }} />
               {aiErr?.kind === 'loan' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
               {scanResult?.kind === 'loan' && (
-                <div className="liav-scan-summary">
-                  <button className="liav-scan-summary-x" onClick={() => setScanResult(null)} aria-label="סגור"><X size={16} /></button>
-                  <div className="liav-scan-summary-head">
-                    <CheckCircle size={24} weight="fill" />
-                    <div>
-                      <div className="liav-scan-summary-title">קראתי את המסמך</div>
-                      <div className="liav-scan-summary-sub">זוהו {scanResult.drafts.length} {scanResult.drafts.length === 1 ? 'הלוואה' : 'הלוואות'} — בדקו ואשרו</div>
-                    </div>
-                  </div>
-                  {showFill && <div className="liav-scan-summary-demo">מצב מנהל · נתוני דמו (לא נקרא דרך AI)</div>}
-                  <div className="liav-scan-summary-list">
-                    {scanResult.drafts.slice(0, 4).map((d, i) => {
-                      const l = d as LoanDraft
-                      return (
-                        <div key={i} className="liav-scan-summary-row">
-                          <span>{l.label || l.lender || 'הלוואה'}</span>
-                          <span>{l.principal ? fmt(Number(l.principal)) : ''}{l.repayment_type === 'balloon' ? ' · בלון' : (l.term_months ? ` · ${Math.round(Number(l.term_months) / 12)} שנה` : '')}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <button className="liav-scan-summary-cta" onClick={() => startReview('loan', scanResult!.drafts)}>בדקו ואשרו את הפרטים</button>
-                </div>
+                <ScanReview kind="loan" initial={scanResult.drafts} saving={scanSaving} demo={showFill}
+                  onConfirm={saveScannedDrafts} onCancel={() => setScanResult(null)} />
               )}
               {loanDocs.length > 0 && (
                 <ScanDocList docs={loanDocs} busy={aiBusy === 'loan'} addLabel="הוספת מסמך הלוואה" onOpen={openDoc} onRename={renameDoc} onRemove={removeDoc} onAdd={() => loanDocRef.current?.click()} />
@@ -468,12 +438,6 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           <h2>{editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}</h2>
           <button onClick={closeDrawer} aria-label="סגור"><X size={20} /></button>
         </div>
-        {reviewTotal >= 1 && (
-          <div className="liav-review-hint">
-            <Sparkle size={14} weight="fill" /> זוהה מהמסמך — בדקו ואשרו
-            {reviewTotal > 1 && ` · ${kind === 'mortgage' ? 'מסלול' : 'הלוואה'} ${reviewIndex} מתוך ${reviewTotal}`}
-          </div>
-        )}
         {showFill && !editId && (
           <div className="onboarding-fill-top">
             <button type="button" className="onboarding-fill-top-btn" onClick={fillDrawerExample}>מלא דוגמה</button>
