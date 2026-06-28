@@ -91,7 +91,18 @@
   .liav-scan-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--accent); background: var(--accent-light); color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px; border-radius: var(--r-sm); cursor: pointer; }
   .liav-scan-btn:hover:not(:disabled) { background: var(--primary-light); }
   .liav-scan-btn:disabled { opacity: 0.6; cursor: default; }
-  .liav-review-hint { margin-top: 10px; padding: 8px 12px; border-radius: var(--r-sm); background: var(--accent-light); color: var(--accent); font-size: 13px; font-weight: 600; text-align: center; }
+  .liav-review-hint { margin-top: 10px; padding: 9px 12px; border-radius: var(--r-sm); background: var(--accent-light); color: var(--accent); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+  .liav-scan-summary { position: relative; margin-top: 10px; padding: 14px; border-radius: 12px; background: var(--accent-light); border: 1px solid var(--accent); }
+  .liav-scan-summary-x { position: absolute; inset-inline-start: 8px; top: 8px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; line-height: 0; }
+  .liav-scan-summary-head { display: flex; align-items: center; gap: 10px; color: var(--accent); }
+  .liav-scan-summary-title { font-size: 15px; font-weight: 700; }
+  .liav-scan-summary-sub { font-size: 13px; opacity: 0.85; }
+  .liav-scan-summary-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+  .liav-scan-summary-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--surface); border-radius: var(--r-sm); padding: 9px 11px; font-size: 13.5px; }
+  .liav-scan-summary-row > span:last-child { color: var(--text-muted); }
+  .liav-scan-summary-cta { width: 100%; border: none; background: var(--accent); color: var(--text-on-accent); font-family: inherit; font-size: 14.5px; font-weight: 600; padding: 12px; border-radius: var(--r-sm); cursor: pointer; }
+  .liav-scan-summary-cta:hover { background: var(--accent-hover); }
   .liav-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
   .liav-save:hover { background: var(--accent-hover); }
   .liav-save:active { transform: scale(0.98); }

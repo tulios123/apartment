@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
-import { Bank, HandCoins, Scales, Plus, X, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
+import { Bank, HandCoins, Scales, Plus, X, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch, CheckCircle } from '@phosphor-icons/react'
 import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
 import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
+import { usePropertyData } from '../../hooks/usePropertyData'
+import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
+import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { extractMortgageTracks, extractLoans } from '../../lib/extractFinancing'
 import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanInterestToDate, loanEndDate } from '../../lib/loans'
@@ -10,6 +13,7 @@ import { formatCurrency, formatNum, monthDayISO } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
+import { ScanDocList } from './ScanDocList'
 import type { MortgageTrack, Loan, TrackType, LoanRepaymentType } from '../../types'
 import './liabilities-v2.css'
 
@@ -26,6 +30,10 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const { user } = useAuth()
   const { mortgage, tracks, summary, loading: loadingM, error: errorM, refetch: refetchM } = useMortgageData()
   const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingL, error: errorL, refetch: refetchL } = useLoansData()
+  const { property } = usePropertyData()
+  const { documents, refetch: refetchDocs } = useDocuments()
+  const mortgageDocs = documents.filter(d => d.type === 'mortgage_statement')
+  const loanDocs = documents.filter(d => d.type === 'loan_statement')
 
   const [open, setOpen] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -48,6 +56,9 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const [reviewQueue, setReviewQueue] = useState<(TrackDraft | LoanDraft)[]>([])
   const [reviewTotal, setReviewTotal] = useState(0)
   const [reviewIndex, setReviewIndex] = useState(0)
+  // After a scan we first show a summary ("read the document, found N…") before
+  // opening the review drawer — so nothing pops up without context.
+  const [scanResult, setScanResult] = useState<{ kind: 'mortgage' | 'loan'; drafts: (TrackDraft | LoanDraft)[] } | null>(null)
   const mortgageDocRef = useRef<HTMLInputElement>(null)
   const loanDocRef = useRef<HTMLInputElement>(null)
 
@@ -143,19 +154,42 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
 
   // Open the review drawer on the first detected item; the rest queue up behind it.
   function startReview(k: 'mortgage' | 'loan', drafts: (TrackDraft | LoanDraft)[]) {
+    setScanResult(null)
     const [first, ...rest] = drafts
     loadDraft(k, first)
     setReviewQueue(rest); setReviewTotal(drafts.length); setReviewIndex(1)
     setDrawerOpen(true)
   }
 
+  // Persist the scanned file(s) as documents so they're not lost and show in the
+  // Documents screen too. Best-effort (re-uploadable), not awaited by the scan.
+  async function persistScanFiles(files: File[], type: 'mortgage_statement' | 'loan_statement') {
+    if (!user) return
+    await Promise.all(files.map(async (f) => {
+      try {
+        const id = crypto.randomUUID()
+        const path = await uploadDocument(f, id, user.id)
+        await createDocument({
+          id, owner_id: user.id, property_id: property?.id ?? null,
+          contract_id: null, transaction_id: null, task_id: null,
+          type, name: f.name, storage_path: path, date: null,
+        })
+      } catch { /* best-effort — re-uploadable from Documents */ }
+    }))
+    refetchDocs()
+  }
+  function openDoc(path: string) { const w = window.open('', '_blank'); redirectToSignedUrl(w, path) }
+  async function renameDoc(id: string, name: string) { try { await updateDocument(id, { name }); refetchDocs() } catch { /* ignore */ } }
+  async function removeDoc(id: string, path: string) { try { await deleteDocument(id, path); refetchDocs() } catch { /* ignore */ } }
+
   async function scanMortgageDoc(files: File[]) {
     if (files.length === 0) return
     setAiBusy('mortgage'); setAiErr(null)
     try {
+      persistScanFiles(files, 'mortgage_statement')
       const drafts = (await extractMortgageTracks(files)).map(mapTrack)
       if (drafts.length === 0) { setAiErr({ kind: 'mortgage', msg: 'לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
-      startReview('mortgage', drafts)
+      setScanResult({ kind: 'mortgage', drafts })
     } catch {
       setAiErr({ kind: 'mortgage', msg: 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.' })
     } finally { setAiBusy(null) }
@@ -164,9 +198,10 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     if (files.length === 0) return
     setAiBusy('loan'); setAiErr(null)
     try {
+      persistScanFiles(files, 'loan_statement')
       const drafts = (await extractLoans(files)).map(mapLoan)
       if (drafts.length === 0) { setAiErr({ kind: 'loan', msg: 'לא זוהתה הלוואה במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
-      startReview('loan', drafts)
+      setScanResult({ kind: 'loan', drafts })
     } catch {
       setAiErr({ kind: 'loan', msg: 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.' })
     } finally { setAiBusy(null) }
@@ -296,6 +331,33 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
               <input ref={mortgageDocRef} type="file" accept="image/*,.pdf,.heic" multiple style={{ display: 'none' }}
                 onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanMortgageDoc(fs); e.target.value = '' }} />
               {aiErr?.kind === 'mortgage' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
+              {scanResult?.kind === 'mortgage' && (
+                <div className="liav-scan-summary">
+                  <button className="liav-scan-summary-x" onClick={() => setScanResult(null)} aria-label="סגור"><X size={16} /></button>
+                  <div className="liav-scan-summary-head">
+                    <CheckCircle size={24} weight="fill" />
+                    <div>
+                      <div className="liav-scan-summary-title">קראתי את המסמך</div>
+                      <div className="liav-scan-summary-sub">זוהו {scanResult.drafts.length} {scanResult.drafts.length === 1 ? 'מסלול' : 'מסלולים'} — בדקו ואשרו</div>
+                    </div>
+                  </div>
+                  <div className="liav-scan-summary-list">
+                    {scanResult.drafts.slice(0, 4).map((d, i) => {
+                      const t = d as TrackDraft
+                      return (
+                        <div key={i} className="liav-scan-summary-row">
+                          <span>{TRACK_LABEL[t.track_type]}</span>
+                          <span>{t.principal ? fmt(Number(t.principal)) : ''}{t.term_months ? ` · ${Math.round(Number(t.term_months) / 12)} שנה` : ''}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <button className="liav-scan-summary-cta" onClick={() => startReview('mortgage', scanResult!.drafts)}>בדקו ואשרו את הפרטים</button>
+                </div>
+              )}
+              {mortgageDocs.length > 0 && (
+                <ScanDocList docs={mortgageDocs} busy={aiBusy === 'mortgage'} addLabel="הוספת מסמך משכנתא" onOpen={openDoc} onRename={renameDoc} onRemove={removeDoc} onAdd={() => mortgageDocRef.current?.click()} />
+              )}
             </section>
 
           <section className="liav-section">
@@ -348,6 +410,33 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
               <input ref={loanDocRef} type="file" accept="image/*,.pdf,.heic" multiple style={{ display: 'none' }}
                 onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanLoanDoc(fs); e.target.value = '' }} />
               {aiErr?.kind === 'loan' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
+              {scanResult?.kind === 'loan' && (
+                <div className="liav-scan-summary">
+                  <button className="liav-scan-summary-x" onClick={() => setScanResult(null)} aria-label="סגור"><X size={16} /></button>
+                  <div className="liav-scan-summary-head">
+                    <CheckCircle size={24} weight="fill" />
+                    <div>
+                      <div className="liav-scan-summary-title">קראתי את המסמך</div>
+                      <div className="liav-scan-summary-sub">זוהו {scanResult.drafts.length} {scanResult.drafts.length === 1 ? 'הלוואה' : 'הלוואות'} — בדקו ואשרו</div>
+                    </div>
+                  </div>
+                  <div className="liav-scan-summary-list">
+                    {scanResult.drafts.slice(0, 4).map((d, i) => {
+                      const l = d as LoanDraft
+                      return (
+                        <div key={i} className="liav-scan-summary-row">
+                          <span>{l.label || l.lender || 'הלוואה'}</span>
+                          <span>{l.principal ? fmt(Number(l.principal)) : ''}{l.repayment_type === 'balloon' ? ' · בלון' : (l.term_months ? ` · ${Math.round(Number(l.term_months) / 12)} שנה` : '')}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <button className="liav-scan-summary-cta" onClick={() => startReview('loan', scanResult!.drafts)}>בדקו ואשרו את הפרטים</button>
+                </div>
+              )}
+              {loanDocs.length > 0 && (
+                <ScanDocList docs={loanDocs} busy={aiBusy === 'loan'} addLabel="הוספת מסמך הלוואה" onOpen={openDoc} onRename={renameDoc} onRemove={removeDoc} onAdd={() => loanDocRef.current?.click()} />
+              )}
             </section>
         </>
       )}
@@ -358,8 +447,11 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           <h2>{editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}</h2>
           <button onClick={closeDrawer} aria-label="סגור"><X size={20} /></button>
         </div>
-        {reviewTotal > 1 && (
-          <div className="liav-review-hint">מתוך המסמך · פריט {reviewIndex} מתוך {reviewTotal} · בדקו ואשרו</div>
+        {reviewTotal >= 1 && (
+          <div className="liav-review-hint">
+            <Sparkle size={14} weight="fill" /> זוהה מהמסמך — בדקו ואשרו
+            {reviewTotal > 1 && ` · ${kind === 'mortgage' ? 'מסלול' : 'הלוואה'} ${reviewIndex} מתוך ${reviewTotal}`}
+          </div>
         )}
         {showFill && !editId && (
           <div className="onboarding-fill-top">
