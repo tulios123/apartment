@@ -117,7 +117,7 @@
   .wlth-editor-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
   .wlth-editor-head h2 { font-size: 17px; font-weight: 700; color: var(--brand-navy); margin: 0; }
   .wlth-editor-head button { border: none; background: var(--bg-alt); color: var(--text); width: 36px; height: 36px; border-radius: var(--r-pill); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-  .wlth-editor-body { flex: 1; overflow-y: auto; padding: 20px; max-width: 760px; width: 100%; margin: 0 auto; }
+  .wlth-editor-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 20px calc(56px + env(safe-area-inset-bottom) + 24px); max-width: 760px; width: 100%; margin: 0 auto; }
   .wlth-editor-section { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: none; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
   .wlth-editor-section:first-child { margin-top: 0; }
 }

@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Bank, HandCoins, Scales, Plus, X, CaretDown, PencilSimple, Trash } from '@phosphor-icons/react'
+import { useRef, useState } from 'react'
+import { Bank, HandCoins, Scales, Plus, X, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
 import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
 import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
+import { extractMortgageTracks, extractLoans } from '../../lib/extractFinancing'
 import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanInterestToDate, loanEndDate } from '../../lib/loans'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
@@ -36,6 +37,20 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  // ── AI document scan (mortgage statement / loan doc → review form) ──
+  type TrackDraft = typeof emptyTrack
+  type LoanDraft = typeof emptyLoan
+  const [aiBusy, setAiBusy] = useState<'mortgage' | 'loan' | null>(null)
+  const [aiErr, setAiErr] = useState<{ kind: 'mortgage' | 'loan'; msg: string } | null>(null)
+  // Items detected in the document but not yet reviewed (the current one sits in the
+  // open drawer; saving it loads the next, so a multi-track statement is confirmed
+  // one at a time). reviewTotal/reviewIndex drive the "X מתוך Y" header hint.
+  const [reviewQueue, setReviewQueue] = useState<(TrackDraft | LoanDraft)[]>([])
+  const [reviewTotal, setReviewTotal] = useState(0)
+  const [reviewIndex, setReviewIndex] = useState(0)
+  const mortgageDocRef = useRef<HTMLInputElement>(null)
+  const loanDocRef = useRef<HTMLInputElement>(null)
+
   // Manager/dev-only quick-fill for the open drawer (track or loan by kind).
   const showFill = import.meta.env.DEV || user?.email === 'dev@test.local'
   function fillDrawerExample() {
@@ -66,19 +81,95 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     return { balance, interestPaid, interestLeft, endYear, pay, paidPct }
   }
 
-  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
-  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
+  function openAddMortgage() { resetReview(); setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
+  function openAddLoan() { resetReview(); setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
   function editTrack(t: MortgageTrack) {
+    resetReview()
     setKind('mortgage'); setEditId(t.id); setFormError(null)
     setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
     setGraceOn((t.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }
   function editLoan(l: Loan) {
+    resetReview()
     setKind('loan'); setEditId(l.id); setFormError(null)
     setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? monthDayISO(new Date()) })
     setGraceOn((l.grace_months ?? 0) > 0)
     setDrawerOpen(true)
+  }
+
+  function resetReview() { setReviewQueue([]); setReviewTotal(0); setReviewIndex(0) }
+
+  function closeDrawer() { setDrawerOpen(false); resetReview() }
+
+  // Map an extracted record to the drawer's form shape. For an anchored mortgage
+  // track (prime/variable) the track form holds one effective rate, so fold
+  // anchor + margin into annual_rate (mirrors how the tracks are stored).
+  function mapTrack(t: Record<string, unknown>): TrackDraft {
+    const tt = (['prime', 'fixed_unlinked', 'fixed_linked', 'variable'].includes(t.track_type as string) ? t.track_type : 'fixed_unlinked') as TrackType
+    const anchored = tt === 'prime' || tt === 'variable'
+    const rate = anchored ? (Number(t.prime_rate) || 0) + (Number(t.margin) || 0) : (Number(t.annual_rate) || 0)
+    return {
+      track_type: tt,
+      label: '',
+      principal: t.principal != null ? String(t.principal) : '',
+      annual_rate: rate ? String(rate) : '',
+      term_months: t.term_months != null ? String(t.term_months) : '',
+      grace_months: t.grace_months != null ? String(t.grace_months) : '0',
+      start_date: t.start_date ? String(t.start_date) : monthDayISO(new Date()),
+    }
+  }
+  function mapLoan(l: Record<string, unknown>): LoanDraft {
+    const isBalloon = l.repayment_type === 'balloon'
+    return {
+      repayment_type: (isBalloon ? 'balloon' : 'monthly_fixed') as LoanRepaymentType,
+      track_type: 'fixed_unlinked' as TrackType,
+      label: l.lender != null ? String(l.lender) : '',
+      lender: l.lender != null ? String(l.lender) : '',
+      principal: l.principal != null ? String(l.principal) : '',
+      annual_rate: !isBalloon && l.annual_rate != null ? String(l.annual_rate) : '',
+      prime_rate: '', margin: '',
+      term_months: !isBalloon && l.term_months != null ? String(l.term_months) : '',
+      grace_months: l.grace_months != null ? String(l.grace_months) : '0',
+      start_date: l.start_date ? String(l.start_date) : monthDayISO(new Date()),
+    }
+  }
+
+  function loadDraft(k: 'mortgage' | 'loan', d: TrackDraft | LoanDraft) {
+    setKind(k); setEditId(null); setFormError(null)
+    if (k === 'mortgage') { setTForm(d as TrackDraft); setGraceOn(Number((d as TrackDraft).grace_months) > 0) }
+    else { setLForm(d as LoanDraft); setGraceOn(Number((d as LoanDraft).grace_months) > 0) }
+  }
+
+  // Open the review drawer on the first detected item; the rest queue up behind it.
+  function startReview(k: 'mortgage' | 'loan', drafts: (TrackDraft | LoanDraft)[]) {
+    const [first, ...rest] = drafts
+    loadDraft(k, first)
+    setReviewQueue(rest); setReviewTotal(drafts.length); setReviewIndex(1)
+    setDrawerOpen(true)
+  }
+
+  async function scanMortgageDoc(files: File[]) {
+    if (files.length === 0) return
+    setAiBusy('mortgage'); setAiErr(null)
+    try {
+      const drafts = (await extractMortgageTracks(files)).map(mapTrack)
+      if (drafts.length === 0) { setAiErr({ kind: 'mortgage', msg: 'לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
+      startReview('mortgage', drafts)
+    } catch {
+      setAiErr({ kind: 'mortgage', msg: 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.' })
+    } finally { setAiBusy(null) }
+  }
+  async function scanLoanDoc(files: File[]) {
+    if (files.length === 0) return
+    setAiBusy('loan'); setAiErr(null)
+    try {
+      const drafts = (await extractLoans(files)).map(mapLoan)
+      if (drafts.length === 0) { setAiErr({ kind: 'loan', msg: 'לא זוהתה הלוואה במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
+      startReview('loan', drafts)
+    } catch {
+      setAiErr({ kind: 'loan', msg: 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.' })
+    } finally { setAiBusy(null) }
   }
 
   async function save() {
@@ -119,7 +210,15 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         })
         refetchL()
       }
-      setDrawerOpen(false)
+      // Reviewing a multi-item document: load the next detected item instead of
+      // closing, so the user confirms each one in turn.
+      if (reviewQueue.length > 0) {
+        const [next, ...rest] = reviewQueue
+        setReviewQueue(rest); setReviewIndex((i) => i + 1)
+        loadDraft(kind, next)
+      } else {
+        closeDrawer()
+      }
     } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
     setSaving(false)
   }
@@ -187,7 +286,16 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   </div>
                 )
               })}
-              <button className="liav-add-track" onClick={openAddMortgage}><Plus size={15} weight="bold" /> הוסף מסלול משכנתא</button>
+              <div className="liav-add-row">
+                <button className="liav-add-track" onClick={openAddMortgage}><Plus size={15} weight="bold" /> הוסף מסלול משכנתא</button>
+                <button className="liav-scan-btn" onClick={() => mortgageDocRef.current?.click()} disabled={aiBusy !== null}>
+                  {aiBusy === 'mortgage' ? <CircleNotch className="spin" size={15} weight="bold" /> : <Sparkle size={15} weight="fill" />}
+                  {aiBusy === 'mortgage' ? 'קורא את המסמך…' : 'סריקת מסמך משכנתא (AI)'}
+                </button>
+              </div>
+              <input ref={mortgageDocRef} type="file" accept="image/*,.pdf,.heic" multiple style={{ display: 'none' }}
+                onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanMortgageDoc(fs); e.target.value = '' }} />
+              {aiErr?.kind === 'mortgage' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
             </section>
 
           <section className="liav-section">
@@ -230,14 +338,29 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   <div className="liav-balloon-note">בלון · נפרע במכירת הנכס · ללא תשלום חודשי</div>
                 </div>
               ))}
-              <button className="liav-add-track" onClick={openAddLoan}><Plus size={15} weight="bold" /> הוסף הלוואה</button>
+              <div className="liav-add-row">
+                <button className="liav-add-track" onClick={openAddLoan}><Plus size={15} weight="bold" /> הוסף הלוואה</button>
+                <button className="liav-scan-btn" onClick={() => loanDocRef.current?.click()} disabled={aiBusy !== null}>
+                  {aiBusy === 'loan' ? <CircleNotch className="spin" size={15} weight="bold" /> : <Sparkle size={15} weight="fill" />}
+                  {aiBusy === 'loan' ? 'קורא את המסמך…' : 'סריקת מסמך הלוואה (AI)'}
+                </button>
+              </div>
+              <input ref={loanDocRef} type="file" accept="image/*,.pdf,.heic" multiple style={{ display: 'none' }}
+                onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanLoanDoc(fs); e.target.value = '' }} />
+              {aiErr?.kind === 'loan' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
             </section>
         </>
       )}
 
-      <div className={`liav-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
+      <div className={`liav-scrim ${drawerOpen ? 'open' : ''}`} onClick={closeDrawer} />
       <aside className={`liav-drawer ${drawerOpen ? 'open' : ''}`}>
-        <div className="liav-drawer-head"><h2>{editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
+        <div className="liav-drawer-head">
+          <h2>{editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}</h2>
+          <button onClick={closeDrawer} aria-label="סגור"><X size={20} /></button>
+        </div>
+        {reviewTotal > 1 && (
+          <div className="liav-review-hint">מתוך המסמך · פריט {reviewIndex} מתוך {reviewTotal} · בדקו ואשרו</div>
+        )}
         {showFill && !editId && (
           <div className="onboarding-fill-top">
             <button type="button" className="onboarding-fill-top-btn" onClick={fillDrawerExample}>מלא דוגמה</button>
