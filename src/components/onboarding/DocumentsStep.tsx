@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, SignOut, UploadSimple, CheckCircle, CaretDown, Plus, Paperclip, X, PencilSimple, Check } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown, Plus, Paperclip, X, PencilSimple, Check } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import { useAuth } from '../../contexts/AuthContext'
@@ -107,6 +107,7 @@ export function DocumentsStep() {
     aiFillLoans, loanAiBusy, loanAiErr, loans,
     aiFillRental, rentalAiBusy, rentalAiErr, companyName, monthlyRent,
     purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile,
+    insuranceDocFiles, addInsuranceDocs,
   } = useOnboarding()
   const { user, signOut } = useAuth()
 
@@ -155,6 +156,11 @@ export function DocumentsStep() {
           title="חוזה שכירות" hint="קובץ או צילומי מסך"
           busy={rentalAiBusy} err={rentalAiErr} doneText={rentalDone}
           files={rentalDocFiles} onFiles={aiFillRental} onRemove={i => removeDocFile('rental', i)} onRename={(i, name) => renameDocFile('rental', i, name)} />
+        <DocCard
+          icon={<ShieldCheck size={26} weight="duotone" color="var(--accent)" />}
+          title="פוליסת ביטוח" hint="קובץ או צילומי מסך"
+          busy={false} err={null} doneText=""
+          files={insuranceDocFiles} onFiles={addInsuranceDocs} onRemove={i => removeDocFile('insurance', i)} onRename={(i, name) => renameDocFile('insurance', i, name)} />
       </div>
 
       <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => advance('purchase')}>

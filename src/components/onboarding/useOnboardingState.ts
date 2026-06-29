@@ -32,7 +32,7 @@ type OnboardingDraft = {
   tracks: TrackDraft[]; trackForm: TrackDraft; graceOn: boolean
   showTrackForm: boolean; editingIdx: number | null
   equityMode: 'amount' | 'percent'; equityValue: string
-  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string }
+  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string; appraiser: string }
   extraCosts: ExtraCost[]
   companyName: string; startDate: string; endDate: string; monthlyRent: string
   rentPaymentMethod: 'check' | 'bank_transfer'; rentPaymentDay: string; addRentReminder: boolean
@@ -109,7 +109,7 @@ export function useOnboardingState(onComplete: () => void) {
   // ── Investment / equity ──
   const [equityMode, setEquityMode] = useState<'amount' | 'percent'>(d0?.equityMode ?? 'amount')
   const [equityValue, setEquityValue] = useState(d0?.equityValue ?? '')
-  const [costs, setCosts] = useState(d0?.costs ?? { lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '' })
+  const [costs, setCosts] = useState(d0?.costs ?? { lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '' })
   const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(d0?.extraCosts ?? [])
 
   // ── Focused input tracking (for grey-placeholder UX) ──
@@ -165,6 +165,10 @@ export function useOnboardingState(onComplete: () => void) {
   // as documents on finish (the extraction reads them, but the file itself must persist).
   const [mortgageDocFiles, setMortgageDocFiles] = useState<File[]>([])
   const [loanDocFiles, setLoanDocFiles] = useState<File[]>([])
+  // Insurance has no AI extraction — the card just stores the policy document(s),
+  // saved as insurance_policy documents on finish.
+  const [insuranceDocFiles, setInsuranceDocFiles] = useState<File[]>([])
+  const addInsuranceDocs = (files: File[]) => setInsuranceDocFiles(prev => [...prev, ...files])
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function dismissKeyboardAndScrollTop() {
@@ -209,6 +213,7 @@ export function useOnboardingState(onComplete: () => void) {
   const equityPercent = price > 0 ? equityAmount / price * 100 : 0
   const costsTotal = (parseFloat(effLawyer) || 0) + (parseFloat(effBrokerage) || 0)
     + (parseFloat(costs.mortgage_advisor) || 0) + (parseFloat(costs.investment_company) || 0)
+    + (parseFloat(costs.appraiser) || 0)
     + extraCosts.reduce((s, ec) => s + (parseFloat(ec.amount) || 0), 0)
 
   // ── Derived: mortgage track live preview ─────────────────────────────────────
@@ -481,10 +486,10 @@ export function useOnboardingState(onComplete: () => void) {
 
   // Remove one already-picked file from a category's list (documents step manage view).
   // Only drops the file from what gets saved; any data already auto-filled is kept.
-  function removeDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental', index: number) {
+  function removeDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance', index: number) {
     const setters = {
       purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
-      loan: setLoanDocFiles, rental: setRentalDocFiles,
+      loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
     setters[category](prev => prev.filter((_, i) => i !== index))
   }
@@ -492,12 +497,12 @@ export function useOnboardingState(onComplete: () => void) {
   // Rename a chosen file in place. A File's name is immutable, so we rebuild it from
   // the same bytes — content (and therefore the extraction cache key) is unchanged,
   // so no re-read is triggered; only the stored document's filename changes.
-  function renameDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental', index: number, newName: string) {
+  function renameDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance', index: number, newName: string) {
     const name = newName.trim()
     if (!name) return
     const setters = {
       purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
-      loan: setLoanDocFiles, rental: setRentalDocFiles,
+      loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
     setters[category](prev => prev.map((f, i) =>
       i === index ? new File([f], name, { type: f.type, lastModified: f.lastModified }) : f))
@@ -523,6 +528,7 @@ export function useOnboardingState(onComplete: () => void) {
     for (const f of purchaseDocFiles) jobs.push(put(f, 'purchase_contract', signingDate || null, null))
     for (const f of mortgageDocFiles) jobs.push(put(f, 'mortgage_statement', null, null))
     for (const f of loanDocFiles) jobs.push(put(f, 'loan_statement', null, null))
+    for (const f of insuranceDocFiles) jobs.push(put(f, 'insurance_policy', null, null))
     for (const f of rentalDocFiles) jobs.push(put(f, 'rental_contract', startDate || null, contractId))
     await Promise.all(jobs)
   }
@@ -696,6 +702,7 @@ export function useOnboardingState(onComplete: () => void) {
               ['brokerage', parseFloat(effBrokerage) || 0],
               ['mortgage_advisor', parseFloat(costs.mortgage_advisor) || 0],
               ['investment_company', parseFloat(costs.investment_company) || 0],
+              ['appraiser', parseFloat(costs.appraiser) || 0],
             ]
             for (const [key, val] of fixedCosts) {
               if (val > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: key, label: null, amount: val }))
@@ -909,6 +916,7 @@ export function useOnboardingState(onComplete: () => void) {
       brokerage: defaultBrokerageCost(p) || '12000',
       mortgage_advisor: '5000',
       investment_company: '0',
+      appraiser: '2500',
     })
   }
 
@@ -1159,6 +1167,7 @@ export function useOnboardingState(onComplete: () => void) {
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     // Uploaded document files per category + remove (documents step manage view)
     purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile,
+    insuranceDocFiles, addInsuranceDocs,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,

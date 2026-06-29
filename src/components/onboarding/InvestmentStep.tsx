@@ -184,6 +184,15 @@ export function InvestmentStep() {
                     onChange={e => setCosts(c => ({ ...c, investment_company: e.target.value.replace(/[^\d]/g, '') }))} />
                 </div>
               </div>
+              <div className="onboarding-row">
+                <div className="onboarding-field">
+                  <label>שמאי (₪)</label>
+                  <input type="text" inputMode="numeric" placeholder="0"
+                    value={formatNum(costs.appraiser)}
+                    onChange={e => setCosts(c => ({ ...c, appraiser: e.target.value.replace(/[^\d]/g, '') }))} />
+                </div>
+                <div className="onboarding-field" />
+              </div>
               {/* Extra custom costs */}
               {extraCosts.map((ec, i) => (
                 <div className="onboarding-row" key={i}>

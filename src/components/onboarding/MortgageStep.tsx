@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Bank, X, CaretDown } from '@phosphor-icons/react'
+import { Bank, X, CaretDown, Sparkle } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { TrackForm } from './TrackForm'
 import { FinishEarly } from './FinishEarly'
 import { DocFileList } from './DocFileList'
 import { emptyTrack, emptyLoan, formatCurrency } from './types'
+import { formatDate } from '../../lib/format'
 import { useOnboarding } from './context'
 
 export function MortgageStep() {
@@ -51,18 +52,12 @@ export function MortgageStep() {
     else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
   }
 
-  // On arrival a track is always opened for review (never lands collapsed from upload).
+  // On arrival, tracks land as collapsed REVIEW cards (a banner + each card's details
+  // and "חסר X" badge) instead of auto-opening one in edit mode — which appeared as a
+  // form popping up with no context after a scan (user feedback). Tap a card to edit.
+  // Still sync the form if we arrived mid-edit (e.g. from the "complete it" prompt).
   useEffect(() => {
-    if (editingIdx !== null) {
-      if (tracks[editingIdx]) setTrackForm({ ...tracks[editingIdx] })
-      return
-    }
-    if (showTrackForm) return
-    if (tracks.length > 0) {
-      setEditingIdx(0)
-      setTrackForm({ ...tracks[0] })
-      setGraceOn((parseInt(tracks[0].grace_months) || 0) > 0)
-    }
+    if (editingIdx !== null && tracks[editingIdx]) setTrackForm({ ...tracks[editingIdx] })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -115,6 +110,14 @@ export function MortgageStep() {
         </div>
       )}
 
+      {/* Scan result banner — makes it clear the tracks below came from the document. */}
+      {mortgageAiDone && tracks.length > 0 && editingIdx === null && !showTrackForm && (
+        <div className="onboarding-scan-banner">
+          <Sparkle size={15} weight="fill" />
+          זוהו {tracks.length} {tracks.length === 1 ? 'מסלול' : 'מסלולים'} מהמסמך — בדקו, והקישו על מסלול לעריכה
+        </div>
+      )}
+
       {/* Saved tracks list — click header to toggle edit in-place */}
       {tracks.length > 0 && (
         <div className="onboarding-list">
@@ -158,6 +161,10 @@ export function MortgageStep() {
                       <span>·</span>
                       <span>{d.term_months} ח׳</span>
                       {(parseInt(d.grace_months) || 0) > 0 && <><span>·</span><span>גרייס {d.grace_months} ח׳</span></>}
+                      <span>·</span>
+                      {d.start_date
+                        ? <span>החל {formatDate(d.start_date)}</span>
+                        : <span className="text-muted">תאריך התחלה אוטומטי</span>}
                     </div>
                     {missing.length > 0 && (
                       <div className="onboarding-track-missing onboarding-track-missing--flash"

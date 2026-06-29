@@ -1,10 +1,27 @@
+import { useState } from 'react'
 import { Check } from '@phosphor-icons/react'
-import { INS_TYPES, formatNum } from './types'
+import { INS_TYPES, formatNum, formatCurrency } from './types'
 import { useOnboarding } from './context'
 
 // Inline editor for a single insurance policy.
 export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
   const { policyForm, setPF, keyDeliveryDate } = useOnboarding()
+
+  // The premium is stored monthly (the app is monthly-centric), but the user can
+  // enter it as a yearly figure — common for insurance — and it's converted. `amount`
+  // holds exactly what's typed in the chosen unit so it doesn't drift while typing.
+  const [freq, setFreq] = useState<'monthly' | 'yearly'>('monthly')
+  const [amount, setAmount] = useState(policyForm.monthly_premium)
+  const monthlyPremium = Number(policyForm.monthly_premium) || 0
+  function switchFreq(next: 'monthly' | 'yearly') {
+    setAmount(next === 'yearly' ? String(monthlyPremium * 12) : String(monthlyPremium))
+    setFreq(next)
+  }
+  function onAmount(raw: string) {
+    const v = raw.replace(/[^\d]/g, '')
+    setAmount(v)
+    setPF('monthly_premium', freq === 'yearly' ? String(Math.round((Number(v) || 0) / 12)) : v)
+  }
 
   return (
     <div className="onboarding-inline-form">
@@ -15,18 +32,25 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
           {INS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
-      <div className="onboarding-row">
-        <div className="onboarding-field">
-          <label>חברת ביטוח</label>
-          <input type="text" placeholder="שם החברה" value={policyForm.company}
-            onChange={e => setPF('company', e.target.value)} />
+      <div className="onboarding-field">
+        <label>חברת ביטוח</label>
+        <input type="text" placeholder="שם החברה" value={policyForm.company}
+          onChange={e => setPF('company', e.target.value)} />
+      </div>
+      <div className="onboarding-field">
+        <label>פרמיה (₪)</label>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="toggle-group" style={{ flexShrink: 0 }}>
+            <button type="button" className={`toggle-btn${freq === 'monthly' ? ' active' : ''}`} onClick={() => switchFreq('monthly')}>חודשי</button>
+            <button type="button" className={`toggle-btn${freq === 'yearly' ? ' active' : ''}`} onClick={() => switchFreq('yearly')}>שנתי</button>
+          </div>
+          <input type="text" inputMode="numeric" placeholder="0" style={{ flex: 1 }}
+            value={formatNum(amount)}
+            onChange={e => onAmount(e.target.value)} />
         </div>
-        <div className="onboarding-field">
-          <label>פרמיה חודשית (₪)</label>
-          <input type="text" inputMode="numeric" placeholder="0"
-            value={formatNum(policyForm.monthly_premium)}
-            onChange={e => setPF('monthly_premium', e.target.value.replace(/[^\d]/g, ''))} />
-        </div>
+        {freq === 'yearly' && monthlyPremium > 0 && (
+          <span className="onboarding-field-hint">≈ {formatCurrency(monthlyPremium)} לחודש</span>
+        )}
       </div>
       <div className="onboarding-row">
         <div className="onboarding-field">

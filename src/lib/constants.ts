@@ -32,6 +32,7 @@ export const INVESTMENT_COST_CATEGORIES = [
   { value: 'brokerage',          label: 'דמי תיווך' },
   { value: 'mortgage_advisor',   label: 'יועץ משכנתאות' },
   { value: 'investment_company', label: 'חברת ליווי השקעה' },
+  { value: 'appraiser',          label: 'שמאי' },
 ] as const
 
 export const MORTGAGE_TRACK_TYPES: { value: string; label: string }[] = [
