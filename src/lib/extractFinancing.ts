@@ -51,3 +51,15 @@ export async function extractLoans(files: File[]): Promise<Record<string, unknow
   const data = await extractCached<{ loans?: Record<string, unknown>[] }>('extract-loan', 'apt_extract_loan_v2', files)
   return (data?.loans ?? []).filter((l) => (Number(l.principal) || 0) > 0)
 }
+
+/** Detected rental-contract fields from a lease document (raw record; caller maps).
+ *  The edge function always returns a full object with `null` for fields it didn't
+ *  find, so collapse an all-empty result to null — otherwise the caller can't tell
+ *  "read nothing" from "read something" (mirrors the filter in the other extractors). */
+export async function extractRental(files: File[]): Promise<Record<string, unknown> | null> {
+  const data = await extractCached<Record<string, unknown> | null>('extract-rental', 'apt_extract_rental_v1', files)
+  if (!data) return null
+  const hasAny = ['tenantName', 'startDate', 'endDate', 'monthlyRent', 'paymentMethod']
+    .some((k) => data[k] != null && String(data[k]).trim() !== '')
+  return hasAny ? data : null
+}
