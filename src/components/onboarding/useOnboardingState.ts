@@ -21,6 +21,22 @@ import {
 } from './types'
 import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } from './types'
 
+// Manager/dev demo extractions: in local dev or the dev@test.local manager account
+// the onboarding scans return these instead of calling the billed Claude edge
+// functions — so the manager account is never connected to the Claude API. Real
+// users always hit the real model. Shapes mirror each extract-* function's output.
+const DEV_MOCK = {
+  mortgage: { tracks: [
+    { track_type: 'prime', principal: 600000, prime_rate: 6, margin: -0.5, term_months: 360, grace_months: 0 },
+    { track_type: 'fixed_unlinked', principal: 217500, annual_rate: 4.9, term_months: 360, grace_months: 0 },
+  ] },
+  loan: { loans: [
+    { repayment_type: 'monthly_fixed', lender: 'בנק לאומי', principal: 120000, annual_rate: 6, term_months: 60, grace_months: 0 },
+  ] },
+  contract: { buyerName: 'ישראל ישראלי (דמו)', street: 'הרצל 10', city: 'תל אביב', purchasePrice: 2500000, purchaseDate: '2025-01-15', keyDeliveryDate: '2025-07-01', propertySizeSqm: 90, floor: 3, rooms: 4 },
+  rental: { tenantName: 'שוכר לדוגמה (דמו)', startDate: '2025-08-01', endDate: '2026-07-31', monthlyRent: 6500, paymentMethod: 'check' as const, paymentDay: 1 },
+}
+
 // Serializable snapshot of the wizard for crash-safe persistence (C2). Mirrors the
 // data-bearing state below; transient UI state (refs, AI-busy flags, error/saving)
 // and File objects are intentionally excluded.
@@ -109,7 +125,9 @@ export function useOnboardingState(onComplete: () => void) {
   // ── Investment / equity ──
   const [equityMode, setEquityMode] = useState<'amount' | 'percent'>(d0?.equityMode ?? 'amount')
   const [equityValue, setEquityValue] = useState(d0?.equityValue ?? '')
-  const [costs, setCosts] = useState(d0?.costs ?? { lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '' })
+  // Merge over the defaults (not `??`) so a draft saved before a new cost key existed
+  // (e.g. appraiser) restores with that key defaulted to '' rather than undefined.
+  const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '', ...(d0?.costs ?? {}) })
   const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(d0?.extraCosts ?? [])
 
   // ── Focused input tracking (for grey-placeholder UX) ──
@@ -287,12 +305,18 @@ export function useOnboardingState(onComplete: () => void) {
         try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
       }
       if (!data) {
-        const res = await supabase.functions.invoke('extract-mortgage', {
-          body: { files },
-        })
-        if (res.error) throw res.error
-        data = res.data
-        try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+        if (showFillExample) {
+          // Manager/dev: never call the billed Claude API — use demo data.
+          await new Promise(r => setTimeout(r, 700))
+          data = DEV_MOCK.mortgage
+        } else {
+          const res = await supabase.functions.invoke('extract-mortgage', {
+            body: { files },
+          })
+          if (res.error) throw res.error
+          data = res.data
+          try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+        }
       }
       const raw = (data?.tracks ?? []) as Record<string, unknown>[]
       const mapped: TrackDraft[] = raw
@@ -342,10 +366,15 @@ export function useOnboardingState(onComplete: () => void) {
         try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
       }
       if (!data) {
-        const res = await supabase.functions.invoke('extract-loan', { body: { files } })
-        if (res.error) throw res.error
-        data = res.data
-        try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+        if (showFillExample) {
+          await new Promise(r => setTimeout(r, 700))
+          data = DEV_MOCK.loan
+        } else {
+          const res = await supabase.functions.invoke('extract-loan', { body: { files } })
+          if (res.error) throw res.error
+          data = res.data
+          try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+        }
       }
       const raw = (data?.loans ?? []) as Record<string, unknown>[]
       const mapped: LoanDraft[] = raw
@@ -412,12 +441,17 @@ export function useOnboardingState(onComplete: () => void) {
         try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
       }
       if (!data) {
-        const res = await supabase.functions.invoke('extract-contract', {
-          body: { files },
-        })
-        if (res.error) throw res.error
-        data = res.data
-        try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+        if (showFillExample) {
+          await new Promise(r => setTimeout(r, 700))
+          data = DEV_MOCK.contract
+        } else {
+          const res = await supabase.functions.invoke('extract-contract', {
+            body: { files },
+          })
+          if (res.error) throw res.error
+          data = res.data
+          try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+        }
       }
       const d = data ?? {}
       if (d.buyerName) setBuyerName(String(d.buyerName))
@@ -461,12 +495,17 @@ export function useOnboardingState(onComplete: () => void) {
         try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
       }
       if (!data) {
-        const res = await supabase.functions.invoke('extract-rental', {
-          body: { files },
-        })
-        if (res.error) throw res.error
-        data = res.data
-        try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+        if (showFillExample) {
+          await new Promise(r => setTimeout(r, 700))
+          data = DEV_MOCK.rental
+        } else {
+          const res = await supabase.functions.invoke('extract-rental', {
+            body: { files },
+          })
+          if (res.error) throw res.error
+          data = res.data
+          try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+        }
       }
       const d = data ?? {}
       if (d.tenantName) setCompanyName(String(d.tenantName))

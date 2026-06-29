@@ -188,7 +188,7 @@ export function InvestmentStep() {
                 <div className="onboarding-field">
                   <label>שמאי (₪)</label>
                   <input type="text" inputMode="numeric" placeholder="0"
-                    value={formatNum(costs.appraiser)}
+                    value={formatNum(costs.appraiser ?? '')}
                     onChange={e => setCosts(c => ({ ...c, appraiser: e.target.value.replace(/[^\d]/g, '') }))} />
                 </div>
                 <div className="onboarding-field" />

@@ -66,8 +66,9 @@ export function InsuranceStep() {
         </div>
       )}
 
-      {/* Inline new-policy form */}
-      {showPolicyForm && <PolicyForm onSave={addPolicy} onCancel={() => setShowPolicyForm(false)} />}
+      {/* Inline new-policy form — keyed on the policy count so it remounts (and its
+          local freq/amount reset) after "+ הוסף פוליסה" instead of keeping stale values. */}
+      {showPolicyForm && <PolicyForm key={policies.length} onSave={addPolicy} onCancel={() => setShowPolicyForm(false)} />}
 
       {/* Add policy button — always shown */}
       <button type="button" className="btn-onboard-skip onboarding-add-btn"

@@ -33,6 +33,9 @@ export function MortgageStep() {
   const [continuePrompt, setContinuePrompt] = useState(false)
   const [alertPulse, setAlertPulse] = useState(0)
   const [saveAttempted, setSaveAttempted] = useState(false)
+  // The "detected from document" banner is only accurate for the untouched scan
+  // result — hide it once the user manually adds or removes a track.
+  const [scanBannerOff, setScanBannerOff] = useState(false)
 
   // A track is "ready" only with all required details: principal + rate + term (months).
   const trackMissing = (d: (typeof tracks)[number]) => {
@@ -111,7 +114,7 @@ export function MortgageStep() {
       )}
 
       {/* Scan result banner — makes it clear the tracks below came from the document. */}
-      {mortgageAiDone && tracks.length > 0 && editingIdx === null && !showTrackForm && (
+      {mortgageAiDone && !scanBannerOff && tracks.length > 0 && editingIdx === null && !showTrackForm && (
         <div className="onboarding-scan-banner">
           <Sparkle size={15} weight="fill" />
           זוהו {tracks.length} {tracks.length === 1 ? 'מסלול' : 'מסלולים'} מהמסמך — בדקו, והקישו על מסלול לעריכה
@@ -181,7 +184,7 @@ export function MortgageStep() {
                         <span>גרייס</span>
                       </label>
                     )}
-                    <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); removeTrack(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>
+                    <button type="button" className="onboarding-list-remove" onClick={e => { e.stopPropagation(); setScanBannerOff(true); removeTrack(i) }} aria-label="מחיקה" title="מחיקה"><X size={16} /></button>
                   </div>
                 </div>
                 {isEditing && <TrackForm
@@ -201,6 +204,7 @@ export function MortgageStep() {
       <button type="button" className="btn-onboard-skip onboarding-add-btn"
         style={{ marginBottom: 16 }}
         onClick={() => {
+          setScanBannerOff(true)
           if (showTrackForm || editingIdx !== null) {
             saveCurrentAndOpenNew()
           } else {

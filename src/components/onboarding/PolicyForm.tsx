@@ -20,7 +20,10 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
   function onAmount(raw: string) {
     const v = raw.replace(/[^\d]/g, '')
     setAmount(v)
-    setPF('monthly_premium', freq === 'yearly' ? String(Math.round((Number(v) || 0) / 12)) : v)
+    // An empty field must store '' (not '0'), or the policy reads as "has a premium"
+    // and a blank policy gets saved.
+    const monthly = v === '' ? '' : (freq === 'yearly' ? String(Math.round((Number(v) || 0) / 12)) : v)
+    setPF('monthly_premium', monthly)
   }
 
   return (
