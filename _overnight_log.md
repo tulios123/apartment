@@ -49,6 +49,14 @@ Bug hunt (8 areas, 24 verified bugs). Applied the 10 lowest-risk in commit 3c346
 - Verified zero regressions across all 10 via a second adversarial workflow; tsc + 72 tests + build green.
 - **3 flagged for you instead (financial math — see N6/N7/N8 below).**
 
+### Wave 3 (5 fresh lenses: security · money-math · input-validation · lifecycle/nav · edge-data) — 8 new verified bugs; applied the 5 safe ones (commits a5cc146, f7e7140):
+- W6 [high] Finances: editing a transaction no longer nulls contract_id/recurring_item_id — was orphaning a generated transaction from its recurring item and breaking the monthly-generation dedup → a DUPLICATE recurring row the next month. Now the edit preserves the FK links.
+- A2 [med] Routing: added a catch-all `*` route → an unmatched/stale deep-link lands on Home instead of a blank dead screen.
+- W5 [low] Auth: a failed Google sign-in is now surfaced (was swallowed — the button just silently re-enabled with no error).
+- W3 [med] Onboarding: a rental contract with end-date before start-date is now rejected (was persisting an inverted range).
+- A1 [low] Onboarding: rooms saved with parseFloat — half-rooms (4.5) no longer truncated to 4 (numeric column since migration 015).
+- **3 flagged for you instead (W1/W2 grace-period display + W4 equity% — see below).** Regression-check workflow: **0 regressions** across all 5 (W6/A2/W5/A1 verified; W3 tsc+tests green).
+
 ## Needs your call (flagged — real bugs, but behavioral/critical-path/ambiguous; not auto-applied overnight)
 Each verified real by a second agent. Highest priority first: **R15** (push leak — security), **R8** (mortgage data loss), **R1/R2** (malformed financial writes on onboarding finish), **R13/R14** (multi-account / reset), **R4** (forecast math). Say the word and I'll apply any/all.
 
@@ -147,6 +155,21 @@ Each verified real by a second agent. Highest priority first: **R15** (push leak
 - **הבעיה:** interestPaid = real 'ריבית' expenses PLUS full schedule-derived mortgage+loan interest. 'ריבית' is a user-selectable expense category — recording your monthly interest as 'ריבית' adds it on top of the already-counted scheduled interest → overstates "ריבית ששולמה" + totalOut/cashNet on Wealth. The two sources are never reconciled.
 - **תיקון מומלץ:** Pick one source of truth — exclude schedule interest for vehicles with matching manual 'ריבית' transactions, or treat 'ריבית' entries as non-financing only (and document it). At minimum avoid summing both for the same payment.
 
+### W1 · [high] Mortgage grace payment shown FOREVER on Home — understates fixed expenses after grace ends
+- **איפה:** src/pages/dashboard/HomeScreen.tsx:87-88 (hasGrace / selectedMortgage); gracePeriodPayment in src/lib/mortgage.ts:112-121.
+- **הבעיה:** `hasGrace = tracks.some(t => grace_months > 0)` is a STATIC check with no date awareness, and gracePeriodPayment takes no asOf. So if any track was EVER configured with grace, Home permanently substitutes the interest-only grace figure for the real Shpitzer payment — even years after grace ended. Understates "הוצאות קבועות" and inflates "expectedNet" every month for the rest of the loan. (Pairs with the known R9, which is the OPPOSITE error — overstating DURING grace. Neither side is date-aware.)
+- **תיקון מומלץ:** One unified date-aware fix solves both R9 and W1: for the current month, sum each track's scheduled payment via trackSchedule(t).find(r => r.date.slice(0,7) === currentYYYY-MM)?.payment (already interest-only during grace, full after). Replace the hasGrace branch with that. **Financial/headline number — your call before I touch it.**
+
+### W2 · [med] Loan in its grace period shows full post-grace payment on Home — overstates fixed expenses
+- **איפה:** src/pages/dashboard/HomeScreen.tsx:87-89 (hasGrace only inspects mortgage tracks, never loans); loanMonthlyPayment in src/lib/loans.ts:87-90.
+- **הבעיה:** The Home grace branch never checks loans. monthlyLoan = loansSummary.monthlyPayment returns the post-grace Shpitzer unconditionally, so a loan currently inside its own grace window is shown at the higher post-grace amount, overstating fixed expenses until it exits grace. Separate code path from W1.
+- **תיקון מומלץ:** Same date-aware approach — sum loanPaymentForMonth(l, currentYYYY-MM)?.amount across monthly loans (already interest-only during the loan's grace). Bundle with the W1 fix. **Financial — your call.**
+
+### W4 · [low] Onboarding equity-% field accepts values >100%, inflating stored self-equity
+- **איפה:** src/components/onboarding/InvestmentStep.tsx:64-73 (percent input, no max) → useOnboardingState.ts:233-235 (equityAmount) → handleFinish:745 (self_equity).
+- **הבעיה:** In percent mode the input is type=number with no max. Typing 150 makes equity = price × 1.5, saved as self_equity with no warning — corrupts equity/net-worth/ROI (equity can exceed the property price). A fat-finger (1255 vs 25) stores a wildly wrong figure.
+- **תיקון מומלץ:** Clamp in equityAmount (Math.min(100, parseFloat(...)) in percent mode) and/or show a hint when >100%. Minor, but silent clamping changes typed input — your call on whether to clamp vs warn.
+
 ---
 
 ## Old feedback triage (the older itai.shubi items in the table)
@@ -160,16 +183,18 @@ Most were already resolved by the recent work; flagging only the genuinely-open 
   - Plus R1/R5 from the hunt cover the loans-step "can press next without value / no alert" item.
 
 ## Final state (morning summary)
-- **Bug hunt:** 8-area adversarial review → **24 verified real bugs**. Applied **10** (commit 3c34689); **16 flagged above** (R1–R16) with exact location + recommended fix, prioritized.
-- **Regression check** of the 10 fixes (separate adversarial pass): **0 regressions**.
-- **Live smoke** (dev account, AI-cost-free via the bypass): onboarding completes end-to-end with full data (handleFinish OK), all main screens (home/finances/wealth/property) render, **no console errors, no error boundary**.
-- **Green:** tsc clean · 72/72 tests · build ok.
-- **Not done (by design):** the monthly-close feature (you said skip); push-subscription hardening + pushsubscriptionchange — folded into R15 (security-sensitive, needs your review before touching the family push lifecycle).
+- **3 bug-hunt waves** (loop-until-dry): wave 1 = 8-area code read (24 bugs), wave 2 = flows/recovery/consistency/a11y/races (13), wave 3 = security/money-math/validation/lifecycle/edge-data (8). **45 verified-real bugs total.**
+- **Applied 25 safe fixes** across 5 commits (3c34689, e4c85a6, e182bff, a5cc146, f7e7140). Each wave's fixes regression-checked by a separate adversarial workflow: **0 regressions** in all three.
+- **22 flagged** (R1–R16 · N6–N8 · W1/W2/W4) — behavioral/financial/security/critical-path, with exact location + recommended fix. Not auto-applied overnight per your instruction.
+- **Live smoke** (dev account, AI-cost-free via the bypass): onboarding completes end-to-end (handleFinish OK), all main screens render, **no console errors, no error boundary**.
+- **Green every commit:** tsc clean · 72/72 tests · build ok.
+- **Not done (by design):** the monthly-close feature (you said skip); push-subscription hardening — folded into R15 (security-sensitive, needs your review before touching the family push lifecycle).
 
-### Top items for your morning (highest value first)
-1. **R15** — push reminders can leak to the wrong family member on a shared device (security). Needs a deliberate subscription-lifecycle fix on signOut/enablePush.
-2. **R8** — editing a prime/variable mortgage track in the editor silently wipes its prime_rate & margin (data loss).
-3. **R1/R2** — a typed-but-unsaved loan/track on onboarding finish is written malformed / with fabricated defaults.
-4. **R13/R14** — multi-account generation key on a shared browser; resetAllData ignores delete errors.
-5. **R4** — forecast over-counts owner utilities from old contracts when there's no active lease.
-Say "apply R#" (or "apply all") and I'll do them with the same verify-each discipline.
+### Top items for your morning (highest value first — all FLAGGED, awaiting your "apply")
+1. **R15** [high/security] — push reminders can leak to the wrong family member on a shared device. Needs a deliberate subscription-lifecycle fix on signOut/enablePush.
+2. **W1 (+R9, W2)** [high] — Home shows the mortgage grace payment FOREVER (understates fixed expenses after grace ends); R9 is the opposite (overstates during grace); W2 is the same for loans. One date-aware fix solves all three — but it changes the family's headline forecast number, so your call.
+3. **R8** [med] — editing a prime/variable mortgage track in the editor silently wipes its prime_rate & margin (data loss).
+4. **R1/R2** — a typed-but-unsaved loan/track on onboarding finish is written malformed / with fabricated defaults.
+5. **R13/R14** — multi-account generation key on a shared browser; resetAllData ignores delete errors.
+6. **N6** [med] — rent double-counted across overlapping leases on Wealth/Home; **R4** — forecast over-counts owner utilities with no active lease.
+Say "apply R#/N#/W#" (or "apply all") and I'll do them with the same verify-each discipline.
