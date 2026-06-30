@@ -66,7 +66,7 @@ export function InvestmentStep() {
                   type="number" min="0" step="0.1"
                   className={isGrey ? 'input-ph-grey' : ''}
                   value={focusedInput === 'equity' ? equityValue : (equityValue || eqDefRaw)}
-                  onFocus={() => { setFocusedInput('equity'); if (!equityValue) setEquityValue('0') }}
+                  onFocus={() => setFocusedInput('equity')}
                   onBlur={() => setFocusedInput(null)}
                   onChange={e => setEquityValue(e.target.value)}
                   style={{ flex: 1 }}
@@ -105,7 +105,7 @@ export function InvestmentStep() {
                     {b.lender.trim() && <span className="text-muted"> · {b.lender.trim()}</span>}
                   </span>
                   <span className="onboarding-balloon-chip-remove" aria-label="מחיקה"
-                    onClick={e => { e.stopPropagation(); setBalloonLoans(prev => prev.filter((_, j) => j !== i)) }}>
+                    onClick={e => { e.stopPropagation(); setEditBalloon(null); setBalloonLoans(prev => prev.filter((_, j) => j !== i)) }}>
                     <X size={14} />
                   </span>
                 </div>
@@ -123,7 +123,7 @@ export function InvestmentStep() {
                     <input type="text" placeholder="ממי (למשל: אמא)"
                       value={b.lender}
                       onChange={e => setBalloonLoans(prev => prev.map((r, j) => j === i ? { ...r, lender: e.target.value } : r))} />
-                    <button type="button" onClick={() => setBalloonLoans(prev => prev.filter((_, j) => j !== i))}
+                    <button type="button" onClick={() => { setEditBalloon(null); setBalloonLoans(prev => prev.filter((_, j) => j !== i)) }}
                       style={{ flexShrink: 0, padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', cursor: 'pointer' }}>
                       <X size={14} />
                     </button>

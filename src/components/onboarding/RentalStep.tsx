@@ -5,7 +5,7 @@ import { FillExampleTop } from './FillExampleTop'
 import { FinishEarly } from './FinishEarly'
 import { DocFileList } from './DocFileList'
 import { formatNum } from './types'
-import { monthDayISO } from '../../lib/format'
+import { monthDayISO, parseLocalISO } from '../../lib/format'
 import { useOnboarding } from './context'
 
 export function RentalStep() {
@@ -59,7 +59,7 @@ export function RentalStep() {
                 const val = e.target.value
                 setStartDate(val)
                 if (!endDate && val) {
-                  const d = new Date(val)
+                  const d = parseLocalISO(val)
                   d.setFullYear(d.getFullYear() + 1)
                   d.setDate(d.getDate() - 1)
                   setEndDate(monthDayISO(d))

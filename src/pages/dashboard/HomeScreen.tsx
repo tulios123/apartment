@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAppReady } from '../../contexts/AppReadyContext'
 import {
@@ -190,13 +190,12 @@ export default function HomeScreen() {
       })
       if (error) throw error
       setDone(prev => new Set(prev).add('rent'))
-      setFlash('יופי! שכר הדירה נרשם ✓')
+      showFlash('יופי! שכר הדירה נרשם ✓')
       await refetchTx()
     } catch {
-      setFlash('לא הצלחנו לרשום, נסה שוב')
+      showFlash('לא הצלחנו לרשום, נסה שוב')
     } finally {
       setBusy(null)
-      setTimeout(() => setFlash(null), 2600)
     }
   }
 
@@ -208,10 +207,9 @@ export default function HomeScreen() {
     // backlog task slides up into its slot and "+ עוד X משימות" decrements in real time.
     // Persist in the background; only reload if the write fails.
     setTasks(prev => prev.filter(t => t.id !== id))
-    setFlash('משימה הושלמה ✓')
-    setTimeout(() => setFlash(null), 2600)
+    showFlash('משימה הושלמה ✓')
     updateTask(id, { status: 'done' }).then(r => {
-      if (r.error) { setFlash('לא הצלחנו לעדכן, נסה שוב'); refetchTasks(); return }
+      if (r.error) { showFlash('לא הצלחנו לעדכן, נסה שוב'); refetchTasks(); return }
       // C5: only offer the money follow-up once completion actually persisted — so an
       // offline/failed completion never navigates the user to log money for a task
       // that bounces back. In-app dialog, not a blocking native confirm().
@@ -220,9 +218,11 @@ export default function HomeScreen() {
     })
   }
 
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   function showFlash(msg: string) {
     setFlash(msg)
-    setTimeout(() => setFlash(null), 2600)
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setFlash(null), 2600)
   }
 
   async function submitQuick(e: React.FormEvent) {

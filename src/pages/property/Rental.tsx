@@ -13,7 +13,7 @@ import {
 import { syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/useRecurringItems'
 import { useAuth } from '../../contexts/AuthContext'
 import { UTILITIES } from '../../lib/constants'
-import { formatDate, formatCurrency, monthDayISO } from '../../lib/format'
+import { formatDate, formatCurrency, monthDayISO, daysBetween, todayISO } from '../../lib/format'
 import type { Contract, UtilityPayer } from '../../types'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -403,7 +403,9 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
   }
 
   function daysLeft(endDate: string): number {
-    return Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    // Whole-day diff on LOCAL date strings (mirrors the rest of the app) — a UTC-midnight
+    // Date vs now flips a day early in Israel near midnight.
+    return daysBetween(todayISO(), endDate)
   }
 
   if (loading) return <SkeletonCard />
@@ -440,7 +442,8 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
 
         {contracts.map(c => {
           const left = daysLeft(c.end_date)
-          const isActive = new Date(c.end_date) >= new Date() && new Date(c.start_date) <= new Date()
+          const _today = todayISO()
+          const isActive = c.start_date <= _today && c.end_date >= _today
           const contractUtils = utilsForContract(c.id)
 
           return (

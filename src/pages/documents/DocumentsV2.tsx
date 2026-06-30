@@ -44,6 +44,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
   const [file, setFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [actionErr, setActionErr] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -102,7 +103,15 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
   }
 
   async function handleDelete(id: string, path: string) {
-    await deleteDocument(id, path); setConfirmDeleteId(null); refetch()
+    setActionErr(null)
+    try {
+      await deleteDocument(id, path)
+    } catch {
+      setActionErr('מחיקת המסמך נכשלה — נסו שוב')
+    } finally {
+      setConfirmDeleteId(null)
+      refetch()
+    }
   }
 
   return (
@@ -111,6 +120,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
       {loading && <SkeletonList rows={4} />}
       {error && <div className="form-error" role="alert">{error}</div>}
+      {actionErr && <div className="form-error" role="alert">{actionErr}</div>}
 
       {!loading && documents.length === 0 && (
         <div className="docv-empty">

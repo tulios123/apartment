@@ -72,8 +72,14 @@ export default function Settings() {
   }, [isAdmin])
 
   async function deleteFeedback(id: string) {
+    const removed = feedback.find(f => f.id === id)
     setFeedback(prev => prev.filter(f => f.id !== id))
-    await supabase.from('feedback').delete().eq('id', id)
+    const { error } = await supabase.from('feedback').delete().eq('id', id)
+    if (error && removed) {
+      // Restore the optimistically-removed row so the inbox stays truthful.
+      setFeedback(prev => [removed, ...prev].sort((a, b) => b.created_at.localeCompare(a.created_at)))
+      showStatus('מחיקת ההצעה נכשלה — נסו שוב')
+    }
   }
 
   async function refreshPushState() {

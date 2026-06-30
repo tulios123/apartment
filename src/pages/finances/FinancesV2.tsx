@@ -283,7 +283,11 @@ export default function FinancesV2() {
       await supabase.from('documents').insert({ id: docId, owner_id: user.id, property_id: null, contract_id: null, transaction_id: editingId, task_id: null, type: 'receipt', name: file.name, storage_path: path, date: form.date || null })
       if (txDocs.length === 0) await updateTransaction(editingId, { document_id: docId }) // first → primary (row icon)
       await loadTxDocs(editingId); refetch()
-    } catch { /* upload failed — transaction untouched */ }
+    } catch (e) {
+      // Surface the failure (incl. the oversized-file message) instead of silently
+      // dropping the receipt while the transaction shows as saved.
+      showFlash(e instanceof Error && e.message ? e.message : 'הקבלה לא צורפה — נסו שוב', 'err')
+    }
     finally { setReceiptBusy(false) }
   }
   async function removeReceipt(docId: string, path: string) {
@@ -310,10 +314,17 @@ export default function FinancesV2() {
       // Optimistic edit: merge locally and close the drawer at once so it feels
       // instant; persist in the background and only reload if the write fails.
       const id = editingId
+      // If the edit moves the transaction to another month, this (month-scoped) view
+      // would keep showing it stale — reconcile with a refetch once persisted.
+      const orig = transactions.find(x => x.id === id)
+      const monthChanged = !!orig && orig.date.slice(0, 7) !== form.date.slice(0, 7)
       setTransactions(prev => prev.map(x => x.id === id ? { ...x, ...payload } : x))
       setDrawerOpen(false); setFormError(null)
       showFlash('התנועה עודכנה')
-      updateTransaction(id, payload).then(({ error }) => { if (error) { refetch(); showFlash('העדכון נכשל — שוחזר', 'err') } })
+      updateTransaction(id, payload).then(({ error }) => {
+        if (error) { refetch(); showFlash('העדכון נכשל — שוחזר', 'err') }
+        else if (monthChanged) refetch()
+      })
       return
     }
     setSaving(true); setFormError(null)

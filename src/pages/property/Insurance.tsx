@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useInsurance, createInsurancePolicy, updateInsurancePolicy, deleteInsurancePolicy } from '../../hooks/useInsurance'
 import { usePropertyData } from '../../hooks/usePropertyData'
-import { formatCurrency, formatDate, monthDayISO } from '../../lib/format'
+import { formatCurrency, formatDate, monthDayISO, daysBetween, todayISO } from '../../lib/format'
 import type { InsurancePolicy } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -184,7 +184,8 @@ export default function Insurance() {
   }
 
   function daysUntilRenewal(endDate: string): number {
-    return Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    // Whole-day diff on LOCAL date strings — UTC-midnight Date vs now flips a day early.
+    return daysBetween(todayISO(), endDate)
   }
 
   const totalMonthly = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
