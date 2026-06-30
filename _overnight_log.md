@@ -117,3 +117,30 @@ Each verified real by a second agent. Highest priority first: **R15** (push leak
 - **איפה:** supabase/functions/daily-reminders/index.ts:133-159
 - **הבעיה:** The liveContracts query result is used as `(liveContracts ?? [])`. If the contracts select errors (returns data:null), it is coerced to [] and section 2b treats the owner as having NO active/upcoming lease, then (if they own a property and cadence is due) pushes 'אין חוזה שכירות פעיל — מומלץ להוסיף שוכר חדש' — a wrong nudge for a user who actually has a live contract. Same null-as-empty coercion would also suppress a real renewal reminder for that run.
 - **תיקון מומלץ:** Destructure the error and skip the lease sections on failure: `const { data: liveContracts, error: lcErr } = await ...; if (lcErr) { /* skip 2a/2b this run */ }`. Only evaluate the no-lease branch when the query succeeded.
+
+---
+
+## Old feedback triage (the older itai.shubi items in the table)
+Most were already resolved by the recent work; flagging only the genuinely-open ones.
+- ✅ Addressed: empty-state "add property" CTA; rental "new contract slow / no doc upload / upload screen looks bad" (rental AI scan + validation + noValidate); "write an alert when no principal" (mortgage gating); bad-doc upload (extraction shows an error); welcome clarity (redesigned); insurance/mortgage doc categories exist.
+- ⚠️ Still open (minor / your call):
+  - `/` — "the renewal-contract arrow points the wrong way and isn't needed" — a specific arrow icon on the home renewal action; needs an on-device look at which arrow.
+  - `/` — "I need an option to return to onboarding from the itai account" — a manager convenience; today only the full data reset re-enters onboarding. A soft "re-run onboarding" is more than a reset (ambiguous — what to keep?).
+  - `/onboarding/purchase` — "after I deleted the contract and none remain, [a button] should go back to gray" — unclear which control; needs repro.
+  - `/onboarding/documents` — "there shouldn't be scroll here layout-wise" — a layout/scroll nit on the documents step; needs an on-device measure.
+  - Plus R1/R5 from the hunt cover the loans-step "can press next without value / no alert" item.
+
+## Final state (morning summary)
+- **Bug hunt:** 8-area adversarial review → **24 verified real bugs**. Applied **10** (commit 3c34689); **16 flagged above** (R1–R16) with exact location + recommended fix, prioritized.
+- **Regression check** of the 10 fixes (separate adversarial pass): **0 regressions**.
+- **Live smoke** (dev account, AI-cost-free via the bypass): onboarding completes end-to-end with full data (handleFinish OK), all main screens (home/finances/wealth/property) render, **no console errors, no error boundary**.
+- **Green:** tsc clean · 72/72 tests · build ok.
+- **Not done (by design):** the monthly-close feature (you said skip); push-subscription hardening + pushsubscriptionchange — folded into R15 (security-sensitive, needs your review before touching the family push lifecycle).
+
+### Top items for your morning (highest value first)
+1. **R15** — push reminders can leak to the wrong family member on a shared device (security). Needs a deliberate subscription-lifecycle fix on signOut/enablePush.
+2. **R8** — editing a prime/variable mortgage track in the editor silently wipes its prime_rate & margin (data loss).
+3. **R1/R2** — a typed-but-unsaved loan/track on onboarding finish is written malformed / with fabricated defaults.
+4. **R13/R14** — multi-account generation key on a shared browser; resetAllData ignores delete errors.
+5. **R4** — forecast over-counts owner utilities from old contracts when there's no active lease.
+Say "apply R#" (or "apply all") and I'll do them with the same verify-each discipline.
