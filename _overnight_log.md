@@ -35,6 +35,20 @@ Bug hunt (8 areas, 24 verified bugs). Applied the 10 lowest-risk in commit 3c346
 - R6 Finances edit-drawer receipt-attach failure now surfaced (was silent, incl. oversized)
 - R5 Finances edit that moves a tx to another month refetches (was left stale in view)
 
+### Wave 2 (5 fresh lenses: flows · recovery · consistency · a11y/RTL · races) — 13 new verified bugs; applied the 10 safe ones in commit e4c85a6:
+- B1 Tasks quick-add: guard double-Enter (was double-creating the task)
+- N1 Tasks quick-add: surface failed add + keep the typed text (was silent loss + cleared field)
+- N2 Tasks edit: on failed save keep the drawer + edits open (was closing as if saved, discarding edits)
+- N3 Tasks delete: surface a failed delete (was a silent no-op, row reappears with no reason)
+- N4 Liabilities track/loan delete: try/catch + surfaced error (was an unhandled promise rejection)
+- N5 Insurance policy delete: try/catch + surfaced error (was unhandled, silent)
+- N9 CalendarPopover: reopen jumps to the selected date's month (was stuck on last-navigated month)
+- N10 TaskSheet: scrim/Esc/swipe now minimizes (keeps the draft) instead of discarding a typed title
+- N11 ConfirmDialog: move focus to the safe "ביטול" on open + restore to the trigger on close (a11y, was none)
+- N12 Onboarding finish: synchronous re-entry guard (double-tap could double-insert contract/insurance/loan/mortgage)
+- Verified zero regressions across all 10 via a second adversarial workflow; tsc + 72 tests + build green.
+- **3 flagged for you instead (financial math — see N6/N7/N8 below).**
+
 ## Needs your call (flagged — real bugs, but behavioral/critical-path/ambiguous; not auto-applied overnight)
 Each verified real by a second agent. Highest priority first: **R15** (push leak — security), **R8** (mortgage data loss), **R1/R2** (malformed financial writes on onboarding finish), **R13/R14** (multi-account / reset), **R4** (forecast math). Say the word and I'll apply any/all.
 
@@ -117,6 +131,21 @@ Each verified real by a second agent. Highest priority first: **R15** (push leak
 - **איפה:** supabase/functions/daily-reminders/index.ts:133-159
 - **הבעיה:** The liveContracts query result is used as `(liveContracts ?? [])`. If the contracts select errors (returns data:null), it is coerced to [] and section 2b treats the owner as having NO active/upcoming lease, then (if they own a property and cadence is due) pushes 'אין חוזה שכירות פעיל — מומלץ להוסיף שוכר חדש' — a wrong nudge for a user who actually has a live contract. Same null-as-empty coercion would also suppress a real renewal reminder for that run.
 - **תיקון מומלץ:** Destructure the error and skip the lease sections on failure: `const { data: liveContracts, error: lcErr } = await ...; if (lcErr) { /* skip 2a/2b this run */ }`. Only evaluate the no-lease branch when the query succeeded.
+
+### N6 · [med] rentReceivedToDate double-counts rent for overlapping leases
+- **איפה:** src/lib/projections.ts:48-58 (rentReceivedToDate) → feeds useInvestmentData.ts:60 (WealthHub) + useDashboardStats.ts:103 (Home).
+- **הבעיה:** Sums full monthly_rent × months per-contract with no overlap dedup. A renewal entered as a new contract whose start_date precedes the old lease's end_date (common "signed early / overlap month") makes BOTH count rent for the overlap → inflates "שכר דירה שהתקבל" + cashNet (Wealth) and totalIncome (Home). This is a DIFFERENT code path from the Finances overlap bug (R7).
+- **תיקון מומלץ:** Compute rent per calendar month over the union of contracts — for each month from earliest start to asOf pick the one contract active that month (activeContract) and add its rent once. Apply the same dedup everywhere rentReceivedToDate feeds dashboard/wealth. (Behavioral/financial — your call.)
+
+### N7 · [low] Virtual loan-payment rows are never suppressed by a recorded real loan payment
+- **איפה:** src/pages/finances/FinancesV2.tsx:138-142 (shownVirtual), 165-169, 204-208.
+- **הבעיה:** The virtual/real dedup only covers RENT + MORT. monthlyVirtualEntries also emits a virtual loan row per active loan (category 'הלוואה', projections.ts:133-144) with no suppression. Recording the real loan payment (which can only be filed under 'אחר'/'ריבית', never 'הלוואה') shows BOTH → double-counts the loan that month. Structurally un-deduplicatable by category.
+- **תיקון מומלץ:** Either suppress the virtual loan row when a real expense plausibly matches (same amount within tolerance), or add a recordable 'הלוואה' category and include it in the suppression set alongside RENT/MORT.
+
+### N8 · [low] Manually logged 'ריבית' expense double-counts against schedule-derived interest
+- **איפה:** src/hooks/useInvestmentData.ts:61-63 (manualInterest + interestToDate(mortgageTracks) + loansInterest).
+- **הבעיה:** interestPaid = real 'ריבית' expenses PLUS full schedule-derived mortgage+loan interest. 'ריבית' is a user-selectable expense category — recording your monthly interest as 'ריבית' adds it on top of the already-counted scheduled interest → overstates "ריבית ששולמה" + totalOut/cashNet on Wealth. The two sources are never reconciled.
+- **תיקון מומלץ:** Pick one source of truth — exclude schedule interest for vehicles with matching manual 'ריבית' transactions, or treat 'ריבית' entries as non-financing only (and document it). At minimum avoid summing both for the same payment.
 
 ---
 
