@@ -15,6 +15,7 @@ export default function Login() {
   const [linkBusy, setLinkBusy] = useState(false)
   const [linkSent, setLinkSent] = useState(false)
   const [linkError, setLinkError] = useState('')
+  const [googleError, setGoogleError] = useState('')
 
   // Manager (dev test account) password login.
   const [showManager, setShowManager] = useState(false)
@@ -30,8 +31,11 @@ export default function Login() {
 
   const handleSignIn = async () => {
     setBusy(true)
+    setGoogleError('')
     try {
       await signInWithGoogle()
+    } catch {
+      setGoogleError('ההתחברות ל‑Google נכשלה — נסו שוב')
     } finally {
       setBusy(false)
     }
@@ -107,6 +111,7 @@ export default function Login() {
               </svg>
               {busy ? 'מתחבר...' : 'המשך עם Google'}
             </button>
+            {googleError && <p className="login-error">{googleError}</p>}
 
             {/* Manager (dev test account) login */}
             {!showManager ? (

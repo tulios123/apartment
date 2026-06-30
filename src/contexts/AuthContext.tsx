@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   async function signInWithGoogle() {
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
@@ -89,6 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           : {}),
       },
     })
+    // On success the browser redirects to Google (page unloads); an error means it
+    // never left — surface it so the caller can show a message instead of silently
+    // re-enabling the button.
+    if (error) throw error
   }
 
   async function signOut() {

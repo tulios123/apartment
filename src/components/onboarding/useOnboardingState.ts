@@ -611,7 +611,7 @@ export function useOnboardingState(onComplete: () => void) {
             key_delivery_date: keyDeliveryDate || null,
             property_size_sqm: propertySizeSqm ? parseFloat(propertySizeSqm) : null,
             floor: floorNumber !== '' ? parseInt(floorNumber, 10) : null,
-            rooms: rooms !== '' ? parseInt(rooms, 10) : null,
+            rooms: rooms !== '' ? parseFloat(rooms) : null,   // numeric column — keep half-rooms (4.5), don't truncate
           })
 
       // When payments begin: key-delivery is the real anchor for an off-plan buy;

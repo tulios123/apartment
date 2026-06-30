@@ -306,9 +306,13 @@ export default function FinancesV2() {
 
   async function submitForm() {
     if (!form.amount || Number(form.amount) <= 0) { setFormError('יש להזין סכום תקין'); return }
-    const payload: Partial<Transaction> = {
+    // Only the user-editable fields. contract_id / recurring_item_id are deliberately
+    // excluded here: on EDIT they must be preserved — overwriting a generated
+    // transaction's recurring_item_id/contract_id to null orphans it from its source,
+    // which breaks the monthly-generation dedup and re-creates a duplicate next month.
+    const fields: Partial<Transaction> = {
       direction: form.direction, amount: Number(form.amount), date: form.date, category: form.category,
-      description: form.description || null, payment_method: form.payment_method || null, contract_id: null, recurring_item_id: null,
+      description: form.description || null, payment_method: form.payment_method || null,
     }
     if (editingId) {
       // Optimistic edit: merge locally and close the drawer at once so it feels
@@ -318,15 +322,17 @@ export default function FinancesV2() {
       // would keep showing it stale — reconcile with a refetch once persisted.
       const orig = transactions.find(x => x.id === id)
       const monthChanged = !!orig && orig.date.slice(0, 7) !== form.date.slice(0, 7)
-      setTransactions(prev => prev.map(x => x.id === id ? { ...x, ...payload } : x))
+      setTransactions(prev => prev.map(x => x.id === id ? { ...x, ...fields } : x))
       setDrawerOpen(false); setFormError(null)
       showFlash('התנועה עודכנה')
-      updateTransaction(id, payload).then(({ error }) => {
+      updateTransaction(id, fields).then(({ error }) => {
         if (error) { refetch(); showFlash('העדכון נכשל — שוחזר', 'err') }
         else if (monthChanged) refetch()
       })
       return
     }
+    // New manual transaction: no source link, so contract_id / recurring_item_id are null.
+    const payload: Partial<Transaction> = { ...fields, contract_id: null, recurring_item_id: null }
     setSaving(true); setFormError(null)
     try {
       const { error } = await createTransaction(payload as Omit<Transaction, 'id' | 'owner_id' | 'created_at'>)

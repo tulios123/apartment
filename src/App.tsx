@@ -135,6 +135,9 @@ function AppRoutes() {
           <Route path="documents" element={<Navigate to="/property/documents" replace />} />
 
           <Route path="settings" element={<Settings />} />
+
+          {/* Catch-all: any unmatched or stale deep-link lands on Home, not a blank screen */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>
