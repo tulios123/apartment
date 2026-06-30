@@ -773,6 +773,12 @@ export function useOnboardingState(onComplete: () => void) {
             }
             return
           }
+          // ISO date strings — a contract whose end precedes its start is invalid;
+          // flag it rather than persist an inverted range (string compare is correct here).
+          if (endDate < startDate) {
+            failures.push('שכירות (תאריך סיום לפני תאריך התחלה)')
+            return
+          }
           try {
             contract = await createContract({
               owner_id: user.id,
