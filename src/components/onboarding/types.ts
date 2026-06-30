@@ -89,7 +89,10 @@ export function formatPrice(raw: string) {
 }
 
 export function formatCurrency(n: number) {
-  return '₪' + Math.round(n).toLocaleString('he-IL')
+  // Sign-aware: a negative value (e.g. equity net of balloon loans) must read
+  // "-₪50,000", not the malformed "₪-50,000".
+  const r = Math.round(n)
+  return (r < 0 ? '-' : '') + '₪' + Math.abs(r).toLocaleString('he-IL')
 }
 
 export function formatNum(raw: string | number): string {

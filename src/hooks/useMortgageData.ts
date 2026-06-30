@@ -67,8 +67,8 @@ export function useMortgageData(): MortgageData {
   const lastPaidRow = [...combined].reverse().find(r => r.date <= today)
 
   const summary: MortgageSummary = {
-    totalPrincipal: tracks.reduce((s, t) => s + t.principal, 0),
-    currentBalance: lastPaidRow ? lastPaidRow.balance : tracks.reduce((s, t) => s + t.principal, 0),
+    totalPrincipal: tracks.reduce((s, t) => s + (Number(t.principal) || 0), 0),  // numeric col → string; coerce before summing
+    currentBalance: lastPaidRow ? lastPaidRow.balance : tracks.reduce((s, t) => s + (Number(t.principal) || 0), 0),
     monthlyPayment: tracks.reduce((s, t) => s + monthlyPayment(t.principal, t.annual_rate, t.term_months, t.grace_months ?? 0), 0),
     totalInterestLife: tracks.flatMap(trackSchedule).reduce((s, r) => s + r.interest, 0),
     interestPaidToDate: interestToDate(tracks),

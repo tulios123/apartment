@@ -65,7 +65,7 @@ export function useLoansData(): LoansData {
     monthlyBalance: monthlyLoans.reduce((s, l) => s + loanBalance(l), 0),
     monthlyPayment: monthlyLoans.reduce((s, l) => s + loanMonthlyPayment(l), 0),
     interestPaidToDate: monthlyLoans.reduce((s, l) => s + loanInterestToDate(l), 0),
-    balloonOutstanding: balloonLoans.reduce((s, l) => s + l.principal, 0),
+    balloonOutstanding: balloonLoans.reduce((s, l) => s + (Number(l.principal) || 0), 0),  // numeric col → string; coerce before summing
   }
 
   return { loans, monthlyLoans, balloonLoans, summary, loading, error, refetch: fetch }

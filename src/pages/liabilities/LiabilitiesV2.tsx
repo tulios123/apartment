@@ -371,7 +371,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   {aiBusy === 'mortgage' ? 'קורא את המסמך…' : 'סריקת מסמך משכנתא (AI)'}
                 </button>
               </div>
-              <input ref={mortgageDocRef} type="file" accept="image/*,.pdf,.heic" multiple style={{ display: 'none' }}
+              <input ref={mortgageDocRef} type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }}
                 onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanMortgageDoc(fs); e.target.value = '' }} />
               {aiErr?.kind === 'mortgage' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
               {scanResult?.kind === 'mortgage' && (
@@ -430,7 +430,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   {aiBusy === 'loan' ? 'קורא את המסמך…' : 'סריקת מסמך הלוואה (AI)'}
                 </button>
               </div>
-              <input ref={loanDocRef} type="file" accept="image/*,.pdf,.heic" multiple style={{ display: 'none' }}
+              <input ref={loanDocRef} type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }}
                 onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanLoanDoc(fs); e.target.value = '' }} />
               {aiErr?.kind === 'loan' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
               {scanResult?.kind === 'loan' && (

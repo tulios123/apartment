@@ -290,7 +290,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
               ))}
             </div>
           )}
-          <input ref={fileRef} type="file" accept="image/*,.pdf,.heic" style={{ display: 'none' }}
+          <input ref={fileRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = '' }} />
           <button type="button" className="tav-attach" disabled={attaching} onClick={() => fileRef.current?.click()}>
             <Paperclip size={15} /> {attaching ? 'מעלה…' : 'צרף מסמך/תמונה'}

@@ -212,7 +212,7 @@ function ContractForm({
           {aiBusy ? <CircleNotch className="spin" size={15} weight="bold" /> : <Sparkle size={15} weight="fill" />}
           {aiBusy ? 'קורא את המסמך…' : 'סריקת חוזה שכירות (AI)'}
         </button>
-        <input ref={docRef} type="file" accept="image/*,.pdf,.heic" multiple style={{ display: 'none' }}
+        <input ref={docRef} type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanRental(fs); e.target.value = '' }} />
         {aiErr && <div className="form-error" role="alert">{aiErr}</div>}
         {scanned && !aiErr && (

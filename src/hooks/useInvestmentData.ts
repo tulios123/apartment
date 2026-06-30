@@ -51,12 +51,14 @@ export function useInvestmentData(): InvestmentData {
       if (costsRes.error) throw costsRes.error
       if (txRes.error) throw txRes.error
 
-      const txs = txRes.data ?? []
+      // numeric(14,2) columns arrive as STRINGS from supabase-js — coerce at the
+      // boundary so the reduces below add numbers, not concatenate strings.
+      const txs = (txRes.data ?? []).map(t => ({ ...t, amount: Number(t.amount) || 0 }))
       const mortgageTracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
       const contracts = (contractsRes.error ? [] : (contractsRes.data ?? [])) as Contract[]
       const loans = (loansRes.error ? [] : (loansRes.data ?? [])) as Loan[]
 
-      const nextCosts = costsRes.data ?? []
+      const nextCosts = (costsRes.data ?? []).map(c => ({ ...c, amount: Number(c.amount) || 0 }))
       const nextRent = rentReceivedToDate(contracts)
       const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === INTEREST_CATEGORY).reduce((s, t) => s + t.amount, 0)
       const loansInterest = loans.reduce((s, l) => s + loanInterestToDate(l), 0)
@@ -77,7 +79,7 @@ export function useInvestmentData(): InvestmentData {
 
   useEffect(() => { fetch() }, [fetch])
 
-  const totalInvested = costs.reduce((s, c) => s + c.amount, 0)
+  const totalInvested = costs.reduce((s, c) => s + (Number(c.amount) || 0), 0)  // guard stale string-amount cache too
 
   return { costs, totalInvested, rentReceived, interestPaid, maintenance, loading, error, refetch: fetch }
 }

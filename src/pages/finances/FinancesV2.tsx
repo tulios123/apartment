@@ -568,7 +568,7 @@ export default function FinancesV2() {
         {editingId && (
           <div className="finv-field">
             {txDocs.length > 0 && <span>מסמכים מצורפים</span>}
-            <input ref={receiptRef} type="file" accept="image/*,.pdf,.heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) attachReceipt(f); e.target.value = '' }} />
+            <input ref={receiptRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) attachReceipt(f); e.target.value = '' }} />
             {txDocs.map(d => (
               <div key={d.id} className="finv-receipt-row">
                 <button type="button" className="finv-receipt-open" onClick={() => openTxDoc(d.storage_path)}><Receipt size={15} /> {d.name}</button>
