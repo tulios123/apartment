@@ -73,6 +73,11 @@ export function useOnboardingState(onComplete: () => void) {
   if (draftRef.current === undefined) draftRef.current = loadOnboardingDraft<OnboardingDraft>(user?.id)
   const d0 = draftRef.current
 
+  // Synchronous re-entry guard for finish: `saving` is async React state, so two
+  // rapid taps can both enter handleFinish before the button disables — which would
+  // double-insert the contract/insurance/loans/mortgage. This ref blocks instantly.
+  const finishingRef = useRef(false)
+
   const [step, setStep] = useState<Step>(d0?.step && d0.step !== 'done' ? d0.step : 'welcome')
   // Direction of the last step change, so the wizard can slide forward vs back
   // (native RTL: forward enters from the leading edge, back from the trailing one).
@@ -575,6 +580,8 @@ export function useOnboardingState(onComplete: () => void) {
   // ── handleFinish ─────────────────────────────────────────────────────────────
   async function handleFinish() {
     if (!user) return
+    if (finishingRef.current) return   // a finish is already in flight — ignore the re-fire
+    finishingRef.current = true
     setSaving(true)
     setError(null)
     const failures: string[] = []
@@ -851,6 +858,7 @@ export function useOnboardingState(onComplete: () => void) {
       setError(e instanceof Error ? e.message : 'שגיאה בשמירה')
     } finally {
       setSaving(false)
+      finishingRef.current = false
     }
   }
 

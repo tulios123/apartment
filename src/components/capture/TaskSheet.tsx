@@ -44,8 +44,12 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
     setTimeout(onClose, 480)
   }
 
+  // Once anything is typed, a scrim-tap / Esc / swipe-down should MINIMIZE (keep the
+  // draft) rather than silently discard it — same guard ExpenseSheet uses.
+  const hasData = title.trim() !== '' || due !== ''
+
   return (
-    <BottomSheet open={open} onClose={onClose} title="משימה חדשה" minimizable={false}>
+    <BottomSheet open={open} onClose={onClose} title="משימה חדשה" minimizable={hasData}>
       <input
         className="cap-title"
         value={title}

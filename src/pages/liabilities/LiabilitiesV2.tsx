@@ -56,6 +56,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const [lForm, setLForm] = useState(emptyLoan)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [actionErr, setActionErr] = useState<string | null>(null)
 
   // ── AI document scan (mortgage statement / loan doc → review form) ──
   type TrackDraft = typeof emptyTrack
@@ -289,14 +290,25 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     setSaving(false)
   }
 
-  async function removeTrack(id: string) { await deleteMortgageTrack(id); refetchM() }
-  async function removeLoan(id: string) { await deleteLoan(id); refetchL() }
+  async function removeTrack(id: string) {
+    setActionErr(null)
+    try { await deleteMortgageTrack(id) }
+    catch { setActionErr('מחיקת המסלול נכשלה — נסו שוב') }
+    finally { refetchM() }
+  }
+  async function removeLoan(id: string) {
+    setActionErr(null)
+    try { await deleteLoan(id) }
+    catch { setActionErr('מחיקת ההלוואה נכשלה — נסו שוב') }
+    finally { refetchL() }
+  }
 
   if (errorM || errorL) return <PageError message={errorM || errorL || 'שגיאה'} />
 
   return (
     <div className={embedded ? 'liav liav-embedded' : 'page liav'}>
       {!embedded && <div className="page-header"><h1>התחייבויות</h1></div>}
+      {actionErr && <div className="liav-form-err" role="alert">{actionErr}</div>}
 
       {(loadingM || loadingL) ? <SkeletonList rows={4} /> : (
         <>

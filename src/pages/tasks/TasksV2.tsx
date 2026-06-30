@@ -41,6 +41,8 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const [saving, setSaving] = useState(false)
   const [editErr, setEditErr] = useState<string | null>(null)
   const [addingTitle, setAddingTitle] = useState('')
+  const [addErr, setAddErr] = useState<string | null>(null)
+  const [actionErr, setActionErr] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [attaching, setAttaching] = useState(false)
   const [followup, setFollowup] = useState<TaskFollowup | null>(null)
@@ -84,16 +86,24 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    if (!addingTitle.trim()) return
+    const title = addingTitle.trim()
+    if (!title || saving) return   // guard re-entry: double-Enter must not double-create
     setSaving(true)
-    await createTask({
-      title: addingTitle.trim(), category: 'כללי', due_date: null, due_time: null,
-      status: 'open', source: 'manual', is_recurring: false, recurrence_days: null,
-      property_id: null, recurring_item_id: null, transaction_id: null,
-    })
-    setAddingTitle('')
-    setSaving(false)
-    refetch()
+    setAddErr(null)
+    try {
+      const { error } = await createTask({
+        title, category: 'כללי', due_date: null, due_time: null,
+        status: 'open', source: 'manual', is_recurring: false, recurrence_days: null,
+        property_id: null, recurring_item_id: null, transaction_id: null,
+      })
+      if (error) { setAddErr('לא הצלחנו להוסיף את המשימה — נסו שוב'); return }
+      setAddingTitle('')   // clear only on success — never lose the typed text on failure
+      refetch()
+    } catch {
+      setAddErr('לא הצלחנו להוסיף את המשימה — נסו שוב')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function openEdit(t: Task) {
@@ -105,20 +115,38 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   async function handleEditSave() {
     if (!editing) return
     if (!editForm.title.trim()) { setEditErr('יש להזין כותרת למשימה'); return }
+    if (saving) return
     setEditErr(null)
     setSaving(true)
-    await updateTask(editing.id, {
-      title: editForm.title.trim(), category: editForm.category,
-      due_date: editForm.due_date || null,
-      due_time: (editForm.due_date && editForm.due_time) ? editForm.due_time : null,
-      status: editForm.status,
-    })
-    setDrawerOpen(false); setEditing(null); setSaving(false)
-    refetch()
+    try {
+      const { error } = await updateTask(editing.id, {
+        title: editForm.title.trim(), category: editForm.category,
+        due_date: editForm.due_date || null,
+        due_time: (editForm.due_date && editForm.due_time) ? editForm.due_time : null,
+        status: editForm.status,
+      })
+      // On failure keep the drawer open with the edits intact — don't close as if saved.
+      if (error) { setEditErr('לא הצלחנו לשמור — נסו שוב'); return }
+      setDrawerOpen(false); setEditing(null)
+      refetch()
+    } catch {
+      setEditErr('לא הצלחנו לשמור — נסו שוב')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id: string) {
-    await deleteTask(id); setConfirmDeleteId(null); refetch()
+    setActionErr(null)
+    try {
+      const { error } = await deleteTask(id)
+      if (error) setActionErr('מחיקת המשימה נכשלה — נסו שוב')
+    } catch {
+      setActionErr('מחיקת המשימה נכשלה — נסו שוב')
+    } finally {
+      setConfirmDeleteId(null)
+      refetch()
+    }
   }
 
   function toggleDone(t: Task) {
@@ -143,6 +171,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
       {loading && <SkeletonList rows={4} />}
       {error && <div className="form-error" role="alert">{error}</div>}
+      {actionErr && <div className="form-error" role="alert">{actionErr}</div>}
 
       {!loading && (
         <>
@@ -154,9 +183,10 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
                 className="tav-quickadd-input"
                 placeholder="הקלד משימה ולחץ Enter…"
                 value={addingTitle}
-                onChange={e => setAddingTitle(e.target.value)}
+                onChange={e => { setAddingTitle(e.target.value); if (addErr) setAddErr(null) }}
               />
             </form>
+            {addErr && <div className="form-error" role="alert">{addErr}</div>}
 
             <div className="tav-section-head">
               <span className="tav-bucket-dot accent" />

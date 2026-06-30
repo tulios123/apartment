@@ -176,11 +176,16 @@ export default function Insurance() {
   }
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [actionErr, setActionErr] = useState<string | null>(null)
 
   async function handleDelete(id: string) {
-    await deleteInsurancePolicy(id)
-    setConfirmDeleteId(null)
-    refetch()
+    setActionErr(null)
+    try { await deleteInsurancePolicy(id) }
+    catch { setActionErr('מחיקת הפוליסה נכשלה — נסו שוב') }
+    finally {
+      setConfirmDeleteId(null)
+      refetch()
+    }
   }
 
   function daysUntilRenewal(endDate: string): number {
@@ -195,6 +200,7 @@ export default function Insurance() {
 
   return (
     <>
+      {actionErr && <div className="form-error" role="alert">{actionErr}</div>}
       {/* Top action bar only once there are policies — when empty, the empty-state
           below owns the single add CTA (matching the Tasks/Documents pattern). */}
       {policies.length > 0 && (

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 type Props = {
@@ -23,12 +23,24 @@ export function ConfirmDialog({
   confirmLabel = 'אישור', cancelLabel = 'ביטול', tone = 'default',
   onConfirm, onCancel,
 }: Props) {
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
+  const cancelBtnRef = useRef<HTMLButtonElement | null>(null)
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onCancel])
+
+  // Move focus into the dialog on open (the safe Cancel action — so a stray Enter
+  // never confirms a destructive action), and restore it to the trigger on close.
+  useEffect(() => {
+    if (!open) return
+    restoreFocusRef.current = document.activeElement as HTMLElement | null
+    cancelBtnRef.current?.focus()
+    return () => { restoreFocusRef.current?.focus?.() }
+  }, [open])
 
   if (!open) return null
 
@@ -49,7 +61,7 @@ export function ConfirmDialog({
           >
             {confirmLabel}
           </button>
-          <button className="confirm-btn confirm-cancel" onClick={onCancel}>
+          <button ref={cancelBtnRef} className="confirm-btn confirm-cancel" onClick={onCancel}>
             {cancelLabel}
           </button>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { CaretRight, CaretLeft } from '@phosphor-icons/react'
 import './calendar-popover.css'
@@ -20,6 +20,14 @@ const isoLocal = (y: number, m: number, d: number) =>
 export default function CalendarPopover({ open, value, onSelect, onClose, max }: Props) {
   const base = value ? new Date(value) : new Date()
   const [view, setView] = useState({ y: base.getFullYear(), m: base.getMonth() })
+
+  // Each time the popover opens, jump to the selected date's month — not wherever
+  // the user last navigated to in a previous open.
+  useEffect(() => {
+    if (!open) return
+    const b = value ? new Date(value) : new Date()
+    setView({ y: b.getFullYear(), m: b.getMonth() })
+  }, [open, value])
 
   if (!open) return null
 
