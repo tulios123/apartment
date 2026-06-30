@@ -100,16 +100,16 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     return { balance, interestPaid, interestLeft, endYear, pay, paidPct }
   }
 
-  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
-  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setDrawerOpen(true) }
+  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setActionErr(null); setDrawerOpen(true) }
+  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setActionErr(null); setDrawerOpen(true) }
   function editTrack(t: MortgageTrack) {
-    setKind('mortgage'); setEditId(t.id); setFormError(null)
+    setKind('mortgage'); setEditId(t.id); setFormError(null); setActionErr(null)
     setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
     setGraceOn((t.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }
   function editLoan(l: Loan) {
-    setKind('loan'); setEditId(l.id); setFormError(null)
+    setKind('loan'); setEditId(l.id); setFormError(null); setActionErr(null)
     setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? monthDayISO(new Date()) })
     setGraceOn((l.grace_months ?? 0) > 0)
     setDrawerOpen(true)

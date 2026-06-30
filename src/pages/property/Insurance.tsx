@@ -140,11 +140,13 @@ export default function Insurance() {
 
   function openNew() {
     setEditing(null)
+    setActionErr(null)   // moving on clears any stale delete-failure banner
     setShowModal(true)
   }
 
   function openEdit(p: InsurancePolicy) {
     setEditing(p)
+    setActionErr(null)
     setShowModal(true)
   }
 

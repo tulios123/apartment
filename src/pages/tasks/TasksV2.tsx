@@ -109,6 +109,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   function openEdit(t: Task) {
     setEditForm({ title: t.title, category: t.category, due_date: t.due_date ?? '', due_time: t.due_time?.slice(0, 5) ?? '', status: t.status })
     setEditErr(null)
+    setActionErr(null)   // moving on clears any stale delete-failure banner
     setEditing(t); setDrawerOpen(true)
   }
 
@@ -150,6 +151,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   }
 
   function toggleDone(t: Task) {
+    if (actionErr) setActionErr(null)   // moving on clears any stale delete-failure banner
     const newStatus = t.status === 'done' ? 'open' : 'done'
     // Optimistic: flip locally first so the tap feels instant; persist in the
     // background and only reload if the write fails.
