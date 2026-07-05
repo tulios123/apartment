@@ -49,6 +49,13 @@ export function MortgageStep() {
   const effectiveTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
   const incompleteTracks = effectiveTracks.filter(t => !trackReady(t))
 
+  // A brand-new track typed into the inline form but not yet saved to the list — it
+  // isn't in `tracks`, so without this it would be silently dropped on "המשך".
+  const trackHasData = (d: typeof trackForm) => (parseFloat(d.principal) || 0) > 0 || trackEffectiveRate(d) > 0 || !!d.term_months
+  const pendingNew = showTrackForm && editingIdx === null && trackHasData(trackForm)
+  const pendingNewReady = pendingNew && trackReady(trackForm)
+  const unsavedTracks = pendingNew && !trackReady(trackForm) ? [...incompleteTracks, trackForm] : incompleteTracks
+
   // Save + collapse the open track when ready, otherwise flag exactly what's missing.
   const finalizeTrack = (i: number) => {
     if (trackReady(trackForm)) { saveTrackEdit(i); setSaveAttempted(false) }
@@ -67,7 +74,8 @@ export function MortgageStep() {
   return (
     <form onSubmit={e => {
       e.preventDefault()
-      if (incompleteTracks.length > 0) { setContinuePrompt(true); return }
+      if (pendingNewReady) addTrack()   // auto-save a fully-filled new track instead of dropping it
+      if (unsavedTracks.length > 0) { setContinuePrompt(true); return }
       if (editingIdx !== null && trackReady(trackForm)) saveTrackEdit(editingIdx)
       setLoanForm(emptyLoan(keyDeliveryDate || undefined))
       advance('loans')
@@ -248,7 +256,7 @@ export function MortgageStep() {
             <div className="onboarding-dialog-title">חסרים פרטים במסלול</div>
             <p className="onboarding-dialog-lead">אם תמשיכו, המסלול הזה לא יישמר:</p>
             <ul className="onboarding-dialog-list">
-              {incompleteTracks.map((t, idx) => (
+              {unsavedTracks.map((t, idx) => (
                 <li key={idx}>
                   <strong>{trackTypeLabel(t.track_type)}</strong> — חסר {trackMissing(t).join(', ')}
                 </li>
@@ -267,6 +275,7 @@ export function MortgageStep() {
               }}>חזרה להשלמה</button>
               <button type="button" className="btn-onboard-skip onboarding-cta-full" onClick={() => {
                 setTracks(prev => prev.filter(trackReady))
+                setShowTrackForm(false)   // discard the unsaved new-track form too
                 setEditingIdx(null)
                 setContinuePrompt(false)
                 setLoanForm(emptyLoan(keyDeliveryDate || undefined))
