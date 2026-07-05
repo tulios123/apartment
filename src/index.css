@@ -4293,6 +4293,20 @@ input[type="date"] {
   font-size: 2.5rem;
 }
 
+/* B4: one flat empty-state icon — a Phosphor glyph in a token-tinted circle.
+   Shared by the tasks/documents empty states (and matches Home's clear card). */
+.empty-flat-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+}
+.empty-flat-icon.ok { background: var(--success-bg); color: var(--success-text); }
+
 .empty-state-cta p {
   margin: 0;
   font-size: 1rem;

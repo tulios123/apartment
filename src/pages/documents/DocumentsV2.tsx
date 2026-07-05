@@ -1,12 +1,11 @@
 import React, { useState, useRef, useMemo } from 'react'
-import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, X, Plus, Eye, Trash, UploadSimple, PencilSimple } from '@phosphor-icons/react'
+import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, X, Plus, Eye, Trash, UploadSimple, PencilSimple, FolderOpen } from '@phosphor-icons/react'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/format'
 import type { DocumentType } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
-import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './documents-v2.css'
 import { DateField } from '../../components/ui/DateField'
 
@@ -125,7 +124,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
       {!loading && documents.length === 0 && (
         <div className="docv-empty">
-          <div className="docv-empty-illu"><ClayIllustration variant="folder" /></div>
+          <div className="empty-flat-icon"><FolderOpen size={30} weight="duotone" /></div>
           <p>עדיין לא הועלו מסמכים</p>
           <button className="docv-empty-btn" onClick={openNew}><UploadSimple size={17} weight="bold" /> העלה מסמך</button>
         </div>
@@ -186,7 +185,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
             <span>קובץ</span>
             <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" style={{ display: 'none' }} onChange={e => setFile(e.target.files?.[0] ?? null)} />
             <button type="button" className="docv-filepick" onClick={() => fileInputRef.current?.click()}>
-              <UploadSimple size={17} /> {file ? file.name : 'בחר קובץ'}
+              <UploadSimple size={17} /> {file ? file.name : 'בחרו קובץ'}
             </button>
           </div>
         )}
