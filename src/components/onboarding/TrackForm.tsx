@@ -14,8 +14,8 @@ export function TrackForm({ onSave, onCancel, alert }: { onSave: () => void; onC
   } = useOnboarding()
 
   const principalDefault = price > 0 ? String(Math.round(price * 0.75)) : ''
-  const primeDefault = trackForm.track_type === 'prime' ? '6.250' : '3.500'
-  const marginDefault = trackForm.track_type === 'prime' ? '-0.500' : '1.500'
+  const primeDefault = trackForm.track_type === 'prime' ? '6.25' : '3.5'
+  const marginDefault = trackForm.track_type === 'prime' ? '-0.5' : '1.5'
   const ph = (id: string, val: string, def: string) => ({
     className: !val && !!def && focusedInput !== id ? 'input-ph-grey' : '',
     value: focusedInput === id ? val : (val || def),
@@ -62,7 +62,7 @@ export function TrackForm({ onSave, onCancel, alert }: { onSave: () => void; onC
         <div className="onboarding-field">
           <label>ריבית שנתית (%)</label>
           <input type="number" step="0.01"
-            {...ph('tf.annual_rate', trackForm.annual_rate, '5.000')}
+            {...ph('tf.annual_rate', trackForm.annual_rate, '5')}
             onChange={e => setTF('annual_rate', e.target.value)} />
         </div>
       )}

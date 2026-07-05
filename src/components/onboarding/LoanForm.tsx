@@ -57,14 +57,14 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
                 <div className="onboarding-field">
                   <label>{loanForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
                   <input type="number" step="0.01"
-                    placeholder={loanForm.track_type === 'prime' ? '6.000' : '3.500'}
+                    placeholder={loanForm.track_type === 'prime' ? '6' : '3.5'}
                     value={loanForm.prime_rate}
                     onChange={e => setLF('prime_rate', e.target.value)} />
                 </div>
                 <div className="onboarding-field">
                   <label>מרווח % (פריים מינוס = שלילי)</label>
                   <input type="number" step="0.01"
-                    placeholder={loanForm.track_type === 'prime' ? '-0.500' : '1.500'}
+                    placeholder={loanForm.track_type === 'prime' ? '-0.5' : '1.5'}
                     value={loanForm.margin}
                     onChange={e => setLF('margin', e.target.value)} />
                 </div>
@@ -79,7 +79,7 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
             <div className="onboarding-row">
               <div className="onboarding-field">
                 <label>ריבית שנתית (%)</label>
-                <input type="number" step="0.01" min="0" placeholder="5.000" value={loanForm.annual_rate}
+                <input type="number" step="0.01" min="0" placeholder="5" value={loanForm.annual_rate}
                   onChange={e => setLF('annual_rate', e.target.value)} />
               </div>
               <div className="onboarding-field">

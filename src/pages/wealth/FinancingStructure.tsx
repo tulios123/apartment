@@ -142,10 +142,10 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
           <div className="wlth-vehicle-head">
             <span className="wlth-vehicle-icon"><Handshake size={20} weight="duotone" /></span>
             <div className="wlth-vehicle-main">
-              <div className="wlth-vehicle-title">{l.label || 'הלוואת בלון'}{l.lender ? <span className="wlth-vehicle-meta"> · {l.lender}</span> : null}</div>
+              <div className="wlth-vehicle-title">{l.label || 'הלוואת בלון'}{l.lender && l.lender !== (l.label || 'הלוואת בלון') ? <span className="wlth-vehicle-meta"> · {l.lender}</span> : null}</div>
               <div className="wlth-vehicle-sub">ללא ריבית · ללא תשלום חודשי · נפרעת במכירה</div>
             </div>
-            <div className="wlth-vehicle-bal"><b>{fmt(l.principal)}</b><span>נפרע במכירה</span></div>
+            <div className="wlth-vehicle-bal"><b>{fmt(l.principal)}</b><span>נפרעת במכירה</span></div>
           </div>
         </div>
       ))}

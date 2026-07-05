@@ -35,9 +35,11 @@ type Action =
 
 function greeting(name: string): { text: string; Icon: typeof Sun } {
   const h = new Date().getHours()
-  if (h < 12) return { text: `בוקר טוב, ${name}`, Icon: Sun }
-  if (h < 18) return { text: `צהריים טובים, ${name}`, Icon: CloudSun }
-  return { text: `ערב טוב, ${name}`, Icon: MoonStars }
+  // B8: only append a name when we have a real display name — never an email prefix.
+  const who = name ? `, ${name}` : ''
+  if (h < 12) return { text: `בוקר טוב${who}`, Icon: Sun }
+  if (h < 18) return { text: `צהריים טובים${who}`, Icon: CloudSun }
+  return { text: `ערב טוב${who}`, Icon: MoonStars }
 }
 
 export default function HomeScreen() {
@@ -67,10 +69,8 @@ export default function HomeScreen() {
   // dialog (not a native confirm), and only after the completion actually persisted.
   const [followup, setFollowup] = useState<TaskFollowup | null>(null)
 
-  const firstName =
-    (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ||
-    user?.email?.split('@')[0] ||
-    'שלום'
+  // B8: real display name only — no email prefix / technical username fallback.
+  const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] || ''
   const { text: hello, Icon: HelloIcon } = greeting(firstName)
 
   const todayStr = todayISO()
@@ -306,7 +306,7 @@ export default function HomeScreen() {
                 <div className="hs-clear-icon"><CheckCircle size={30} weight="fill" /></div>
                 <div>
                   <div className="hs-clear-title">הכול מטופל</div>
-                  <div className="hs-clear-sub">הנכס עובד בשבילך. ניצור קשר כשמשהו ידרוש תשומת לב.</div>
+                  <div className="hs-clear-sub">הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.</div>
                 </div>
               </div>
             ) : (
