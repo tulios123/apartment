@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Bank, CreditCard, Handshake, CaretDown, PencilSimple } from '@phosphor-icons/react'
 import { trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanEndDate } from '../../lib/loans'
-import { formatCurrency, todayISO } from '../../lib/format'
+import { formatCurrency, todayISO, parseLocalISO, monthDayISO } from '../../lib/format'
 import type { MortgageTrack, Loan, TrackType } from '../../types'
 import type { MortgageSummary } from '../../hooks/useMortgageData'
 
@@ -49,6 +49,24 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
     return Math.max(max, y)
   }, 0)
 
+  // A6: show what the bank actually withdraws THIS month (schedule-bounded), not the
+  // post-grace Shpitzer level — so the card matches the תזרים forecast row. A track in
+  // its grace window pays interest-only; surface that with a "גרייס עד" tag + the full
+  // (post-grace) payment as a secondary line, instead of silently showing the higher figure.
+  const curMonth = todayISO().slice(0, 7)
+  const currentMonthlyPayment = tracks.reduce((s, t) => {
+    const row = trackSchedule(t).find(r => r.date.slice(0, 7) === curMonth)
+    return s + (row?.payment ?? 0)
+  }, 0)
+  const todayStr = todayISO()
+  const graceEnds = tracks
+    .filter(t => (t.grace_months ?? 0) > 0)
+    .map(t => { const d = parseLocalISO(t.start_date); d.setMonth(d.getMonth() + (t.grace_months ?? 0)); return monthDayISO(d) })
+    .filter(end => end > todayStr)
+    .sort()
+  const inGrace = graceEnds.length > 0
+  const graceUntil = inGrace ? (() => { const [y, m] = graceEnds[graceEnds.length - 1].split('-'); return `${Number(m)}.${y}` })() : ''
+
   function trackBalance(t: MortgageTrack): number {
     const today = todayISO()
     const sched = trackSchedule(t)
@@ -71,7 +89,8 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
             <span className="wlth-vehicle-icon"><Bank size={20} weight="duotone" /></span>
             <div className="wlth-vehicle-main">
               <div className="wlth-vehicle-title">משכנתא ראשית <span className="wlth-vehicle-meta">· {tracks.length} מסלולים</span></div>
-              <div className="wlth-vehicle-sub">בלנדד {blendedRate.toFixed(1)}% · {fmt(summary.monthlyPayment)}/חודש · נפרעו {Math.round(mortgagePaidPct)}%{mortgageEndYear > 0 ? ` · עד ${mortgageEndYear}` : ''}</div>
+              <div className="wlth-vehicle-sub">בלנדד {blendedRate.toFixed(1)}% · {fmt(currentMonthlyPayment)}/חודש · נפרעו {Math.round(mortgagePaidPct)}%{mortgageEndYear > 0 ? ` · עד ${mortgageEndYear}` : ''}</div>
+              {inGrace && <div className="wlth-vehicle-grace">גרייס עד {graceUntil} · תשלום מלא {fmt(summary.monthlyPayment)}</div>}
             </div>
             <div className="wlth-vehicle-bal"><b>{fmt(mortgageBalance)}</b><span>יתרה</span></div>
             <CaretDown className="wlth-vehicle-caret" size={16} weight="bold" />
