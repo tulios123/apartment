@@ -171,6 +171,11 @@ Each verified real by a second agent. Highest priority first: **R15** (push leak
 - **הבעיה:** The Home grace branch never checks loans. monthlyLoan = loansSummary.monthlyPayment returns the post-grace Shpitzer unconditionally, so a loan currently inside its own grace window is shown at the higher post-grace amount, overstating fixed expenses until it exits grace. Separate code path from W1.
 - **תיקון מומלץ:** Same date-aware approach — sum loanPaymentForMonth(l, currentYYYY-MM)?.amount across monthly loans (already interest-only during the loan's grace). Bundle with the W1 fix. **Financial — your call.**
 
+### W7 · [med] Paid-off / not-yet-started track or loan still counted in the monthly-payment total on Home & Liabilities, but ₪0 in Finances (wave 5)
+- **איפה:** src/hooks/useMortgageData.ts:72 + src/hooks/useLoansData.ts:66 (summary.monthlyPayment) → HomeScreen.tsx:88-89 & LiabilitiesV2.tsx:88; diverges from src/lib/projections.ts:116-145 (monthlyVirtualEntries, used by Finances).
+- **הבעיה:** summary.monthlyPayment sums monthlyPayment()/loanMonthlyPayment() over EVERY track/loan with no bound on start_date or term-end. A vehicle whose term fully elapsed (paid off, record kept) — or whose start_date is in the future — keeps contributing its full payment to Home's "הוצאות קבועות"/expectedNet and the Liabilities total, FOREVER. Finances derives the same figure from the schedule ([start, start+term)) and correctly shows ₪0. So the two screens disagree for identical data; Finances is right. Same root as W1/W2 (summary.monthlyPayment isn't schedule-bounded).
+- **תיקון מומלץ:** Bundle with the W1/W2 grace fix — make summary.monthlyPayment sum each vehicle's scheduled payment for the CURRENT month (trackSchedule row where date.slice(0,7)===currentYYYY-MM; loanPaymentForMonth(l,currentMonth)?.amount), so Home/Liabilities/Finances all reconcile from one schedule-bounded source. **Financial — your call.**
+
 ### W4 · [low] Onboarding equity-% field accepts values >100%, inflating stored self-equity
 - **איפה:** src/components/onboarding/InvestmentStep.tsx:64-73 (percent input, no max) → useOnboardingState.ts:233-235 (equityAmount) → handleFinish:745 (self_equity).
 - **הבעיה:** In percent mode the input is type=number with no max. Typing 150 makes equity = price × 1.5, saved as self_equity with no warning — corrupts equity/net-worth/ROI (equity can exceed the property price). A fat-finger (1255 vs 25) stores a wildly wrong figure.
@@ -204,9 +209,9 @@ Most were already resolved by the recent work; flagging only the genuinely-open 
   - Plus R1/R5 from the hunt cover the loans-step "can press next without value / no alert" item.
 
 ## Final state (morning summary)
-- **4 bug-hunt waves** (loop-until-dry): w1 = 8-area code read (24 bugs), w2 = flows/recovery/consistency/a11y/races (13), w3 = security/money-math/validation/lifecycle/edge-data (8), w4 = convergence: AI-scan/formatting/push-engine/query-RLS/PWA + completeness critic (8). **53 verified-real bugs total.** Rate fell 24→13→8→8; w4 was mostly mechanical (string-numeric coercion) — the well is nearly dry.
-- **Applied 31 safe fixes** across 6 commits (3c34689, e4c85a6, e182bff, a5cc146, f7e7140, 8a81617) + a stale-banner polish. Each wave's fixes regression-checked by a separate adversarial workflow: **0 regressions** in all four.
-- **25 flagged** (R1–R16 · N6–N8 · W1/W2/W4 · V1-edge/V2/V3) — behavioral/financial/security/critical-path, with exact location + recommended fix. Not auto-applied overnight per your instruction.
+- **5 bug-hunt waves (loop-until-dry — CONVERGED):** w1 = 8-area code read (24), w2 = flows/recovery/consistency/a11y/races (13), w3 = security/money/validation/lifecycle/edge (8), w4 = AI-scan/formatting/push/query-RLS/PWA + critic (8), w5 = generation-engine/cross-screen-reconcile/numpad/settings/high-sev critic (**1**). **54 verified-real bugs total.** Rate fell 24→13→8→8→1 — in w5, four of five lenses (generation, numpad, settings, high-severity critic) returned EMPTY. **The well is dry.**
+- **Applied 31 safe fixes** across 6 commits (3c34689, e4c85a6, e182bff, a5cc146, f7e7140, 8a81617) + a stale-banner polish. Each wave's fixes regression-checked by a separate adversarial workflow: **0 regressions** in all five.
+- **26 flagged** (R1–R16 · N6–N8 · W1/W2/W4/W7 · V1-edge/V2/V3) — behavioral/financial/security/critical-path, with exact location + recommended fix. Not auto-applied overnight per your instruction.
 - **Live smoke** (dev account, AI-cost-free via the bypass): onboarding completes end-to-end (handleFinish OK), all main screens render, **no console errors, no error boundary**.
 - **Green every commit:** tsc clean · 72/72 tests · build ok.
 - **Not done (by design):** the monthly-close feature (you said skip); push-subscription hardening — folded into R15 (security-sensitive, needs your review before touching the family push lifecycle).
