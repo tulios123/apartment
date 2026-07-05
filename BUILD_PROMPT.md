@@ -1,3 +1,5 @@
+> **מסמך היסטורי** — הושלם ברובו; שמות-הקבצים כאן ישנים (המסכים הוחלפו מאז). הרשימה החיה: `ROADMAP.md`.
+
 # Build Prompt — Apartment UX/UI overhaul
 
 > Paste everything below into a **new chat**. It is self-contained.
