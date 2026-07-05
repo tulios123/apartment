@@ -3,6 +3,7 @@ import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType } from '../../types'
 import { formatNum } from './types'
 import { useOnboarding } from './context'
+import { DateField } from '../ui/DateField'
 
 // Inline editor for a single supplementary/balloon loan.
 export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCancel: () => void; alert?: string[] | null }) {
@@ -90,8 +91,8 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
           )}
           <div className="onboarding-field">
             <label>תאריך התחלה</label>
-            <input type="date" value={loanForm.start_date}
-              onChange={e => setLF('start_date', e.target.value)} />
+            <DateField value={loanForm.start_date}
+              onChange={v => setLF('start_date', v)} ariaLabel="תאריך התחלה" />
           </div>
           <label className="onboarding-checkbox-row">
             <input type="checkbox" checked={loanGraceOn}

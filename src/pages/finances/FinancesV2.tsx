@@ -21,6 +21,7 @@ import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError, EmptyState } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './finances-v2.css'
+import { DateField } from '../../components/ui/DateField'
 
 const MONTH_NAMES = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
 const MONTH_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ']
@@ -396,8 +397,8 @@ export default function FinancesV2() {
 
       {view === 'range' && (
         <div className="finv-rangebar">
-          <label className="finv-range-field"><span>מ־</span><input type="date" value={rangeFrom} max={rangeTo} onChange={e => { setRangeTouched(true); setRangeFrom(e.target.value) }} /></label>
-          <label className="finv-range-field"><span>עד</span><input type="date" value={rangeTo} min={rangeFrom} max={todayISO()} onChange={e => { setRangeTouched(true); setRangeTo(e.target.value) }} /></label>
+          <label className="finv-range-field"><span>מ־</span><DateField value={rangeFrom} max={rangeTo} onChange={v => { setRangeTouched(true); setRangeFrom(v) }} ariaLabel="מתאריך" /></label>
+          <label className="finv-range-field"><span>עד</span><DateField value={rangeTo} min={rangeFrom} max={todayISO()} onChange={v => { setRangeTouched(true); setRangeTo(v) }} ariaLabel="עד תאריך" /></label>
           {(property?.key_delivery_date || property?.purchase_date) && (
             <button className="finv-range-preset" onClick={() => { const start = property?.key_delivery_date ?? property?.purchase_date; if (!start) return; setRangeTouched(true); setRangeFrom(start); setRangeTo(todayISO()) }}>
               מקבלת מפתח
@@ -561,7 +562,7 @@ export default function FinancesV2() {
           <button className={form.direction === 'income' ? 'on' : ''} onClick={() => setDir('income')}>הכנסה</button>
         </div>
         <label className="finv-field"><span>סכום ₪</span><input type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} autoFocus={drawerOpen} /></label>
-        <label className="finv-field"><span>תאריך</span><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></label>
+        <label className="finv-field"><span>תאריך</span><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} ariaLabel="תאריך" /></label>
         <label className="finv-field"><span>קטגוריה</span><select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
         <label className="finv-field"><span>אמצעי תשלום</span><select value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>{PAYMENT_METHODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</select></label>
         <label className="finv-field"><span>תיאור</span><input type="text" placeholder="אופציונלי" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></label>

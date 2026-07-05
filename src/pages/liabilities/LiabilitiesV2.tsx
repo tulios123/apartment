@@ -18,6 +18,7 @@ import { ScanDocList } from './ScanDocList'
 import { ScanReview, type ScanDraft } from './ScanReview'
 import type { MortgageTrack, Loan, TrackType, LoanRepaymentType } from '../../types'
 import './liabilities-v2.css'
+import { DateField } from '../../components/ui/DateField'
 
 const TRACK_LABEL: Record<TrackType, string> = { prime: 'פריים', fixed_unlinked: 'קבועה לא צמודה', fixed_linked: 'קבועה צמודה', variable: 'משתנה' }
 const TRACK_COLOR: Record<TrackType, string> = { prime: 'blue', fixed_unlinked: 'teal', fixed_linked: 'purple', variable: 'amber' }
@@ -475,7 +476,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
               <input type="checkbox" checked={graceOn} onChange={e => { setGraceOn(e.target.checked); if (e.target.checked && !Number(tForm.grace_months)) setTForm(f => ({ ...f, grace_months: '1' })) }} />
               <span>תקופת גרייס</span>
             </label>
-            <label className="liav-field"><span>תאריך התחלה</span><input type="date" value={tForm.start_date} onChange={e => setTForm(f => ({ ...f, start_date: e.target.value }))} /></label>
+            <label className="liav-field"><span>תאריך התחלה</span><DateField value={tForm.start_date} onChange={v => setTForm(f => ({ ...f, start_date: v }))} ariaLabel="תאריך התחלה" /></label>
             <label className="liav-field"><span>תווית (אופציונלי)</span><input type="text" value={tForm.label} onChange={e => setTForm(f => ({ ...f, label: e.target.value }))} /></label>
           </>
         ) : (
@@ -514,7 +515,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 </label>
               </>
             )}
-            <label className="liav-field"><span>תאריך התחלה</span><input type="date" value={lForm.start_date} onChange={e => setLForm(f => ({ ...f, start_date: e.target.value }))} /></label>
+            <label className="liav-field"><span>תאריך התחלה</span><DateField value={lForm.start_date} onChange={v => setLForm(f => ({ ...f, start_date: v }))} ariaLabel="תאריך התחלה" /></label>
             <label className="liav-field"><span>תווית (אופציונלי)</span><input type="text" value={lForm.label} onChange={e => setLForm(f => ({ ...f, label: e.target.value }))} /></label>
           </>
         )}

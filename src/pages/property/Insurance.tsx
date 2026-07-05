@@ -11,6 +11,7 @@ import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
 import { useDocuments } from '../../hooks/useDocuments'
 import { getReceiptSignedUrl } from '../../lib/storage'
+import { DateField } from '../../components/ui/DateField'
 
 const INSURANCE_TYPES = ['מבנה', 'חיים', 'משכנתא', 'תכולה', 'אחר']
 
@@ -109,11 +110,11 @@ function InsuranceForm({
       <div className="form-2col">
         <div className="form-row">
           <label>תאריך התחלה</label>
-          <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
+          <DateField value={form.start_date} onChange={v => set('start_date', v)} ariaLabel="תאריך התחלה" />
         </div>
         <div className="form-row">
           <label>תאריך סיום</label>
-          <input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+          <DateField value={form.end_date} onChange={v => set('end_date', v)} ariaLabel="תאריך סיום" />
         </div>
       </div>
       <div className="form-row">

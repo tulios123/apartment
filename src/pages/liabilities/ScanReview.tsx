@@ -3,6 +3,7 @@ import { Check, WarningCircle, CaretDown, CaretUp, LockSimple, CircleNotch, X, C
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import { formatCurrency, formatNum } from '../../lib/format'
 import type { TrackType, LoanRepaymentType } from '../../types'
+import { DateField } from '../../components/ui/DateField'
 
 export type TrackDraft = { track_type: TrackType; label: string; principal: string; annual_rate: string; term_months: string; grace_months: string; start_date: string }
 export type LoanDraft = { repayment_type: LoanRepaymentType; track_type: TrackType; label: string; lender: string; principal: string; annual_rate: string; prime_rate: string; margin: string; term_months: string; grace_months: string; start_date: string }
@@ -141,7 +142,7 @@ export function ScanReview({ kind, initial, saving, demo, onConfirm, onCancel }:
                       </label>
                       {kind === 'loan'
                         ? <label className={`liav-field${warn('annual_rate') ? ' liav-field-warn' : ''}`}><span>ריבית %</span><input type="number" step="0.01" value={d.annual_rate} onChange={e => set(i, 'annual_rate', e.target.value)} placeholder="הקלידו ריבית" /></label>
-                        : <label className="liav-field"><span>תאריך התחלה</span><input type="date" value={d.start_date} onChange={e => set(i, 'start_date', e.target.value)} /></label>}
+                        : <label className="liav-field"><span>תאריך התחלה</span><DateField value={d.start_date} onChange={v => set(i, 'start_date', v)} ariaLabel="תאריך התחלה" /></label>}
                     </div>
                   )}
 

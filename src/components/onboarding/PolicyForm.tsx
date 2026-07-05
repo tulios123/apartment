@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check } from '@phosphor-icons/react'
 import { INS_TYPES, formatNum, formatCurrency } from './types'
 import { useOnboarding } from './context'
+import { DateField } from '../ui/DateField'
 
 // Inline editor for a single insurance policy.
 export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
@@ -58,13 +59,13 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
       <div className="onboarding-row">
         <div className="onboarding-field">
           <label>תחילת כיסוי</label>
-          <input type="date" value={policyForm.start_date || keyDeliveryDate}
-            onChange={e => setPF('start_date', e.target.value)} />
+          <DateField value={policyForm.start_date || keyDeliveryDate}
+            onChange={v => setPF('start_date', v)} ariaLabel="תחילת כיסוי" />
         </div>
         <div className="onboarding-field">
           <label>סיום כיסוי</label>
-          <input type="date" value={policyForm.end_date}
-            onChange={e => setPF('end_date', e.target.value)} />
+          <DateField value={policyForm.end_date}
+            onChange={v => setPF('end_date', v)} ariaLabel="סיום כיסוי" />
         </div>
       </div>
       <p className="onboarding-running-total" style={{ opacity: 0.65 }}>

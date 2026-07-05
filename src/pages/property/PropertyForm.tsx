@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Property } from '../../types'
+import { DateField } from '../../components/ui/DateField'
 
 type PropertyFields = Partial<Omit<Property, 'id' | 'owner_id' | 'created_at'>>
 
@@ -154,11 +155,11 @@ export function PropertyForm({
       <div className="form-2col">
         <div className="form-row">
           <label>תאריך חתימת חוזה</label>
-          <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
+          <DateField value={purchaseDate} onChange={setPurchaseDate} ariaLabel="תאריך רכישה" />
         </div>
         <div className="form-row">
           <label>תאריך מסירת מפתח</label>
-          <input type="date" value={keyDeliveryDate} onChange={e => setKeyDeliveryDate(e.target.value)} />
+          <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} ariaLabel="מסירת מפתח" />
         </div>
       </div>
 

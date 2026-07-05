@@ -1,0 +1,43 @@
+/* A7: app-wide date picker trigger — looks like a standard text input, but always
+   shows the Hebrew d.M.yyyy value (or a muted "בחרו תאריך" hint) and opens the shared
+   CalendarPopover. Logical properties only, so it mirrors correctly in RTL. */
+.datefield {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.datefield.is-empty .datefield-text {
+  color: var(--text-muted);
+}
+
+.datefield-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.datefield-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.datefield:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}

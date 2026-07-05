@@ -5,6 +5,7 @@ import { FillExampleTop } from './FillExampleTop'
 import { DocFileList } from './DocFileList'
 import { emptyTrack, formatPrice } from './types'
 import { useOnboarding } from './context'
+import { DateField } from '../ui/DateField'
 
 export function PurchaseStep() {
   const {
@@ -93,11 +94,11 @@ export function PurchaseStep() {
         <div className="onboarding-row">
           <div className="onboarding-field">
             <label>תאריך חתימת חוזה</label>
-            <input type="date" value={signingDate} onChange={e => setSigningDate(e.target.value)} />
+            <DateField value={signingDate} onChange={setSigningDate} ariaLabel="תאריך חתימת חוזה" />
           </div>
           <div className="onboarding-field">
             <label>מסירת מפתח</label>
-            <input type="date" value={keyDeliveryDate} onChange={e => setKeyDeliveryDate(e.target.value)} />
+            <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} ariaLabel="מסירת מפתח" />
           </div>
         </div>
         <div className="onboarding-file-field" onClick={() => purchaseInputRef.current?.click()}>

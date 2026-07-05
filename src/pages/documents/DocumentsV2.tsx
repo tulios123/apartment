@@ -8,6 +8,7 @@ import type { DocumentType } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './documents-v2.css'
+import { DateField } from '../../components/ui/DateField'
 
 const DOC_TYPE_LABELS: Record<DocumentType, string> = {
   purchase_contract: 'חוזה רכישה',
@@ -179,7 +180,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
         <div className="docv-drawer-head"><h2>{editingId ? 'עריכת מסמך' : 'מסמך חדש'}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
         <label className="docv-field"><span>סוג</span><select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as DocumentType }))}>{DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
         <label className="docv-field"><span>שם{editingId ? '' : ' (אופציונלי)'}</span><input type="text" placeholder="ברירת מחדל: שם הקובץ" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></label>
-        <label className="docv-field"><span>תאריך (אופציונלי)</span><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></label>
+        <label className="docv-field"><span>תאריך (אופציונלי)</span><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} ariaLabel="תאריך" /></label>
         {!editingId && (
           <div className="docv-field">
             <span>קובץ</span>

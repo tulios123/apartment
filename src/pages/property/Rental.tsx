@@ -22,6 +22,7 @@ import { useDocuments, createDocument, updateDocument, deleteDocument } from '..
 import { getReceiptSignedUrl, uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { extractRental } from '../../lib/extractFinancing'
 import { ScanDocList } from '../liabilities/ScanDocList'
+import { DateField } from '../../components/ui/DateField'
 
 const emptyContract = {
   company_name: '',
@@ -181,6 +182,7 @@ function ContractForm({
     if (!form.company_name.trim()) return 'יש להזין את שם החברה או השוכר'
     if (!form.start_date) return 'יש לבחור את תאריך תחילת החוזה'
     if (!form.end_date) return 'יש לבחור את תאריך סיום החוזה'
+    if (!form.start_date || !form.end_date) return 'יש להזין תאריך התחלה וסיום לחוזה'
     if (form.end_date < form.start_date) return 'לא ניתן לשמור: תאריך הסיום מוקדם מתאריך ההתחלה'
     if (!form.monthly_rent || Number(form.monthly_rent) <= 0) return 'יש להזין את סכום שכר הדירה החודשי'
     return null
@@ -248,11 +250,11 @@ function ContractForm({
       </div>
       <div className="form-row">
         <label>תחילת חוזה</label>
-        <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} required />
+        <DateField value={form.start_date} onChange={v => set('start_date', v)} ariaLabel="תחילת חוזה" />
       </div>
       <div className="form-row">
         <label>סיום חוזה</label>
-        <input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} required />
+        <DateField value={form.end_date} onChange={v => set('end_date', v)} ariaLabel="סיום חוזה" />
       </div>
       <div className="form-row">
         <label>שכר דירה חודשי</label>

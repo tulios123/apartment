@@ -8,6 +8,7 @@ type Props = {
   value: string            // yyyy-mm-dd or ''
   onSelect: (date: string) => void
   onClose: () => void
+  min?: string             // yyyy-mm-dd — days before this are disabled
   max?: string             // yyyy-mm-dd — days after this are disabled
 }
 
@@ -17,7 +18,7 @@ const WD = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש']
 const isoLocal = (y: number, m: number, d: number) =>
   `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
-export default function CalendarPopover({ open, value, onSelect, onClose, max }: Props) {
+export default function CalendarPopover({ open, value, onSelect, onClose, min, max }: Props) {
   const base = value ? new Date(value) : new Date()
   const [view, setView] = useState({ y: base.getFullYear(), m: base.getMonth() })
 
@@ -65,7 +66,7 @@ export default function CalendarPopover({ open, value, onSelect, onClose, max }:
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1
             const iso = isoLocal(view.y, view.m, day)
-            const disabled = max != null && iso > max
+            const disabled = (max != null && iso > max) || (min != null && iso < min)
             const cls = `calpop-day${iso === value ? ' sel' : ''}${iso === todayIso ? ' today' : ''}${disabled ? ' disabled' : ''}`
             return <button key={day} className={cls} disabled={disabled} onClick={() => pick(day)}>{day}</button>
           })}

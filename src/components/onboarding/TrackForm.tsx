@@ -3,6 +3,7 @@ import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType } from '../../types'
 import { formatNum, formatCurrency } from './types'
 import { useOnboarding } from './context'
+import { DateField } from '../ui/DateField'
 
 // Inline editor for a single mortgage track. Used both for adding a new track
 // and editing a saved one (the parent supplies onSave/onCancel).
@@ -74,8 +75,8 @@ export function TrackForm({ onSave, onCancel, alert }: { onSave: () => void; onC
         </div>
         <div className="onboarding-field">
           <label>תאריך התחלה</label>
-          <input type="date" value={trackForm.start_date}
-            onChange={e => setTF('start_date', e.target.value)} />
+          <DateField value={trackForm.start_date}
+            onChange={v => setTF('start_date', v)} ariaLabel="תאריך התחלה" />
         </div>
       </div>
       <label className="onboarding-checkbox-row">

@@ -13,6 +13,7 @@ import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import './tasks-v2.css'
+import { DateField } from '../../components/ui/DateField'
 
 const CAT_ICON: Record<string, typeof Wrench> = {
   'תיקונים ותחזוקה': Wrench,
@@ -266,7 +267,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         <div className="tav-field">
           <span>תאריך יעד</span>
           <div className="tav-daterow">
-            <input type="date" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))} />
+            <DateField value={editForm.due_date} onChange={v => setEditForm(f => ({ ...f, due_date: v }))} ariaLabel="תאריך יעד" />
             {editForm.due_date && <input type="time" className="tav-timeinput" value={editForm.due_time} onChange={e => setEditForm(f => ({ ...f, due_time: e.target.value }))} aria-label="שעת יעד" />}
             {editForm.due_date && <button type="button" className="tav-dateclear" onClick={() => setEditForm(f => ({ ...f, due_date: '', due_time: '' }))} aria-label="הסר תאריך"><X size={16} /></button>}
           </div>

@@ -7,6 +7,7 @@ import { DocFileList } from './DocFileList'
 import { formatNum } from './types'
 import { monthDayISO, parseLocalISO } from '../../lib/format'
 import { useOnboarding } from './context'
+import { DateField } from '../ui/DateField'
 
 export function RentalStep() {
   const {
@@ -54,9 +55,8 @@ export function RentalStep() {
         <div className="onboarding-row">
           <div className="onboarding-field">
             <label>תאריך התחלה</label>
-            <input type="date" value={startDate}
-              onChange={e => {
-                const val = e.target.value
+            <DateField value={startDate} ariaLabel="תאריך התחלה"
+              onChange={val => {
                 setStartDate(val)
                 if (!endDate && val) {
                   const d = parseLocalISO(val)
@@ -68,7 +68,7 @@ export function RentalStep() {
           </div>
           <div className="onboarding-field">
             <label>תאריך סיום</label>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <DateField value={endDate} onChange={setEndDate} ariaLabel="תאריך סיום" />
           </div>
         </div>
         <div className="onboarding-field">
