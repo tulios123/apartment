@@ -84,7 +84,7 @@ export function InvestmentStep() {
           )}
           {price === 0 && (
             <p className="onboarding-running-total" style={{ marginTop: 4, opacity: 0.6 }}>
-              הזן מחיר רכישה כדי לחשב אחוז
+              הזינו מחיר רכישה כדי לחשב אחוז
             </p>
           )}
         </div>
@@ -236,7 +236,7 @@ export function InvestmentStep() {
           </div>
         )}
       </div>
-      <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full">המשך</button>
       <FinishEarly />
     </form>
   )

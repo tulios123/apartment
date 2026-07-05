@@ -239,7 +239,7 @@ export default function DevNotes() {
                   color: 'var(--text-muted)',
                 }}
               >
-                העתק הכל ל-clipboard
+                העתק הכול ל-clipboard
               </button>
             )}
           </div>

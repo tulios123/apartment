@@ -135,7 +135,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
         <>
           {presentTypes.length > 1 && (
             <div className="docv-filters">
-              <button className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>הכל</button>
+              <button className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>הכול</button>
               {presentTypes.map(t => (
                 <button key={t} className={filter === t ? 'on' : ''} onClick={() => setFilter(t)}>{DOC_TYPE_LABELS[t]}</button>
               ))}

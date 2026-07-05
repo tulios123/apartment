@@ -32,7 +32,7 @@ export function DoneStep() {
           <House size={38} weight="duotone" color="var(--accent)" />
           <span className="onboarding-done-check"><Check size={15} weight="bold" color="#fff" /></span>
         </div>
-        <h2 className="onboarding-done-title">הכל מוכן!</h2>
+        <h2 className="onboarding-done-title">הכול מוכן!</h2>
         <p className="onboarding-done-sub">הנכס שלך מוגדר — אפשר להתחיל לנהל.</p>
       </div>
 

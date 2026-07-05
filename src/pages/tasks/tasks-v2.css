@@ -10,7 +10,9 @@
 
   /* Quick-add */
   .tav-quickadd { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 12px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .tav-quickadd-icon { color: var(--accent); flex-shrink: 0; }
+  .tav-quickadd-icon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; border: none; background: var(--accent); color: #fff; cursor: pointer; transition: background var(--t-fast); }
+  .tav-quickadd-icon:hover { background: var(--accent-hover); }
+  .tav-quickadd-icon:disabled { opacity: 0.45; cursor: default; }
   .tav-quickadd-input { flex: 1; min-width: 160px; border: none; background: transparent; outline: none; font-family: inherit; font-size: 15px; color: var(--text); }
   .tav-quickadd-input::placeholder { color: var(--text-muted); }
   .tav-quickadd-extra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding-top: 10px; margin-top: 2px; border-top: 1px dashed var(--border); }

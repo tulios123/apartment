@@ -181,13 +181,15 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           {/* ── Open backlog ─────────────────────────────────────── */}
           <section className="tav-section">
             <form className="tav-quickadd" onSubmit={handleAdd}>
-              <Plus size={18} className="tav-quickadd-icon" />
               <input
                 className="tav-quickadd-input"
-                placeholder="הקלד משימה ולחץ Enter…"
+                placeholder="הקלידו משימה ואשרו"
                 value={addingTitle}
                 onChange={e => { setAddingTitle(e.target.value); if (addErr) setAddErr(null) }}
               />
+              <button type="submit" className="tav-quickadd-icon" aria-label="הוספת משימה" disabled={saving}>
+                <Plus size={18} weight="bold" />
+              </button>
             </form>
             {addErr && <div className="form-error" role="alert">{addErr}</div>}
 

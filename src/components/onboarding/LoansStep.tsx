@@ -190,7 +190,7 @@ export function LoansStep() {
         </div>
       )}
 
-      <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full">המשך</button>
       <FinishEarly />
 
       {continuePrompt && createPortal(

@@ -103,13 +103,13 @@ export function PurchaseStep() {
         </div>
         <div className="onboarding-file-field" onClick={() => purchaseInputRef.current?.click()}>
           <span className="onboarding-file-label">חוזה רכישה</span>
-          <span className="onboarding-file-name">{purchaseFile?.name ?? 'לחץ לבחירת קובץ'}</span>
+          <span className="onboarding-file-name">{purchaseFile?.name ?? 'בחרו קובץ'}</span>
           <input ref={purchaseInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
             style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) setPurchaseFile(f) }} />
         </div>
       </div>
-      <button type="submit" className="btn-onboard-primary onboarding-cta-full">הבא</button>
+      <button type="submit" className="btn-onboard-primary onboarding-cta-full">המשך</button>
     </form>
   )
 }

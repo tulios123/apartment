@@ -8,7 +8,7 @@ export function FinishEarly() {
   const { requestFinish, saving, pendingFinish } = useOnboarding()
   return (
     <button type="button" className="onboarding-finish-early" onClick={requestFinish} disabled={saving || pendingFinish}>
-      {saving ? 'שומר…' : pendingFinish ? 'רגע, מסיימים לקרוא את המסמכים…' : 'סיים עכשיו · אפשר להשלים את השאר בהמשך'}
+      {saving ? 'שומר…' : pendingFinish ? 'רגע, מסיימים לקרוא את המסמכים…' : 'סיימו עכשיו · אפשר להשלים את השאר בהמשך'}
     </button>
   )
 }

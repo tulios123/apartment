@@ -310,7 +310,7 @@ export default function Settings() {
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>בטוח? כל הנתונים יימחקו.</span>
                 <button className="btn-secondary" onClick={() => setConfirmReset(false)} disabled={resetting}>ביטול</button>
                 <button className="btn-primary" style={{ background: 'var(--danger)' }} onClick={resetAllData} disabled={resetting}>
-                  {resetting ? 'מאפס...' : 'מחק הכל'}
+                  {resetting ? 'מאפס...' : 'מחק הכול'}
                 </button>
               </div>
             )}
