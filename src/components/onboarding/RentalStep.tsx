@@ -15,7 +15,6 @@ export function RentalStep() {
     companyName, setCompanyName, startDate, setStartDate, endDate, setEndDate,
     monthlyRent, setMonthlyRent, rentPaymentMethod, setRentPaymentMethod,
     rentPaymentDay, setRentPaymentDay, addRentReminder, setAddRentReminder,
-    rentalFile, setRentalFile, rentalInputRef,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     rentalDocFiles, removeDocFile, renameDocFile,
     fillTestRental,
@@ -102,13 +101,6 @@ export function RentalStep() {
             ? 'תזכורת חודשית להפקדת הצ׳ק'
             : 'תזכורת חודשית לאישור קבלת תשלום'}</span>
         </label>
-        <div className="onboarding-file-field" onClick={() => rentalInputRef.current?.click()}>
-          <span className="onboarding-file-label">חוזה שכירות</span>
-          <span className="onboarding-file-name">{rentalFile?.name ?? 'בחרו קובץ'}</span>
-          <input ref={rentalInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            style={{ display: 'none' }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) setRentalFile(f) }} />
-        </div>
       </div>
       <button type="submit" className="btn-onboard-primary onboarding-cta-full">המשך</button>
       <FinishEarly />

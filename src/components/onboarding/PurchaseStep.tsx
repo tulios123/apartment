@@ -14,7 +14,6 @@ export function PurchaseStep() {
     rooms, setRooms, purchasePrice, setPurchasePrice,
     signingDate, setSigningDate, setKeyDeliveryDate,
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
-    purchaseFile, setPurchaseFile, purchaseInputRef,
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
     purchaseDocFiles, removeDocFile, renameDocFile,
     fillTestPurchase,
@@ -100,13 +99,6 @@ export function PurchaseStep() {
             <label>מסירת מפתח</label>
             <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} ariaLabel="מסירת מפתח" />
           </div>
-        </div>
-        <div className="onboarding-file-field" onClick={() => purchaseInputRef.current?.click()}>
-          <span className="onboarding-file-label">חוזה רכישה</span>
-          <span className="onboarding-file-name">{purchaseFile?.name ?? 'בחרו קובץ'}</span>
-          <input ref={purchaseInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
-            style={{ display: 'none' }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) setPurchaseFile(f) }} />
         </div>
       </div>
       <button type="submit" className="btn-onboard-primary onboarding-cta-full">המשך</button>
