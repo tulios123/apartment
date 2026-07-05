@@ -381,7 +381,6 @@ export default function FinancesV2() {
   }
 
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
-  const colorFor = (cat: string) => { const b = breakdown.find(x => x.cat === cat); return b ? b.color : 'var(--text-muted)' }
 
   if (error) return <PageError message={error} onRetry={refetch} />
 
@@ -532,7 +531,7 @@ export default function FinancesV2() {
             <>
               {shownVirtual.map(e => (
                 <div key={e.id} className="finv-tx projected">
-                  <span className="finv-cat-icon" style={{ background: colorFor(e.category) }}>{e.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
+                  <span className="finv-cat-icon" style={{ background: e.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{e.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
                   <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{e.category}</span><span className="finv-tx-tag">תחזית</span></div><span className="finv-tx-meta">{formatDate(e.date)}{e.description ? ` · ${e.description}` : ''}</span></div>
                   <div className="finv-tx-side"><span className={`finv-tx-amount ${e.direction}`}>{formatSignedCurrency(e.direction === 'income' ? e.amount : -e.amount)}</span></div>
                 </div>
@@ -542,7 +541,7 @@ export default function FinancesV2() {
                 return (
                   <SwipeRow key={t.id} onEdit={() => openEdit(t)} onDelete={() => handleDelete(t.id)}>
                     <div className="finv-tx">
-                      <span className="finv-cat-icon" style={{ background: colorFor(t.category) || 'var(--text-muted)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
+                      <span className="finv-cat-icon" style={{ background: t.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
                       <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span>{FIXED_CATS.has(t.category) && <span className="finv-tx-tag fixed">קבוע</span>}</div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
                       <div className="finv-tx-side">
                         <span className={`finv-tx-amount ${t.direction}`}>{formatSignedCurrency(t.direction === 'income' ? Number(t.amount) : -Number(t.amount))}</span>
