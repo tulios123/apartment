@@ -2,6 +2,7 @@ import { Modal } from '../../components/ui/Modal'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { isManager } from '../../lib/admin'
 import { useInsurance, createInsurancePolicy, updateInsurancePolicy, deleteInsurancePolicy } from '../../hooks/useInsurance'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { formatCurrency, formatDate, monthDayISO, daysBetween, todayISO } from '../../lib/format'
@@ -36,9 +37,9 @@ function InsuranceForm({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  // Manager/dev-only quick-fill, mirroring the onboarding "מלא דוגמה" affordance.
+  // A4: manager-only quick-fill (no AI here, so no dev-mock concern — strictly manager).
   const { user } = useAuth()
-  const showFill = import.meta.env.DEV || user?.email === 'dev@test.local'
+  const showFill = isManager(user?.email)
   function fillExample() {
     setForm({
       type: 'מבנה',
@@ -82,7 +83,7 @@ function InsuranceForm({
     <form onSubmit={submit} className="form" noValidate>
       {showFill && (
         <div className="onboarding-fill-top">
-          <button type="button" className="onboarding-fill-top-btn" onClick={fillExample}>מלא דוגמה</button>
+          <button type="button" className="onboarding-fill-top-btn" onClick={fillExample}>מילוי דוגמה</button>
         </div>
       )}
       <div className="form-row">

@@ -4,6 +4,7 @@ import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTra
 import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
+import { isManager } from '../../lib/admin'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { extractMortgageTracks, extractLoans } from '../../lib/extractFinancing'
 import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
@@ -71,7 +72,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const loanDocRef = useRef<HTMLInputElement>(null)
 
   // Manager/dev-only quick-fill for the open drawer (track or loan by kind).
-  const showFill = import.meta.env.DEV || user?.email === 'dev@test.local'
+  const showFill = isManager(user?.email)            // A4: button — manager only
+  const useMock = import.meta.env.DEV || isManager(user?.email)  // AI mock/demo — also in dev, never bills
   function fillDrawerExample() {
     if (kind === 'mortgage') {
       setTForm({ track_type: 'fixed_unlinked', label: 'מסלול לדוגמה', principal: '600000', annual_rate: '4.5', term_months: '360', grace_months: '0', start_date: monthDayISO(new Date()) })
@@ -221,7 +223,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       persistScanFiles(files, 'mortgage_statement')
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let raw: Record<string, unknown>[]
-      if (showFill) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_MORTGAGE_TRACKS }
+      if (useMock) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_MORTGAGE_TRACKS }
       else raw = await extractMortgageTracks(files)
       const drafts = raw.map(mapTrack)
       if (drafts.length === 0) { setAiErr({ kind: 'mortgage', msg: 'לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
@@ -237,7 +239,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       persistScanFiles(files, 'loan_statement')
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let raw: Record<string, unknown>[]
-      if (showFill) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_LOANS }
+      if (useMock) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_LOANS }
       else raw = await extractLoans(files)
       const drafts = raw.map(mapLoan)
       if (drafts.length === 0) { setAiErr({ kind: 'loan', msg: 'לא זוהתה הלוואה במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
@@ -375,7 +377,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanMortgageDoc(fs); e.target.value = '' }} />
               {aiErr?.kind === 'mortgage' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
               {scanResult?.kind === 'mortgage' && (
-                <ScanReview kind="mortgage" initial={scanResult.drafts} saving={scanSaving} demo={showFill}
+                <ScanReview kind="mortgage" initial={scanResult.drafts} saving={scanSaving} demo={useMock}
                   onConfirm={saveScannedDrafts} onCancel={() => setScanResult(null)} />
               )}
               {mortgageDocs.length > 0 && (
@@ -434,7 +436,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) scanLoanDoc(fs); e.target.value = '' }} />
               {aiErr?.kind === 'loan' && <div className="liav-form-err" role="alert">{aiErr.msg}</div>}
               {scanResult?.kind === 'loan' && (
-                <ScanReview kind="loan" initial={scanResult.drafts} saving={scanSaving} demo={showFill}
+                <ScanReview kind="loan" initial={scanResult.drafts} saving={scanSaving} demo={useMock}
                   onConfirm={saveScannedDrafts} onCancel={() => setScanResult(null)} />
               )}
               {loanDocs.length > 0 && (
@@ -452,7 +454,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         </div>
         {showFill && !editId && (
           <div className="onboarding-fill-top">
-            <button type="button" className="onboarding-fill-top-btn" onClick={fillDrawerExample}>מלא דוגמה</button>
+            <button type="button" className="onboarding-fill-top-btn" onClick={fillDrawerExample}>מילוי דוגמה</button>
           </div>
         )}
 

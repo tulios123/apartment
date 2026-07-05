@@ -12,6 +12,7 @@ import {
 } from '../../hooks/usePropertyData'
 import { syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/useRecurringItems'
 import { useAuth } from '../../contexts/AuthContext'
+import { isManager } from '../../lib/admin'
 import { UTILITIES } from '../../lib/constants'
 import { formatDate, formatCurrency, monthDayISO, daysBetween, todayISO } from '../../lib/format'
 import type { Contract, UtilityPayer } from '../../types'
@@ -67,7 +68,8 @@ function ContractForm({
 
   // Manager/dev-only quick-fill, mirroring the onboarding "מלא דוגמה" affordance.
   const { user } = useAuth()
-  const showFill = import.meta.env.DEV || user?.email === 'dev@test.local'
+  const showFill = isManager(user?.email)            // A4: button — manager only
+  const useMock = import.meta.env.DEV || isManager(user?.email)  // AI mock/demo — also in dev, never bills
   function fillExample() {
     const start = new Date()
     const end = new Date(start)
@@ -152,7 +154,7 @@ function ContractForm({
       persistScanFiles(files)
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let d: Record<string, unknown> | null
-      if (showFill) { await new Promise(r => setTimeout(r, 600)); d = mockRental() }
+      if (useMock) { await new Promise(r => setTimeout(r, 600)); d = mockRental() }
       else d = await extractRental(files)
       // extractRental returns null when nothing meaningful was read (all fields null).
       if (!d) { setAiErr('לא זוהו פרטים במסמך — נסו קובץ ברור יותר או מלאו ידנית.'); return }
@@ -203,7 +205,7 @@ function ContractForm({
     <form onSubmit={submit} className="form" noValidate>
       {showFill && (
         <div className="onboarding-fill-top">
-          <button type="button" className="onboarding-fill-top-btn" onClick={fillExample}>מלא דוגמה</button>
+          <button type="button" className="onboarding-fill-top-btn" onClick={fillExample}>מילוי דוגמה</button>
         </div>
       )}
 
@@ -217,7 +219,7 @@ function ContractForm({
         {aiErr && <div className="form-error" role="alert">{aiErr}</div>}
         {scanned && !aiErr && (
           <div className="ai-scan-checklist">
-            <span className="ai-scan-checklist-head"><Sparkle size={13} weight="fill" /> זוהה מהמסמך — בדקו והשלימו{showFill ? ' · דמו' : ''}</span>
+            <span className="ai-scan-checklist-head"><Sparkle size={13} weight="fill" /> זוהה מהמסמך — בדקו והשלימו{useMock ? ' · דמו' : ''}</span>
             <span className="ai-scan-chips">
               {checklist.map(c => (
                 <span key={c.label} className={`ai-scan-chip ${c.ok ? 'ok' : 'miss'}`}>

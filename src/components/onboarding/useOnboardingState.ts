@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabase'
 import { enablePush } from '../../lib/push'
 import { monthlyPayment } from '../../lib/mortgage'
 import { todayISO } from '../../lib/format'
+import { isManager } from '../../lib/admin'
 import { loadOnboardingDraft, saveOnboardingDraft, clearOnboardingDraft } from '../../lib/onboardingDraft'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType, LoanRepaymentType, Contract, DocumentType, Property } from '../../types'
@@ -62,9 +63,12 @@ type OnboardingDraft = {
 // inferred (ReturnType) rather than a hand-maintained 90-field interface.
 export function useOnboardingState(onComplete: () => void) {
   const { user } = useAuth()
-  // "מלא דוגמה" buttons: shown in local dev and for the dev@test.local manager
-  // account (so onboarding can be filled quickly when testing on the live app).
-  const showFillExample = import.meta.env.DEV || user?.email === 'dev@test.local'
+  // A4: the "מילוי דוגמה" quick-fill button is MANAGER-ONLY — a family member must
+  // never see it (it injected demo data into a real property). Separately, AI
+  // extractions use mock fixtures in local dev too, so a developer never bills the
+  // Claude API while testing — hence the split flag below.
+  const showFillExample = isManager(user?.email)
+  const useMockExtraction = import.meta.env.DEV || isManager(user?.email)
 
   // C2: rehydrate an in-progress wizard from localStorage so an interruption
   // doesn't wipe everything. Loaded once; each data field lazy-inits from it and a
@@ -310,7 +314,7 @@ export function useOnboardingState(onComplete: () => void) {
         try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
       }
       if (!data) {
-        if (showFillExample) {
+        if (useMockExtraction) {
           // Manager/dev: never call the billed Claude API — use demo data.
           await new Promise(r => setTimeout(r, 700))
           data = DEV_MOCK.mortgage
@@ -371,7 +375,7 @@ export function useOnboardingState(onComplete: () => void) {
         try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
       }
       if (!data) {
-        if (showFillExample) {
+        if (useMockExtraction) {
           await new Promise(r => setTimeout(r, 700))
           data = DEV_MOCK.loan
         } else {
@@ -446,7 +450,7 @@ export function useOnboardingState(onComplete: () => void) {
         try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
       }
       if (!data) {
-        if (showFillExample) {
+        if (useMockExtraction) {
           await new Promise(r => setTimeout(r, 700))
           data = DEV_MOCK.contract
         } else {
@@ -500,7 +504,7 @@ export function useOnboardingState(onComplete: () => void) {
         try { data = JSON.parse(cached) } catch { /* corrupt cache → re-fetch */ }
       }
       if (!data) {
-        if (showFillExample) {
+        if (useMockExtraction) {
           await new Promise(r => setTimeout(r, 700))
           data = DEV_MOCK.rental
         } else {

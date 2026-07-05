@@ -7,7 +7,7 @@ export function FillExampleTop({ onFill }: { onFill: () => void }) {
   if (!showFillExample) return null
   return (
     <div className="onboarding-fill-top">
-      <button type="button" className="onboarding-fill-top-btn" onClick={onFill}>מלא דוגמה</button>
+      <button type="button" className="onboarding-fill-top-btn" onClick={onFill}>מילוי דוגמה</button>
     </div>
   )
 }
