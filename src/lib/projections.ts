@@ -83,6 +83,7 @@ export function monthlyVirtualEntries(
   year: number,
   month?: number,
   loans: Loan[] = [],
+  policies: { monthly_premium: number | null; start_date: string | null; end_date: string | null }[] = [],
 ): VirtualEntry[] {
   const todayStr = todayISO() // LOCAL date — not toISOString (UTC rolls back a day)
 
@@ -142,6 +143,24 @@ export function monthlyVirtualEntries(
           description: l.label || l.lender || 'תשלום הלוואה',
         })
       }
+    }
+
+    // Insurance: one forecast row for the month's active policies (A5 — this makes the
+    // Home forecast and the Finances ledger use the same fixed-expense set, so the two
+    // screens' month totals reconcile exactly).
+    const insTotal = policies.reduce((s, p) => {
+      const active = (!p.start_date || p.start_date <= monthEnd) && (!p.end_date || p.end_date >= monthStart)
+      return s + (active ? (p.monthly_premium ?? 0) : 0)
+    }, 0)
+    if (insTotal > 0) {
+      entries.push({
+        id: `v-ins-${monthStr}`,
+        direction: 'expense',
+        amount: insTotal,
+        date: monthStart,
+        category: 'ביטוח',
+        description: 'ביטוח',
+      })
     }
   }
 

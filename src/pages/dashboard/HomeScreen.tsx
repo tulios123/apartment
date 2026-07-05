@@ -14,9 +14,8 @@ import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { gracePeriodPayment } from '../../lib/mortgage'
-import { activeContract as findActiveContract } from '../../lib/projections'
-import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS, UTILITIES } from '../../lib/constants'
+import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
+import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -49,9 +48,9 @@ export default function HomeScreen() {
   const month = now.getMonth() + 1
 
   const { upcomingRenewals, loading: loadingStats, error, partial } = useDashboardStats()
-  const { summary, tracks, loading: loadingMortgage } = useMortgageData()
-  const { property, contracts, utilities, loading: loadingProperty } = usePropertyData()
-  const { summary: loansSummary, loading: loadingLoans } = useLoansData()
+  const { tracks, loading: loadingMortgage } = useMortgageData()
+  const { property, contracts, loading: loadingProperty } = usePropertyData()
+  const { loans, loading: loadingLoans } = useLoansData()
   const { policies, loading: loadingInsurance } = useInsurance()
   const { tasks, setTasks, loading: loadingTasks, refetch: refetchTasks } = useTasks({ status: 'open' })
   const { transactions, loading: loadingTx, refetch: refetchTx } = useTransactions({ year, month })
@@ -79,20 +78,23 @@ export default function HomeScreen() {
   // Categories already represented in fixedExpenses — exclude them from the "extra"
   // (hand-recorded) actuals so they aren't counted twice (audit C8). Must mirror EVERY
   // component of fixedExpenses: mortgage + insurance + loan ('הלוואה') + owner utilities.
-  const fixedCatSet = useMemo(() => new Set([...MORTGAGE_CATEGORIES, 'ביטוח', 'הלוואה', ...UTILITIES] as string[]), [])
+  const fixedCatSet = useMemo(() => new Set([...MORTGAGE_CATEGORIES, 'ביטוח', 'הלוואה'] as string[]), [])
 
   // ── Fixed (expected) monthly expenses — calm, never red ──
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
-  const hasGrace = tracks.some(t => (t.grace_months ?? 0) > 0)
-  const selectedMortgage = hasGrace ? gracePeriodPayment(tracks) : summary.monthlyPayment || 0
-  const monthlyLoan = loansSummary.monthlyPayment || 0
-  const monthlyInsurance = policies.reduce((s, p) => s + (p.monthly_premium ?? 0), 0)
-  const activeContractId = activeContract?.id
-  const monthlyOwnerUtilities = utilities
-    .filter(u => u.payer === 'owner' && (u.amount ?? 0) > 0 && (!activeContractId || u.contract_id === activeContractId))
-    .reduce((s, u) => s + (u.amount ?? 0), 0)
-  const fixedExpenses = selectedMortgage + monthlyLoan + monthlyInsurance + monthlyOwnerUtilities
+  // A5: derive the fixed forecast from the SAME source the Finances ledger uses
+  // (monthlyVirtualEntries) — mortgage + loans (schedule-bounded, so grace / paid-off
+  // tracks are correct) + insurance. This guarantees the "צפי לסוף החודש" here matches
+  // the month total on the תזרים screen exactly, instead of two drifting calculations.
+  const fYear = new Date().getFullYear()
+  const fMonth = new Date().getMonth() + 1
+  const fixedExpenses = useMemo(
+    () => monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies)
+      .filter(e => e.direction === 'expense')
+      .reduce((s, e) => s + e.amount, 0),
+    [contracts, tracks, loans, policies, fYear, fMonth],
+  )
 
   // ── This month's reality ──
   const rentReceived = transactions
@@ -178,7 +180,7 @@ export default function HomeScreen() {
     setBusy('rent')
     try {
       const { error } = await createTransaction({
-        contract_id: activeContractId ?? null,
+        contract_id: activeContract?.id ?? null,
         recurring_item_id: null,
         document_id: null,
         direction: 'income',

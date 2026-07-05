@@ -9,6 +9,7 @@ import { useTransactions, createTransaction, updateTransaction, deleteTransactio
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useMortgageData } from '../../hooks/useMortgageData'
 import { useLoansData } from '../../hooks/useLoansData'
+import { useInsurance } from '../../hooks/useInsurance'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { monthlyVirtualEntries } from '../../lib/projections'
 import type { VirtualEntry } from '../../lib/projections'
@@ -70,8 +71,9 @@ export default function FinancesV2() {
   // revisit to this tab is instant instead of re-querying contracts/tracks/loans.
   const { tracks: mortgageTracks } = useMortgageData()
   const { loans } = useLoansData()
+  const { policies } = useInsurance()
 
-  const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month, loans), [year, month, contracts, mortgageTracks, loans])
+  const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month, loans, policies), [year, month, contracts, mortgageTracks, loans, policies])
 
   const [breakdownOpen, setBreakdownOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -136,9 +138,11 @@ export default function FinancesV2() {
   // ── Month-scoped figures (used when view === 'month') ──────────────
   const realRentExists = transactions.some(t => t.direction === 'income' && RENT.includes(t.category))
   const realMortgageExists = transactions.some(t => t.direction === 'expense' && MORT.includes(t.category))
+  const realInsuranceExists = transactions.some(t => t.direction === 'expense' && t.category === 'ביטוח')
   const shownVirtual = virtualEntries.filter(e => {
     if (e.direction === 'income' && RENT.includes(e.category) && realRentExists) return false
     if (e.direction === 'expense' && MORT.includes(e.category) && realMortgageExists) return false
+    if (e.direction === 'expense' && e.category === 'ביטוח' && realInsuranceExists) return false
     return true
   })
 
@@ -160,19 +164,21 @@ export default function FinancesV2() {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1
       const mtx = transactions.filter(t => Number(t.date.slice(5, 7)) === m)
-      const v = monthlyVirtualEntries(contracts, mortgageTracks, year, m, loans)
+      const v = monthlyVirtualEntries(contracts, mortgageTracks, year, m, loans, policies)
       const rRent = mtx.some(t => t.direction === 'income' && RENT.includes(t.category))
       const rMort = mtx.some(t => t.direction === 'expense' && MORT.includes(t.category))
+      const rIns = mtx.some(t => t.direction === 'expense' && t.category === 'ביטוח')
       const sv = v.filter(e => {
         if (e.direction === 'income' && RENT.includes(e.category) && rRent) return false
         if (e.direction === 'expense' && MORT.includes(e.category) && rMort) return false
+        if (e.direction === 'expense' && e.category === 'ביטוח' && rIns) return false
         return true
       })
       const income = mtx.filter(t => t.direction === 'income').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'income').reduce((s, e) => s + e.amount, 0)
       const expense = mtx.filter(t => t.direction === 'expense').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'expense').reduce((s, e) => s + e.amount, 0)
       return { month: m, income, expense, net: income - expense, sv, mtx }
     })
-  }, [view, transactions, contracts, mortgageTracks, loans, year])
+  }, [view, transactions, contracts, mortgageTracks, loans, policies, year])
 
   const yearTotals = useMemo(() => {
     const income = monthly.reduce((s, r) => s + r.income, 0)
@@ -199,19 +205,21 @@ export default function FinancesV2() {
     if (view !== 'range') return []
     return periodsBetween(rangeFrom, rangeTo).map(({ year: y, month: m }) => {
       const mtx = transactions.filter(t => Number(t.date.slice(0, 4)) === y && Number(t.date.slice(5, 7)) === m)
-      const v = monthlyVirtualEntries(contracts, mortgageTracks, y, m, loans)
+      const v = monthlyVirtualEntries(contracts, mortgageTracks, y, m, loans, policies)
       const rRent = mtx.some(t => t.direction === 'income' && RENT.includes(t.category))
       const rMort = mtx.some(t => t.direction === 'expense' && MORT.includes(t.category))
+      const rIns = mtx.some(t => t.direction === 'expense' && t.category === 'ביטוח')
       const sv = v.filter(e => {
         if (e.direction === 'income' && RENT.includes(e.category) && rRent) return false
         if (e.direction === 'expense' && MORT.includes(e.category) && rMort) return false
+        if (e.direction === 'expense' && e.category === 'ביטוח' && rIns) return false
         return true
       })
       const income = mtx.filter(t => t.direction === 'income').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'income').reduce((s, e) => s + e.amount, 0)
       const expense = mtx.filter(t => t.direction === 'expense').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'expense').reduce((s, e) => s + e.amount, 0)
       return { year: y, month: m, income, expense, net: income - expense, sv, mtx }
     })
-  }, [view, rangeFrom, rangeTo, transactions, contracts, mortgageTracks, loans])
+  }, [view, rangeFrom, rangeTo, transactions, contracts, mortgageTracks, loans, policies])
 
   const rangeTotals = useMemo(() => {
     const income = rangeMonthly.reduce((s, r) => s + r.income, 0)
