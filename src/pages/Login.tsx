@@ -56,7 +56,7 @@ export default function Login() {
       options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
     })
     setLinkBusy(false)
-    if (error) { setLinkError('לא הצלחנו לשלוח קישור — בדוק את כתובת המייל ונסה שוב'); return }
+    if (error) { setLinkError('לא הצלחנו לשלוח קישור — בדקו את כתובת המייל ונסו שוב'); return }
     setLinkSent(true)
   }
 
@@ -99,7 +99,7 @@ export default function Login() {
               </form>
             ) : (
               <div className="login-email-form2">
-                <p className="login-info">שלחנו קישור ל-{email.trim()} — פתח את המייל ולחץ עליו כדי להיכנס.</p>
+                <p className="login-info">שלחנו קישור ל-{email.trim()} — פתחו את המייל ולחצו עליו כדי להיכנס.</p>
                 <button type="button" className="login-manager-link" onClick={() => { setLinkSent(false); setLinkError('') }}>
                   שנה מייל או שלח שוב
                 </button>

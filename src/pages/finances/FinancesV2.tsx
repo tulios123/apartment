@@ -457,7 +457,7 @@ export default function FinancesV2() {
             {bestMonth && (bestMonth.income > 0 || bestMonth.expense > 0) && (
               <div className="finv-yearchart-foot">
                 <span>החודש החזק: <strong>{MONTH_NAMES[bestMonth.month - 1]}</strong> ({bestMonth.net >= 0 ? '+' : '−'}{fmt(Math.abs(bestMonth.net))})</span>
-                <span className="finv-yearchart-hint">לחץ על חודש לפירוט</span>
+                <span className="finv-yearchart-hint">לחצו על חודש לפירוט</span>
               </div>
             )}
           </div>
@@ -491,7 +491,7 @@ export default function FinancesV2() {
             </div>
             <div className="finv-yearchart-foot">
               <span>סך התקופה: <strong>{rangeTotals.net >= 0 ? '+' : '−'}{fmt(Math.abs(rangeTotals.net))}</strong> על פני {rangeMonthly.length} חודשים</span>
-              <span className="finv-yearchart-hint">לחץ על עמודה לפירוט</span>
+              <span className="finv-yearchart-hint">לחצו על עמודה לפירוט</span>
             </div>
           </div>
         )
