@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Lightbulb, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { isManager } from '../lib/admin'
 import { screenLabel } from '../lib/screenLabel'
 import './feedback.css'
 
@@ -19,6 +20,10 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
   const [err, setErr] = useState(false)
 
   const path = screen ?? (typeof window !== 'undefined' ? window.location.pathname : '')
+
+  // A3: the floating feedback bubble is a manager-only inbox affordance — family
+  // members never see it (it overlapped the onboarding CTA and the wealth figures).
+  if (!isManager(user?.email)) return null
 
   async function submit() {
     if (!note.trim() || !user) return
