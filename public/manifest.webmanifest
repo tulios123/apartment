@@ -1,6 +1,6 @@
 {
-  "name": "Apartment",
-  "short_name": "Apartment",
+  "name": "ניהול דירה",
+  "short_name": "דירה",
   "lang": "he",
   "dir": "rtl",
   "start_url": "/",

@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { House, EnvelopeSimple, Lock } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-
-const MANAGER_EMAIL = 'dev@test.local'
+import { MANAGER_EMAIL } from '../lib/admin'
 
 export default function Login() {
   const { signInWithGoogle } = useAuth()
   const [busy, setBusy] = useState(false)
+  // A1: the manager sign-in is hidden from the family release — surfaced only when
+  // the URL carries ?admin=1 (there is no signed-in identity to gate on pre-auth).
+  const adminMode = new URLSearchParams(window.location.search).get('admin') === '1'
+  const emailRef = useRef<HTMLInputElement>(null)
 
   // Magic-link sign-in: enter email → get a sign-in link. Session persists after,
   // so it's a one-time step per device.
@@ -43,6 +46,9 @@ export default function Login() {
 
   async function sendLink(e: React.FormEvent) {
     e.preventDefault()
+    // B10: the CTA stays solid/active at all times; tapping it without an email
+    // focuses the field and shows a short reason instead of sitting greyed-out.
+    if (!email.trim()) { setLinkError('הזינו כתובת מייל'); emailRef.current?.focus(); return }
     setLinkBusy(true)
     setLinkError('')
     const { error } = await supabase.auth.signInWithOtp({
@@ -72,8 +78,8 @@ export default function Login() {
           {/* Navy brand hero — ties the login to the splash and the app's status bar. */}
           <div className="login-hero">
             <div className="login-hero-mark"><House weight="duotone" size={31} color="#fff" /></div>
-            <div className="login-hero-title">Apartment</div>
-            <div className="login-hero-sub">ניהול השקעה</div>
+            <div className="login-hero-title">ניהול דירה</div>
+            <div className="login-hero-sub">ניהול ההשקעה בדירה שלך</div>
           </div>
 
           <div className="login-body">
@@ -81,12 +87,13 @@ export default function Login() {
             {!linkSent ? (
               <form className="login-email-form2" onSubmit={sendLink}>
                 <input
+                  ref={emailRef}
                   type="email" inputMode="email" autoComplete="email" dir="ltr"
                   placeholder="כתובת מייל"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setLinkError('') }}
                 />
-                <button type="submit" className="login-send-btn" disabled={linkBusy || !email.trim()}>
+                <button type="submit" className="login-send-btn" disabled={linkBusy}>
                   <EnvelopeSimple size={18} weight="bold" /> {linkBusy ? 'שולח...' : 'שליחת קישור כניסה'}
                 </button>
               </form>
@@ -113,8 +120,8 @@ export default function Login() {
             </button>
             {googleError && <p className="login-error">{googleError}</p>}
 
-            {/* Manager (dev test account) login */}
-            {!showManager ? (
+            {/* Manager (dev test account) login — only when ?admin=1 is present (A1) */}
+            {adminMode && (!showManager ? (
               <button className="login-manager-link login-manager-link--foot" onClick={() => setShowManager(true)}>
                 כניסת מנהל
               </button>
@@ -132,7 +139,7 @@ export default function Login() {
                 </button>
                 {mgrError && <p className="login-error">{mgrError}</p>}
               </form>
-            )}
+            ))}
           </div>
         </div>
 

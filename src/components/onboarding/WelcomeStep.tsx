@@ -25,7 +25,7 @@ export function WelcomeStep() {
             <rect x="196" y="284" width="38" height="38" rx="9" fill="#2A7DE1" />
           </svg>
         </div>
-        <div className="onboarding-welcome-brand">Apartment</div>
+        <div className="onboarding-welcome-brand">ניהול דירה</div>
         <div className="onboarding-welcome-brandsub">ניהול ההשקעה בדירה שלך</div>
         <div className="onboarding-welcome-time">
           <Clock size={14} weight="bold" /> כ‑3 דקות · אפשר לדלג בכל שלב
