@@ -4,7 +4,7 @@ import {
   House,
   Wallet,
   TrendUp,
-  FolderOpen,
+  Buildings,
 } from '@phosphor-icons/react'
 import type { Icon } from '@phosphor-icons/react'
 import { useMonthlyGeneration } from '../../hooks/useMonthlyGeneration'
@@ -21,7 +21,7 @@ const navItems: NavItem[] = [
   { to: '/', label: 'ראשי', icon: House, end: true },
   { to: '/finances', label: 'תזרים', icon: Wallet },
   { to: '/wealth', label: 'הון', icon: TrendUp },
-  { to: '/property', label: 'ניהול', icon: FolderOpen },
+  { to: '/property', label: 'ניהול', icon: Buildings },
 ]
 
 export default function Layout() {
