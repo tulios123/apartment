@@ -46,6 +46,13 @@ export function LoansStep() {
   const effectiveLoans = loans.map((l, i) => (i === editingLoanIdx ? loanForm : l))
   const incompleteLoans = effectiveLoans.filter(l => !loanReady(l))
 
+  // A brand-new loan typed into the inline form but not yet saved — not in `loans`,
+  // so without this it would be silently dropped on "המשך" (mirrors the mortgage step).
+  const loanHasData = (d: typeof loanForm) => (parseFloat(d.principal) || 0) > 0 || !!(d.lender && d.lender.trim())
+  const pendingNewLoan = showLoanForm && editingLoanIdx === null && loanHasData(loanForm)
+  const pendingNewLoanReady = pendingNewLoan && loanReady(loanForm)
+  const unsavedLoans = pendingNewLoan && !loanReady(loanForm) ? [...incompleteLoans, loanForm] : incompleteLoans
+
   // Finalize the open loan: save + collapse when ready, otherwise flash what's missing
   // (both in the header line and as an orange note next to the save button).
   const finalizeLoan = (i: number) => {
@@ -72,8 +79,9 @@ export function LoansStep() {
   return (
     <form onSubmit={e => {
       e.preventDefault()
+      if (pendingNewLoanReady) addLoan()   // auto-save a fully-filled new loan instead of dropping it
       // Block advancing past a loan still missing a required field — ask first.
-      if (incompleteLoans.length > 0) { setContinuePrompt(true); return }
+      if (unsavedLoans.length > 0) { setContinuePrompt(true); return }
       if (editingLoanIdx !== null && loanReady(loanForm)) saveLoanEdit(editingLoanIdx)
       advance('investment')
     }} noValidate>
@@ -199,7 +207,7 @@ export function LoansStep() {
             <div className="onboarding-dialog-title">חסרים פרטים בהלוואה</div>
             <p className="onboarding-dialog-lead">אם תמשיכו, ההלוואה הזו לא תישמר:</p>
             <ul className="onboarding-dialog-list">
-              {incompleteLoans.map((l, idx) => (
+              {unsavedLoans.map((l, idx) => (
                 <li key={idx}>
                   <strong>{l.label.trim() || loanTypeLabel(l.repayment_type)}</strong> — חסר {loanMissing(l).join(', ')}
                 </li>
@@ -213,6 +221,7 @@ export function LoansStep() {
               }}>חזרה להשלמה</button>
               <button type="button" className="btn-onboard-skip onboarding-cta-full" onClick={() => {
                 setLoans(prev => prev.filter(loanReady))
+                setShowLoanForm(false)   // discard the unsaved new-loan form too
                 setEditingLoanIdx(null)
                 setContinuePrompt(false)
                 advance('investment')
