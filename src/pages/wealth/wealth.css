@@ -107,6 +107,8 @@
   .wlth-cf-dot { width: 8px; height: 8px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
   .wlth-cf-dot.in { background: var(--accent-teal); }
   .wlth-cf-dot.out { background: var(--accent-coral); }
+  /* B7: invested equity is not a loss — neutral, not the expense coral. */
+  .wlth-cf-dot.equity { background: var(--text-muted); }
   .wlth-cf-net { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
   .wlth-cf-net span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
   .wlth-cf-net strong { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }

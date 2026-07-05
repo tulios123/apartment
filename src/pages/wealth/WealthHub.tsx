@@ -109,7 +109,7 @@ export default function WealthHub() {
                   <strong className="in">{fmt(rentReceived)}</strong>
                 </div>
                 <div className="wlth-cf-row">
-                  <span><i className="wlth-cf-dot out" /> הון עצמי ועלויות רכישה</span>
+                  <span><i className="wlth-cf-dot equity" /> הון עצמי ועלויות רכישה</span>
                   <strong>{fmt(totalInvested)}</strong>
                 </div>
                 {interestPaid > 0 && (
