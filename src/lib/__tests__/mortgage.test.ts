@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { MortgageTrack } from '../../types'
-import { monthlyPayment, trackSchedule, gracePeriodPayment, interestToDate } from '../mortgage'
+import { monthlyPayment, trackSchedule, gracePeriodPayment, interestToDate, combineSchedules } from '../mortgage'
 
 // Minimal track factory — the math only reads these five fields.
 function track(p: Partial<MortgageTrack>): MortgageTrack {
@@ -71,6 +71,27 @@ describe('gracePeriodPayment', () => {
     const n = track({ principal: 50000, annual_rate: 4, term_months: 60 })
     const expected = 100000 * (6 / 100 / 12) + monthlyPayment(50000, 4, 60)
     expect(gracePeriodPayment([g, n])).toBeCloseTo(expected, 6)
+  })
+})
+
+describe('combineSchedules coerces a string principal in the carry-forward (numeric col → string)', () => {
+  it('combined balance stays numeric and sane when tracks start in different months', () => {
+    // Supabase returns principal as a string. On the newer track's start month — before
+    // its first payment row — its principal is carried forward; without coercion the
+    // `balance += principal` would concatenate into a 12+ digit garbage string.
+    const older = track({ principal: '1000000' as unknown as number, annual_rate: 5, term_months: 240, start_date: '2020-01-01' })
+    const newer = track({ principal: '500000' as unknown as number, annual_rate: 4, term_months: 240, start_date: '2024-06-01' })
+    const combined = combineSchedules([older, newer])
+    combined.forEach(r => {
+      expect(typeof r.balance).toBe('number')
+      expect(Number.isFinite(r.balance)).toBe(true)
+    })
+    // On the newer track's start month the full 500k is added on top of the older
+    // track's outstanding balance — total must be a real ~₪1.2–1.5M, never a concat.
+    const startRow = combined.find(r => r.date === '2024-06-01')
+    expect(startRow).toBeDefined()
+    expect(startRow!.balance).toBeGreaterThan(500000)
+    expect(startRow!.balance).toBeLessThan(1600000)
   })
 })
 

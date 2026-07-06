@@ -32,14 +32,14 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
   const mortgageBalance = summary.currentBalance || 0
   // Principal-weighted average rate. Guard the denominator (not just tracks.length)
   // so a stray 0-principal track can't produce NaN% in the blended-rate label.
-  const trackPrincipal = tracks.reduce((s, t) => s + t.principal, 0)
+  const trackPrincipal = tracks.reduce((s, t) => s + (Number(t.principal) || 0), 0)   // numeric cols → strings; coerce before summing
   const blendedRate = trackPrincipal > 0
-    ? tracks.reduce((s, t) => s + t.annual_rate * t.principal, 0) / trackPrincipal
+    ? tracks.reduce((s, t) => s + (Number(t.annual_rate) || 0) * (Number(t.principal) || 0), 0) / trackPrincipal
     : 0
   const mortgagePaidPct = summary.totalPrincipal > 0 ? ((summary.totalPrincipal - mortgageBalance) / summary.totalPrincipal) * 100 : 0
 
   const loanBal = monthlyLoans.reduce((s, l) => s + loanBalance(l), 0)
-  const balloonBal = balloonLoans.reduce((s, l) => s + l.principal, 0)
+  const balloonBal = balloonLoans.reduce((s, l) => s + (Number(l.principal) || 0), 0)   // numeric col → string; coerce before summing
   const totalDebt = mortgageBalance + loanBal + balloonBal
 
   // Latest payoff year across all mortgage tracks — "how much is left" in time.
@@ -71,7 +71,7 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
     const today = todayISO()
     const sched = trackSchedule(t)
     const lastPaid = [...sched].reverse().find(r => r.date <= today)
-    return lastPaid ? lastPaid.balance : t.principal
+    return lastPaid ? lastPaid.balance : (Number(t.principal) || 0)
   }
 
   return (
