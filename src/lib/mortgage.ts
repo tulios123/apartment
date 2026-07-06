@@ -92,7 +92,7 @@ export function combineSchedules(tracks: MortgageTrack[]): ScheduleRow[] {
       // Carry-forward outstanding balance for this track as of `date`:
       // 0 before the track starts, its principal until the first payment, then the latest row balance.
       if (tracks[ti].start_date <= date) {
-        let bal = tracks[ti].principal
+        let bal = Number(tracks[ti].principal) || 0   // numeric col → string; coerce so the carry-forward adds (not concatenates)
         for (const r of rows) {
           if (r.date <= date) bal = r.balance
           else break

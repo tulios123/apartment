@@ -106,7 +106,7 @@ export function monthlyVirtualEntries(
         entries.push({
           id: `v-rent-${c.id}-${monthStr}`,
           direction: 'income',
-          amount: c.monthly_rent,
+          amount: Number(c.monthly_rent) || 0,   // numeric col → string at runtime; coerce before it reaches a + sum
           date: monthStart,
           category: RENT_CATEGORIES[0],
           description: c.company_name,
@@ -150,7 +150,7 @@ export function monthlyVirtualEntries(
     // screens' month totals reconcile exactly).
     const insTotal = policies.reduce((s, p) => {
       const active = (!p.start_date || p.start_date <= monthEnd) && (!p.end_date || p.end_date >= monthStart)
-      return s + (active ? (p.monthly_premium ?? 0) : 0)
+      return s + (active ? (Number(p.monthly_premium) || 0) : 0)   // numeric col → string; coerce before summing
     }, 0)
     if (insTotal > 0) {
       entries.push({

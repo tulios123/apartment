@@ -62,6 +62,29 @@ describe('activeContract', () => {
   })
 })
 
+describe('numeric columns arrive from Supabase as STRINGS — forecast sums must coerce, not concatenate', () => {
+  it('rent amount is numeric and sums across months (6000 × 3 = 18000, not "0600060006000")', () => {
+    const c = contract({ monthly_rent: '6000' as unknown as number, start_date: '2026-01-01', end_date: '2027-01-01' })
+    const amts = [1, 2, 3].map(m => {
+      const rent = monthlyVirtualEntries([c], [], 2026, m).find(x => x.direction === 'income')
+      expect(rent).toBeDefined()
+      expect(typeof rent!.amount).toBe('number')
+      return rent!.amount
+    })
+    expect(amts.reduce((s, a) => s + a, 0)).toBe(18000)
+  })
+  it('insurance forecast sums two string premiums to a number (450.00 + 300.00 = 750)', () => {
+    const policies = [
+      { monthly_premium: '450.00', start_date: null, end_date: null },
+      { monthly_premium: '300.00', start_date: null, end_date: null },
+    ] as unknown as { monthly_premium: number | null; start_date: string | null; end_date: string | null }[]
+    const ins = monthlyVirtualEntries([], [], 2026, 6, [], policies).find(x => x.category === 'ביטוח')
+    expect(ins).toBeDefined()
+    expect(typeof ins!.amount).toBe('number')
+    expect(ins!.amount).toBe(750)
+  })
+})
+
 describe('paid-to-date helpers', () => {
   it('mortgagePaidToDate sums payments up to the cutoff', () => {
     const t = track({ principal: 120000, annual_rate: 5, term_months: 12 })
