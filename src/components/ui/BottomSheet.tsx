@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from '@phosphor-icons/react'
+import { pushEditContext } from '../../lib/editContext'
 import './bottom-sheet.css'
 
 type Props = {
@@ -15,6 +16,12 @@ type Props = {
    * the form actually holds data (see ExpenseSheet).
    */
   minimizable?: boolean
+  /**
+   * Whether this sheet registers itself as the "open edit" for feedback context
+   * (see lib/editContext). Defaults to true. The feedback sheet passes `false` so
+   * it doesn't record *itself* as the thing the note is about.
+   */
+  track?: boolean
 }
 
 /**
@@ -22,7 +29,7 @@ type Props = {
  * stacking/RTL/overflow context. Bottom-anchored slide, grab handle with
  * swipe-down-to-dismiss, scrim-tap + Esc to close, body scroll-lock.
  */
-export default function BottomSheet({ open, onClose, title, children, minimizable = true }: Props) {
+export default function BottomSheet({ open, onClose, title, children, minimizable = true, track = true }: Props) {
   // Keep mounted through the slide-out, then unmount to keep the DOM clean.
   const [mounted, setMounted] = useState(open)
   const [minimized, setMinimized] = useState(false)
@@ -39,6 +46,12 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
     restoreFocusRef.current = document.activeElement as HTMLElement | null
     return () => { restoreFocusRef.current?.focus?.() }
   }, [open])
+
+  // Register as the "open edit" so a feedback note written over this sheet records it
+  // (see lib/editContext). Opted out by the feedback sheet itself via track={false}.
+  useEffect(() => {
+    if (open && track) return pushEditContext(title)
+  }, [open, track, title])
 
   // UX-05: trap Tab within the sheet so focus can't wander to the page behind it.
   function trapTab(e: React.KeyboardEvent) {

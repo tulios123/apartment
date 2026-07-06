@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from '@phosphor-icons/react'
+import { pushEditContext } from '../../lib/editContext'
 
 /**
  * App modal. Rendered through a portal on <body> and, while open, releases the
@@ -11,6 +12,10 @@ import { X } from '@phosphor-icons/react'
  */
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const restoreFocusRef = useRef<HTMLElement | null>(null)
+
+  // Register this editor as the "open edit" so a feedback note written here records
+  // exactly what was being edited (see lib/editContext + FeedbackButton).
+  useEffect(() => pushEditContext(title), [title])
 
   useEffect(() => {
     document.body.classList.add('modal-open')

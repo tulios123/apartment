@@ -11,6 +11,7 @@ import { useMonthlyGeneration } from '../../hooks/useMonthlyGeneration'
 import { useAuth } from '../../contexts/AuthContext'
 import { subscribeNotifTarget } from '../../lib/notifNav'
 import { ensurePushFresh } from '../../lib/push'
+import { clearEditContext } from '../../lib/editContext'
 import FeedbackButton from '../FeedbackButton'
 import { ErrorBoundary } from '../ErrorBoundary'
 
@@ -52,8 +53,10 @@ export default function Layout() {
 
   // .main-content is a persistent scroll container on mobile, so reset it to the
   // top on each route change (otherwise a new screen inherits the previous scroll).
+  // Also drop any lingering "last edit" so feedback context doesn't bleed across screens.
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0)
+    clearEditContext()
   }, [pathname])
 
   return (

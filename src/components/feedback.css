@@ -1,121 +1,132 @@
-/* Floating "suggest an improvement" button + quick note sheet. */
+/* Floating feedback button + the bug/idea sheet (rendered inside BottomSheet). */
 
 .fb-fab {
   position: fixed;
-  left: 14px;
-  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  inset-inline-start: 14px;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   z-index: 60;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: none;
   display: grid;
   place-items: center;
   background: var(--surface, #fff);
-  color: var(--accent, #0A1F44);
+  color: var(--accent, #2a7de1);
   box-shadow: var(--shadow-md, 0 4px 14px rgba(0, 0, 0, 0.14));
-  opacity: 0.55;
+  opacity: 0.6;
   transition: opacity 0.18s ease, transform 0.12s ease;
   cursor: pointer;
 }
 .fb-fab:hover { opacity: 1; }
 .fb-fab:active { transform: scale(0.92); }
 
-/* On desktop (sidebar layout, no bottom nav) sit lower-left. */
+/* On desktop (sidebar layout, no bottom nav) sit lower. */
 @media (min-width: 768px) {
   .fb-fab { bottom: 20px; }
 }
 
-.fb-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(10, 31, 68, 0.32);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: fbFade 0.15s ease;
-}
-@keyframes fbFade { from { opacity: 0; } to { opacity: 1; } }
+/* ---- Sheet content (BottomSheet supplies the sheet chrome) ---- */
+.fb-form { display: flex; flex-direction: column; gap: 12px; padding-bottom: 4px; }
 
-.fb-sheet {
-  width: 100%;
-  max-width: 380px;
-  background: var(--surface, #fff);
-  border-radius: var(--r-lg, 18px);
-  box-shadow: var(--shadow-lg, 0 12px 40px rgba(0, 0, 0, 0.22));
-  padding: 16px;
-  animation: fbUp 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+.fb-sub {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-muted, #6b7280);
 }
-@keyframes fbUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-.fb-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--text, #1a1a1a);
-  margin-bottom: 12px;
-}
-/* The precise screen the note is about — a quiet pill beside the title. */
-.fb-screen {
-  display: inline-block;
-  margin-inline-start: 8px;
-  padding: 2px 8px;
-  border-radius: var(--r-pill, 999px);
-  background: var(--accent-light, rgba(42, 125, 225, 0.12));
-  color: var(--accent, #0A1F44);
-  font-size: 11.5px;
-  font-weight: 600;
-  vertical-align: middle;
-}
-.fb-close {
-  border: none;
-  background: transparent;
-  color: var(--text-muted, #8a8a8a);
+/* Category chips — 2×2 grid, like the reference. */
+.fb-cats {
   display: grid;
-  place-items: center;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.fb-cat {
+  padding: 12px;
+  border-radius: var(--r-md, 12px);
+  border: 1.5px solid var(--border, #e2e4e8);
+  background: var(--surface, #fff);
+  color: var(--text, #1a1a1a);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 4px;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+.fb-cat.active {
+  border-color: var(--accent, #2a7de1);
+  background: var(--accent-light, rgba(42, 125, 225, 0.1));
+  color: var(--accent, #2a7de1);
 }
 
-.fb-sheet textarea {
+.fb-form textarea {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--border, #e2e4e8);
   border-radius: var(--r-md, 12px);
-  padding: 10px 12px;
+  padding: 11px 12px;
   font: inherit;
   font-size: 14px;
   resize: vertical;
-  background: var(--bg-alt);
+  min-height: 96px;
+  background: var(--bg-alt, #f7f8fa);
   color: var(--text, #1a1a1a);
 }
-.fb-sheet textarea:focus { outline: none; border-color: var(--accent, #0A1F44); }
+.fb-form textarea:focus { outline: none; border-color: var(--accent, #2a7de1); }
 
-.fb-err { color: var(--danger, #d8553f); font-size: 12.5px; font-weight: 600; margin: 8px 0 0; }
+/* The exact captured context — reassures the sender it's tied to this screen. */
+.fb-screen-note {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+}
 
+.fb-err { color: var(--danger, #e0533d); font-size: 12.5px; font-weight: 600; margin: 0; }
+
+.fb-actions { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
 .fb-send {
-  margin-top: 12px;
-  width: 100%;
+  flex: 1;
   border: none;
   border-radius: var(--r-pill, 999px);
-  padding: 11px;
+  padding: 12px;
   font: inherit;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 14.5px;
   color: #fff;
-  background: var(--accent, #0A1F44);
+  background: var(--accent, #2a7de1);
   cursor: pointer;
 }
 .fb-send:disabled { opacity: 0.5; cursor: default; }
+.fb-cancel {
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #6b7280);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 6px;
+  cursor: pointer;
+}
 
 .fb-thanks {
   text-align: center;
-  font-weight: 600;
-  color: var(--success-text, #1a7f37);
-  padding: 14px 0;
+  font-weight: 700;
+  color: var(--success-text, #1fa871);
+  padding: 18px 0;
   margin: 0;
 }
+
+/* Category badge in the owner's feedback inbox (Settings). */
+.settings-feedback-cat {
+  display: inline-block;
+  margin-inline-end: 6px;
+  padding: 1px 7px;
+  border-radius: var(--r-pill, 999px);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+  background: var(--accent-light, rgba(42, 125, 225, 0.1));
+  color: var(--accent, #2a7de1);
+}
+.settings-feedback-cat.cat-bug { background: rgba(224, 83, 61, 0.12); color: var(--danger, #e0533d); }

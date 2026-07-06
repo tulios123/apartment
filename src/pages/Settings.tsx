@@ -31,7 +31,16 @@ interface FeedbackRow {
   email: string | null
   note: string
   path: string | null
+  category: string | null
+  context: string | null
   created_at: string
+}
+
+const FEEDBACK_CATEGORY: Record<string, string> = {
+  bug: 'תקלה',
+  feature: 'רעיון',
+  question: 'שאלה',
+  other: 'אחר',
 }
 
 export default function Settings() {
@@ -66,7 +75,7 @@ export default function Settings() {
     if (!isAdmin) return
     supabase
       .from('feedback')
-      .select('id, email, note, path, created_at')
+      .select('id, email, note, path, category, context, created_at')
       .order('created_at', { ascending: false })
       .then(({ data }) => setFeedback(data ?? []))
   }, [isAdmin])
@@ -282,9 +291,12 @@ export default function Settings() {
               <div className="settings-feedback-list">
                 {feedback.map(f => (
                   <div key={f.id} className="settings-feedback-row">
-                    <p className="settings-feedback-note">{f.note}</p>
+                    <p className="settings-feedback-note">
+                      {f.category && <span className={`settings-feedback-cat cat-${f.category}`}>{FEEDBACK_CATEGORY[f.category] ?? f.category}</span>}
+                      {f.note}
+                    </p>
                     <div className="settings-feedback-meta">
-                      <span>{f.path && <span className="settings-feedback-screen">{screenLabel(f.path)}</span>}{f.email ?? '—'} · {new Date(f.created_at).toLocaleDateString('he-IL')}</span>
+                      <span>{(f.path || f.context) && <span className="settings-feedback-screen">{screenLabel(f.path)}{f.context ? ` · ${f.context}` : ''}</span>}{f.email ?? '—'} · {new Date(f.created_at).toLocaleDateString('he-IL')}</span>
                       <button className="settings-feedback-del" onClick={() => deleteFeedback(f.id)} aria-label="מחק">✕</button>
                     </div>
                   </div>
