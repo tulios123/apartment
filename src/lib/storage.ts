@@ -42,6 +42,23 @@ export async function uploadReceipt(file: File, transactionId: string): Promise<
   return path
 }
 
+// Feedback screenshots live in their own private `feedback` bucket at
+// {user_id}/{feedbackId}.{ext} — separate from financial documents so the owner's
+// admin-read policy can't reach into the documents bucket. See migration 034.
+export async function uploadFeedbackScreenshot(file: File, feedbackId: string, userId: string): Promise<string> {
+  assertSize(file)
+  const path = `${userId}/${feedbackId}.${fileExt(file.name)}`
+  const { error } = await supabase.storage.from('feedback').upload(path, file, { upsert: true })
+  if (error) throw error
+  return path
+}
+
+export async function getFeedbackScreenshotSignedUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('feedback').createSignedUrl(path, 60 * 60)
+  if (error) throw error
+  return data.signedUrl
+}
+
 export async function getReceiptSignedUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage
     .from('documents')

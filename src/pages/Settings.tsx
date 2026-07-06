@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight } from '@phosphor-icons/react'
+import { ArrowRight, Camera } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
 import { screenLabel } from '../lib/screenLabel'
+import { getFeedbackScreenshotSignedUrl } from '../lib/storage'
 import {
   pushSupported,
   pushConfigured,
@@ -33,6 +34,7 @@ interface FeedbackRow {
   path: string | null
   category: string | null
   context: string | null
+  screenshot_path: string | null
   created_at: string
 }
 
@@ -73,12 +75,33 @@ export default function Settings() {
 
   useEffect(() => {
     if (!isAdmin) return
-    supabase
-      .from('feedback')
-      .select('id, email, note, path, category, context, created_at')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setFeedback(data ?? []))
+    async function loadFeedback() {
+      const primary = await supabase
+        .from('feedback')
+        .select('id, email, note, path, category, context, screenshot_path, created_at')
+        .order('created_at', { ascending: false })
+      if (!primary.error) { setFeedback((primary.data as FeedbackRow[]) ?? []); return }
+      // Resilience: if the screenshot_path column isn't live yet (migration 034 not
+      // applied / schema-cache lag), fall back so the inbox still loads every note.
+      if (/screenshot_path|column|schema|PGRST204/i.test(primary.error.message ?? '')) {
+        const fb = await supabase
+          .from('feedback')
+          .select('id, email, note, path, category, context, created_at')
+          .order('created_at', { ascending: false })
+        setFeedback((fb.data as unknown as FeedbackRow[]) ?? [])
+      }
+    }
+    loadFeedback()
   }, [isAdmin])
+
+  function viewShot(path: string) {
+    // Open the tab synchronously (iOS Safari blocks window.open after an await),
+    // then redirect it to the signed URL once it resolves.
+    const win = window.open('', '_blank')
+    getFeedbackScreenshotSignedUrl(path)
+      .then(url => { if (win) win.location.href = url; else window.open(url, '_blank') })
+      .catch(() => win?.close())
+  }
 
   async function deleteFeedback(id: string) {
     const removed = feedback.find(f => f.id === id)
@@ -295,6 +318,11 @@ export default function Settings() {
                       {f.category && <span className={`settings-feedback-cat cat-${f.category}`}>{FEEDBACK_CATEGORY[f.category] ?? f.category}</span>}
                       {f.note}
                     </p>
+                    {f.screenshot_path && (
+                      <button type="button" className="settings-feedback-shot" onClick={() => viewShot(f.screenshot_path!)}>
+                        <Camera size={13} weight="duotone" /> צילום מצורף
+                      </button>
+                    )}
                     <div className="settings-feedback-meta">
                       <span>{(f.path || f.context) && <span className="settings-feedback-screen">{screenLabel(f.path)}{f.context ? ` · ${f.context}` : ''}</span>}{f.email ?? '—'} · {new Date(f.created_at).toLocaleDateString('he-IL')}</span>
                       <button className="settings-feedback-del" onClick={() => deleteFeedback(f.id)} aria-label="מחק">✕</button>

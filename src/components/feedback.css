@@ -75,6 +75,49 @@
 }
 .fb-form textarea:focus { outline: none; border-color: var(--accent, #2a7de1); }
 
+/* Optional screenshot attach — a dashed "add" button, or a thumbnail once picked. */
+.fb-attach { display: flex; }
+.fb-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  background: var(--bg-alt, #f7f8fa);
+  color: var(--text-muted, #6b7280);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.14s ease, color 0.14s ease;
+}
+.fb-attach-btn:hover { border-color: var(--accent, #2a7de1); color: var(--accent, #2a7de1); }
+
+.fb-shot-preview { position: relative; display: inline-block; }
+.fb-shot-preview img {
+  max-height: 96px;
+  max-width: 100%;
+  border-radius: var(--r-md, 12px);
+  border: 1px solid var(--border, #e2e4e8);
+  display: block;
+}
+.fb-shot-remove {
+  position: absolute;
+  inset-block-start: -8px;
+  inset-inline-end: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  display: grid;
+  place-items: center;
+  background: var(--danger, #e0533d);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.2));
+}
+
 /* The exact captured context — reassures the sender it's tied to this screen. */
 .fb-screen-note {
   font-size: 12px;
@@ -130,3 +173,21 @@
   color: var(--accent, #2a7de1);
 }
 .settings-feedback-cat.cat-bug { background: rgba(224, 83, 61, 0.12); color: var(--danger, #e0533d); }
+
+/* "View attached screenshot" link in the owner's feedback inbox (Settings). */
+.settings-feedback-shot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-pill, 999px);
+  background: var(--bg-alt, #f7f8fa);
+  color: var(--accent, #2a7de1);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.settings-feedback-shot:hover { border-color: var(--accent, #2a7de1); }

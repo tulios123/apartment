@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { Lightbulb } from '@phosphor-icons/react'
+import { useState, useRef } from 'react'
+import { Lightbulb, Camera, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { screenLabel } from '../lib/screenLabel'
 import { currentEditContext } from '../lib/editContext'
+import { uploadFeedbackScreenshot } from '../lib/storage'
 import BottomSheet from './ui/BottomSheet'
 import './feedback.css'
 
@@ -30,12 +31,23 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
   // Snapshot screen + open-edit at the moment the user opens the form — before this
   // sheet mounts — so the feedback sheet never records *itself* as the context.
   const [ctx, setCtx] = useState<{ path: string; edit: string | null }>({ path: '', edit: null })
+  // Optional screenshot: keep the File for upload + a preview object-URL for the thumbnail.
+  const [shot, setShot] = useState<File | null>(null)
+  const [shotUrl, setShotUrl] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  function pickShot(file: File | null) {
+    if (shotUrl) URL.revokeObjectURL(shotUrl)   // release the previous preview
+    setShot(file)
+    setShotUrl(file ? URL.createObjectURL(file) : null)
+  }
 
   function openForm() {
     const path = screen ?? (typeof window !== 'undefined' ? window.location.pathname : '')
     setCtx({ path, edit: currentEditContext() })
     setCategory('bug')
     setNote('')
+    pickShot(null)
     setErr(false)
     setSent(false)
     setOpen(true)
@@ -52,20 +64,33 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
       path: ctx.path,
       user_agent: navigator.userAgent,
     }
-    let { error } = await supabase.from('feedback').insert({ ...base, category, context: ctx.edit })
+    // Save the note first (and get its id) so a failed screenshot upload never loses it.
+    let ins = await supabase.from('feedback').insert({ ...base, category, context: ctx.edit }).select('id').single()
     // Resilience: if the category/context columns aren't live yet (migration not
     // applied, or PostgREST schema-cache lag), still save the note without them.
-    if (error && /category|context|column|schema|PGRST204/i.test(error.message ?? '')) {
-      ;({ error } = await supabase.from('feedback').insert(base))
+    if (ins.error && /category|context|column|schema|PGRST204/i.test(ins.error.message ?? '')) {
+      ins = await supabase.from('feedback').insert(base).select('id').single()
     }
+    if (ins.error || !ins.data) { setSending(false); setErr(true); return }
+    const feedbackId = ins.data.id as string
+
+    // Optional screenshot — best-effort. The note is already saved, so an upload
+    // failure (or the screenshot column/bucket not being live yet) never blocks the send.
+    if (shot) {
+      try {
+        const path = await uploadFeedbackScreenshot(shot, feedbackId, user.id)
+        await supabase.from('feedback').update({ screenshot_path: path }).eq('id', feedbackId)
+      } catch { /* ignore — the note is saved without the image */ }
+    }
+
     setSending(false)
-    if (error) { setErr(true); return }
     // Notify the owner — best-effort, never block the thank-you on it.
     supabase.functions
-      .invoke('notify-feedback', { body: { category, screen: ctx.path, editContext: ctx.edit, note: base.note } })
+      .invoke('notify-feedback', { body: { category, screen: ctx.path, editContext: ctx.edit, note: base.note, hasScreenshot: !!shot } })
       .catch(() => {})
     setSent(true)
     setNote('')
+    pickShot(null)
     setTimeout(() => { setOpen(false); setSent(false) }, 1500)
   }
 
@@ -109,6 +134,28 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
               placeholder="מה קרה? מה חסר או מבלבל?"
               rows={4}
             />
+
+            <div className="fb-attach">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={e => { pickShot(e.target.files?.[0] ?? null); e.target.value = '' }}
+              />
+              {shotUrl ? (
+                <div className="fb-shot-preview">
+                  <img src={shotUrl} alt="תצוגה מקדימה של הצילום" />
+                  <button type="button" className="fb-shot-remove" onClick={() => pickShot(null)} aria-label="הסרת הצילום">
+                    <X size={13} weight="bold" />
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="fb-attach-btn" onClick={() => fileRef.current?.click()}>
+                  <Camera size={17} weight="duotone" /> צירוף צילום מסך
+                </button>
+              )}
+            </div>
 
             <div className="fb-screen-note">מתוך: {contextLabel}</div>
             {err && <p className="fb-err">לא הצלחנו לשלוח — נסו שוב</p>}
