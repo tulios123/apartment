@@ -217,7 +217,7 @@ export default function Insurance() {
       {policies.length === 0 && (
         <div className="empty-state-cta">
           <div className="empty-state-cta-icon"><ClayIllustration variant="shield" /></div>
-          <p>עדיין לא הוספת פוליסות ביטוח</p>
+          <p>עדיין לא נוספו פוליסות ביטוח</p>
           <button className="btn-primary" onClick={openNew}>+ הוסף פוליסה</button>
         </div>
       )}

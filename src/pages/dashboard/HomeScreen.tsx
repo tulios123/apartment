@@ -195,7 +195,7 @@ export default function HomeScreen() {
       showFlash('יופי! שכר הדירה נרשם ✓')
       await refetchTx()
     } catch {
-      showFlash('לא הצלחנו לרשום, נסה שוב')
+      showFlash('לא הצלחנו לרשום, נסו שוב')
     } finally {
       setBusy(null)
     }
@@ -211,7 +211,7 @@ export default function HomeScreen() {
     setTasks(prev => prev.filter(t => t.id !== id))
     showFlash('משימה הושלמה ✓')
     updateTask(id, { status: 'done' }).then(r => {
-      if (r.error) { showFlash('לא הצלחנו לעדכן, נסה שוב'); refetchTasks(); return }
+      if (r.error) { showFlash('לא הצלחנו לעדכן, נסו שוב'); refetchTasks(); return }
       // C5: only offer the money follow-up once completion actually persisted — so an
       // offline/failed completion never navigates the user to log money for a task
       // that bounces back. In-app dialog, not a blocking native confirm().

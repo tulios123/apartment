@@ -111,7 +111,7 @@ export default function InvestmentCosts() {
 
   return (
     <section className="inv-costs-section">
-      <p className="prop-section-hint">סך ההון העצמי והעלויות הנלוות שהשקעת ברכישת הנכס.</p>
+      <p className="prop-section-hint">סך ההון העצמי והעלויות הנלוות שהושקעו ברכישת הנכס.</p>
       <div className="prop-card">
         {rows.map((row, idx) => (
           <div key={`${row.category}-${idx}`} className="inv-cost-row">

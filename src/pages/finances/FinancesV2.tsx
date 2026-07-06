@@ -467,7 +467,7 @@ export default function FinancesV2() {
       {/* ── Range perspective: bar per month (short span) or per year ── */}
       {view === 'range' && (
         loading ? <SkeletonList rows={3} /> : rangeBuckets.length === 0 ? (
-          <div className="finv-empty"><p style={{ color: 'var(--text-muted)' }}>בחר טווח תאריכים תקין</p></div>
+          <div className="finv-empty"><p style={{ color: 'var(--text-muted)' }}>בחרו טווח תאריכים תקין</p></div>
         ) : (
           <div className="finv-yearchart">
             <div className="finv-yearchart-head">

@@ -10,7 +10,7 @@ export function PageError({ message, onRetry }: { message: string; onRetry?: () 
       </div>
       <p>{message}</p>
       <button className="btn-secondary" onClick={onRetry ?? (() => window.location.reload())}>
-        נסה שוב
+        נסו שוב
       </button>
     </div>
   )
