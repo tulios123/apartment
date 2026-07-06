@@ -220,6 +220,11 @@ export default function HomeScreen() {
       // that bounces back. In-app dialog, not a blocking native confirm().
       const f = task ? taskCompletionFollowup(task) : null
       if (f) setFollowup(f)
+    }).catch(() => {
+      // A thrown/rejected write (e.g. offline) would otherwise leave the task removed
+      // from the UI though it was never saved, plus an unhandled rejection. Restore it.
+      showFlash('לא הצלחנו לעדכן, נסו שוב')
+      refetchTasks()
     })
   }
 

@@ -22,8 +22,10 @@ type Props = {
 // RTL grid → bottom row reads: [⌫ right] [0 mid] [. left]
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0', '.'] as const
 
-// Up to 9 integer digits — keeps the 40px hero from overflowing the sheet width.
-const MAX_INT_DIGITS = 9
+// Up to 8 integer digits — matches the DB column amount numeric(10,2) (max
+// 99,999,999.99). A 9th digit overflowed the column so the insert always failed with a
+// misleading "נסו שוב"; capping the keypad prevents an unsavable amount up front.
+const MAX_INT_DIGITS = 8
 
 // Group the integer part for the live hero ("1234567" → "1,234,567") while keeping any
 // trailing dot / partial decimals intact so it reads naturally mid-typing.

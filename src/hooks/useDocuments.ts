@@ -46,7 +46,11 @@ export async function updateDocument(
 }
 
 export async function deleteDocument(id: string, storagePath: string): Promise<void> {
-  await supabase.storage.from('documents').remove([storagePath])
+  const { error: storageErr } = await supabase.storage.from('documents').remove([storagePath])
+  // Don't delete the DB record if the file removal failed — that would orphan the file
+  // in storage forever (no record left to point at it for cleanup). Surface the error so
+  // the caller shows a retry instead. (Removing an already-absent path is not an error.)
+  if (storageErr) throw storageErr
   const { error } = await supabase.from('documents').delete().eq('id', id)
   if (error) throw error
 }
