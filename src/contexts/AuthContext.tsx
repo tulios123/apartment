@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { clearQueryCache } from '../lib/queryCache'
+import { clearOnboardingDraft } from '../lib/onboardingDraft'
 
 // Dev-only auto-login. Gated on import.meta.env.DEV so it is compiled out of ANY
 // production build (vite build ⇒ DEV=false) — even if the env var were misconfigured
@@ -96,6 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
+    // Clear this user's in-progress onboarding draft so it doesn't linger in
+    // localStorage on a shared device after logout (privacy — audit). Do it before
+    // signOut, while we still hold the user id the draft is keyed by.
+    clearOnboardingDraft(session?.user?.id)
     clearQueryCache()
     await supabase.auth.signOut()
   }

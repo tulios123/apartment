@@ -23,7 +23,13 @@ function currentMonthKey() {
 async function insertGenerated(table: 'transactions' | 'tasks', rows: object[], onConflict: string) {
   if (rows.length === 0) return
   const { error } = await supabase.from(table).upsert(rows, { onConflict, ignoreDuplicates: true })
-  if (error) await supabase.from(table).insert(rows)
+  if (error) {
+    // The unique index (migration 032) isn't present yet → fall back to a plain insert so
+    // generation still works pre-migration. Propagate a real insert failure so the month
+    // is never marked done on a silent write failure (generate() retries next mount).
+    const { error: insertErr } = await supabase.from(table).insert(rows)
+    if (insertErr) throw insertErr
+  }
 }
 
 export function useMonthlyGeneration() {
@@ -60,26 +66,33 @@ async function runGeneration() {
   // reject the whole batch insert and silently skip ALL generation that month.
   const lastDayOfMonth = Number(monthEnd.slice(8, 10))
 
-  const { data: items } = await supabase
+  // Any of these reads failing must ABORT (throw) rather than proceed on empty data:
+  // a swallowed error would return as if there were no recurring items, generate() would
+  // mark the month done, and the month would silently have no tasks/transactions.
+  const { data: items, error: itemsErr } = await supabase
     .from('recurring_items')
     .select('*')
     .eq('owner_id', ownerId)
     .lte('start_date', monthEnd)
     .or(`end_date.is.null,end_date.gte.${monthStart}`)
+  if (itemsErr) throw itemsErr
 
   if (!items || items.length === 0) return
 
-  const { data: existingTx } = await supabase
+  const { data: existingTx, error: existingTxErr } = await supabase
     .from('transactions')
     .select('recurring_item_id')
     .eq('owner_id', ownerId)
     .gte('date', monthStart)
     .lte('date', monthEnd)
     .not('recurring_item_id', 'is', null)
+  // A failed dedup read must abort too — otherwise generatedIds is empty and the
+  // insert fallback (below) could re-create rows that already exist.
+  if (existingTxErr) throw existingTxErr
 
   const generatedIds = new Set((existingTx ?? []).map(t => t.recurring_item_id))
 
-  const { data: existingTasks } = await supabase
+  const { data: existingTasks, error: existingTasksErr } = await supabase
     .from('tasks')
     .select('recurring_item_id')
     .eq('owner_id', ownerId)
@@ -87,6 +100,7 @@ async function runGeneration() {
     .lte('due_date', monthEnd)
     .eq('source', 'recurring_item')
     .not('recurring_item_id', 'is', null)
+  if (existingTasksErr) throw existingTasksErr
 
   const taskIds = new Set((existingTasks ?? []).map(t => t.recurring_item_id))
 
@@ -141,11 +155,13 @@ async function runGeneration() {
   // would roll back a day in the small hours, mis-dating the alert and its window.
   const todayStr = todayISO()
 
-  const { data: contracts } = await supabase
+  const { data: contracts, error: contractsErr } = await supabase
     .from('contracts')
     .select('id, property_id, company_name, end_date, renewal_alert_days')
     .eq('owner_id', ownerId)
     .gte('end_date', todayStr)
+  // Abort on error so renewal alerts aren't silently skipped for the whole month.
+  if (contractsErr) throw contractsErr
 
   for (const contract of contracts ?? []) {
     // EDGE-01: whole-day string diff (matches the edge function) so the client task

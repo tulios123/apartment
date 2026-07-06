@@ -13,7 +13,7 @@ import { currentSplit, futureSplit, principalNext12Months } from '../../lib/equi
 import { formatCurrency } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { SkeletonList } from '../../components/ui/Skeleton'
-import { EmptyState } from '../../components/ui/EmptyState'
+import { EmptyState, PageError } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './wealth.css'
 
@@ -22,12 +22,13 @@ const fmt = (v: number) => formatCurrency(v)
 export default function WealthHub() {
   const [editing, setEditing] = useState(false)
 
-  const { property, contracts, loading: loadingProp, refetch: refetchProp } = usePropertyData()
-  const { tracks, summary, loading: loadingMortgage, refetch: refetchMortgage } = useMortgageData()
-  const { totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, refetch: refetchInv } = useInvestmentData()
-  const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingLoans, refetch: refetchLoans } = useLoansData()
+  const { property, contracts, loading: loadingProp, error: errProp, refetch: refetchProp } = usePropertyData()
+  const { tracks, summary, loading: loadingMortgage, error: errMortgage, refetch: refetchMortgage } = useMortgageData()
+  const { totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, error: errInv, refetch: refetchInv } = useInvestmentData()
+  const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingLoans, error: errLoans, refetch: refetchLoans } = useLoansData()
 
   const statsLoading = loadingProp || loadingMortgage || loadingInv || loadingLoans
+  const loadError = errProp || errMortgage || errInv || errLoans
 
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
   const mortgageBalance = summary.currentBalance || 0
@@ -64,7 +65,12 @@ export default function WealthHub() {
         </button>
       </div>
 
-      {statsLoading ? <SkeletonList rows={3} /> : !hasData ? (
+      {statsLoading ? <SkeletonList rows={3} /> : (loadError && !hasData) ? (
+        // A failed first load (no cache → all zeros) must NOT read as "nothing defined
+        // yet" — that invites the user to re-enter data they already have. Show a
+        // retryable error instead (audit: silent-fetch cluster).
+        <PageError message={loadError} onRetry={() => { refetchProp(); refetchMortgage(); refetchInv(); refetchLoans() }} />
+      ) : !hasData ? (
         <EmptyState
           icon={<ClayIllustration variant="bank" />}
           title="עדיין לא הוגדרו נכס, משכנתא או הלוואות"
