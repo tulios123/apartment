@@ -51,11 +51,11 @@ export default function HomeScreen() {
 
   const { upcomingRenewals, loading: loadingStats, error, partial } = useDashboardStats()
   const { tracks, loading: loadingMortgage } = useMortgageData()
-  const { property, contracts, loading: loadingProperty } = usePropertyData()
+  const { property, contracts, loading: loadingProperty, error: propertyError, refetch: refetchProperty } = usePropertyData()
   const { loans, loading: loadingLoans } = useLoansData()
   const { policies, loading: loadingInsurance } = useInsurance()
   const { tasks, setTasks, loading: loadingTasks, refetch: refetchTasks } = useTasks({ status: 'open' })
-  const { transactions, loading: loadingTx, refetch: refetchTx } = useTransactions({ year, month })
+  const { transactions, loading: loadingTx, error: txError, refetch: refetchTx } = useTransactions({ year, month })
 
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<Set<string>>(new Set())
@@ -68,6 +68,9 @@ export default function HomeScreen() {
   // Money follow-up after completing a money-implying task — shown as an in-app
   // dialog (not a native confirm), and only after the completion actually persisted.
   const [followup, setFollowup] = useState<TaskFollowup | null>(null)
+  // Quick-capture asks to confirm before writing — a fast inline entry can hide a typo
+  // (an extra zero turning ₪50 into ₪500) and there was no confirm/undo (audit).
+  const [quickPending, setQuickPending] = useState<{ income: boolean; amount: number; desc: string; text: string } | null>(null)
 
   // B8: real display name only — no email prefix / technical username fallback.
   const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] || ''
@@ -236,27 +239,45 @@ export default function HomeScreen() {
       setSheet('expense')
       return
     }
-    // AI "magic" path: classify + write inline, never leave the dashboard.
-    const text = quick
+    // AI "magic" path: classify inline, but confirm the parsed amount before writing so
+    // a typo (an extra zero turning ₪50 into ₪500) can't silently record a giant expense
+    // (audit — quick-capture had no confirm/undo).
+    setQuickPending({ income: parsed.income, amount: parsed.amount, desc: parsed.desc, text: quick })
+  }
+
+  async function confirmQuickWrite() {
+    const p = quickPending
+    if (!p) return
+    setQuickPending(null)
     setQuick('')
     // Quick-typed income is always treated as one-off "extra income" — rent has its
     // own dedicated flow (the "שכר הדירה התקבל" action), so it never touches the rent line.
     const { error } = await createTransaction({
       contract_id: null,
       recurring_item_id: null, document_id: null,
-      direction: parsed.income ? 'income' : 'expense',
-      amount: parsed.amount, date: todayStr,
+      direction: p.income ? 'income' : 'expense',
+      amount: p.amount, date: todayStr,
       // EDGE-19: classify expenses like the full sheet does instead of always 'אחר'
       // (e.g. "תיקון ברז 350" → תיקונים). One-off income stays 'אחר' (rent has its own flow).
-      category: parsed.income ? 'אחר' : predictCategory(parsed.desc),
-      description: parsed.desc, payment_method: null,
+      category: p.income ? 'אחר' : predictCategory(p.desc),
+      description: p.desc, payment_method: null,
     })
-    if (error) { setQuick(text); showFlash('לא הצלחנו לרשום, נסה שוב'); return }
-    showFlash(`נרשם ✓ ${fmt(parsed.amount)} · ${parsed.desc}`)
+    if (error) { setQuick(p.text); showFlash('לא הצלחנו לרשום, נסו שוב'); return }
+    showFlash(`נרשם ✓ ${fmt(p.amount)} · ${p.desc}`)
     await refetchTx()
   }
 
+  // Distinguish a failed FIRST load (no cache → empty) from a genuine empty state, so we
+  // never render a false "שכ״ד לא התקבל" (→ a duplicate rent entry when the user approves)
+  // or a false "לא הוגדר נכס" (→ a second property). A transient refetch keeps the cached
+  // rows, so these only fire when we truly have nothing loaded — then show a retryable
+  // error instead of a misleading zero/empty (audit: silent-fetch-failure cluster).
+  const txFailedEmpty = !!txError && transactions.length === 0
+  const propertyFailedEmpty = !!propertyError && !property
+
   if (error) return <PageError message={error} />
+  if (propertyFailedEmpty) return <PageError message={propertyError!} onRetry={refetchProperty} />
+  if (txFailedEmpty) return <PageError message={txError!} onRetry={refetchTx} />
 
   return (
     <div className="page hs">
@@ -508,6 +529,16 @@ export default function HomeScreen() {
           setFollowup(null)
         }}
         onCancel={() => setFollowup(null)}
+      />
+
+      <ConfirmDialog
+        open={!!quickPending}
+        title="לרשום את התנועה?"
+        message={quickPending ? `${quickPending.income ? 'הכנסה' : 'הוצאה'} · ${fmt(quickPending.amount)} · ${quickPending.desc}` : ''}
+        confirmLabel="רישום"
+        cancelLabel="ביטול"
+        onConfirm={confirmQuickWrite}
+        onCancel={() => setQuickPending(null)}
       />
     </div>
   )

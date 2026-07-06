@@ -13,6 +13,7 @@ import { activeContract as findActiveContract } from '../../lib/projections'
 import { formatCurrency, formatDate } from '../../lib/format'
 import type { Property } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import { PageError } from '../../components/ui/EmptyState'
 import './property-v2.css'
 
 const TasksPanel = () => <TasksV2 embedded />
@@ -42,7 +43,7 @@ export default function PropertyAdminHub() {
   const { user } = useAuth()
   const [tab, setTab] = useState(() => resolveSection(section))
 
-  const { property, contracts, loading, refetch } = usePropertyData()
+  const { property, contracts, loading, error, refetch } = usePropertyData()
   const [showModal, setShowModal] = useState(false)
 
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
@@ -85,7 +86,12 @@ export default function PropertyAdminHub() {
     <div className="page prov">
       <div className="page-header"><h1>ניהול הנכס</h1></div>
 
-      {loading ? <SkeletonList rows={2} /> : (
+      {loading ? <SkeletonList rows={2} /> : (error && !property) ? (
+        // A failed load (no cached property) must NOT fall through to the "עדיין לא הוגדר
+        // נכס" / "הוסף נכס" state — that would let the user create a SECOND property while
+        // one already exists. Show a retryable error instead (audit: silent-fetch cluster).
+        <PageError message={error} onRetry={refetch} />
+      ) : (
         <>
           {/* Property binder — summary at the top, edit in place */}
           <div className="padm-binder">
