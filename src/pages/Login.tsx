@@ -128,7 +128,7 @@ export default function Login() {
             ) : (
               <form className="login-manager-form" onSubmit={handleManagerLogin}>
                 <input
-                  type="password" inputMode="numeric" autoComplete="current-password"
+                  type="password" autoComplete="current-password"
                   placeholder="סיסמת מנהל"
                   value={mgrPwd}
                   onChange={e => { setMgrPwd(e.target.value); setMgrError('') }}
