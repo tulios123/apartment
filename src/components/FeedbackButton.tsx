@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Lightbulb, Camera, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { screenLabel } from '../lib/screenLabel'
 import { currentEditContext } from '../lib/editContext'
+import { registerFeedbackOpener } from '../lib/feedbackController'
 import { uploadFeedbackScreenshot } from '../lib/storage'
 import BottomSheet from './ui/BottomSheet'
 import './feedback.css'
@@ -52,6 +53,16 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
     setSent(false)
     setOpen(true)
   }
+
+  // Let any edit surface (Modal / BottomSheet header) open this same sheet via
+  // openFeedback() — so a family member can report from *inside* a dialog, scoped to
+  // the exact edit context. openForm reads the live context at call time, so a single
+  // registration per mount is enough.
+  useEffect(() => {
+    registerFeedbackOpener(openForm)
+    return () => registerFeedbackOpener(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function submit() {
     if (!note.trim() || !user) return
@@ -106,7 +117,7 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
         <Lightbulb size={18} weight="fill" />
       </button>
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="שליחת משוב" track={false} minimizable={false}>
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="שליחת משוב" track={false} minimizable={false} elevated>
         {sent ? (
           <p className="fb-thanks">תודה! המשוב נשלח ✓</p>
         ) : (

@@ -429,6 +429,11 @@ input[type="date"] {
   font-size: 17px;
   font-weight: 600;
 }
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
 /* Form */
 .form {

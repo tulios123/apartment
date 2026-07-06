@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from '@phosphor-icons/react'
+import { X, Lightbulb } from '@phosphor-icons/react'
 import { pushEditContext } from '../../lib/editContext'
+import { openFeedback } from '../../lib/feedbackController'
 import './bottom-sheet.css'
 
 type Props = {
@@ -22,6 +23,11 @@ type Props = {
    * it doesn't record *itself* as the thing the note is about.
    */
   track?: boolean
+  /**
+   * Raise the sheet above edit surfaces (modals at z-index 200, other sheets at 120).
+   * The feedback sheet sets this so it's usable when opened from inside an open dialog.
+   */
+  elevated?: boolean
 }
 
 /**
@@ -29,7 +35,7 @@ type Props = {
  * stacking/RTL/overflow context. Bottom-anchored slide, grab handle with
  * swipe-down-to-dismiss, scrim-tap + Esc to close, body scroll-lock.
  */
-export default function BottomSheet({ open, onClose, title, children, minimizable = true, track = true }: Props) {
+export default function BottomSheet({ open, onClose, title, children, minimizable = true, track = true, elevated = false }: Props) {
   // Keep mounted through the slide-out, then unmount to keep the DOM clean.
   const [mounted, setMounted] = useState(open)
   const [minimized, setMinimized] = useState(false)
@@ -141,7 +147,7 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
       }
 
   return createPortal(
-    <div className={`bsheet-root${open ? ' open' : ''}${minimized ? ' minimized' : ''}`}>
+    <div className={`bsheet-root${open ? ' open' : ''}${minimized ? ' minimized' : ''}${elevated ? ' bsheet-root--elevated' : ''}`}>
       <div className="bsheet-scrim" onClick={dismiss} />
       <div
         ref={sheetRef}
@@ -164,7 +170,12 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
         {title && (
           <div className="bsheet-head" onClick={() => minimized && setMinimized(false)}>
             <h2>{title}</h2>
-            <button className="bsheet-close" onClick={e => { e.stopPropagation(); onClose() }} aria-label="סגור"><X size={20} /></button>
+            <div className="bsheet-head-actions">
+              {track !== false && (
+                <button className="bsheet-close" onClick={e => { e.stopPropagation(); openFeedback() }} aria-label="דיווח על תקלה או רעיון" title="דיווח"><Lightbulb size={18} weight="fill" /></button>
+              )}
+              <button className="bsheet-close" onClick={e => { e.stopPropagation(); onClose() }} aria-label="סגור"><X size={20} /></button>
+            </div>
           </div>
         )}
         <div className="bsheet-body">{children}</div>

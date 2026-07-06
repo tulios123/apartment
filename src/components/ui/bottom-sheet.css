@@ -1,5 +1,8 @@
 /* Premium mobile bottom sheet — portaled to <body>. */
 .bsheet-root { position: fixed; inset: 0; z-index: 120; }
+/* The feedback sheet opens from inside edit surfaces (modals at 200, sheets at 120),
+   so it must sit above them to be usable. */
+.bsheet-root--elevated { z-index: 400; }
 
 .bsheet-scrim {
   position: absolute; inset: 0; background: rgba(10,31,68,0.32);
@@ -42,6 +45,7 @@
   padding: 4px 20px 12px; flex-shrink: 0;
 }
 .bsheet-head h2 { font-size: 17px; font-weight: 700; color: var(--brand-navy); }
+.bsheet-head-actions { display: flex; align-items: center; gap: 2px; }
 .bsheet-close {
   background: none; border: none; color: var(--text-muted); cursor: pointer;
   width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center;

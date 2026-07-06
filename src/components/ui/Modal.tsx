@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from '@phosphor-icons/react'
+import { X, Lightbulb } from '@phosphor-icons/react'
 import { pushEditContext } from '../../lib/editContext'
+import { openFeedback } from '../../lib/feedbackController'
 
 /**
  * App modal. Rendered through a portal on <body> and, while open, releases the
@@ -39,7 +40,10 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{title}</h2>
-          <button className="btn-icon" onClick={onClose} aria-label="סגור" title="סגור"><X size={18} /></button>
+          <div className="modal-header-actions">
+            <button className="btn-icon" onClick={openFeedback} aria-label="דיווח על תקלה או רעיון" title="דיווח"><Lightbulb size={17} weight="fill" /></button>
+            <button className="btn-icon" onClick={onClose} aria-label="סגור" title="סגור"><X size={18} /></button>
+          </div>
         </div>
         {children}
       </div>
