@@ -237,7 +237,7 @@ export default function Insurance() {
                 {isExpiringSoon && <span className="contract-status-badge urgent">{daysLeft} ימים לחידוש</span>}
               </div>
               <div className="contract-card-actions">
-                <button className="btn-icon" onClick={() => openEdit(p)} title="עריכה">
+                <button className="btn-icon" onClick={() => openEdit(p)} aria-label="עריכת פוליסה" title="עריכה">
                   <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
                     <path d="M14.5 2.5a2.12 2.12 0 013 3L6 17H3v-3L14.5 2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
                   </svg>
@@ -249,7 +249,7 @@ export default function Insurance() {
                     <button className="btn-xs btn-secondary" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
                   </span>
                 ) : (
-                  <button className="btn-icon danger" onClick={() => setConfirmDeleteId(p.id)} title="מחק">
+                  <button className="btn-icon danger" onClick={() => setConfirmDeleteId(p.id)} aria-label="מחיקת פוליסה" title="מחק">
                     <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
                       <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>

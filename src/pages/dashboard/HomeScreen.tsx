@@ -440,7 +440,7 @@ export default function HomeScreen() {
                       <span className="hs-addlease-title">אין חוזה שכירות פעיל</span>
                       <span className="hs-addlease-sub">הוסיפו שוכר כדי לעקוב אחרי ההכנסה החודשית</span>
                     </span>
-                    <span className="hs-addlease-cta">הוסף חוזה <CaretLeft size={13} weight="bold" /></span>
+                    <span className="hs-addlease-cta">הוסיפו חוזה <CaretLeft size={13} weight="bold" /></span>
                   </button>
                 )}
 

@@ -90,7 +90,7 @@ export function TrackForm({ onSave, onCancel, alert }: { onSave: () => void; onC
           <input type="number" min="1" max="24" value={trackForm.grace_months}
             onChange={e => setTF('grace_months', e.target.value)}
             dir="ltr"
-            style={{ width: 64, marginRight: 8, textAlign: 'center' }}
+            style={{ width: 64, marginInlineStart: 8, textAlign: 'center' }}
             placeholder="12" />
         )}
       </label>

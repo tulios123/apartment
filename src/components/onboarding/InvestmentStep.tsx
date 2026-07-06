@@ -99,7 +99,9 @@ export function InvestmentStep() {
             const expanded = editBalloon === i || !b.amount
             if (!expanded) {
               return (
-                <div key={i} className="onboarding-balloon-chip" onClick={() => setEditBalloon(i)}>
+                <div key={i} className="onboarding-balloon-chip" role="button" tabIndex={0}
+                  onClick={() => setEditBalloon(i)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditBalloon(i) } }}>
                   <span className="onboarding-balloon-chip-main">
                     {formatCurrency(parseFloat(b.amount) || 0)}
                     {b.lender.trim() && <span className="text-muted"> · {b.lender.trim()}</span>}

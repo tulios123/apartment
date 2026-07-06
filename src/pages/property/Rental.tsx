@@ -464,7 +464,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                   {!isActive && <span className="contract-status-badge expired-badge">הסתיים</span>}
                 </div>
                 <div className="contract-card-actions">
-                  <button className="btn-icon" onClick={() => openEditContract(c)} title="עריכה">
+                  <button className="btn-icon" onClick={() => openEditContract(c)} aria-label="עריכת חוזה" title="עריכה">
                     <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
                       <path d="M14.5 2.5a2.12 2.12 0 013 3L6 17H3v-3L14.5 2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
                     </svg>
@@ -476,7 +476,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                       <button className="btn-xs btn-secondary" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
                     </span>
                   ) : (
-                    <button className="btn-icon danger" onClick={() => setConfirmDeleteId(c.id)} title="מחק">
+                    <button className="btn-icon danger" onClick={() => setConfirmDeleteId(c.id)} aria-label="מחיקת חוזה" title="מחק">
                       <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
                         <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                       </svg>
