@@ -106,7 +106,7 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
                 <div key={t.id} className="wlth-track-row">
                   <span className="wlth-track-dot" style={{ background: TRACK_COLOR[t.track_type] }} />
                   <span className="wlth-track-name">{TRACK_LABEL[t.track_type]}{t.label ? ` · ${t.label}` : ''}</span>
-                  <span className="wlth-track-rate">{t.annual_rate.toFixed(1)}%</span>
+                  <span className="wlth-track-rate">{Number(t.annual_rate).toFixed(1)}%</span>
                   <span className="wlth-track-bal">{fmt(trackBalance(t))}</span>
                 </div>
               ))}
@@ -124,7 +124,7 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
               <span className="wlth-vehicle-icon"><CreditCard size={20} weight="duotone" /></span>
               <div className="wlth-vehicle-main">
                 <div className="wlth-vehicle-title">{l.label || 'הלוואה משלימה'}{l.lender ? <span className="wlth-vehicle-meta"> · {l.lender}</span> : null}</div>
-                <div className="wlth-vehicle-sub">{[l.annual_rate != null ? `${l.annual_rate.toFixed(1)}%` : null, `${fmt(loanMonthlyPayment(l))}/חודש`, loanEndDate(l) ? `סיום ${yearOf(loanEndDate(l))}` : null].filter(Boolean).join(' · ')}</div>
+                <div className="wlth-vehicle-sub">{[Number.isFinite(Number(l.annual_rate)) ? `${Number(l.annual_rate).toFixed(1)}%` : null, `${fmt(loanMonthlyPayment(l))}/חודש`, loanEndDate(l) ? `סיום ${yearOf(loanEndDate(l))}` : null].filter(Boolean).join(' · ')}</div>
               </div>
               <div className="wlth-vehicle-bal"><b>{fmt(loanBalance(l))}</b><span>יתרה</span></div>
             </div>

@@ -346,7 +346,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   <div key={t.id} className={`liav-card${isOpen ? ' open' : ''}`}>
                     <button className="liav-card-head" onClick={() => setOpen(isOpen ? null : t.id)}>
                       <span className={`liav-badge ${color}`}>{TRACK_LABEL[t.track_type]}</span>
-                      <div className="liav-card-main"><div className="liav-card-title">{fmt(s.pay)} לחודש</div><div className="liav-card-sub">ריבית {t.annual_rate.toFixed(1)}%{s.endYear ? ` · עד ${s.endYear}` : ''}{t.label ? ` · ${t.label}` : ''}</div></div>
+                      <div className="liav-card-main"><div className="liav-card-title">{fmt(s.pay)} לחודש</div><div className="liav-card-sub">ריבית {Number(t.annual_rate).toFixed(1)}%{s.endYear ? ` · עד ${s.endYear}` : ''}{t.label ? ` · ${t.label}` : ''}</div></div>
                       <div className="liav-card-balance"><b>{fmt(s.balance)}</b><span>יתרה</span></div>
                       <CaretDown className="liav-card-caret" size={16} weight="bold" />
                     </button>
@@ -395,7 +395,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   <div key={l.id} className={`liav-card${isOpen ? ' open' : ''}`}>
                     <button className="liav-card-head" onClick={() => setOpen(isOpen ? null : l.id)}>
                       <span className={`liav-badge ${l.track_type ? TRACK_COLOR[l.track_type] : 'teal'}`}>{l.track_type ? TRACK_LABEL[l.track_type] : 'שפיצר'}</span>
-                      <div className="liav-card-main"><div className="liav-card-title">{l.label || 'הלוואה'}</div><div className="liav-card-sub">{[l.lender, `${fmt(loanMonthlyPayment(l))} לחודש`, l.annual_rate != null ? `${l.annual_rate.toFixed(1)}%` : null].filter(Boolean).join(' · ')}</div></div>
+                      <div className="liav-card-main"><div className="liav-card-title">{l.label || 'הלוואה'}</div><div className="liav-card-sub">{[l.lender, `${fmt(loanMonthlyPayment(l))} לחודש`, Number.isFinite(Number(l.annual_rate)) ? `${Number(l.annual_rate).toFixed(1)}%` : null].filter(Boolean).join(' · ')}</div></div>
                       <div className="liav-card-balance"><b>{fmt(bal)}</b><span>יתרה</span></div>
                       <CaretDown className="liav-card-caret" size={16} weight="bold" />
                     </button>
