@@ -71,7 +71,11 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   }
 
   async function removeDoc(id: string, path: string) {
-    await deleteDocument(id, path); refetchDocs()
+    // Surface a failed deletion (and always resync) instead of an unhandled rejection
+    // that leaves the doc on screen with no error — matches the sibling delete screens.
+    try { await deleteDocument(id, path) }
+    catch { setEditErr('הסרת המסמך נכשלה — נסו שוב') }
+    finally { refetchDocs() }
   }
 
   // Backlog = every open task (dated ones carry a quiet chip).
@@ -164,7 +168,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       // dialog (not a blocking native confirm() that freezes the tap).
       const f = newStatus === 'done' ? taskCompletionFollowup(t) : null
       if (f) setFollowup(f)
-    })
+    }).catch(() => refetch()) // a thrown/offline write (e.g. stale session) reconciles the optimistic flip
   }
 
   return (
@@ -182,6 +186,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
             <form className="tav-quickadd" onSubmit={handleAdd}>
               <input
                 className="tav-quickadd-input"
+                aria-label="הוספת משימה"
                 placeholder="הקלידו משימה ואשרו"
                 value={addingTitle}
                 onChange={e => { setAddingTitle(e.target.value); if (addErr) setAddErr(null) }}

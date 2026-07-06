@@ -337,7 +337,7 @@ export default function FinancesV2() {
       updateTransaction(id, fields).then(({ error }) => {
         if (error) { refetch(); showFlash('העדכון נכשל — שוחזר', 'err') }
         else if (monthChanged) refetch()
-      })
+      }).catch(() => { refetch(); showFlash('העדכון נכשל — שוחזר', 'err') }) // thrown/offline write (stale session): reconcile + surface
       return
     }
     // New manual transaction: no source link, so contract_id / recurring_item_id are null.

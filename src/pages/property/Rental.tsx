@@ -19,7 +19,7 @@ import type { Contract, UtilityPayer } from '../../types'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
-import { getReceiptSignedUrl, uploadDocument, redirectToSignedUrl } from '../../lib/storage'
+import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { extractRental } from '../../lib/extractFinancing'
 import { ScanDocList } from '../liabilities/ScanDocList'
 import { DateField } from '../../components/ui/DateField'
@@ -295,6 +295,7 @@ function ContractForm({
               </div>
               {u.payer === 'owner' && (
                 <input type="text" inputMode="numeric" className="utility-amount-input" placeholder="₪ סכום"
+                  aria-label={`סכום ${u.utility}`}
                   value={u.amount != null ? u.amount.toLocaleString('he-IL') : ''}
                   onChange={e => setUtilAmt(u.utility, e.target.value)} />
               )}
@@ -540,10 +541,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
           {rentalDocs.map(doc => (
             <div key={doc.id} className="prop-field-row">
               <span className="prop-field-label">{doc.name || 'חוזה שכירות'}</span>
-              <button className="btn-link" onClick={async () => {
-                const url = await getReceiptSignedUrl(doc.storage_path)
-                window.open(url, '_blank')
-              }}>פתח</button>
+              <button className="btn-link" onClick={() => redirectToSignedUrl(window.open('', '_blank'), doc.storage_path)}>פתח</button>
             </div>
           ))}
         </section>

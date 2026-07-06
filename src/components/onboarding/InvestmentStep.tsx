@@ -123,7 +123,7 @@ export function InvestmentStep() {
                     <input type="text" placeholder="ממי (למשל: אמא)"
                       value={b.lender}
                       onChange={e => setBalloonLoans(prev => prev.map((r, j) => j === i ? { ...r, lender: e.target.value } : r))} />
-                    <button type="button" onClick={() => { setEditBalloon(null); setBalloonLoans(prev => prev.filter((_, j) => j !== i)) }}
+                    <button type="button" aria-label="מחיקת הלוואת בלון" onClick={() => { setEditBalloon(null); setBalloonLoans(prev => prev.filter((_, j) => j !== i)) }}
                       style={{ flexShrink: 0, padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', cursor: 'pointer' }}>
                       <X size={14} />
                     </button>
@@ -207,7 +207,7 @@ export function InvestmentStep() {
                       <input type="text" inputMode="numeric" placeholder="0"
                         value={formatNum(ec.amount)}
                         onChange={e => setExtraCosts(prev => prev.map((c, j) => j === i ? { ...c, amount: e.target.value.replace(/[^\d]/g, '') } : c))} />
-                      <button type="button" onClick={() => setExtraCosts(prev => prev.filter((_, j) => j !== i))}
+                      <button type="button" aria-label="מחיקת עלות" onClick={() => setExtraCosts(prev => prev.filter((_, j) => j !== i))}
                         style={{ flexShrink: 0, padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', cursor: 'pointer' }}>
                         <X size={14} />
                       </button>

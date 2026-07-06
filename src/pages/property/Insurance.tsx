@@ -10,7 +10,7 @@ import type { InsurancePolicy } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
 import { useDocuments } from '../../hooks/useDocuments'
-import { getReceiptSignedUrl } from '../../lib/storage'
+import { redirectToSignedUrl } from '../../lib/storage'
 import { DateField } from '../../components/ui/DateField'
 
 const INSURANCE_TYPES = ['מבנה', 'חיים', 'משכנתא', 'תכולה', 'אחר']
@@ -297,10 +297,7 @@ export default function Insurance() {
           {insuranceDocs.map(doc => (
             <div key={doc.id} className="prop-field-row">
               <span className="prop-field-label">{doc.name || 'פוליסת ביטוח'}</span>
-              <button className="btn-link" onClick={async () => {
-                const url = await getReceiptSignedUrl(doc.storage_path)
-                window.open(url, '_blank')
-              }}>פתח</button>
+              <button className="btn-link" onClick={() => redirectToSignedUrl(window.open('', '_blank'), doc.storage_path)}>פתח</button>
             </div>
           ))}
         </section>
