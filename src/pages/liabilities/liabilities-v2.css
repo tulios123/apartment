@@ -57,6 +57,8 @@
   .liav-detail-item strong.interest { color: var(--danger-text); }
   .liav-detail-actions { display: flex; gap: 8px; margin-top: 14px; }
   .liav-detail-btn { border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: var(--r-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all var(--t-fast) var(--ease); }
+  /* Icon-only variant (balloon-loan edit/delete) — meet the 44px touch target. */
+  .liav-detail-btn.icon-only { min-width: 44px; min-height: 44px; padding: 7px; justify-content: center; }
   .liav-detail-btn:hover { background: var(--bg-alt); color: var(--brand-navy); }
   .liav-detail-btn.danger:hover { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-bg); }
 
