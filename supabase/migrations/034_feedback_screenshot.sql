@@ -18,16 +18,16 @@ create policy "feedback_shot_insert_own" on storage.objects
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- A writer reads their own shots; the app owner (admin) reads everyone's — mirrors
--- the feedback table's admin-read policy (migration 027) so the owner can open the
--- attached screenshot from Settings.
+-- A writer reads their own shots; the manager console (dev@test.local) reads
+-- everyone's — mirrors the feedback table's admin-read policy (migration 031) so the
+-- manager can open the attached screenshot from the Settings inbox.
 create policy "feedback_shot_select_own_or_admin" on storage.objects
   for select to authenticated
   using (
     bucket_id = 'feedback'
     and (
       (storage.foldername(name))[1] = auth.uid()::text
-      or (auth.jwt() ->> 'email') = 'itai.shubi@gmail.com'
+      or (auth.jwt() ->> 'email') = 'dev@test.local'
     )
   );
 
@@ -38,6 +38,6 @@ create policy "feedback_shot_delete_own_or_admin" on storage.objects
     bucket_id = 'feedback'
     and (
       (storage.foldername(name))[1] = auth.uid()::text
-      or (auth.jwt() ->> 'email') = 'itai.shubi@gmail.com'
+      or (auth.jwt() ->> 'email') = 'dev@test.local'
     )
   );
