@@ -59,7 +59,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (DEV_BYPASS) return
       setSession(session)
-      if (session?.provider_token) {
+      // Only persist the Google OAuth provider token when Google Tasks sync is actually
+      // enabled — otherwise it's an unused OAuth token sitting in localStorage (privacy).
+      if (GOOGLE_TASKS_ENABLED && session?.provider_token) {
         localStorage.setItem('google_provider_token', session.provider_token)
       }
       if (event === 'SIGNED_OUT') {
