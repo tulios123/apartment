@@ -210,7 +210,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
               const overdue = isOverdue(t)
               return (
                 <div key={t.id} className="tav-task tav-task-lg">
-                  <button className="tav-check" onClick={() => toggleDone(t)} aria-label="סמן כהושלם" />
+                  <button className="tav-check" onClick={() => toggleDone(t)} aria-label="סימון כהושלם" />
                   <div className="tav-task-body" onClick={() => openEdit(t)}>
                     <div className="tav-task-title">{t.title}</div>
                     <div className="tav-task-meta">
