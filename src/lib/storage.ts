@@ -32,15 +32,6 @@ export async function uploadDocument(file: File, docId: string, userId?: string)
   return path
 }
 
-export async function uploadReceipt(file: File, transactionId: string): Promise<string> {
-  assertSize(file)
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-  const path = `${user.id}/receipts/${transactionId}.${fileExt(file.name)}`
-  const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
-  if (error) throw error
-  return path
-}
 
 // Feedback screenshots live in their own private `feedback` bucket at
 // {user_id}/{feedbackId}.{ext} — separate from financial documents so the owner's

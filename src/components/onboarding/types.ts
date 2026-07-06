@@ -109,5 +109,3 @@ export function defaultLawyerCost(price: number): string {
 export function defaultBrokerageCost(price: number): string {
   return price > 0 ? String(Math.round(price * 0.02 * 1.18)) : ''
 }
-
-export function defaultSelfEquityPct(): string { return '25' }
