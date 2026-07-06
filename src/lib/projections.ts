@@ -52,7 +52,12 @@ export function rentReceivedToDate(contracts: Contract[], asOf: Date = new Date(
     const start = parseLocalISO(c.start_date)
     const cap = new Date(Math.min(parseLocalISO(c.end_date).getTime(), asOf.getTime()))
     if (cap < start) continue
-    const months = (cap.getFullYear() - start.getFullYear()) * 12 + (cap.getMonth() - start.getMonth()) + 1
+    // Count rent payments actually due: one per month-anniversary of the start day that
+    // has occurred by `cap`. A flat "+1" over-counted a mid-month lease — e.g. 15/1/26→14/1/27
+    // spans 13 calendar months but is only 12 payments — so add the final month only once
+    // its payment day (the start's day-of-month) has been reached.
+    const monthsSpan = (cap.getFullYear() - start.getFullYear()) * 12 + (cap.getMonth() - start.getMonth())
+    const months = monthsSpan + (cap.getDate() >= start.getDate() ? 1 : 0)
     total += Math.max(0, months) * c.monthly_rent
   }
   return total

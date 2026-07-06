@@ -28,11 +28,18 @@ export function monthlyPayment(principal: number, annualRate: number, termMonths
 }
 
 function addMonths(iso: string, months: number): string {
-  const d = new Date(iso + 'T00:00:00')
-  d.setMonth(d.getMonth() + months)
-  // Local Y-M-D — NOT toISOString (UTC), which rolls back a day in timezones
-  // ahead of UTC and would misattribute a 1st-of-month payment to the prior month.
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  // Parse Y-M-D directly and clamp the day to the target month's length. Using
+  // Date.setMonth lets a day-31 start overflow (Jan-31 + 1mo → "Feb 31" → Mar 3),
+  // which skips February and puts TWO payment rows in March. Clamping maps each month
+  // index to exactly one date in the right month. Stays LOCAL Y-M-D (never toISOString,
+  // which rolls back a day in timezones ahead of UTC).
+  const [y, m, day] = iso.slice(0, 10).split('-').map(Number)
+  const idx = (m - 1) + months
+  const ty = y + Math.floor(idx / 12)
+  const tm = ((idx % 12) + 12) % 12 // 0-11, correct for negative months too
+  const lastDay = new Date(ty, tm + 1, 0).getDate() // day 0 of next month = last day of tm
+  const cd = Math.min(day, lastDay)
+  return `${ty}-${String(tm + 1).padStart(2, '0')}-${String(cd).padStart(2, '0')}`
 }
 
 /** Full month-by-month schedule for a single track, including any grace period. */

@@ -85,6 +85,20 @@ describe('numeric columns arrive from Supabase as STRINGS — forecast sums must
   })
 })
 
+describe('rentReceivedToDate — counts payments due, not calendar months spanned', () => {
+  it('a 12-month lease starting mid-month = 12 payments, not 13', () => {
+    // 15/1/26 → 14/1/27 spans 13 calendar months but is only 12 rent payments; the
+    // old flat "+1" counted 13.
+    const c = contract({ start_date: '2026-01-15', end_date: '2027-01-14', monthly_rent: 5000 })
+    expect(rentReceivedToDate([c], new Date(2027, 0, 14))).toBe(12 * 5000)
+  })
+  it('ticks up only once the payment day-of-month is reached', () => {
+    const c = contract({ start_date: '2026-01-15', end_date: '2027-06-15', monthly_rent: 5000 })
+    expect(rentReceivedToDate([c], new Date(2026, 1, 14))).toBe(1 * 5000) // before the 15th
+    expect(rentReceivedToDate([c], new Date(2026, 1, 15))).toBe(2 * 5000) // on the 15th
+  })
+})
+
 describe('paid-to-date helpers', () => {
   it('mortgagePaidToDate sums payments up to the cutoff', () => {
     const t = track({ principal: 120000, annual_rate: 5, term_months: 12 })

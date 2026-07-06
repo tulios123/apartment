@@ -38,6 +38,16 @@ describe('loanBalance', () => {
   })
 })
 
+describe('loan schedule — a day-31 start still has a February payment', () => {
+  it('Feb and March each have exactly one payment (no setMonth overflow)', () => {
+    const l = loan({ principal: 60000, annual_rate: 5, term_months: 6, start_date: '2026-01-31' })
+    expect(loanPaymentForMonth(l, '2026-02')).not.toBeNull()
+    expect(loanPaymentForMonth(l, '2026-03')).not.toBeNull()
+    // The Feb payment date is clamped to the 28th, not overflowed into March.
+    expect(loanPaymentForMonth(l, '2026-02')?.date).toBe('2026-02-28')
+  })
+})
+
 describe('loanInterestToDate', () => {
   it('as-of a payment date does NOT depend on the time of day (no UTC roll-back)', () => {
     const l = loan({ principal: 120000, annual_rate: 5, term_months: 12, start_date: '2026-01-01' })
