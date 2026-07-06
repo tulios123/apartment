@@ -112,7 +112,7 @@ export function MortgageStep() {
           {anyGrace && (
             <div className="onboarding-grace-period">
               <span>תקופה</span>
-              <input type="number" min="1" max="60" value={graceMonths}
+              <input type="number" min="1" max="60" aria-label="תקופת גרייס בחודשים" value={graceMonths}
                 onChange={e => { setGraceMonths(e.target.value); setGraceMonthsForActive(e.target.value) }} />
               <span>ח׳</span>
             </div>

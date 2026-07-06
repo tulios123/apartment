@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useId } from 'react'
 import { createPortal } from 'react-dom'
 
 type Props = {
@@ -25,6 +25,10 @@ export function ConfirmDialog({
 }: Props) {
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const cancelBtnRef = useRef<HTMLButtonElement | null>(null)
+  // Name the dialog by its title (or the message when there's no title) and describe it
+  // by the message, so a screen reader announces what's being confirmed (a11y).
+  const titleId = useId()
+  const msgId = useId()
 
   useEffect(() => {
     if (!open) return
@@ -50,10 +54,13 @@ export function ConfirmDialog({
         className="confirm-dialog"
         role="alertdialog"
         aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : message}
+        aria-describedby={msgId}
         onClick={(e) => e.stopPropagation()}
       >
-        {title && <div className="confirm-title">{title}</div>}
-        <div className="confirm-msg">{message}</div>
+        {title && <div className="confirm-title" id={titleId}>{title}</div>}
+        <div className="confirm-msg" id={msgId}>{message}</div>
         <div className="confirm-actions">
           <button
             className={`confirm-btn confirm-ok${tone === 'danger' ? ' danger' : ''}`}

@@ -43,32 +43,6 @@ async function getOwnerId(): Promise<string> {
   return session.user.id
 }
 
-export async function createRecurringItem(
-  data: Omit<RecurringItem, 'id' | 'owner_id' | 'created_at'>
-) {
-  const ownerId = await getOwnerId()
-  const { data: inserted, error } = await supabase
-    .from('recurring_items')
-    .insert({ ...data, owner_id: ownerId })
-    .select()
-    .single()
-  if (error) throw error
-  return inserted
-}
-
-export async function updateRecurringItem(
-  id: string,
-  data: Partial<Omit<RecurringItem, 'id' | 'owner_id' | 'created_at'>>
-) {
-  const ownerId = await getOwnerId()
-  return supabase.from('recurring_items').update(data).eq('id', id).eq('owner_id', ownerId)
-}
-
-export async function deleteRecurringItem(id: string) {
-  const ownerId = await getOwnerId()
-  return supabase.from('recurring_items').delete().eq('id', id).eq('owner_id', ownerId)
-}
-
 type ContractRentInput = {
   id: string
   monthly_rent: number
