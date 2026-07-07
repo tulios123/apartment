@@ -1,4 +1,5 @@
 import { extractText, getDocumentProxy } from 'npm:unpdf'
+import { parseAndValidateFiles, guardRequestSize, errorResponse } from '../_shared/validate.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,13 +31,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Cap/validate the input before touching the paid Anthropic API. Multiple files
+    // (e.g. several screenshots) arrive as { files: [...] }; a single
+    // { fileBase64, mediaType } stays supported.
+    guardRequestSize(req)
     const body = await req.json()
-    // Accept multiple files (e.g. several screenshots) via { files: [...] }; keep
-    // back-compat with a single { fileBase64, mediaType }.
-    const files: { fileBase64: string; mediaType: string }[] =
-      Array.isArray(body.files) && body.files.length
-        ? body.files
-        : [{ fileBase64: body.fileBase64, mediaType: body.mediaType }]
+    const files = parseAndValidateFiles(body)
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
@@ -95,9 +95,6 @@ Deno.serve(async (req) => {
     })
   } catch (e) {
     console.error('extract-contract error:', e)
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return errorResponse(e, corsHeaders)
   }
 })
