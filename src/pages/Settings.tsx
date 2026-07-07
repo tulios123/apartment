@@ -7,6 +7,7 @@ import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
 import { screenLabel } from '../lib/screenLabel'
 import { getFeedbackScreenshotSignedUrl } from '../lib/storage'
+import { InstallGuide } from '../components/InstallGuide'
 import {
   pushSupported,
   pushConfigured,
@@ -276,6 +277,8 @@ export default function Settings() {
             </div>
           ) : null}
         </section>
+
+        <InstallGuide />
 
         {GOOGLE_TASKS_ENABLED && (
         <section className="settings-section">

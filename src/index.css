@@ -1299,6 +1299,22 @@ input[type="date"] {
   line-height: 1.6;
 }
 
+/* Numbered install steps (InstallGuide) — RTL-native ordered list */
+.install-steps {
+  margin: 0;
+  padding-inline-start: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.install-steps li {
+  font-size: 13.5px;
+  color: var(--text);
+  line-height: 1.55;
+}
+.install-steps li b { font-weight: 700; }
+.install-steps li svg { vertical-align: -2px; }
+
 .settings-actions {
   margin-top: 14px;
   display: flex;
