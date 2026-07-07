@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Export, Plus, DeviceMobile, DotsThreeVertical } from '@phosphor-icons/react'
+import { Export, Plus, DotsThreeVertical } from '@phosphor-icons/react'
 import { isIOS, isInstalledPWA } from '../lib/push'
 
 // A short, platform-aware "install to the home screen" guide for family members.
@@ -24,7 +24,7 @@ export function InstallGuide() {
 
   return (
     <section className="settings-section">
-      <h2><DeviceMobile size={18} weight="duotone" style={{ verticalAlign: '-3px', marginInlineEnd: 6 }} />התקנה על הטלפון</h2>
+      <h2>התקנה על הטלפון</h2>
       <p className="settings-note">
         התקינו את "ניהול דירה" כאפליקציה — כך תפתחו אותה במהירות מהמסך הראשי ותקבלו תזכורות.
         {ios && ' ב-iPhone חובה להתקין כדי שההתראות יעבדו בכלל.'}
