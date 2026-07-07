@@ -24,9 +24,11 @@ function ym(d: Date): string {
 }
 
 function shift(asOf: Date, monthsAhead: number): Date {
-  const d = new Date(asOf)
-  d.setMonth(d.getMonth() + monthsAhead)
-  return d
+  // Anchor on the 1st before shifting: only the year-month is consumed (via ym), and a
+  // day-29–31 asOf would otherwise overflow setMonth (Jan-31 + 1mo → Mar 3) — skipping a
+  // month and double-counting another in the 12-month principal walk. The Date
+  // constructor normalizes month overflow (e.g. month 13 → next Jan) with no day overflow.
+  return new Date(asOf.getFullYear(), asOf.getMonth() + monthsAhead, 1)
 }
 
 /** Summed principal/interest split for a specific `YYYY-MM` month. */

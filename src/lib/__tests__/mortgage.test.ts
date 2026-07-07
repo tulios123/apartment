@@ -62,6 +62,16 @@ describe('trackSchedule', () => {
   })
 })
 
+describe('trackSchedule — a day-31 start lands exactly one row per month', () => {
+  it('does not skip February or double up March (setMonth overflow)', () => {
+    const t = track({ principal: 120000, annual_rate: 6, term_months: 6, start_date: '2026-01-31' })
+    const months = trackSchedule(t).map(r => r.date.slice(0, 7))
+    expect(months).toEqual(['2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
+    // The day is clamped to each month's length — Feb → 28, not overflowed into March.
+    expect(trackSchedule(t)[0].date).toBe('2026-02-28')
+  })
+})
+
 describe('gracePeriodPayment', () => {
   it('returns 0 when no track has grace', () => {
     expect(gracePeriodPayment([track({ principal: 100000, annual_rate: 6, term_months: 120 })])).toBe(0)

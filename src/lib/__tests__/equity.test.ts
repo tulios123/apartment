@@ -55,4 +55,12 @@ describe('principalNext12Months', () => {
     for (const r of trackSchedule(T)) if (r.date >= '2026-01' && r.date < '2027-01') manual += r.principal
     expect(v).toBeCloseTo(manual, 4)
   })
+  it('is day-of-month independent — a 31st asOf must not skip/double a month (setMonth overflow)', () => {
+    const long = track({ principal: 500000, annual_rate: 5, term_months: 360, start_date: '2020-01-15' })
+    const fromDay1 = principalNext12Months([long], [], new Date(2026, 0, 1))
+    const fromDay31 = principalNext12Months([long], [], new Date(2026, 0, 31))
+    // Both walk the same 12 calendar months (Jan..Dec 2026); the old shift() overflowed a
+    // day-31 asOf into skipping February and counting March twice.
+    expect(fromDay31).toBeCloseTo(fromDay1, 6)
+  })
 })
