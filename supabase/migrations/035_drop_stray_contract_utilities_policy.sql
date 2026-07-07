@@ -1,0 +1,12 @@
+-- SECURITY FIX (found by the live RLS verification, 2026-07-07).
+-- A stray policy "owner_access" existed on the LIVE database for contract_utilities:
+--   roles=public, cmd=ALL, USING (true)  ← wide open to everyone, including anon.
+-- It was created out-of-band (Supabase dashboard), NOT by any migration. Because
+-- Postgres OR's permissive policies together, this open policy overrode the correct
+-- owner-scoped policy from migration 006 and left every family's contract_utilities
+-- rows readable AND writable by any user.
+--
+-- Dropping it restores proper isolation: the correct "owner_scoped" policy (006),
+-- which gates access through the owner's own contracts
+-- (contract_id in (select id from contracts where owner_id = auth.uid())), remains.
+drop policy if exists "owner_access" on contract_utilities;
