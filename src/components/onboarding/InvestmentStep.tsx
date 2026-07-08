@@ -99,17 +99,15 @@ export function InvestmentStep() {
             const expanded = editBalloon === i || !b.amount
             if (!expanded) {
               return (
-                <div key={i} className="onboarding-balloon-chip" role="button" tabIndex={0}
-                  onClick={() => setEditBalloon(i)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditBalloon(i) } }}>
-                  <span className="onboarding-balloon-chip-main">
+                <div key={i} className="onboarding-balloon-chip">
+                  <button type="button" className="onboarding-balloon-chip-main" onClick={() => setEditBalloon(i)}>
                     {formatCurrency(parseFloat(b.amount) || 0)}
                     {b.lender.trim() && <span className="text-muted"> · {b.lender.trim()}</span>}
-                  </span>
-                  <span className="onboarding-balloon-chip-remove" aria-label="מחיקה"
+                  </button>
+                  <button type="button" className="onboarding-balloon-chip-remove" aria-label="מחיקת הלוואת בלון"
                     onClick={e => { e.stopPropagation(); setEditBalloon(null); setBalloonLoans(prev => prev.filter((_, j) => j !== i)) }}>
                     <X size={14} />
-                  </span>
+                  </button>
                 </div>
               )
             }

@@ -75,7 +75,7 @@ export function useInvestmentData(): InvestmentData {
     } finally {
       setLoading(false)
     }
-  }, [user, cacheKey])
+  }, [user?.id, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

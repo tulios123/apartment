@@ -72,7 +72,7 @@ export function usePropertyData(): PropertyData {
     } finally {
       setLoading(false)
     }
-  }, [user, cacheKey])
+  }, [user?.id, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

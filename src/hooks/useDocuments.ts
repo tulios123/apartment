@@ -25,7 +25,7 @@ export function useDocuments() {
     if (error) setError(error.message)
     else { setDocuments(data ?? []); writeCache<Document[]>(cacheKey, data ?? []) }
     setLoading(false)
-  }, [user, cacheKey])
+  }, [user?.id, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

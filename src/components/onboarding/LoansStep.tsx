@@ -13,7 +13,7 @@ export function LoansStep() {
   const {
     advance, keyDeliveryDate,
     loans, setLoans, loanDraftRate, loanTypeLabel,
-    editingLoanIdx, setEditingLoanIdx, setLoanForm, loanForm, showLoanForm, setShowLoanForm,
+    editingLoanIdx, setEditingLoanIdx, setLoanForm, setLoanGraceOn, loanForm, showLoanForm, setShowLoanForm,
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
@@ -64,13 +64,17 @@ export function LoansStep() {
   // flag if set, otherwise the first one) — a fresh upload never lands collapsed.
   useEffect(() => {
     if (editingLoanIdx !== null) {
-      if (loans[editingLoanIdx]) setLoanForm({ ...loans[editingLoanIdx] })
+      if (loans[editingLoanIdx]) {
+        setLoanForm({ ...loans[editingLoanIdx] })
+        setLoanGraceOn((parseInt(loans[editingLoanIdx].grace_months) || 0) > 0)
+      }
       return
     }
     if (showLoanForm) return
     if (loans.length > 0) {
       setEditingLoanIdx(0)
       setLoanForm({ ...loans[0] })
+      setLoanGraceOn((parseInt(loans[0].grace_months) || 0) > 0)
     }
     // Run once on entering the step.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,7 +126,7 @@ export function LoansStep() {
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
                     if (isEditing) finalizeLoan(i)            // tap top = save + collapse (alert if incomplete)
-                    else { setEditingLoanIdx(i); setLoanForm({ ...d }); setShowLoanForm(false); setSaveAttempted(false) }
+                    else { setEditingLoanIdx(i); setLoanForm({ ...d }); setLoanGraceOn((parseInt(d.grace_months) || 0) > 0); setShowLoanForm(false); setSaveAttempted(false) }
                   }}>
                   <div className="onboarding-track-summary">
                     <div className="onboarding-track-summary-top">

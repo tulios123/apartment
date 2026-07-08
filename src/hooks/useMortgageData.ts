@@ -58,7 +58,7 @@ export function useMortgageData(): MortgageData {
     } finally {
       setLoading(false)
     }
-  }, [user, cacheKey])
+  }, [user?.id, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

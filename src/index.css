@@ -4636,11 +4636,28 @@ input[type="date"] {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
+}
+/* The chip's tap-to-edit body — a real button (keyboard reachable), reset to render
+   like the inline text it replaced so appearance is unchanged. */
+.onboarding-balloon-chip-main {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
   cursor: pointer;
 }
 .onboarding-balloon-chip-remove {
   display: inline-flex;
   align-items: center;
+  border: none;
+  background: none;
   color: var(--text-muted);
   padding: 2px;
   cursor: pointer;

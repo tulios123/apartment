@@ -25,7 +25,7 @@ export function useInsurance() {
     if (err) setError(err.message)
     else { setPolicies(data ?? []); writeCache<InsurancePolicy[]>(cacheKey, data ?? []) }
     setLoading(false)
-  }, [user, cacheKey])
+  }, [user?.id, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 

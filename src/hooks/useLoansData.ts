@@ -54,7 +54,7 @@ export function useLoansData(): LoansData {
     } finally {
       setLoading(false)
     }
-  }, [user, cacheKey])
+  }, [user?.id, cacheKey])
 
   useEffect(() => { fetch() }, [fetch])
 
