@@ -509,6 +509,41 @@ input[type="date"] {
   line-height: 1.4;
 }
 
+/* AI scan affordance at the top of the property form (upload contract → auto-fill). */
+.prop-ai-scan {
+  margin-bottom: 18px;
+}
+.prop-ai-scan-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--border-strong);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 13px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.prop-ai-scan-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.prop-ai-scan-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.prop-ai-scan-btn.is-done {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border-style: solid;
+  border-color: var(--success-text);
+}
+
 .form-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;

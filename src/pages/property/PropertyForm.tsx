@@ -1,8 +1,28 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Property } from '../../types'
 import { DateField } from '../../components/ui/DateField'
+import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
+import { isManager } from '../../lib/admin'
 
 type PropertyFields = Partial<Omit<Property, 'id' | 'owner_id' | 'created_at'>>
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve((r.result as string).split(',')[1] ?? '')
+    r.onerror = () => reject(new Error('read failed'))
+    r.readAsDataURL(file)
+  })
+}
+
+// Manager/dev accounts never bill the Claude API — mirror the onboarding DEV_MOCK
+// contract so testing the scan here is free too (real family users hit the model).
+const DEMO_CONTRACT: Record<string, unknown> = {
+  buyerName: 'ישראל ישראלי (דמו)', street: 'הרצל 10', city: 'תל אביב',
+  purchasePrice: 2500000, purchaseDate: '2025-01-15', keyDeliveryDate: '2025-07-01',
+  propertySizeSqm: 90, floor: 3, rooms: 4,
+}
 
 function parseAddress(address: string): [string, string] {
   const comma = address.indexOf(', ')
@@ -53,6 +73,61 @@ export function PropertyForm({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
+  // ── AI scan: upload a purchase contract → fill the fields (same extract-contract
+  // function the onboarding purchase step uses). Nothing is saved until "שמור", so
+  // the user reviews/edits the filled values first.
+  const { user } = useAuth()
+  const useMockExtraction = import.meta.env.DEV || isManager(user?.email)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiErr, setAiErr] = useState<string | null>(null)
+  const [aiDone, setAiDone] = useState(false)
+
+  async function aiFill(fileList: File[]) {
+    if (!fileList.length) return
+    setAiBusy(true); setAiErr(null); setAiDone(false)
+    try {
+      const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
+      let data: Record<string, unknown> | null = null
+      if (useMockExtraction) {
+        await new Promise(r => setTimeout(r, 700))
+        data = DEMO_CONTRACT
+      } else {
+        const res = await supabase.functions.invoke('extract-contract', { body: { files } })
+        if (res.error) throw res.error
+        data = res.data
+      }
+      const d: Record<string, unknown> = data ?? {}
+      if (d.buyerName) setBuyerName(String(d.buyerName))
+      // Prefer the separately-extracted street/city; fall back to splitting a full address.
+      if (d.street || d.city) {
+        if (d.street) setStreet(String(d.street))
+        if (d.city) setCity(String(d.city))
+      } else if (d.propertyAddress) {
+        const addr = String(d.propertyAddress)
+        const ci = addr.lastIndexOf(',')
+        if (ci > 0) { setStreet(addr.slice(0, ci).trim()); setCity(addr.slice(ci + 1).trim()) }
+        else setStreet(addr)
+      }
+      if (d.blockParcel) {
+        const [b, p] = parseBlockParcel(String(d.blockParcel))
+        if (b) setBlock(b)
+        if (p) setParcel(p)
+      }
+      if (d.purchasePrice != null) setPurchasePrice(String(d.purchasePrice))
+      if (d.purchaseDate) setPurchaseDate(String(d.purchaseDate))
+      if (d.keyDeliveryDate) setKeyDeliveryDate(String(d.keyDeliveryDate))
+      if (d.propertySizeSqm != null) setSizeSqm(String(d.propertySizeSqm))
+      if (d.floor != null) setFloor(String(d.floor))
+      if (d.rooms != null) setRooms(String(d.rooms))
+      setAiDone(true)
+    } catch {
+      setAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
   function validate(): string | null {
     if (!street.trim()) return 'יש להזין את הרחוב'
     if (!city.trim()) return 'יש להזין את העיר'
@@ -88,6 +163,28 @@ export function PropertyForm({
 
   return (
     <form onSubmit={submit} className="form" noValidate>
+      {/* AI scan: upload the purchase contract to auto-fill the fields below. */}
+      <div className="prop-ai-scan">
+        <button
+          type="button"
+          className={`prop-ai-scan-btn${aiDone && !aiBusy ? ' is-done' : ''}`}
+          disabled={aiBusy}
+          onClick={() => fileRef.current?.click()}
+        >
+          {aiBusy ? 'קורא את החוזה…' : aiDone ? '✓ מולא מהחוזה — בדקו ותקנו' : '📄 העלו חוזה רכישה — מילוי אוטומטי'}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
+          multiple
+          style={{ display: 'none' }}
+          onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFill(fs); e.target.value = '' }}
+        />
+        {aiErr && <div className="form-error" role="alert">{aiErr}</div>}
+        <p className="form-hint" style={{ marginTop: 6 }}>יזהה כתובת, מחיר, תאריכים, גוש/חלקה, קומה ומ״ר. אפשר לתקן לפני השמירה.</p>
+      </div>
+
       <div className="form-section-label">פרטי הנכס</div>
       <div className="form-2col">
         <div className="form-row">
