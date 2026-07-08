@@ -13,6 +13,7 @@ import WealthHub from './pages/wealth/WealthHub'
 import PropertyAdminHub from './pages/property/PropertyAdminHub'
 import FinancesHub from './pages/finances/FinancesHub'
 import Settings from './pages/Settings'
+import { PrivacyPolicy, TermsOfService, Accessibility } from './pages/legal/LegalPages'
 import DevNotes from './components/DevNotes'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { OfflineBanner } from './components/OfflineBanner'
@@ -84,6 +85,22 @@ function AppRoutes() {
     return () => clearTimeout(t)
   }, [appReady, loading, user, hasProperty])
 
+  // Legal pages are public — reachable without an account (e.g. the Privacy Policy
+  // URL Google requires). Serve them before the auth gate, in a minimal standalone
+  // frame with its own Router (so the in-page back button works).
+  if (window.location.pathname.startsWith('/legal/')) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+          <Route path="/legal/terms" element={<TermsOfService />} />
+          <Route path="/legal/accessibility" element={<Accessibility />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    )
+  }
+
   if (loading) return <Splash />
   if (!user) return <Login />
   if (propertyError) return (
@@ -135,6 +152,10 @@ function AppRoutes() {
           <Route path="documents" element={<Navigate to="/property/documents" replace />} />
 
           <Route path="settings" element={<Settings />} />
+
+          <Route path="legal/privacy" element={<PrivacyPolicy />} />
+          <Route path="legal/terms" element={<TermsOfService />} />
+          <Route path="legal/accessibility" element={<Accessibility />} />
 
           {/* Catch-all: any unmatched or stale deep-link lands on Home, not a blank screen */}
           <Route path="*" element={<Navigate to="/" replace />} />

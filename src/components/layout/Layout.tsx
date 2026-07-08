@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   House,
   Wallet,
@@ -13,7 +13,9 @@ import { subscribeNotifTarget } from '../../lib/notifNav'
 import { ensurePushFresh, isIOS } from '../../lib/push'
 import { clearEditContext } from '../../lib/editContext'
 import FeedbackButton from '../FeedbackButton'
+import UserMenu from './UserMenu'
 import { ErrorBoundary } from '../ErrorBoundary'
+import './topbar.css'
 
 type NavItem = { to: string; label: string; icon: Icon; end?: boolean }
 
@@ -67,6 +69,12 @@ export default function Layout() {
 
   return (
     <div className="app-layout">
+      {/* Mobile top bar — app title (start/right) + account & legal menu (end/left) */}
+      <header className="app-topbar">
+        <span className="app-topbar-title">ניהול דירה</span>
+        <UserMenu />
+      </header>
+
       {/* Desktop sidebar */}
       <nav className="sidebar">
         <div className="sidebar-title">ניהול דירה</div>
@@ -88,6 +96,11 @@ export default function Layout() {
         <div className="sidebar-footer">
           <div className="sidebar-user">{user?.email}</div>
           <button className="btn-signout" onClick={signOut}>יציאה</button>
+          <div className="sidebar-legal">
+            <Link to="/legal/privacy">פרטיות</Link>
+            <Link to="/legal/terms">תנאים</Link>
+            <Link to="/legal/accessibility">נגישות</Link>
+          </div>
         </div>
       </nav>
 

@@ -144,6 +144,14 @@ export default function Login() {
         </div>
 
         <div className="login-trust"><Lock size={13} weight="fill" /> המידע שלך פרטי ומאובטח</div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', justifyContent: 'center', marginTop: '14px', fontSize: '12px' }}>
+          <a href="/legal/privacy" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>מדיניות פרטיות</a>
+          <span style={{ color: 'var(--text-muted)' }}>·</span>
+          <a href="/legal/terms" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>תנאי שימוש</a>
+          <span style={{ color: 'var(--text-muted)' }}>·</span>
+          <a href="/legal/accessibility" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>נגישות</a>
+        </div>
       </div>
     </div>
   )

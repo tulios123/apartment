@@ -1,0 +1,82 @@
+.usermenu-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--text-heading);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.usermenu-avatar:hover { background: var(--hover-bg); }
+
+.usermenu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: transparent;
+}
+
+.usermenu-panel {
+  position: fixed;
+  top: calc(52px + env(safe-area-inset-top, 0px) + 6px);
+  inset-inline-end: 12px;
+  width: min(320px, calc(100vw - 24px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  animation: usermenu-in var(--t-fast) var(--ease);
+}
+
+@keyframes usermenu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.usermenu-email {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 8px 10px 6px;
+  word-break: break-all;
+}
+
+.usermenu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 4px;
+}
+
+.usermenu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  font-family: var(--font-body);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.usermenu-item span { flex: 1; }
+.usermenu-item:hover { background: var(--hover-bg); }
+
+.usermenu-item--quiet { color: var(--text-muted); font-size: 14px; }
+.usermenu-item--quiet:hover { color: var(--text); }
+
+.usermenu-signout { color: var(--danger-text); }
