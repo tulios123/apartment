@@ -10,7 +10,7 @@ import type { Icon } from '@phosphor-icons/react'
 import { useMonthlyGeneration } from '../../hooks/useMonthlyGeneration'
 import { useAuth } from '../../contexts/AuthContext'
 import { subscribeNotifTarget } from '../../lib/notifNav'
-import { ensurePushFresh } from '../../lib/push'
+import { ensurePushFresh, isIOS } from '../../lib/push'
 import { clearEditContext } from '../../lib/editContext'
 import FeedbackButton from '../FeedbackButton'
 import { ErrorBoundary } from '../ErrorBoundary'
@@ -43,19 +43,25 @@ export default function Layout() {
     if (user) ensurePushFresh(user.id)
   }, [user])
 
-  // Lock the body to the viewport while inside the app shell (mobile), so iOS
-  // Safari can't scroll the body and toggle its toolbars. Removed on unmount so
-  // Onboarding/Login keep normal body scrolling.
+  // Lock the body to the viewport while inside the app shell — iOS ONLY. This
+  // workaround exists purely because iOS Safari scrolls the body and toggles its
+  // toolbars on scroll. Android Chrome handles toolbar collapse fine with normal
+  // document scroll, and a position:fixed body + inner scroller there causes janky /
+  // stuck scrolling — so on Android (and everything non-iOS) we skip the lock and let
+  // the document scroll naturally. Removed on unmount so Onboarding/Login are unaffected.
   useEffect(() => {
+    if (!isIOS()) return
     document.body.classList.add('app-locked')
     return () => document.body.classList.remove('app-locked')
   }, [])
 
-  // .main-content is a persistent scroll container on mobile, so reset it to the
-  // top on each route change (otherwise a new screen inherits the previous scroll).
+  // Reset scroll to the top on each route change (otherwise a new screen inherits the
+  // previous scroll). On iOS the scroller is the inner .main-content; on Android it's
+  // the document — reset both so it works on either path.
   // Also drop any lingering "last edit" so feedback context doesn't bleed across screens.
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0)
+    window.scrollTo(0, 0)
     clearEditContext()
   }, [pathname])
 

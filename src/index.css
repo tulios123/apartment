@@ -3510,7 +3510,11 @@ input[type="date"] {
     background: var(--surface);
   }
 
-  .app-layout {
+  /* iOS-only (body-lock path): pin the shell to the viewport and make the inner
+     .main-content the scroller. These are gated to .app-locked, which Layout adds
+     only on iOS — so Android/other keep NATURAL document scroll (the body scrolls),
+     which is what Android Chrome does best and fixes the janky/stuck scrolling there. */
+  .app-locked .app-layout {
     height: 100svh;
     overflow: hidden;
   }
@@ -3523,6 +3527,13 @@ input[type="date"] {
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
+    /* Clip horizontal without turning this into a vertical scroll container (which
+       `overflow-x: hidden` would, by forcing overflow-y to auto) — so on Android the
+       DOCUMENT scrolls, not this box. */
+    overflow-x: clip;
+  }
+
+  .app-locked .main-content {
     height: 100svh;
     overflow-y: auto;
     overflow-x: hidden;
