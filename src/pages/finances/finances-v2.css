@@ -26,7 +26,7 @@
   /* Summary */
   .finv-summary { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 22px 24px; margin-bottom: 16px; }
   .finv-summary-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
-  .finv-summary-net { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; direction: ltr; text-align: start; }
+  .finv-summary-net { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; direction: ltr; text-align: right; }
   .finv-summary-net.pos { color: var(--success-text); }
   .finv-summary-net.neg { color: var(--danger-text); }
   .finv-summary-bar { display: flex; height: 8px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 18px 0 14px; background: var(--bg-alt); }
@@ -117,7 +117,7 @@
   .finv-tx-tag { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: var(--r-pill); background: var(--bg-alt); color: var(--text-muted); }
   /* Recurring/fixed item (rent, mortgage…) — accent tint, distinct from the grey "תחזית". */
   .finv-tx-tag.fixed { background: var(--accent-light); color: var(--accent); }
-  .finv-tx-meta { font-size: 12px; color: var(--text-muted); }
+  .finv-tx-meta { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .finv-tx-side { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   /* Sign sits left of the number (direction:ltr) and amounts share a fixed
      column width so they line up whether or not a receipt icon is present. */

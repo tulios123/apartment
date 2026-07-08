@@ -159,7 +159,7 @@ export default function HomeScreen() {
           id: `renewal-${contract.id}`,
           kind: 'renewal',
           title: `חידוש חוזה — ${contract.company_name}`,
-          sub: `נגמר בעוד ${daysLeft} ימים · ${formatDate(contract.end_date)}`,
+          sub: `${daysLeft === 0 ? 'נגמר היום' : daysLeft === 1 ? 'נגמר מחר' : `נגמר בעוד ${daysLeft} ימים`} · ${formatDate(contract.end_date)}`,
           onGo: () => navigate('/property/rental'),
         })
       )
@@ -295,6 +295,8 @@ export default function HomeScreen() {
         </div>
         {loadingActions ? (
           <Skeleton width="55%" height={15} />
+        ) : (!property && !loadingProperty) ? (
+          <p className="hs-status">הגדירו נכס כדי להתחיל.</p>
         ) : (
           <p className="hs-status">
             {actions.length === 0

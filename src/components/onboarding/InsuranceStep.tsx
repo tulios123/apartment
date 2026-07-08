@@ -3,6 +3,7 @@ import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { PolicyForm } from './PolicyForm'
 import { emptyPolicy, formatCurrency } from './types'
+import { formatDate } from '../../lib/format'
 import { useOnboarding } from './context'
 
 export function InsuranceStep() {
@@ -32,7 +33,9 @@ export function InsuranceStep() {
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
                     if (isEditing) {
-                      setEditingPolicyIdx(null)
+                      // Collapsing a card being edited SAVES the in-progress edits (mirrors
+                      // MortgageStep/LoansStep) instead of silently discarding them.
+                      savePolicyEdit(i)
                     } else {
                       setEditingPolicyIdx(i)
                       setPolicyForm({ ...p })
@@ -51,7 +54,7 @@ export function InsuranceStep() {
                       <div className="onboarding-track-summary-sub">
                         {p.company && <span>{p.company}</span>}
                         {p.company && p.start_date && <span>·</span>}
-                        {p.start_date && <span>מ-{p.start_date}</span>}
+                        {p.start_date && <span>מ-{formatDate(p.start_date)}</span>}
                       </div>
                     )}
                   </div>

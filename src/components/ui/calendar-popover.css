@@ -14,7 +14,7 @@
 .calpop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .calpop-title { font-size: 15px; font-weight: 700; color: var(--brand-navy); }
 .calpop-nav {
-  background: var(--bg-alt); border: none; width: 34px; height: 34px; border-radius: 9px;
+  background: var(--bg-alt); border: none; width: 44px; height: 44px; border-radius: 9px;
   cursor: pointer; display: grid; place-items: center; color: var(--text-muted);
   transition: background var(--t-fast), color var(--t-fast);
 }

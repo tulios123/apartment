@@ -14,7 +14,7 @@
   .liav-comp-legend { display: flex; gap: 16px; flex-wrap: wrap; }
   .liav-comp-legend span { font-size: 12px; opacity: 0.92; display: inline-flex; align-items: center; gap: 6px; }
   .liav-comp-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
-  .liav-hero-foot { display: flex; gap: 28px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.16); }
+  .liav-hero-foot { display: flex; gap: 20px 28px; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.16); }
   .liav-hero-foot div span { font-size: 12px; opacity: 0.8; display: block; margin-bottom: 3px; }
   .liav-hero-foot div strong { font-size: 18px; font-weight: 700; }
 

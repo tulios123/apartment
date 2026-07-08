@@ -7,7 +7,7 @@ import type { MortgageTrack, Loan, TrackType } from '../../types'
 import type { MortgageSummary } from '../../hooks/useMortgageData'
 
 const fmt = (v: number) => formatCurrency(v)
-const yearOf = (d: string | null) => (d ? new Date(d).getFullYear() : null)
+const yearOf = (d: string | null) => (d ? parseLocalISO(d).getFullYear() : null)
 
 const TRACK_LABEL: Record<TrackType, string> = { prime: 'פריים', fixed_unlinked: 'קבועה לא צמודה', fixed_linked: 'קבועה צמודה', variable: 'משתנה' }
 const TRACK_COLOR: Record<TrackType, string> = { prime: '#5aa0ec', fixed_unlinked: 'var(--accent-teal)', fixed_linked: 'var(--accent-2)', variable: '#f0b24e' }
@@ -45,7 +45,7 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
   // Latest payoff year across all mortgage tracks — "how much is left" in time.
   const mortgageEndYear = tracks.reduce((max, t) => {
     const sched = trackSchedule(t)
-    const y = sched.length ? new Date(sched[sched.length - 1].date).getFullYear() : 0
+    const y = sched.length ? parseLocalISO(sched[sched.length - 1].date).getFullYear() : 0
     return Math.max(max, y)
   }, 0)
 

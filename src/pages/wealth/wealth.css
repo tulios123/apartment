@@ -6,8 +6,6 @@
   .wlth-edit-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer; transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
   .wlth-edit-btn:hover { color: var(--brand-navy); border-color: var(--brand-navy); }
 
-  .wlth-empty { background: var(--bg-card); border-radius: var(--r-md); padding: 40px 24px; text-align: center; color: var(--text-muted); box-shadow: var(--shadow-sm); }
-
   /* ── Layer 1: Ownership Score hero ─────────────────────────── */
   .wlth-hero { background: linear-gradient(150deg, var(--hero-navy) 0%, #16306b 100%); color: #fff; border-radius: var(--r-lg); box-shadow: 0 14px 40px rgba(10,31,68,0.30); padding: 24px; margin-bottom: 16px; }
   .wlth-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -55,8 +53,6 @@
   .wlth-accel-notes li { font-size: 13px; color: var(--text-secondary); padding-inline-start: 16px; position: relative; line-height: 1.5; }
   .wlth-accel-notes li::before { content: '▸'; position: absolute; inset-inline-start: 0; color: var(--accent-teal); }
   .wlth-accel-notes li b { color: var(--brand-navy); font-weight: 700; }
-  .wlth-accel-notes li.muted { color: var(--text-muted); }
-  .wlth-accel-notes li.muted::before { color: var(--text-muted); }
 
   /* ── Layer 3: Financing Structure ──────────────────────────── */
   .wlth-vehicle { border: 1px solid var(--border); border-radius: var(--r-sm); margin-bottom: 10px; overflow: hidden; }
@@ -76,9 +72,6 @@
   .wlth-vehicle-bal span { font-size: 11px; color: var(--text-muted); }
   .wlth-vehicle-caret { color: var(--text-muted); transition: transform var(--t-base) var(--ease); flex-shrink: 0; }
   .wlth-vehicle.open .wlth-vehicle-caret { transform: rotate(180deg); }
-
-  .wlth-mix { display: flex; height: 6px; gap: 2px; margin: 0 14px 12px; border-radius: var(--r-pill); overflow: hidden; }
-  .wlth-mix .seg { height: 100%; }
 
   /* Payoff progress line (mortgage + loans) */
   .wlth-progress { padding: 0 14px 12px; }

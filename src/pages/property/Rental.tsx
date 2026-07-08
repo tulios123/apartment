@@ -458,7 +458,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                   <span className="contract-company">{c.company_name}</span>
                   {isActive && (
                     <span className={`contract-status-badge ${left <= 30 ? 'urgent' : left <= 90 ? 'warning' : ''}`}>
-                      {left > 0 ? `${left} ימים` : 'פג תוקף'}
+                      {left > 0 ? `${left} ימים` : 'מסתיים היום'}
                     </span>
                   )}
                   {!isActive && <span className="contract-status-badge expired-badge">הסתיים</span>}

@@ -30,7 +30,7 @@
   .hs-actions { display: flex; flex-direction: column; justify-content: center; gap: 10px; margin-bottom: 16px; min-height: 164px; }
 
   .hs-card { display: flex; align-items: center; gap: 13px; background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 16px; animation: hsRise 0.35s var(--ease) both; transition: opacity 0.35s var(--ease), transform 0.35s var(--ease), max-height 0.35s var(--ease); }
-  .hs-card.resolved { opacity: 0; transform: translateX(24px); max-height: 0; padding-top: 0; padding-bottom: 0; pointer-events: none; }
+  .hs-card.resolved { opacity: 0; transform: translateX(-24px); max-height: 0; padding-top: 0; padding-bottom: 0; pointer-events: none; }
   .hs-card-icon { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0; }
   .hs-card-icon.rent { background: var(--success-bg); color: var(--success-text); }
   .hs-card-icon.task { background: var(--accent-light); color: var(--accent); }
@@ -91,7 +91,7 @@
   .hs-flow-name svg { color: var(--text-muted); }
   .hs-flow-amt { font-size: 14px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hs-flow-amt.muted { color: var(--text-muted); }
-  .hs-flow-amt.income { color: var(--success-text); }
+  .hs-flow-amt.income { color: var(--success-text); direction: ltr; }
   .hs-flow-amt.out { direction: ltr; }
   .hs-flow-of { color: var(--text-muted); font-weight: 500; }
 

@@ -3877,6 +3877,14 @@ input[type="date"] {
   font-size: 13px;
 }
 
+/* The confirm-step buttons (Rental/Insurance delete) reuse .btn-xs, which is tiny
+   (2px 8px). Lift just these to a comfortable tap target — scoped so the shared
+   .btn-xs used elsewhere is untouched. */
+.mortgage-delete-confirm .btn-xs {
+  min-height: 40px;
+  padding-inline: 14px;
+}
+
 .mortgage-delete-confirm-label {
   color: var(--danger);
   font-weight: 600;

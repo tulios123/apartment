@@ -1,5 +1,5 @@
 import { TrendUp } from '@phosphor-icons/react'
-import { formatCurrency } from '../../lib/format'
+import { formatCurrency, formatSignedCurrency } from '../../lib/format'
 
 const fmt = (v: number) => formatCurrency(v)
 
@@ -34,14 +34,14 @@ export default function OwnershipScore({ propertyValue, bankDebt, balloon, month
         {monthlyPrincipal > 0 && (
           <div className="wlth-delta" title="הקרן שתיפרע החודש מצטרפת להון העצמי שלך">
             <TrendUp size={15} weight="bold" />
-            <span>+{fmt(monthlyPrincipal)} לבעלות החודש</span>
+            <span>{formatSignedCurrency(monthlyPrincipal)} לבעלות החודש</span>
           </div>
         )}
       </div>
 
       <div className="wlth-own-pct">בבעלותך {ownPct.toFixed(0)}% מהנכס</div>
 
-      <div className="wlth-ladder" role="img" aria-label={`בבעלותך ${ownPct.toFixed(0)} אחוז`}>
+      <div className="wlth-ladder" aria-hidden="true">
         {netEquity > 0 && <div className="seg yours" style={{ width: `${pct(netEquity)}%` }} />}
         {balloon > 0 && <div className="seg family" style={{ width: `${pct(balloon)}%` }} />}
         {bankDebt > 0 && <div className="seg banks" style={{ width: `${pct(bankDebt)}%` }} />}

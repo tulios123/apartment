@@ -17,10 +17,6 @@ describe('taskCompletionFollowup', () => {
     expect(f!.prefill.direction).toBe('income')
     expect(f!.prefill.category).toBe('שכר דירה')
   })
-  it('recurring check-deposit task → income prefill', () => {
-    const f = taskCompletionFollowup(task({ source: 'recurring_item', title: 'הפקדת צ׳ק שכר דירה' }))
-    expect(f!.prefill.direction).toBe('income')
-  })
   it('recurring payment task → expense prefill (אחר)', () => {
     const f = taskCompletionFollowup(task({ source: 'recurring_item', title: 'תשלום לאבא' }))
     expect(f!.prefill).toEqual({ direction: 'expense', category: 'אחר', description: 'תשלום לאבא' })

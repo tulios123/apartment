@@ -48,7 +48,7 @@
 .bsheet-head-actions { display: flex; align-items: center; gap: 2px; }
 .bsheet-close {
   background: none; border: none; color: var(--text-muted); cursor: pointer;
-  width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center;
   transition: background var(--t-fast), color var(--t-fast);
 }
 .bsheet-close:hover { background: var(--bg-alt); color: var(--brand-navy); }
