@@ -71,6 +71,14 @@ export function MortgageStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Esc closes the "missing details" confirm dialog (mirrors the app Modal — UX-05).
+  useEffect(() => {
+    if (!continuePrompt) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setContinuePrompt(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [continuePrompt])
+
   return (
     <form onSubmit={e => {
       e.preventDefault()
@@ -252,8 +260,8 @@ export function MortgageStep() {
 
       {continuePrompt && createPortal(
         <div className="onboarding-dialog-overlay" onClick={() => setContinuePrompt(false)}>
-          <div className="onboarding-dialog" onClick={e => e.stopPropagation()}>
-            <div className="onboarding-dialog-title">חסרים פרטים במסלול</div>
+          <div className="onboarding-dialog" role="dialog" aria-modal="true" aria-labelledby="onboarding-dialog-title" onClick={e => e.stopPropagation()}>
+            <div className="onboarding-dialog-title" id="onboarding-dialog-title">חסרים פרטים במסלול</div>
             <p className="onboarding-dialog-lead">אם תמשיכו, המסלול הזה לא יישמר:</p>
             <ul className="onboarding-dialog-list">
               {unsavedTracks.map((t, idx) => (

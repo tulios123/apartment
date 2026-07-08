@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PencilSimple, X } from '@phosphor-icons/react'
 import InvestmentCosts from '../property/InvestmentCosts'
 import LiabilitiesV2 from '../liabilities/LiabilitiesV2'
@@ -55,6 +55,15 @@ export default function WealthHub() {
     setEditing(false)
     refetchProp(); refetchMortgage(); refetchInv(); refetchLoans()
   }
+
+  // Esc closes the full-screen editor overlay (mirrors the app Modal — UX-05).
+  useEffect(() => {
+    if (!editing) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeEditor() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing])
 
   return (
     <div className="page wlth">
@@ -149,7 +158,7 @@ export default function WealthHub() {
       )}
 
       {editing && (
-        <div className="wlth-editor" role="dialog" aria-label="עריכת מימון ועלויות">
+        <div className="wlth-editor" role="dialog" aria-modal="true" aria-label="עריכת מימון ועלויות">
           <div className="wlth-editor-head">
             <h2>עריכת מימון ועלויות</h2>
             <button onClick={closeEditor} aria-label="סגור"><X size={20} /></button>

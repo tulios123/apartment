@@ -13,6 +13,7 @@ import { openFeedback } from '../../lib/feedbackController'
  */
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const restoreFocusRef = useRef<HTMLElement | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
 
   // Register this editor as the "open edit" so a feedback note written here records
   // exactly what was being edited (see lib/editContext + FeedbackButton).
@@ -35,9 +36,23 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // UX-05: trap Tab within the modal so focus can't wander to the page behind it —
+  // backing the aria-modal promise (mirrors BottomSheet's trapTab).
+  function trapTab(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab' || !modalRef.current) return
+    const f = modalRef.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    if (f.length === 0) return
+    const first = f[0]
+    const last = f[f.length - 1]
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+  }
+
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} onKeyDown={trapTab}>
         <div className="modal-header">
           <h2>{title}</h2>
           <div className="modal-header-actions">
