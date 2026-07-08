@@ -70,7 +70,7 @@ jobs:
           # Git push + PR are authenticated with the workflow token (permissions granted
           # above). Without this the branch/PR can't be created and a good fix reads as failed.
           github_token: ${{ github.token }}
-          claude_args: "--model sonnet"
+          claude_args: "--model sonnet --max-turns 40"
           show_full_output: true
           prompt: |
             A bug was reported in the apartment-management app (a Hebrew, RTL, mobile
@@ -81,6 +81,10 @@ jobs:
 
             Issue body:
             ${{ github.event.issue.body }}
+
+            Work DIRECTLY and autonomously in this single session: read files and fix the
+            code YOURSELF. Do NOT spawn sub-agents, do NOT use a Task/exploration tool,
+            do NOT delegate — just do the work here to completion.
 
             Do this:
             1. Read everything above, including the screenshot file if a path is given.
