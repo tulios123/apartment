@@ -71,6 +71,7 @@ jobs:
           # above). Without this the branch/PR can't be created and a good fix reads as failed.
           github_token: ${{ github.token }}
           claude_args: "--model sonnet"
+          show_full_output: true
           prompt: |
             A bug was reported in the apartment-management app (a Hebrew, RTL, mobile
             React + Supabase PWA). Everything you need is below.
