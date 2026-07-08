@@ -44,18 +44,7 @@ Deno.serve(async (req) => {
       return json({ error: 'feedback_id required' }, 400)
     }
 
-    // 2. One run at a time — block if any OTHER item is already active.
-    const { data: active } = await supabase
-      .from('feedback')
-      .select('id')
-      .in('status', ['sent', 'in_progress'])
-      .neq('id', feedback_id)
-      .limit(1)
-    if (active && active.length > 0) {
-      return json({ error: 'כבר יש פריט פעיל בתהליך — יש להמתין לסיומו לפני שליחת פריט נוסף.' }, 409)
-    }
-
-    // Load the item.
+    // Load the item — need its content to build the issue and its current status.
     const { data: item, error: itemErr } = await supabase
       .from('feedback')
       .select('id, note, path, admin_notes, category, context, screenshot_path, status')
@@ -66,7 +55,7 @@ Deno.serve(async (req) => {
       return json({ error: `לא ניתן לשלוח פריט בסטטוס "${item.status}".` }, 409)
     }
 
-    // 3. Signed URL for the screenshot (7-day expiry), if one is attached.
+    // Signed URL for the screenshot (7-day expiry), if one is attached.
     let shotUrl: string | null = null
     if (item.screenshot_path) {
       const { data: signed } = await supabase.storage
@@ -75,8 +64,8 @@ Deno.serve(async (req) => {
       shotUrl = signed?.signedUrl ?? null
     }
 
-    // 4. Open the GitHub issue. Body carries everything the fixer needs + parseable
-    //    markers (Screenshot: <url>, feedback_id: <id>) the workflow reads back.
+    // Issue body — carries everything the fixer needs + parseable markers
+    // (Screenshot: <url>, feedback_id: <id>) the workflow reads back.
     const note = String(item.note ?? '').trim()
     const title = (note.split('\n')[0] || 'Feedback').slice(0, 200)
     const body = [
@@ -95,6 +84,30 @@ Deno.serve(async (req) => {
     const githubPat = Deno.env.get('GITHUB_PAT')
     if (!githubPat) return json({ error: 'GITHUB_PAT not configured' }, 500)
 
+    // ATOMIC one-run-at-a-time claim: flip this row to 'sent' BEFORE opening the issue.
+    // The partial unique index (migration 038) makes a second concurrent claim fail with
+    // a unique violation, so two sends can never both open an issue. Only claims a row
+    // still in new/failed (guards the race between the load above and here).
+    const now = new Date().toISOString()
+    const claim = await supabase
+      .from('feedback')
+      .update({ status: 'sent', sent_at: now, status_updated_at: now })
+      .eq('id', feedback_id)
+      .in('status', ['new', 'failed'])
+      .select('id')
+    if (claim.error) {
+      if ((claim.error as { code?: string }).code === '23505') {
+        // Unique violation on feedback_single_active_idx → another item is already active.
+        return json({ error: 'כבר יש פריט פעיל בתהליך — יש להמתין לסיומו לפני שליחת פריט נוסף.' }, 409)
+      }
+      console.error('claim failed:', claim.error)
+      return json({ error: 'שגיאה בשליחה — נסו שוב.' }, 500)
+    }
+    if (!claim.data || claim.data.length === 0) {
+      return json({ error: 'הפריט כבר אינו זמין לשליחה — רעננו את הרשימה.' }, 409)
+    }
+
+    // Open the GitHub issue. If it fails, RELEASE the claim so the item isn't wedged.
     const ghRes = await fetch(`https://api.github.com/repos/${REPO}/issues`, {
       method: 'POST',
       headers: {
@@ -109,25 +122,22 @@ Deno.serve(async (req) => {
     if (!ghRes.ok) {
       const detail = await ghRes.text()
       console.error('github issue create failed:', ghRes.status, detail)
+      await supabase.from('feedback')
+        .update({ status: item.status, sent_at: null, status_updated_at: new Date().toISOString() })
+        .eq('id', feedback_id)
       return json({ error: `פתיחת התקלה בגיטהאב נכשלה (${ghRes.status}).` }, 502)
     }
     const issue = await ghRes.json()
 
-    // 5. Mark the row sent.
-    const now = new Date().toISOString()
-    const { error: updErr } = await supabase
+    // Link the issue number so the status callbacks can find this row. If this fails the
+    // item is 'sent' but unlinked — surface it (non-200), not a false success.
+    const { error: linkErr } = await supabase
       .from('feedback')
-      .update({
-        status: 'sent',
-        github_issue_number: issue.number,
-        sent_at: now,
-        status_updated_at: now,
-      })
+      .update({ github_issue_number: issue.number, status_updated_at: new Date().toISOString() })
       .eq('id', feedback_id)
-    if (updErr) {
-      console.error('feedback update failed after issue open:', updErr)
-      // The issue is already open — report the number so the admin isn't left blind.
-      return json({ ok: true, warning: 'issue opened but row update failed', issue_number: issue.number }, 200)
+    if (linkErr) {
+      console.error('feedback link update failed after issue open:', linkErr)
+      return json({ error: `התקלה נפתחה בגיטהאב (#${issue.number}) אך לא נקשרה לפריט — בדקו ידנית.` }, 500)
     }
 
     return json({ ok: true, issue_number: issue.number, issue_url: issue.html_url })

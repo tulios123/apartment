@@ -94,6 +94,9 @@ export default function Settings() {
   const [newShot, setNewShot] = useState<File | null>(null)
   const [sendConfirmId, setSendConfirmId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  // False until migration 038's columns are live (the fetch fell back) — sending before
+  // then would open an issue whose status could never be recorded.
+  const [pipelineReady, setPipelineReady] = useState(true)
   // UX-04: inline, auto-dismissing status toast instead of the native blocking alert().
   const [status, setStatus] = useState<string | null>(null)
   function showStatus(msg: string) {
@@ -121,10 +124,12 @@ export default function Settings() {
   async function loadFeedback() {
     const full = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url'
     const primary = await supabase.from('feedback').select(full).order('created_at', { ascending: false })
-    if (!primary.error) { setFeedback(normalizeFeedback(primary.data)); return }
+    if (!primary.error) { setPipelineReady(true); setFeedback(normalizeFeedback(primary.data)); return }
     // Resilience: pipeline columns (migration 038) or screenshot_path (034) not live yet
-    // (schema-cache lag) — fall back to the legacy set so the inbox still loads.
+    // (schema-cache lag) — fall back to the legacy set so the inbox still loads, and mark
+    // the pipeline not-ready so 'Send to Claude' stays disabled until the migration runs.
     if (/status|admin_notes|github_|screenshot_path|column|schema|PGRST204/i.test(primary.error.message ?? '')) {
+      setPipelineReady(false)
       const fb = await supabase.from('feedback')
         .select('id, email, note, path, category, context, created_at')
         .order('created_at', { ascending: false })
@@ -473,8 +478,8 @@ export default function Settings() {
                           {canSend && (
                             <button
                               className="settings-fb-send"
-                              disabled={lockedByOther || busyId === f.id}
-                              title={lockedByOther ? 'יש פריט אחר בתהליך — יש להמתין לסיומו' : 'שליחה ל-Claude לתיקון'}
+                              disabled={lockedByOther || busyId === f.id || !pipelineReady}
+                              title={!pipelineReady ? 'המערכת עדיין לא מוכנה — יש להריץ את המיגרציה ולפרוס את הפונקציות' : lockedByOther ? 'יש פריט אחר בתהליך — יש להמתין לסיומו' : 'שליחה ל-Claude לתיקון'}
                               onClick={() => setSendConfirmId(f.id)}
                             >
                               <PaperPlaneTilt size={13} weight="fill" /> {busyId === f.id ? 'שולח…' : 'שלח ל-Claude'}

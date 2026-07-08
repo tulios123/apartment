@@ -30,6 +30,15 @@ end $$;
 -- Look up a row by its GitHub issue number fast (the status-update endpoint keys on it).
 create index if not exists feedback_github_issue_number_idx on feedback (github_issue_number);
 
+-- One-run-at-a-time, enforced at the DB level: at most ONE item may be in an active
+-- pipeline state at a time. send-feedback-to-claude claims a row by setting status to
+-- 'sent'; this index makes a second concurrent claim fail (unique violation) instead of
+-- both opening a GitHub issue. The expression is always true within the partial set, so
+-- two active rows collide on the same index key.
+create unique index if not exists feedback_single_active_idx
+  on feedback ((status in ('sent', 'in_progress')))
+  where status in ('sent', 'in_progress');
+
 -- ── Move the feedback admin to the owner's real account ──────────────────────────
 -- Writers still see/delete only their own rows (the owner_id = auth.uid() branch is
 -- unchanged); only the cross-user admin branch moves to itai.shubi@gmail.com.

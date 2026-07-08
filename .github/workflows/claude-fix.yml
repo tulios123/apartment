@@ -44,7 +44,14 @@ jobs:
         env:
           BODY: ${{ github.event.issue.body }}
         run: |
-          url=$(printf '%s' "$BODY" | grep -oE '^Screenshot: .+' | head -1 | sed 's/^Screenshot: //' | tr -d '\r')
+          # The genuine marker is the LAST 'Screenshot:' line (the note is above it), so a
+          # user note can't spoof it with an earlier line. Also hard-restrict the host to
+          # our Supabase storage so the runner can't be pointed at an arbitrary URL (SSRF).
+          url=$(printf '%s' "$BODY" | grep -oE '^Screenshot: .+' | tail -1 | sed 's/^Screenshot: //' | tr -d '\r')
+          case "$url" in
+            https://bjholzkesnzkbogxmurw.supabase.co/storage/*) ;;
+            *) url="none" ;;
+          esac
           if [ -n "$url" ] && [ "$url" != "none" ]; then
             ext=$(printf '%s' "$url" | sed -E 's/\?.*$//' | grep -oE '\.[a-zA-Z0-9]+$' || echo ".png")
             [ -z "$ext" ] && ext=".png"
@@ -60,6 +67,9 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Git push + PR are authenticated with the workflow token (permissions granted
+          # above). Without this the branch/PR can't be created and a good fix reads as failed.
+          github_token: ${{ github.token }}
           claude_args: "--model sonnet"
           prompt: |
             A bug was reported in the apartment-management app (a Hebrew, RTL, mobile
