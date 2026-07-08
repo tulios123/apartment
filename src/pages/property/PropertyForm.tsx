@@ -3,6 +3,7 @@ import type { Property } from '../../types'
 import { DateField } from '../../components/ui/DateField'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { uploadDocument } from '../../lib/storage'
 import { isManager } from '../../lib/admin'
 
 type PropertyFields = Partial<Omit<Property, 'id' | 'owner_id' | 'created_at'>>
@@ -73,19 +74,44 @@ export function PropertyForm({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  // ── AI scan: upload a purchase contract → fill the fields (same extract-contract
-  // function the onboarding purchase step uses). Nothing is saved until "שמור", so
-  // the user reviews/edits the filled values first.
+  // ── AI scan: upload a purchase contract → (1) save the file as a document of this
+  // property RIGHT AWAY (automatic, not tied to the form's Save button), and (2) fill
+  // the fields via the same extract-contract function the onboarding step uses. The
+  // filled field values are still only committed on "שמור" so the user reviews them.
   const { user } = useAuth()
+  const propertyId = initial.id           // present when editing; absent for a new property
   const useMockExtraction = import.meta.env.DEV || isManager(user?.email)
   const fileRef = useRef<HTMLInputElement>(null)
   const [aiBusy, setAiBusy] = useState(false)
   const [aiErr, setAiErr] = useState<string | null>(null)
   const [aiDone, setAiDone] = useState(false)
+  const [docSaved, setDocSaved] = useState(false)
+
+  // Persist the uploaded file(s) as documents of this property immediately. Only
+  // possible once the property exists (edit) — a brand-new property has no id to
+  // attach to yet, so we scan-only there and the file can be added after saving.
+  async function saveDocs(fileList: File[]) {
+    if (!propertyId || !user) return
+    await Promise.all(fileList.map(async f => {
+      const docId = crypto.randomUUID()
+      const path = await uploadDocument(f, docId, user.id)
+      const { error } = await supabase.from('documents').insert({
+        id: docId, owner_id: user.id, property_id: propertyId,
+        contract_id: null, transaction_id: null,
+        type: 'purchase_contract', name: f.name, storage_path: path,
+        date: purchaseDate || null,
+      })
+      if (error) throw error
+    }))
+    setDocSaved(true)
+  }
 
   async function aiFill(fileList: File[]) {
     if (!fileList.length) return
-    setAiBusy(true); setAiErr(null); setAiDone(false)
+    setAiBusy(true); setAiErr(null); setAiDone(false); setDocSaved(false)
+    // Auto-save the file(s) in parallel with the scan — independent, so a save failure
+    // doesn't block the auto-fill and vice-versa.
+    const saved = saveDocs(fileList).catch(() => setAiErr(prev => prev ?? 'הקובץ לא נשמר כמסמך — אפשר לצרף אותו שוב ממסך המסמכים.'))
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       let data: Record<string, unknown> | null = null
@@ -122,8 +148,9 @@ export function PropertyForm({
       if (d.rooms != null) setRooms(String(d.rooms))
       setAiDone(true)
     } catch {
-      setAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+      setAiErr(prev => prev ?? 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
     } finally {
+      await saved            // keep "busy" until the auto-save settles too
       setAiBusy(false)
     }
   }
@@ -171,7 +198,11 @@ export function PropertyForm({
           disabled={aiBusy}
           onClick={() => fileRef.current?.click()}
         >
-          {aiBusy ? 'קורא את החוזה…' : aiDone ? '✓ מולא מהחוזה — בדקו ותקנו' : '📄 העלו חוזה רכישה — מילוי אוטומטי'}
+          {aiBusy
+            ? (propertyId ? 'שומר וקורא…' : 'קורא את החוזה…')
+            : aiDone
+              ? (docSaved ? '✓ נשמר ומולא — בדקו ותקנו' : '✓ מולא — בדקו ותקנו')
+              : (propertyId ? '📄 העלו חוזה רכישה — שמירה + מילוי אוטומטי' : '📄 העלו חוזה רכישה — מילוי אוטומטי')}
         </button>
         <input
           ref={fileRef}
@@ -182,7 +213,11 @@ export function PropertyForm({
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFill(fs); e.target.value = '' }}
         />
         {aiErr && <div className="form-error" role="alert">{aiErr}</div>}
-        <p className="form-hint" style={{ marginTop: 6 }}>יזהה כתובת, מחיר, תאריכים, גוש/חלקה, קומה ומ״ר. אפשר לתקן לפני השמירה.</p>
+        <p className="form-hint" style={{ marginTop: 6 }}>
+          {propertyId
+            ? 'הקובץ יישמר אוטומטית כמסמך של הנכס, ויזהה כתובת, מחיר, תאריכים, גוש/חלקה, קומה ומ״ר. אפשר לתקן לפני השמירה.'
+            : 'יזהה כתובת, מחיר, תאריכים, גוש/חלקה, קומה ומ״ר. אפשר לתקן לפני השמירה.'}
+        </p>
       </div>
 
       <div className="form-section-label">פרטי הנכס</div>
