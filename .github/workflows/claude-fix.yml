@@ -1,0 +1,124 @@
+name: Claude auto-fix
+
+# Fires when the feedback pipeline (or Itai) adds the `claude-fix` label to an issue.
+on:
+  issues:
+    types: [labeled]
+
+# One auto-fix run at a time (safety belt; the real single-run lock is the admin UI).
+# Do NOT cancel an in-progress run — let it finish.
+concurrency:
+  group: claude-autofix
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  FUNCTIONS_URL: https://bjholzkesnzkbogxmurw.supabase.co/functions/v1
+
+jobs:
+  autofix:
+    if: github.event.label.name == 'claude-fix'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 1) Status → in_progress.
+      - name: Mark in_progress
+        run: |
+          curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"status\": \"in_progress\"}" || true
+
+      # 2) Pull the signed screenshot URL out of the issue body and download it, so
+      #    Claude can actually see the reported bug.
+      - name: Download screenshot
+        id: shot
+        env:
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          # The genuine marker is the LAST 'Screenshot:' line (the note is above it), so a
+          # user note can't spoof it with an earlier line. Also hard-restrict the host to
+          # our Supabase storage so the runner can't be pointed at an arbitrary URL (SSRF).
+          url=$(printf '%s' "$BODY" | grep -oE '^Screenshot: .+' | tail -1 | sed 's/^Screenshot: //' | tr -d '\r')
+          case "$url" in
+            https://bjholzkesnzkbogxmurw.supabase.co/storage/*) ;;
+            *) url="none" ;;
+          esac
+          if [ -n "$url" ] && [ "$url" != "none" ]; then
+            ext=$(printf '%s' "$url" | sed -E 's/\?.*$//' | grep -oE '\.[a-zA-Z0-9]+$' || echo ".png")
+            [ -z "$ext" ] && ext=".png"
+            path="$RUNNER_TEMP/feedback-screenshot$ext"
+            if curl -sfL "$url" -o "$path"; then
+              echo "path=$path" >> "$GITHUB_OUTPUT"
+              echo "Downloaded screenshot to $path"
+            fi
+          fi
+
+      # 3) Run Claude Code to fix the bug and open a PR (Sonnet, pinned).
+      - name: Run Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Git push + PR are authenticated with the workflow token (permissions granted
+          # above). Without this the branch/PR can't be created and a good fix reads as failed.
+          github_token: ${{ github.token }}
+          claude_args: "--model sonnet"
+          prompt: |
+            A bug was reported in the apartment-management app (a Hebrew, RTL, mobile
+            React + Supabase PWA). Everything you need is below.
+
+            Issue number: ${{ github.event.issue.number }}
+            Screenshot file (may be empty if none was attached): ${{ steps.shot.outputs.path }}
+
+            Issue body:
+            ${{ github.event.issue.body }}
+
+            Do this:
+            1. Read everything above, including the screenshot file if a path is given.
+               Locate the root cause in the code.
+            2. Fix it minimally, following the repo's existing conventions (see CLAUDE.md
+               and SKILL.md).
+            3. Install deps and run the FULL test suite — `npm ci` then `npm test` — it
+               must be fully green.
+            4. Add a regression test that specifically covers this bug.
+            5. Open a pull request from a branch named claude-fix/${{ github.event.issue.number }},
+               and put "Fixes #${{ github.event.issue.number }}" in the PR body.
+            6. NEVER push to main.
+            7. If there is not enough information to reproduce the bug — post a comment on
+               the issue with the specific questions you need answered, and stop. Do NOT
+               guess and do NOT open a PR in that case.
+
+      # 4) Status → awaiting_review (+ PR URL) if a PR was opened, else failed
+      #    (e.g. Claude posted questions instead of a fix).
+      - name: Mark awaiting_review or failed
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE=${{ github.event.issue.number }}
+          pr_url=$(gh pr list --repo "${{ github.repository }}" --head "claude-fix/$ISSUE" --state open --json url --jq '.[0].url // ""')
+          if [ -n "$pr_url" ]; then
+            curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+              -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" -H "Content-Type: application/json" \
+              -d "{\"github_issue_number\": $ISSUE, \"status\": \"awaiting_review\", \"pr_url\": \"$pr_url\"}" || true
+          else
+            curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+              -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" -H "Content-Type: application/json" \
+              -d "{\"github_issue_number\": $ISSUE, \"status\": \"failed\"}" || true
+          fi
+
+      # 5) Any real failure of the run → failed.
+      - name: Mark failed
+        if: failure()
+        run: |
+          curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" -H "Content-Type: application/json" \
+            -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"status\": \"failed\"}" || true

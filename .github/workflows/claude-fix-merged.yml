@@ -1,0 +1,27 @@
+name: Claude fix merged
+
+# Closes the loop: when a claude-fix/<issue> PR is merged, mark the feedback item
+# fixed. (The issue itself closes automatically via "Fixes #N" in the PR body.)
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+env:
+  FUNCTIONS_URL: https://bjholzkesnzkbogxmurw.supabase.co/functions/v1
+
+jobs:
+  mark-fixed:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'claude-fix/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark fixed
+        run: |
+          branch="${{ github.event.pull_request.head.ref }}"
+          issue="${branch#claude-fix/}"
+          curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"github_issue_number\": $issue, \"status\": \"fixed\"}" || true

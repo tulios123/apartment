@@ -8,3 +8,14 @@ export const MANAGER_EMAIL = 'dev@test.local'
 export function isManager(email: string | null | undefined): boolean {
   return email === MANAGER_EMAIL
 }
+
+// The feedback inbox + auto-fix pipeline are run from the owner's REAL account (not
+// the dev/test manager). Kept separate from MANAGER_EMAIL so dev-tools / "מילוי דוגמה"
+// stay on the test account while the feedback world belongs to the owner. Mirrors the
+// feedback admin email in the RLS policies (migration 038).
+export const FEEDBACK_ADMIN_EMAIL = 'itai.shubi@gmail.com'
+
+/** True only for the signed-in feedback admin (the owner's real account). */
+export function isFeedbackAdmin(email: string | null | undefined): boolean {
+  return email === FEEDBACK_ADMIN_EMAIL
+}

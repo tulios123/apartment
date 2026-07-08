@@ -1,0 +1,17 @@
+# Supabase project config. Only the pieces this repo needs are pinned here; the CLI
+# fills everything else with defaults. The key reason this file exists: pin the
+# per-function JWT posture so `supabase functions deploy` is reproducible and a plain
+# redeploy can't silently re-break the feedback pipeline's callbacks.
+project_id = "bjholzkesnzkbogxmurw"
+
+# update-feedback-status is called by the GitHub workflow with ONLY the X-Pipeline-Secret
+# header (no Supabase JWT). The gateway must therefore NOT require a JWT — the function
+# does its own shared-secret check. Without this, every status callback 401s at the
+# gateway and items wedge in 'sent' forever, deadlocking the one-run-at-a-time lock.
+[functions.update-feedback-status]
+verify_jwt = false
+
+# send-feedback-to-claude is called by the signed-in admin client (which carries a real
+# Supabase JWT), so keep gateway JWT verification on.
+[functions.send-feedback-to-claude]
+verify_jwt = true
