@@ -21,6 +21,7 @@ import {
   defaultLawyerCost, defaultBrokerageCost,
 } from './types'
 import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } from './types'
+import { finishOutcome, emptySavedSections, type SavedSections } from './finish'
 
 // Manager/dev demo extractions: in local dev or the dev@test.local manager account
 // the onboarding scans return these instead of calling the billed Claude edge
@@ -81,6 +82,13 @@ export function useOnboardingState(onComplete: () => void) {
   // rapid taps can both enter handleFinish before the button disables — which would
   // double-insert the contract/insurance/loans/mortgage. This ref blocks instantly.
   const finishingRef = useRef(false)
+
+  // Which write sections already landed in a prior finish attempt — so a retry after
+  // a partial failure (draft kept, user still on the step) doesn't duplicate them.
+  // Survives across retries because the wizard component stays mounted. The contract
+  // is stashed (not a bool) so the dependent rent reminder reuses it on retry instead
+  // of creating a second contract.
+  const savedRef = useRef<SavedSections<Contract>>(emptySavedSections<Contract>())
 
   const [step, setStep] = useState<Step>(d0?.step && d0.step !== 'done' ? d0.step : 'welcome')
   // Direction of the last step change, so the wizard can slide forward vs back
@@ -660,7 +668,7 @@ export function useOnboardingState(onComplete: () => void) {
       await Promise.all([
         // Mortgage tracks
         (async () => {
-          if (validTracks.length === 0) return
+          if (validTracks.length === 0 || savedRef.current.tracks) return
           try {
             const m = await ensureMortgage(user.id, property.id)
             await Promise.all(validTracks.map(d => {
@@ -682,6 +690,7 @@ export function useOnboardingState(onComplete: () => void) {
                 start_date: d.start_date || paymentsAnchor,
               })
             }))
+            savedRef.current.tracks = true
           } catch {
             failures.push('משכנתא')
           }
@@ -689,6 +698,7 @@ export function useOnboardingState(onComplete: () => void) {
 
         // Loans (monthly) + the balloon loan from the investment step
         (async () => {
+          if (savedRef.current.loans) return
           try {
             const loanWrites = allLoans
               .filter(d => (parseFloat(d.principal) || 0) > 0)
@@ -737,6 +747,7 @@ export function useOnboardingState(onComplete: () => void) {
             }
 
             await Promise.all(loanWrites)
+            savedRef.current.loans = true
           } catch {
             failures.push('הלוואות')
           }
@@ -744,6 +755,7 @@ export function useOnboardingState(onComplete: () => void) {
 
         // Investment costs
         (async () => {
+          if (savedRef.current.costs) return
           try {
             const tasks = []
             if (equityAmount > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount }))
@@ -762,6 +774,7 @@ export function useOnboardingState(onComplete: () => void) {
               if (val > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: 'other', label: ec.name.trim() || null, amount: val }))
             }
             await Promise.all(tasks)
+            savedRef.current.costs = true
           } catch {
             failures.push('עלויות השקעה')
           }
@@ -769,6 +782,9 @@ export function useOnboardingState(onComplete: () => void) {
 
         // Rental contract
         (async () => {
+          // On retry, reuse the contract already created so the dependent rent reminder
+          // can still run without inserting a second contract.
+          if (savedRef.current.contract) { contract = savedRef.current.contract; return }
           if (!companyName.trim() || !startDate || !endDate || !monthlyRent) {
             // Don't silently drop a partly-filled rental — a contract needs all of
             // company + start + end + rent, so flag it instead of losing the input.
@@ -798,6 +814,7 @@ export function useOnboardingState(onComplete: () => void) {
               requires_approval: addRentReminder,
               renewal_alert_days: [90, 30],
             })
+            savedRef.current.contract = contract
           } catch {
             failures.push('שכירות')
           }
@@ -805,6 +822,7 @@ export function useOnboardingState(onComplete: () => void) {
 
         // Insurance policies
         (async () => {
+          if (savedRef.current.policies) return
           try {
             await Promise.all(allPolicies
               .filter(p => p.company.trim() || p.monthly_premium)
@@ -820,6 +838,7 @@ export function useOnboardingState(onComplete: () => void) {
                 notes: null,
               }))
             )
+            savedRef.current.policies = true
           } catch {
             failures.push('ביטוח')
           }
@@ -831,7 +850,7 @@ export function useOnboardingState(onComplete: () => void) {
         // TS can't track that `contract` is assigned inside the awaited closure
         // above, so it narrows to `never` here; the cast restores the real type.
         const createdContract = contract as Contract
-        if (monthlyRent) {
+        if (monthlyRent && !savedRef.current.reminder) {
           try {
             await syncRentRecurringItem(
               {
@@ -845,14 +864,21 @@ export function useOnboardingState(onComplete: () => void) {
               },
               { dayOfMonth: parseInt(rentPaymentDay, 10) || 1 },
             )
+            savedRef.current.reminder = true
           } catch {
             failures.push('תזכורת שכירות')
           }
         }
       }
 
-      if (failures.length > 0) {
-        setError(`חלק מהפרטים לא נשמרו: ${failures.join(', ')} — ניתן להוסיף אותם מתוך האפליקציה`)
+      // Atomicity: only finalize (upload docs, drop the draft, advance to the "done"
+      // screen) when EVERYTHING saved. On a partial failure keep the draft and stay on
+      // the step with a retryable message — never claim "הכול מוכן!" over lost data. The
+      // savedRef above makes a retry skip the sections that already landed (no dupes).
+      const outcome = finishOutcome(failures)
+      if (!outcome.finalize) {
+        setError(outcome.errorMessage)
+        return   // stay on the step; draft kept; `finally` still resets saving/finishingRef
       }
       // Document files are supplementary — the app is fully usable without them. Upload
       // them in the background (not awaited) so the user reaches "done" immediately
