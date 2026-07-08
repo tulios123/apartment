@@ -33,13 +33,33 @@ create index if not exists feedback_github_issue_number_idx on feedback (github_
 -- ── Move the feedback admin to the owner's real account ──────────────────────────
 -- Writers still see/delete only their own rows (the owner_id = auth.uid() branch is
 -- unchanged); only the cross-user admin branch moves to itai.shubi@gmail.com.
--- NOTE: no UPDATE policy exists (by design) — clients can never change status/PR.
--- Pipeline status writes go only through the service-role edge functions (Sections C/D).
 alter policy "feedback_select_own_or_admin" on feedback
   using (owner_id = auth.uid() or (auth.jwt() ->> 'email') = 'itai.shubi@gmail.com');
 
 alter policy "feedback_delete_own_or_admin" on feedback
   using (owner_id = auth.uid() or (auth.jwt() ->> 'email') = 'itai.shubi@gmail.com');
+
+-- ── Client updates: column-limited so status stays pipeline-only ─────────────────
+-- The admin edits note/admin_notes from the inbox, and a writer sets screenshot_path
+-- after uploading their image. But status / github_* / timestamps must be writable
+-- ONLY by the service-role edge functions. RLS is row-level, so we pair row policies
+-- (below) with a COLUMN grant that caps what the authenticated role can ever write.
+-- The service role bypasses both, so the pipeline can still move status.
+revoke update on feedback from authenticated;
+grant update (note, admin_notes, screenshot_path) on feedback to authenticated;
+
+-- A writer may update their OWN row (this also fixes the pre-038 gap where the
+-- screenshot_path update silently affected 0 rows for lack of any update policy).
+create policy "feedback_update_own" on feedback
+  for update to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+-- The feedback admin may edit any row (still column-capped to note/admin_notes above).
+create policy "feedback_update_admin" on feedback
+  for update to authenticated
+  using ((auth.jwt() ->> 'email') = 'itai.shubi@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'itai.shubi@gmail.com');
 
 -- Same move for the feedback screenshot bucket, so the owner opens attached
 -- screenshots from their real account (mirrors the table's admin-read policy).

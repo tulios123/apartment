@@ -1402,6 +1402,62 @@ input[type="date"] {
   flex-shrink: 0;
 }
 
+/* ── Feedback → Claude pipeline (admin inbox) ── */
+.settings-fb-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.settings-fb-new {
+  border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text);
+  font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px;
+  border-radius: var(--r-pill); cursor: pointer; flex-shrink: 0;
+}
+.settings-fb-new:hover { border-color: var(--accent); color: var(--accent); }
+.settings-fb-create { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.settings-fb-create textarea, .settings-fb-create input, .settings-fb-edit {
+  width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14px;
+  padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--bg-card); color: var(--text); resize: vertical;
+}
+.settings-fb-edit { margin-bottom: 8px; }
+.settings-fb-shotpick {
+  display: inline-flex; align-items: center; gap: 7px; align-self: flex-start;
+  font-size: 13px; color: var(--accent); cursor: pointer; padding: 4px 2px;
+}
+.settings-fb-rowactions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.settings-fb-toprow { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.settings-fb-status {
+  font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: var(--r-pill);
+  background: var(--bg-alt); color: var(--text-muted);
+}
+.settings-fb-status.status-sent,
+.settings-fb-status.status-awaiting_review { background: var(--accent-light); color: var(--accent); }
+.settings-fb-status.status-in_progress { background: var(--warning-bg); color: var(--warning-text); }
+.settings-fb-status.status-fixed { background: var(--success-bg); color: var(--success-text); }
+.settings-fb-status.status-failed { background: var(--danger-bg); color: var(--danger-text); }
+
+.settings-fb-adminnote {
+  margin: 0 0 6px; font-size: 12.5px; color: var(--text-muted); line-height: 1.4;
+  padding-inline-start: 8px; border-inline-start: 2px solid var(--border-strong);
+}
+.settings-fb-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.settings-fb-editbtn {
+  border: 1px solid var(--border-strong); background: transparent; color: var(--text-muted);
+  font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 12px;
+  border-radius: var(--r-pill); cursor: pointer;
+}
+.settings-fb-editbtn:hover { color: var(--brand-navy); border-color: var(--brand-navy); }
+.settings-fb-send {
+  display: inline-flex; align-items: center; gap: 6px; border: none; background: var(--accent);
+  color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 14px;
+  border-radius: var(--r-pill); cursor: pointer;
+}
+.settings-fb-send:hover:not(:disabled) { background: var(--accent-hover); }
+.settings-fb-send:disabled { opacity: 0.5; cursor: not-allowed; }
+.settings-fb-pr {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600;
+  color: var(--accent); text-decoration: none; margin-inline-end: auto;
+}
+.settings-fb-pr:hover { text-decoration: underline; }
+
 /* Tasks — Google Tasks style */
 .tasks-page .page-header {
   align-items: center;
