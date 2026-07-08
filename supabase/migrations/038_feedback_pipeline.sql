@@ -59,12 +59,16 @@ grant update (note, admin_notes, screenshot_path) on feedback to authenticated;
 
 -- A writer may update their OWN row (this also fixes the pre-038 gap where the
 -- screenshot_path update silently affected 0 rows for lack of any update policy).
+-- drop-if-exists first so the whole migration is safe to re-run (create policy has no
+-- IF NOT EXISTS form).
+drop policy if exists "feedback_update_own" on feedback;
 create policy "feedback_update_own" on feedback
   for update to authenticated
   using (owner_id = auth.uid())
   with check (owner_id = auth.uid());
 
 -- The feedback admin may edit any row (still column-capped to note/admin_notes above).
+drop policy if exists "feedback_update_admin" on feedback;
 create policy "feedback_update_admin" on feedback
   for update to authenticated
   using ((auth.jwt() ->> 'email') = 'itai.shubi@gmail.com')
