@@ -236,31 +236,31 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           </section>
 
           {/* ── Maintenance logbook (completed) ──────────────────── */}
-          {logbook.length > 0 && (
-            <section className="tav-section tav-logbook">
-              <div className="tav-section-head">
-                <ClipboardText size={16} weight="duotone" color="var(--text-muted)" />
-                <h2>יומן תחזוקה</h2>
-                <span className="tav-bucket-count">{logbook.length}</span>
-              </div>
-              {logbook.map(t => {
-                const Icon = CAT_ICON[t.category] ?? ListChecks
-                const stamp = t.completed_at ?? t.created_at
-                return (
-                  <div key={t.id} className="tav-task tav-log-row">
-                    <button className="tav-check on" onClick={() => toggleDone(t)} aria-label="החזר לפתוחות"><Check size={13} weight="bold" /></button>
-                    <div className="tav-task-body" onClick={() => openEdit(t)} style={{ cursor: 'pointer' }}>
-                      <div className="tav-task-title">{t.title}</div>
-                      <div className="tav-task-meta">
-                        <span className="tav-task-cat"><Icon size={13} weight="duotone" /> {t.category}</span>
-                      </div>
+          <section className="tav-section tav-logbook">
+            <div className="tav-section-head">
+              <ClipboardText size={16} weight="duotone" color="var(--text-muted)" />
+              <h2>יומן תחזוקה</h2>
+              {logbook.length > 0 && <span className="tav-bucket-count">{logbook.length}</span>}
+            </div>
+            {logbook.length === 0 ? (
+              <div className="tav-empty"><div className="empty-flat-icon"><ClipboardText size={30} weight="duotone" /></div><p>עוד לא נסגרו משימות — הן יופיעו כאן</p></div>
+            ) : logbook.map(t => {
+              const Icon = CAT_ICON[t.category] ?? ListChecks
+              const stamp = t.completed_at ?? t.created_at
+              return (
+                <div key={t.id} className="tav-task tav-log-row">
+                  <button className="tav-check on" onClick={() => toggleDone(t)} aria-label="החזר לפתוחות"><Check size={13} weight="bold" /></button>
+                  <div className="tav-task-body" onClick={() => openEdit(t)} style={{ cursor: 'pointer' }}>
+                    <div className="tav-task-title">{t.title}</div>
+                    <div className="tav-task-meta">
+                      <span className="tav-task-cat"><Icon size={13} weight="duotone" /> {t.category}</span>
                     </div>
-                    <span className="tav-log-stamp">נסגר {formatDate(stamp.slice(0, 10))}</span>
                   </div>
-                )
-              })}
-            </section>
-          )}
+                  <span className="tav-log-stamp">נסגר {formatDate(stamp.slice(0, 10))}</span>
+                </div>
+              )
+            })}
+          </section>
         </>
       )}
 
