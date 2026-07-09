@@ -1,6 +1,9 @@
-/* Custom in-app calendar popover. Portaled above the bottom sheet. */
+/* Custom in-app calendar popover. Portaled above the bottom sheet AND above
+   the Modal overlay (z-index 200) — DateField is used inside Modal-based
+   forms (e.g. Insurance/Rental policy editors), so this must outrank it or
+   the popover renders behind the modal and looks unclickable. */
 .calpop-scrim {
-  position: fixed; inset: 0; z-index: 140; background: rgba(10,31,68,0.40);
+  position: fixed; inset: 0; z-index: 210; background: rgba(10,31,68,0.40);
   display: grid; place-items: center; padding: 20px; animation: calpopFade 0.18s var(--ease);
 }
 @keyframes calpopFade { from { opacity: 0; } to { opacity: 1; } }
