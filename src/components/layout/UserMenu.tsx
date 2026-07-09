@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut } from '@phosphor-icons/react'
+import { User, CaretDown, Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import './user-menu.css'
 
@@ -22,7 +22,9 @@ export default function UserMenu() {
   }, [open])
 
   const close = () => { setOpen(false); btnRef.current?.focus() }
-  const initial = (user?.email?.[0] ?? '?').toUpperCase()
+  // Google sign-in gives us a profile photo (clearest "this is you"); email/manager
+  // accounts fall back to a generic person icon. Either way a caret marks it as a menu.
+  const photo = user?.user_metadata?.avatar_url as string | undefined
 
   return (
     <>
@@ -34,7 +36,10 @@ export default function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        {initial}
+        <span className="usermenu-avatar-circle">
+          {photo ? <img src={photo} alt="" className="usermenu-photo" /> : <User size={18} weight="fill" />}
+        </span>
+        <CaretDown size={12} weight="bold" className="usermenu-caret" />
       </button>
 
       {open && createPortal(
