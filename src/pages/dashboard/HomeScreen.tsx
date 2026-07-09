@@ -1,9 +1,9 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAppReady } from '../../contexts/AppReadyContext'
 import {
   CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, ArrowLeft, Sun, CloudSun, MoonStars,
-  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, GearSix, CaretDown, CaretLeft,
+  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretLeft,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
@@ -288,7 +288,6 @@ export default function HomeScreen() {
     <div className="page hs">
       {/* ── Humanized status header ── */}
       <header className="hs-header">
-        <Link to="/settings" className="hs-gear" aria-label="הגדרות"><GearSix size={22} /></Link>
         <div className="hs-greet">
           <span className="hs-greet-icon"><HelloIcon size={20} weight="fill" /></span>
           <h1>{hello}</h1>
