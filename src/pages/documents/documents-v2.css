@@ -5,11 +5,9 @@
   .docv-checklist-item { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer; transition: all var(--t-fast) var(--ease); }
   .docv-checklist-item:hover { border-color: var(--accent); color: var(--accent); }
   .docv-checklist-item.done { border-color: var(--success-text); color: var(--success-text); background: var(--success-bg); }
-
-  .docv-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
-  .docv-filters button { border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: var(--r-pill); cursor: pointer; transition: all var(--t-fast) var(--ease); }
-  .docv-filters button:hover { border-color: var(--accent); color: var(--accent); }
-  .docv-filters button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .docv-checklist-item.missing { border-style: dashed; border-color: var(--border-strong); color: var(--text-muted); background: var(--bg-card); }
+  .docv-checklist-item.missing:hover { border-color: var(--accent); color: var(--accent); }
+  .docv-checklist-item.active { border-style: solid; border-color: var(--accent); background: var(--accent); color: #fff; }
 
   .docv-group { margin-bottom: 22px; }
   .docv-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
