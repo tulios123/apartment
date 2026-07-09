@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       Deno.env.get('VAPID_PRIVATE_KEY')!,
     )
 
-    const { category, screen, editContext, note } = await req.json().catch(() => ({}))
+    const { category, screen, editContext, note, feedback_id } = await req.json().catch(() => ({}))
 
     // Resolve the admin (feedback reviewer) → their devices get the push.
     const adminEmail = (Deno.env.get('FEEDBACK_ADMIN_EMAIL') ?? 'itai.shubi@gmail.com').toLowerCase()
@@ -61,11 +61,14 @@ Deno.serve(async (req) => {
     const kind = CATEGORY_LABEL[category as string] ?? 'משוב'
     const where = [screen, editContext].filter(Boolean).map(String).join(' · ')
     const snippet = String(note ?? '').slice(0, 90)
+    // Deep-link the admin straight to this item when we have its id (per-item tag so a
+    // burst of reports doesn't coalesce into one notification).
+    const url = feedback_id ? `/admin/feedback?item=${feedback_id}` : '/admin/feedback'
     const payload = JSON.stringify({
       title: `משוב חדש · ${kind}`,
       body: [where, snippet].filter(Boolean).join('\n') || 'התקבל משוב חדש',
-      url: '/settings',
-      tag: 'apt-feedback',
+      url,
+      tag: feedback_id ? `apt-feedback-${feedback_id}` : 'apt-feedback',
     })
 
     let delivered = 0

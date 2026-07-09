@@ -15,3 +15,15 @@ verify_jwt = false
 # Supabase JWT), so keep gateway JWT verification on.
 [functions.send-feedback-to-claude]
 verify_jwt = true
+
+# All three of these are called by a signed-in client (the reporting family member or the
+# admin) via supabase.functions.invoke, which carries a real Supabase JWT. Keep gateway JWT
+# verification ON — each fn additionally does its own getUser + role/authorship checks.
+[functions.notify-feedback]
+verify_jwt = true
+
+[functions.notify-feedback-reply]
+verify_jwt = true
+
+[functions.resolve-feedback]
+verify_jwt = true

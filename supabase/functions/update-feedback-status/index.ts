@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { pushToOwner, resolveAdminId } from '../_shared/push.ts'
 
 // Section D — a DELIBERATELY NARROW endpoint the GitHub workflow calls back to move a
 // feedback item's status (and record its PR URL). It exists so the workflow never holds
@@ -68,6 +69,35 @@ Deno.serve(async (req) => {
     }
     if (!data || data.length === 0) {
       return json({ error: 'no feedback row for that issue number' }, 404)
+    }
+
+    // Autonomy: push the ADMIN on each pipeline transition so they manage the fix by
+    // notification instead of polling the console. Best-effort in a try/catch — a push
+    // failure must NEVER fail this callback (the one-run-at-a-time lock depends on a 200
+    // here to release the item; a 500 would wedge the pipeline).
+    try {
+      const feedbackId = data[0].id as string
+      const STATUS_PUSH: Record<string, [string, string]> = {
+        in_progress: ['הבוט התחיל לעבוד על התיקון', ''],
+        awaiting_review: ['התיקון מוכן לבדיקה', 'בדקו באפליקציה ואשרו את בקשת-המיזוג'],
+        fixed: ['תוקן ומוזג ✓', ''],
+        failed: ['הבוט לא הצליח', 'אפשר לחדד את ההערות ולשלוח שוב'],
+      }
+      const spec = STATUS_PUSH[status]
+      const adminId = spec ? await resolveAdminId(supabase) : null
+      if (spec && adminId) {
+        const { data: item } = await supabase.from('feedback').select('note').eq('id', feedbackId).single()
+        const firstLine = String(item?.note ?? '').split('\n')[0].slice(0, 90)
+        const [title, extra] = spec
+        await pushToOwner(supabase, adminId, {
+          title,
+          body: [extra, firstLine].filter(Boolean).join('\n') || firstLine || 'עודכן סטטוס',
+          url: `/admin/feedback?item=${feedbackId}`,
+          tag: `apt-feedback-${feedbackId}`,
+        })
+      }
+    } catch (e) {
+      console.error('status push (non-fatal):', e)
     }
 
     return json({ ok: true, updated: data.length })
