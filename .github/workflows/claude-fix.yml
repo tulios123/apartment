@@ -73,7 +73,7 @@ jobs:
           # CI is non-interactive — allow Claude to edit/write/run without a human
           # approval prompt (a good fix otherwise stalls on "edit permission denied").
           # Safe here: the run is sandboxed and every change is reviewed at the PR stage.
-          claude_args: "--model sonnet --max-turns 40 --dangerously-skip-permissions"
+          claude_args: "--model sonnet --max-turns 80 --dangerously-skip-permissions"
           show_full_output: true
           prompt: |
             A bug was reported in the apartment-management app (a Hebrew, RTL, mobile
@@ -87,16 +87,17 @@ jobs:
 
             Work DIRECTLY and autonomously in this single session: read files and fix the
             code YOURSELF. Do NOT spawn sub-agents, do NOT use a Task/exploration tool,
-            do NOT delegate — just do the work here to completion.
+            do NOT delegate — just do the work here to completion. Be efficient: the fix is
+            usually small — find it, apply it, verify, open the PR, without over-exploring.
 
             Do this:
             1. Read everything above, including the screenshot file if a path is given.
                Locate the root cause in the code.
             2. Fix it minimally, following the repo's existing conventions (see CLAUDE.md
                and SKILL.md).
-            3. Install deps and run the FULL test suite — `npm ci` then `npm test` — it
-               must be fully green.
-            4. Add a regression test that specifically covers this bug.
+            3. Run `npm ci` once, then `npm test` — the suite must be green.
+            4. Add a regression test IF the bug has testable logic. For a pure CSS/styling
+               fix with no unit-testable behaviour, skip the test rather than forcing one.
             5. Open a pull request from a branch named claude-fix/${{ github.event.issue.number }},
                and put "Fixes #${{ github.event.issue.number }}" in the PR body.
             6. NEVER push to main.
