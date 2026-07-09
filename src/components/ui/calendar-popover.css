@@ -1,6 +1,8 @@
-/* Custom in-app calendar popover. Portaled above the bottom sheet. */
+/* Custom in-app calendar popover. Portaled above the bottom sheet — and above
+   the modal overlay (z-index 200) and onboarding dialogs (300), since DateField
+   opens from inside both and must render on top of them, not behind. */
 .calpop-scrim {
-  position: fixed; inset: 0; z-index: 140; background: rgba(10,31,68,0.40);
+  position: fixed; inset: 0; z-index: 1000; background: rgba(10,31,68,0.40);
   display: grid; place-items: center; padding: 20px; animation: calpopFade 0.18s var(--ease);
 }
 @keyframes calpopFade { from { opacity: 0; } to { opacity: 1; } }
