@@ -75,6 +75,9 @@ export default function FinancesV2() {
 
   const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month, loans, policies), [year, month, contracts, mortgageTracks, loans, policies])
 
+  // Drill-down into one category's full history — set by tapping a breakdown row,
+  // or by arriving from elsewhere (e.g. Wealth's "אחזקה ותיקונים") with a preset category.
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [breakdownOpen, setBreakdownOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -132,6 +135,16 @@ export default function FinancesV2() {
     setEditingId(null)
     setFormError(null)
     setDrawerOpen(true)
+    navigate(location.pathname, { replace: true })
+  }, [location.state, location.pathname, navigate])
+
+  // Arrive pre-filtered to one category's full history (e.g. Wealth's "אחזקה ותיקונים"
+  // row) — jump to the range view so the filtered list below covers all-time, not one month.
+  useEffect(() => {
+    const cat = (location.state as { historyCategory?: string } | null)?.historyCategory
+    if (!cat) return
+    setCategoryFilter(cat)
+    setView('range')
     navigate(location.pathname, { replace: true })
   }, [location.state, location.pathname, navigate])
 
@@ -367,6 +380,27 @@ export default function FinancesV2() {
     await redirectToSignedUrl(w, data.storage_path)
   }
 
+  // Shared row renderer — used by the month list and by the filtered category-history
+  // list (year/range views), so edit/delete/receipt behave identically in both.
+  function txRow(t: Transaction) {
+    const meta = [t.description, t.payment_method ? PAYMENT_LABEL[t.payment_method] : null].filter(Boolean).join(' · ')
+    return (
+      <SwipeRow key={t.id} onEdit={() => openEdit(t)} onDelete={() => handleDelete(t.id)}>
+        <div className="finv-tx">
+          <span className="finv-cat-icon" style={{ background: t.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
+          <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span>{FIXED_CATS.has(t.category) && <span className="finv-tx-tag fixed">קבוע</span>}</div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
+          <div className="finv-tx-side">
+            <span className={`finv-tx-amount ${t.direction}`}>{formatSignedCurrency(t.direction === 'income' ? Number(t.amount) : -Number(t.amount))}</span>
+            <div className="finv-tx-actions">
+              {t.document_id && <button className="finv-icon-btn" aria-label="קבלה" onClick={() => openReceipt(t)}><Receipt size={15} /></button>}
+              <button className="finv-icon-btn" aria-label="עריכה" onClick={() => openEdit(t)}><PencilSimple size={15} /></button>
+            </div>
+          </div>
+        </div>
+      </SwipeRow>
+    )
+  }
+
   function shiftPeriod(delta: number) {
     if (view === 'year') { setYear(y => y + delta); return }
     let m = month + delta, y = year
@@ -427,6 +461,13 @@ export default function FinancesV2() {
       <button className="finv-addbtn" onClick={openNew}>
         <Plus size={19} weight="bold" /> הוספת תנועה
       </button>
+
+      {categoryFilter && (
+        <div className="finv-filter-chip">
+          <span>מציג רק: {categoryFilter}</span>
+          <button type="button" onClick={() => setCategoryFilter(null)} aria-label="נקה סינון"><X size={15} /></button>
+        </div>
+      )}
 
       {/* ── Annual perspective: 12-month bar chart ───────────────────── */}
       {view === 'year' && (
@@ -505,59 +546,61 @@ export default function FinancesV2() {
           </button>
           <div className="finv-breakdown-body"><div className="finv-breakdown-inner">
             {breakdown.map(b => (
-              <div key={b.cat} className="finv-bd-row">
+              <button key={b.cat} type="button" className={`finv-bd-row${categoryFilter === b.cat ? ' active' : ''}`} onClick={() => setCategoryFilter(c => c === b.cat ? null : b.cat)}>
                 <span className="finv-bd-label"><i style={{ width: 9, height: 9, borderRadius: 3, background: b.color, display: 'inline-block', flexShrink: 0 }} /> {b.cat}</span>
                 <span className="finv-bd-track"><span className="finv-bd-fill" style={{ width: `${b.pct}%`, background: b.color }} /></span>
                 <span className="finv-bd-amount">{fmt(b.amount)}</span>
-              </div>
+              </button>
             ))}
           </div></div>
         </div>
       )}
 
       {/* ── Transaction list (month view only) ───────────────────────── */}
-      {view === 'month' && (
-        <>
-          <div className="finv-section-head">
-            <h2>תנועות</h2>
-            {shownVirtual.length > 0 && <span className="finv-legend">מקווקו = תחזית מהחוזה/משכנתא</span>}
-          </div>
+      {view === 'month' && (() => {
+        const monthTx = categoryFilter ? transactions.filter(t => t.category === categoryFilter) : transactions
+        const monthVirtual = categoryFilter ? shownVirtual.filter(e => e.category === categoryFilter) : shownVirtual
+        return (
+          <>
+            <div className="finv-section-head">
+              <h2>תנועות</h2>
+              {monthVirtual.length > 0 && <span className="finv-legend">מקווקו = תחזית מהחוזה/משכנתא</span>}
+            </div>
 
-          {loading ? (
-            <SkeletonList rows={5} />
-          ) : transactions.length === 0 && shownVirtual.length === 0 ? (
-            <EmptyState icon={<ClayIllustration variant="receipt" />} title="אין תנועות בחודש זה" />
-          ) : (
-            <>
-              {shownVirtual.map(e => (
-                <div key={e.id} className="finv-tx projected">
-                  <span className="finv-cat-icon" style={{ background: e.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{e.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
-                  <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{e.category}</span><span className="finv-tx-tag">תחזית</span></div><span className="finv-tx-meta">{formatDate(e.date)}{e.description ? ` · ${e.description}` : ''}</span></div>
-                  <div className="finv-tx-side"><span className={`finv-tx-amount ${e.direction}`}>{formatSignedCurrency(e.direction === 'income' ? e.amount : -e.amount)}</span></div>
-                </div>
-              ))}
-              {transactions.map(t => {
-                const meta = [t.description, t.payment_method ? PAYMENT_LABEL[t.payment_method] : null].filter(Boolean).join(' · ')
-                return (
-                  <SwipeRow key={t.id} onEdit={() => openEdit(t)} onDelete={() => handleDelete(t.id)}>
-                    <div className="finv-tx">
-                      <span className="finv-cat-icon" style={{ background: t.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
-                      <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span>{FIXED_CATS.has(t.category) && <span className="finv-tx-tag fixed">קבוע</span>}</div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
-                      <div className="finv-tx-side">
-                        <span className={`finv-tx-amount ${t.direction}`}>{formatSignedCurrency(t.direction === 'income' ? Number(t.amount) : -Number(t.amount))}</span>
-                        <div className="finv-tx-actions">
-                          {t.document_id && <button className="finv-icon-btn" aria-label="קבלה" onClick={() => openReceipt(t)}><Receipt size={15} /></button>}
-                          <button className="finv-icon-btn" aria-label="עריכה" onClick={() => openEdit(t)}><PencilSimple size={15} /></button>
-                        </div>
-                      </div>
-                    </div>
-                  </SwipeRow>
-                )
-              })}
-            </>
-          )}
-        </>
-      )}
+            {loading ? (
+              <SkeletonList rows={5} />
+            ) : monthTx.length === 0 && monthVirtual.length === 0 ? (
+              <EmptyState icon={<ClayIllustration variant="receipt" />} title={categoryFilter ? `אין תנועות ב"${categoryFilter}" בחודש זה` : 'אין תנועות בחודש זה'} />
+            ) : (
+              <>
+                {monthVirtual.map(e => (
+                  <div key={e.id} className="finv-tx projected">
+                    <span className="finv-cat-icon" style={{ background: e.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{e.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
+                    <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{e.category}</span><span className="finv-tx-tag">תחזית</span></div><span className="finv-tx-meta">{formatDate(e.date)}{e.description ? ` · ${e.description}` : ''}</span></div>
+                    <div className="finv-tx-side"><span className={`finv-tx-amount ${e.direction}`}>{formatSignedCurrency(e.direction === 'income' ? e.amount : -e.amount)}</span></div>
+                  </div>
+                ))}
+                {monthTx.map(t => txRow(t))}
+              </>
+            )}
+          </>
+        )
+      })()}
+
+      {/* ── Category history (year/range views, once a category is drilled into) ── */}
+      {(view === 'year' || view === 'range') && categoryFilter && (() => {
+        const historyTx = transactions.filter(t => t.category === categoryFilter)
+        return (
+          <>
+            <div className="finv-section-head"><h2>היסטוריית {categoryFilter}</h2></div>
+            {loading ? (
+              <SkeletonList rows={5} />
+            ) : historyTx.length === 0 ? (
+              <EmptyState icon={<ClayIllustration variant="receipt" />} title={`אין תנועות ב"${categoryFilter}" בתקופה זו`} />
+            ) : historyTx.map(t => txRow(t))}
+          </>
+        )
+      })()}
 
       <div className={`finv-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside className={`finv-drawer ${drawerOpen ? 'open' : ''}`}
