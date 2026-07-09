@@ -71,3 +71,21 @@ export function formatNum(raw: string | number): string {
   if (isNaN(n)) return str
   return n.toLocaleString('he-IL')
 }
+
+// Editing a big comma-grouped number (e.g. fixing a digit in the middle of
+// "2,500,000") is uncomfortable if the caret always jumps to the end after
+// each keystroke — the default when a controlled input is reformatted on
+// every change. Given the formatted string and how many digits preceded the
+// caret before re-grouping, this returns where the caret belongs now (right
+// after the same digit).
+export function caretIndexAfterDigits(formatted: string, digitCount: number): number {
+  if (digitCount <= 0) return 0
+  let seen = 0
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted[i])) {
+      seen++
+      if (seen === digitCount) return i + 1
+    }
+  }
+  return formatted.length
+}

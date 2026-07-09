@@ -7,6 +7,7 @@ import {
   monthDayISO,
   monthEndISO,
   formatNum,
+  caretIndexAfterDigits,
 } from '../format'
 
 // Strip the bidi control marks (RLM/LRM) + nbsp that Intl injects, so we can assert
@@ -75,6 +76,28 @@ describe('formatSignedCurrency (sign hugs the number, none for zero)', () => {
     expect(s).not.toContain('+')
     expect(s).not.toMatch(/[-−]/)
     expect(s).toContain('0')
+  })
+})
+
+describe('caretIndexAfterDigits (keeps the caret on the same digit across re-grouping)', () => {
+  it('lands right after the Nth digit', () => {
+    // "2,500,000" — digit 1 is the "2", digit 4 is the first "0" after it
+    expect(caretIndexAfterDigits('2,500,000', 1)).toBe(1)
+    expect(caretIndexAfterDigits('2,500,000', 4)).toBe(5) // "2,500|,000"
+  })
+  it('handles a newly-inserted comma shifting later digits', () => {
+    // typing "9" before "999" turns "999" into "9,999" — caret was after
+    // digit 1, should stay after digit 1 (before the new comma)
+    expect(caretIndexAfterDigits('9,999', 1)).toBe(1)
+  })
+  it('returns 0 when no digits precede the caret', () => {
+    expect(caretIndexAfterDigits('1,234', 0)).toBe(0)
+  })
+  it('clamps to the end when asked for more digits than exist', () => {
+    expect(caretIndexAfterDigits('1,234', 99)).toBe(5)
+  })
+  it('returns 0 for an empty formatted string', () => {
+    expect(caretIndexAfterDigits('', 0)).toBe(0)
   })
 })
 

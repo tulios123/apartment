@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { Property } from '../../types'
 import { DateField } from '../../components/ui/DateField'
+import { caretIndexAfterDigits } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { uploadDocument } from '../../lib/storage'
@@ -38,6 +39,23 @@ function parseBlockParcel(bp: string): [string, string] {
 function formatPrice(raw: string) {
   const n = Number(raw.replace(/,/g, ''))
   return raw === '' || isNaN(n) ? raw : n.toLocaleString('he-IL')
+}
+
+// Handles a formatted-money <input>'s onChange: strips non-digits into the
+// stored value, then re-formats the DOM input directly and restores the
+// caret to the same digit position it was at before re-grouping (see
+// caretIndexAfterDigits — without this the caret jumps to the end on every
+// keystroke, which makes correcting a digit in a large number uncomfortable).
+function handleMoneyChange(e: React.ChangeEvent<HTMLInputElement>, setter: (v: string) => void) {
+  const input = e.target
+  const caret = input.selectionStart ?? input.value.length
+  const digitsBeforeCaret = (input.value.slice(0, caret).match(/\d/g) || []).length
+  const digits = input.value.replace(/[^\d]/g, '')
+  const formatted = digits ? formatPrice(digits) : ''
+  input.value = formatted
+  const pos = caretIndexAfterDigits(formatted, digitsBeforeCaret)
+  input.setSelectionRange(pos, pos)
+  setter(digits)
 }
 
 export function PropertyForm({
@@ -268,7 +286,7 @@ export function PropertyForm({
             type="text"
             inputMode="numeric"
             value={purchasePrice ? formatPrice(purchasePrice) : ''}
-            onChange={e => setPurchasePrice(e.target.value.replace(/[^\d]/g, ''))}
+            onChange={e => handleMoneyChange(e, setPurchasePrice)}
             placeholder="0"
           />
         </div>
@@ -278,7 +296,7 @@ export function PropertyForm({
             type="text"
             inputMode="numeric"
             value={estimatedValue ? formatPrice(estimatedValue) : ''}
-            onChange={e => setEstimatedValue(e.target.value.replace(/[^\d]/g, ''))}
+            onChange={e => handleMoneyChange(e, setEstimatedValue)}
             placeholder={purchasePrice ? formatPrice(purchasePrice) : '0'}
           />
         </div>
