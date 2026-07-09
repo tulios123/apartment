@@ -112,7 +112,8 @@ export default function Layout() {
         </ErrorBoundary>
       </main>
 
-      <FeedbackButton />
+      {/* No "send feedback" button on the feedback-management console itself. */}
+      {!pathname.startsWith('/admin') && <FeedbackButton />}
 
       {/* Mobile bottom tab bar */}
       <nav className="bottom-nav" aria-label="ניווט ראשי">

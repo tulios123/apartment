@@ -13,6 +13,7 @@ import WealthHub from './pages/wealth/WealthHub'
 import PropertyAdminHub from './pages/property/PropertyAdminHub'
 import FinancesHub from './pages/finances/FinancesHub'
 import Settings from './pages/Settings'
+import FeedbackAdmin from './pages/admin/FeedbackAdmin'
 import { PrivacyPolicy, TermsOfService, Accessibility } from './pages/legal/LegalPages'
 import DevNotes from './components/DevNotes'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -152,6 +153,7 @@ function AppRoutes() {
           <Route path="documents" element={<Navigate to="/property/documents" replace />} />
 
           <Route path="settings" element={<Settings />} />
+          <Route path="admin/feedback" element={<FeedbackAdmin />} />
 
           <Route path="legal/privacy" element={<PrivacyPolicy />} />
           <Route path="legal/terms" element={<TermsOfService />} />

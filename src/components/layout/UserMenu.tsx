@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { User, CaretDown, Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut } from '@phosphor-icons/react'
+import { User, CaretDown, Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut, ChatDots } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
+import { isFeedbackAdmin } from '../../lib/admin'
 import './user-menu.css'
 
 // Avatar button in the top bar that opens an account/legal dropdown (mirrors the
@@ -50,6 +51,11 @@ export default function UserMenu() {
             <Link to="/settings" className="usermenu-item" role="menuitem" onClick={close}>
               <Gear size={20} /><span>הגדרות</span>
             </Link>
+            {isFeedbackAdmin(user?.email) && (
+              <Link to="/admin/feedback" className="usermenu-item" role="menuitem" onClick={close}>
+                <ChatDots size={20} /><span>ניהול משוב</span>
+              </Link>
+            )}
             {/* language toggle would go here when English is added */}
             <div className="usermenu-sep" />
             <Link to="/legal/privacy" className="usermenu-item usermenu-item--quiet" role="menuitem" onClick={close}>

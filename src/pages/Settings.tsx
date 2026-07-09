@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Camera, PaperPlaneTilt, ArrowSquareOut } from '@phosphor-icons/react'
+import { ArrowRight, ChatDots } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
-import { screenLabel } from '../lib/screenLabel'
-import { getFeedbackScreenshotSignedUrl, uploadFeedbackScreenshot } from '../lib/storage'
 import { InstallGuide } from '../components/InstallGuide'
-import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { isFeedbackAdmin } from '../lib/admin'
 import {
   pushSupported,
@@ -30,73 +27,12 @@ const MANAGER_EMAIL = 'dev@test.local'
 
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
-interface FeedbackRow {
-  id: string
-  email: string | null
-  note: string
-  path: string | null
-  category: string | null
-  context: string | null
-  screenshot_path: string | null
-  created_at: string
-  status: string
-  admin_notes: string | null
-  github_issue_number: number | null
-  github_pr_url: string | null
-}
-
-const FEEDBACK_CATEGORY: Record<string, string> = {
-  bug: 'תקלה',
-  feature: 'רעיון',
-  question: 'שאלה',
-  other: 'אחר',
-}
-
-// Hebrew labels for the pipeline statuses (the DB stores the English keys).
-const FEEDBACK_STATUS: Record<string, string> = {
-  new: 'חדש', sent: 'נשלח', in_progress: 'בעבודה',
-  awaiting_review: 'ממתין לאישור', fixed: 'תוקן', failed: 'נכשל',
-}
-
-// Normalise rows from either the full select or the pre-038 fallback select, so the UI
-// always has a status (default 'new') and the pipeline fields present.
-function normalizeFeedback(rows: unknown): FeedbackRow[] {
-  return ((rows as Record<string, unknown>[]) ?? []).map(r => ({
-    id: String(r.id),
-    email: (r.email as string | null) ?? null,
-    note: String(r.note ?? ''),
-    path: (r.path as string | null) ?? null,
-    category: (r.category as string | null) ?? null,
-    context: (r.context as string | null) ?? null,
-    screenshot_path: (r.screenshot_path as string | null) ?? null,
-    created_at: String(r.created_at ?? ''),
-    status: (r.status as string) ?? 'new',
-    admin_notes: (r.admin_notes as string | null) ?? null,
-    github_issue_number: (r.github_issue_number as number | null) ?? null,
-    github_pr_url: (r.github_pr_url as string | null) ?? null,
-  }))
-}
-
 export default function Settings() {
   const { user, signOut } = useAuth()
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [pushState, setPushState] = useState<PushState>('loading')
   const [pushBusy, setPushBusy] = useState(false)
-  const [feedback, setFeedback] = useState<FeedbackRow[]>([])
-  // Admin inbox editing / creating / sending state.
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editNote, setEditNote] = useState('')
-  const [editAdminNotes, setEditAdminNotes] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-  const [newNote, setNewNote] = useState('')
-  const [newPath, setNewPath] = useState('')
-  const [newShot, setNewShot] = useState<File | null>(null)
-  const [sendConfirmId, setSendConfirmId] = useState<string | null>(null)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  // False until migration 038's columns are live (the fetch fell back) — sending before
-  // then would open an issue whose status could never be recorded.
-  const [pipelineReady, setPipelineReady] = useState(true)
   // UX-04: inline, auto-dismissing status toast instead of the native blocking alert().
   const [status, setStatus] = useState<string | null>(null)
   function showStatus(msg: string) {
@@ -120,96 +56,6 @@ export default function Settings() {
   useEffect(() => {
     refreshPushState()
   }, [])
-
-  async function loadFeedback() {
-    const full = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url'
-    const primary = await supabase.from('feedback').select(full).order('created_at', { ascending: false })
-    if (!primary.error) { setPipelineReady(true); setFeedback(normalizeFeedback(primary.data)); return }
-    // Resilience: pipeline columns (migration 038) or screenshot_path (034) not live yet
-    // (schema-cache lag) — fall back to the legacy set so the inbox still loads, and mark
-    // the pipeline not-ready so 'Send to Claude' stays disabled until the migration runs.
-    if (/status|admin_notes|github_|screenshot_path|column|schema|PGRST204/i.test(primary.error.message ?? '')) {
-      setPipelineReady(false)
-      const fb = await supabase.from('feedback')
-        .select('id, email, note, path, category, context, created_at')
-        .order('created_at', { ascending: false })
-      setFeedback(normalizeFeedback(fb.data))
-    }
-  }
-
-  useEffect(() => {
-    if (!feedbackAdmin) return
-    loadFeedback()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedbackAdmin])
-
-  function viewShot(path: string) {
-    // Open the tab synchronously (iOS Safari blocks window.open after an await),
-    // then redirect it to the signed URL once it resolves.
-    const win = window.open('', '_blank')
-    getFeedbackScreenshotSignedUrl(path)
-      .then(url => { if (win) win.location.href = url; else window.open(url, '_blank') })
-      .catch(() => win?.close())
-  }
-
-  async function deleteFeedback(id: string) {
-    const removed = feedback.find(f => f.id === id)
-    setFeedback(prev => prev.filter(f => f.id !== id))
-    const { error } = await supabase.from('feedback').delete().eq('id', id)
-    if (error && removed) {
-      // Restore the optimistically-removed row so the inbox stays truthful.
-      setFeedback(prev => [removed, ...prev].sort((a, b) => b.created_at.localeCompare(a.created_at)))
-      showStatus('מחיקת ההצעה נכשלה — נסו שוב')
-    }
-  }
-
-  // Save the admin's edits to the description + admin_notes (column-capped by RLS).
-  async function saveEdit(id: string) {
-    const note = editNote.trim()
-    const admin_notes = editAdminNotes.trim() || null
-    if (!note) { showStatus('התיאור לא יכול להיות ריק'); return }
-    const { error } = await supabase.from('feedback').update({ note, admin_notes }).eq('id', id)
-    if (error) { showStatus('שמירת השינוי נכשלה — נסו שוב'); return }
-    setFeedback(prev => prev.map(f => f.id === id ? { ...f, note, admin_notes } : f))
-    setEditingId(null)
-  }
-
-  // Admin creates a feedback item himself (description + optional path + optional shot).
-  async function createItem() {
-    if (!user || !newNote.trim()) return
-    setBusyId('new')
-    const ins = await supabase.from('feedback')
-      .insert({ owner_id: user.id, email: user.email ?? null, note: newNote.trim(), path: newPath.trim() || null })
-      .select('id').single()
-    if (ins.error || !ins.data) { setBusyId(null); showStatus('יצירת הפריט נכשלה'); return }
-    if (newShot) {
-      try {
-        const path = await uploadFeedbackScreenshot(newShot, ins.data.id as string, user.id)
-        await supabase.from('feedback').update({ screenshot_path: path }).eq('id', ins.data.id as string)
-      } catch { /* best-effort — the item is saved without the image */ }
-    }
-    setBusyId(null); setShowCreate(false); setNewNote(''); setNewPath(''); setNewShot(null)
-    loadFeedback()
-  }
-
-  // Send an item to the pipeline (opens the GitHub issue via the edge function).
-  async function sendToClaude(id: string) {
-    setSendConfirmId(null); setBusyId(id)
-    const res = await supabase.functions.invoke('send-feedback-to-claude', { body: { feedback_id: id } })
-    setBusyId(null)
-    if (res.error) {
-      // The function returns a Hebrew message (e.g. the one-run-at-a-time block) in its body.
-      let msg = 'השליחה נכשלה — נסו שוב'
-      try {
-        const ctx = (res.error as unknown as { context?: Response }).context
-        const body = ctx && typeof ctx.json === 'function' ? await ctx.json() : null
-        if (body?.error) msg = body.error
-      } catch { /* keep the generic message */ }
-      showStatus(msg)
-      return
-    }
-    loadFeedback()
-  }
 
   async function refreshPushState() {
     if (!pushSupported()) { setPushState('unsupported'); return }
@@ -406,102 +252,13 @@ export default function Settings() {
 
         {feedbackAdmin && (
           <section className="settings-section">
-            <div className="settings-fb-head">
-              <h2>הצעות ותקלות {feedback.length > 0 && `(${feedback.length})`}</h2>
-              <button type="button" className="settings-fb-new" onClick={() => setShowCreate(v => !v)}>
-                {showCreate ? 'סגור' : '+ פריט חדש'}
-              </button>
+            <h2>משוב</h2>
+            <p className="settings-note">ניהול ההצעות והתקלות מהמשתמשים, מעקב אחר התיקונים של הבוט, וארכיון.</p>
+            <div className="settings-actions">
+              <Link to="/admin/feedback" className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <ChatDots size={18} /> פתח מרכז ניהול משוב
+              </Link>
             </div>
-
-            {showCreate && (
-              <div className="settings-fb-create">
-                <textarea rows={3} placeholder="תיאור התקלה או הרעיון — הופך לכותרת+גוף ה-issue" value={newNote} onChange={e => setNewNote(e.target.value)} />
-                <input type="text" placeholder="נתיב/מסך (אופציונלי)" value={newPath} onChange={e => setNewPath(e.target.value)} />
-                <label className="settings-fb-shotpick">
-                  <Camera size={14} weight="duotone" /> {newShot ? newShot.name : 'צירוף צילום מסך (אופציונלי)'}
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setNewShot(e.target.files?.[0] ?? null)} />
-                </label>
-                <div className="settings-fb-rowactions">
-                  <button className="btn-secondary" onClick={() => { setShowCreate(false); setNewNote(''); setNewPath(''); setNewShot(null) }}>ביטול</button>
-                  <button className="btn-primary" onClick={createItem} disabled={!newNote.trim() || busyId === 'new'}>{busyId === 'new' ? 'שומר…' : 'צור פריט'}</button>
-                </div>
-              </div>
-            )}
-
-            {feedback.length === 0 ? (
-              <p className="settings-note">עדיין אין פריטים.</p>
-            ) : (
-              <div className="settings-feedback-list">
-                {feedback.map(f => {
-                  const editing = editingId === f.id
-                  const canSend = f.status === 'new' || f.status === 'failed'
-                  const lockedByOther = feedback.some(o => o.id !== f.id && (o.status === 'sent' || o.status === 'in_progress'))
-                  return (
-                    <div key={f.id} className="settings-feedback-row">
-                      <div className="settings-fb-toprow">
-                        <span className={`settings-fb-status status-${f.status}`}>{FEEDBACK_STATUS[f.status] ?? f.status}</span>
-                        {f.category && <span className={`settings-feedback-cat cat-${f.category}`}>{FEEDBACK_CATEGORY[f.category] ?? f.category}</span>}
-                      </div>
-
-                      {editing ? (
-                        <>
-                          <textarea className="settings-fb-edit" rows={3} value={editNote} onChange={e => setEditNote(e.target.value)} />
-                          <textarea className="settings-fb-edit" rows={2} placeholder="הערות שלך ל-Claude (לפני שליחה)…" value={editAdminNotes} onChange={e => setEditAdminNotes(e.target.value)} />
-                          <div className="settings-fb-rowactions">
-                            <button className="btn-secondary" onClick={() => setEditingId(null)}>ביטול</button>
-                            <button className="btn-primary" onClick={() => saveEdit(f.id)}>שמור</button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <p className="settings-feedback-note">{f.note}</p>
-                          {f.admin_notes && <p className="settings-fb-adminnote">הערה: {f.admin_notes}</p>}
-                        </>
-                      )}
-
-                      {f.screenshot_path && (
-                        <button type="button" className="settings-feedback-shot" onClick={() => viewShot(f.screenshot_path!)}>
-                          <Camera size={13} weight="duotone" /> צילום מצורף
-                        </button>
-                      )}
-
-                      <div className="settings-feedback-meta">
-                        <span>{(f.path || f.context) && <span className="settings-feedback-screen">{screenLabel(f.path)}{f.context ? ` · ${f.context}` : ''}</span>}{f.email ?? '—'} · {new Date(f.created_at).toLocaleDateString('he-IL')}</span>
-                      </div>
-
-                      {!editing && (
-                        <div className="settings-fb-actions">
-                          {f.github_pr_url && (
-                            <a className="settings-fb-pr" href={f.github_pr_url} target="_blank" rel="noreferrer"><ArrowSquareOut size={13} /> בקשת-מיזוג</a>
-                          )}
-                          <button className="settings-fb-editbtn" onClick={() => { setEditingId(f.id); setEditNote(f.note); setEditAdminNotes(f.admin_notes ?? '') }}>עריכה</button>
-                          {canSend && (
-                            <button
-                              className="settings-fb-send"
-                              disabled={lockedByOther || busyId === f.id || !pipelineReady}
-                              title={!pipelineReady ? 'המערכת עדיין לא מוכנה — יש להריץ את המיגרציה ולפרוס את הפונקציות' : lockedByOther ? 'יש פריט אחר בתהליך — יש להמתין לסיומו' : 'שליחה ל-Claude לתיקון'}
-                              onClick={() => setSendConfirmId(f.id)}
-                            >
-                              <PaperPlaneTilt size={13} weight="fill" /> {busyId === f.id ? 'שולח…' : 'שלח ל-Claude'}
-                            </button>
-                          )}
-                          <button className="settings-feedback-del" onClick={() => deleteFeedback(f.id)} aria-label="מחק">✕</button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            <ConfirmDialog
-              open={sendConfirmId !== null}
-              title="לשלוח ל-Claude?"
-              message="ייפתח issue בגיטהאב ו-Claude יתחיל לתקן ולפתוח בקשת-מיזוג. אפשר פריט אחד בכל פעם."
-              confirmLabel="שלח"
-              onConfirm={() => sendConfirmId && sendToClaude(sendConfirmId)}
-              onCancel={() => setSendConfirmId(null)}
-            />
           </section>
         )}
 

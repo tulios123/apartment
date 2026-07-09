@@ -1,0 +1,398 @@
+/* Full-screen feedback management console (owner only). Master-detail: a filtered
+   list of reports, and a per-item view with the client report, attached screenshot,
+   and the bot's fix timeline. RTL-native — back chevron sits at the top-right. */
+
+.fbadmin-page { padding-bottom: 40px; }
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.fbadmin-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+.fbadmin-header h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 21px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fbadmin-back {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-alt, #f7f8fa);
+  color: var(--text, #1a1a1a);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.fbadmin-back:active { transform: scale(0.92); }
+.fbadmin-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--accent, #2a7de1);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+}
+.fbadmin-new {
+  border: 1px solid var(--border, #e2e4e8);
+  background: var(--surface, #fff);
+  color: var(--accent, #2a7de1);
+  border-radius: var(--r-pill, 999px);
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Create form ────────────────────────────────────────────────────────────── */
+.fbadmin-create {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  background: var(--bg-alt, #f7f8fa);
+}
+.fbadmin-create textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+  background: var(--surface, #fff);
+  color: var(--text, #1a1a1a);
+}
+.fbadmin-shotpick {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 1.5px dashed var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  background: var(--surface, #fff);
+  color: var(--text-muted, #6b7280);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────────────────── */
+.fbadmin-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 12px;
+  margin: 0 -2px;
+  scrollbar-width: none;
+}
+.fbadmin-tabs::-webkit-scrollbar { display: none; }
+.fbadmin-tab {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface, #fff);
+  color: var(--text-muted, #6b7280);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+.fbadmin-tab.active {
+  background: var(--text, #1a1a1a);
+  border-color: var(--text, #1a1a1a);
+  color: var(--surface, #fff);
+}
+.fbadmin-tab-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--bg-alt, #f7f8fa);
+  color: var(--text-muted, #6b7280);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+}
+.fbadmin-tab.active .fbadmin-tab-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* ── List ───────────────────────────────────────────────────────────────────── */
+.fbadmin-empty {
+  text-align: center;
+  color: var(--text-muted, #6b7280);
+  font-size: 14px;
+  padding: 32px 0;
+}
+.fbadmin-list { display: flex; flex-direction: column; gap: 10px; }
+.fbadmin-card {
+  display: block;
+  width: 100%;
+  text-align: start;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  background: var(--surface, #fff);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.fbadmin-card:hover { border-color: var(--accent, #2a7de1); box-shadow: var(--shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.06)); }
+.fbadmin-card:active { transform: scale(0.995); }
+.fbadmin-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+.fbadmin-card-date { margin-inline-start: auto; font-size: 12px; color: var(--text-muted, #6b7280); }
+.fbadmin-card-note {
+  margin: 0 0 8px;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--text, #1a1a1a);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fbadmin-card-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted, #6b7280); }
+.fbadmin-card-shot { display: inline-flex; align-items: center; gap: 4px; color: var(--accent, #2a7de1); font-weight: 600; }
+.fbadmin-card-flag { display: inline-flex; align-items: center; gap: 4px; color: #b26a00; font-weight: 700; }
+.fbadmin-card-email { margin-inline-start: auto; }
+
+/* ── Status + category pills (shared list & detail) ─────────────────────────── */
+.fbadmin-status {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: var(--r-pill, 999px);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.fbadmin-status.s-new { background: var(--bg-alt, #f1f2f4); color: var(--text-muted, #6b7280); }
+.fbadmin-status.s-sent { background: rgba(42, 125, 225, 0.12); color: #2a7de1; }
+.fbadmin-status.s-in_progress { background: rgba(214, 158, 0, 0.16); color: #a97a00; }
+.fbadmin-status.s-awaiting_review { background: rgba(214, 158, 0, 0.16); color: #a97a00; }
+.fbadmin-status.s-fixed { background: rgba(31, 168, 113, 0.14); color: var(--success-text, #1fa871); }
+.fbadmin-status.s-failed { background: rgba(224, 83, 61, 0.14); color: var(--danger, #e0533d); }
+
+.fbadmin-cat {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: var(--r-pill, 999px);
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--accent-light, rgba(42, 125, 225, 0.1));
+  color: var(--accent, #2a7de1);
+}
+.fbadmin-cat.c-bug { background: rgba(224, 83, 61, 0.12); color: var(--danger, #e0533d); }
+.fbadmin-cat.c-question { background: rgba(124, 92, 214, 0.14); color: #6b4fd0; }
+.fbadmin-cat.c-other { background: var(--bg-alt, #f1f2f4); color: var(--text-muted, #6b7280); }
+
+/* ── Detail ─────────────────────────────────────────────────────────────────── */
+.fbadmin-head-titles { display: flex; align-items: center; gap: 6px; flex: 1; }
+.fbadmin-detail { display: flex; flex-direction: column; gap: 16px; }
+.fbadmin-channel {
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  background: var(--surface, #fff);
+  padding: 14px;
+}
+.fbadmin-channel-h {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-muted, #6b7280);
+  text-transform: none;
+}
+
+/* Client report bubble */
+.fbadmin-bubble-row { display: flex; }
+.fbadmin-bubble {
+  max-width: 92%;
+  padding: 10px 13px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.fbadmin-bubble p { margin: 0; white-space: pre-wrap; }
+.fbadmin-bubble.from-client {
+  background: var(--bg-alt, #f1f2f4);
+  color: var(--text, #1a1a1a);
+  border-start-start-radius: 4px;
+}
+.fbadmin-edit {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+  background: var(--surface, #fff);
+  color: var(--text, #1a1a1a);
+}
+.fbadmin-report-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 8px 2px 0;
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+
+/* Attached screenshot — inline thumbnail, tap to open full */
+.fbadmin-shot {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 0;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  background: var(--bg-alt, #f7f8fa);
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.fbadmin-shot img { display: block; width: 100%; max-height: 340px; object-fit: contain; }
+.fbadmin-shot-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  background: var(--bg-alt, #f7f8fa);
+  color: var(--text-muted, #6b7280);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.fbadmin-soon {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--text-muted, #9098a3);
+  font-style: italic;
+}
+
+/* Bot timeline */
+.fbadmin-timeline { list-style: none; margin: 0 0 14px; padding: 0; }
+.fbadmin-timeline li {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+.fbadmin-timeline li:last-child { padding-bottom: 0; }
+.fbadmin-timeline li::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border, #e2e4e8);
+}
+.fbadmin-timeline li:last-child::before { display: none; }
+.fbadmin-tl-dot {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--border, #cfd3da);
+}
+.fbadmin-timeline li.done .fbadmin-tl-dot { background: var(--success-text, #1fa871); }
+.fbadmin-timeline li.active .fbadmin-tl-dot { background: #d69e00; box-shadow: 0 0 0 4px rgba(214, 158, 0, 0.18); }
+.fbadmin-timeline li.failed .fbadmin-tl-dot { background: var(--danger, #e0533d); }
+.fbadmin-timeline li div { display: flex; flex-direction: column; gap: 2px; }
+.fbadmin-timeline li b { font-size: 14px; font-weight: 700; color: var(--text, #1a1a1a); }
+.fbadmin-tl-when { font-size: 12px; color: var(--text-muted, #6b7280); }
+
+.fbadmin-field-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #1a1a1a);
+}
+.fbadmin-field-label span { font-weight: 400; color: var(--text-muted, #6b7280); }
+.fbadmin-admin-notes {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+  background: var(--bg-alt, #f7f8fa);
+  color: var(--text, #1a1a1a);
+}
+.fbadmin-admin-notes:focus { outline: none; border-color: var(--accent, #2a7de1); }
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+.fbadmin-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.fbadmin-footer-actions { display: flex; gap: 8px; }
+.fbadmin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--r-pill, 999px);
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.fbadmin-btn.sm { padding: 6px 12px; font-size: 13px; margin-top: 8px; }
+.fbadmin-btn.primary { background: var(--accent, #2a7de1); color: #fff; }
+.fbadmin-btn.primary:disabled { opacity: 0.5; cursor: default; }
+.fbadmin-btn.ghost { background: var(--surface, #fff); border-color: var(--border, #e2e4e8); color: var(--text, #1a1a1a); text-decoration: none; }
+.fbadmin-btn.ghost:hover { border-color: var(--accent, #2a7de1); }
+.fbadmin-btn.danger { background: var(--surface, #fff); border-color: rgba(224, 83, 61, 0.4); color: var(--danger, #e0533d); margin-inline-start: auto; }
+
+/* ── Toast ──────────────────────────────────────────────────────────────────── */
+.fbadmin-toast {
+  position: fixed;
+  inset-inline: 16px;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  z-index: 80;
+  margin: 0 auto;
+  max-width: 420px;
+  text-align: center;
+  background: var(--text, #1a1a1a);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: var(--r-md, 12px);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md, 0 4px 14px rgba(0, 0, 0, 0.18));
+}
