@@ -2,7 +2,7 @@ export type Direction = 'income' | 'expense'
 export type ExecutionType = 'automatic' | 'requires_approval'
 export type TaskStatus = 'open' | 'done'
 export type TaskSource = 'manual' | 'recurring_item' | 'renewal'
-export type DocumentType = 'purchase_contract' | 'property_photos' | 'rental_contract' | 'insurance_policy' | 'mortgage_statement' | 'loan_statement' | 'receipt' | 'invoice' | 'other'
+export type DocumentType = 'purchase_contract' | 'tabu_extract' | 'property_photos' | 'rental_contract' | 'insurance_policy' | 'mortgage_statement' | 'loan_statement' | 'receipt' | 'invoice' | 'other'
 export type PaymentMethod = 'bit' | 'cash' | 'check' | 'bank_transfer' | 'standing_order'
 
 export type UtilityPayer = 'tenant' | 'owner'

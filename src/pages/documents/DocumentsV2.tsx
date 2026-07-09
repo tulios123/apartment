@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react'
-import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, X, Plus, Eye, Trash, UploadSimple, PencilSimple, FolderOpen } from '@phosphor-icons/react'
+import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, X, Plus, Eye, Trash, UploadSimple, PencilSimple, FolderOpen, Certificate, CheckCircle, Circle } from '@phosphor-icons/react'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
@@ -11,6 +11,7 @@ import { DateField } from '../../components/ui/DateField'
 
 const DOC_TYPE_LABELS: Record<DocumentType, string> = {
   purchase_contract: 'חוזה רכישה',
+  tabu_extract: 'נסח טאבו',
   property_photos: 'תמונות נכס',
   rental_contract: 'חוזה שכירות',
   insurance_policy: 'פוליסת ביטוח',
@@ -24,13 +25,17 @@ const DOC_TYPE_LABELS: Record<DocumentType, string> = {
 const DOC_TYPES = Object.entries(DOC_TYPE_LABELS) as [DocumentType, string][]
 
 // Display order for grouped sections
-const TYPE_ORDER: DocumentType[] = ['purchase_contract', 'rental_contract', 'mortgage_statement', 'loan_statement', 'insurance_policy', 'receipt', 'invoice', 'property_photos', 'other']
+const TYPE_ORDER: DocumentType[] = ['purchase_contract', 'tabu_extract', 'rental_contract', 'mortgage_statement', 'loan_statement', 'insurance_policy', 'receipt', 'invoice', 'property_photos', 'other']
 
 const TYPE_TONE: Record<DocumentType, string> = {
-  purchase_contract: 'blue', rental_contract: 'teal', insurance_policy: 'purple',
+  purchase_contract: 'blue', tabu_extract: 'blue', rental_contract: 'teal', insurance_policy: 'purple',
   mortgage_statement: 'blue', loan_statement: 'teal',
   receipt: 'amber', invoice: 'amber', property_photos: 'blue', other: 'muted',
 }
+
+// The core paper trail for owning + financing the apartment. Shown as a checklist
+// so the owner can see at a glance what's on file and what's still missing.
+const CHECKLIST_TYPES: DocumentType[] = ['purchase_contract', 'tabu_extract', 'mortgage_statement', 'insurance_policy']
 
 const emptyForm = { type: 'other' as DocumentType, name: '', date: '' }
 
@@ -61,7 +66,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       .filter(g => g.docs.length > 0)
   }, [documents, filter])
 
-  function openNew() { setForm(emptyForm); setFile(null); setEditingId(null); setFormError(null); setDrawerOpen(true) }
+  function openNew(type: DocumentType = emptyForm.type) { setForm({ ...emptyForm, type }); setFile(null); setEditingId(null); setFormError(null); setDrawerOpen(true) }
   function openEdit(doc: { id: string; type: DocumentType; name: string; date: string | null }) {
     setForm({ type: doc.type, name: doc.name, date: doc.date ?? '' })
     setFile(null); setEditingId(doc.id); setFormError(null); setDrawerOpen(true)
@@ -114,6 +119,11 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
     }
   }
 
+  function handleChecklistClick(type: DocumentType, present: boolean) {
+    if (present) setFilter(type)
+    else openNew(type)
+  }
+
   return (
     <div className={embedded ? 'docv docv-embedded' : 'page docv'}>
       {!embedded && <div className="page-header"><h1>מסמכים</h1></div>}
@@ -122,11 +132,30 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       {error && <div className="form-error" role="alert">{error}</div>}
       {actionErr && <div className="form-error" role="alert">{actionErr}</div>}
 
+      {!loading && (
+        <section className="docv-checklist" aria-label="מסמכים מומלצים">
+          {CHECKLIST_TYPES.map(type => {
+            const present = documents.some(d => d.type === type)
+            return (
+              <button
+                key={type}
+                type="button"
+                className={`docv-checklist-item ${present ? 'done' : ''}`}
+                onClick={() => handleChecklistClick(type, present)}
+              >
+                {present ? <CheckCircle size={17} weight="fill" /> : <Circle size={17} />}
+                {DOC_TYPE_LABELS[type]}
+              </button>
+            )
+          })}
+        </section>
+      )}
+
       {!loading && documents.length === 0 && (
         <div className="docv-empty">
           <div className="empty-flat-icon"><FolderOpen size={30} weight="duotone" /></div>
           <p>עדיין לא הועלו מסמכים</p>
-          <button className="docv-empty-btn" onClick={openNew}><UploadSimple size={17} weight="bold" /> העלה מסמך</button>
+          <button className="docv-empty-btn" onClick={() => openNew()}><UploadSimple size={17} weight="bold" /> העלה מסמך</button>
         </div>
       )}
 
@@ -172,7 +201,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
         </>
       )}
 
-      <button className="docv-fab" onClick={openNew} aria-label="מסמך חדש"><Plus size={26} weight="bold" /></button>
+      <button className="docv-fab" onClick={() => openNew()} aria-label="מסמך חדש"><Plus size={26} weight="bold" /></button>
 
       <div className={`docv-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside className={`docv-drawer ${drawerOpen ? 'open' : ''}`}>
@@ -200,6 +229,7 @@ function docIcon(type: DocumentType): React.ReactNode {
   switch (type) {
     case 'purchase_contract':
     case 'rental_contract': return <FileText size={24} weight="duotone" />
+    case 'tabu_extract': return <Certificate size={24} weight="duotone" />
     case 'property_photos': return <ImageIcon size={24} weight="duotone" />
     case 'insurance_policy': return <ShieldCheck size={24} weight="duotone" />
     case 'mortgage_statement':
