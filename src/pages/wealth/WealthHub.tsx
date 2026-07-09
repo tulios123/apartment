@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { PencilSimple, X } from '@phosphor-icons/react'
+import { useNavigate } from 'react-router-dom'
+import { PencilSimple, X, CaretLeft } from '@phosphor-icons/react'
 import InvestmentCosts from '../property/InvestmentCosts'
 import LiabilitiesV2 from '../liabilities/LiabilitiesV2'
 import OwnershipScore from './OwnershipScore'
@@ -12,6 +13,7 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { currentSplit, futureSplit, principalNext12Months } from '../../lib/equity'
 import { formatCurrency } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
+import { MAINTENANCE_CATEGORY } from '../../lib/constants'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
@@ -20,6 +22,7 @@ import './wealth.css'
 const fmt = (v: number) => formatCurrency(v)
 
 export default function WealthHub() {
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
 
   const { property, contracts, loading: loadingProp, error: errProp, refetch: refetchProp } = usePropertyData()
@@ -134,10 +137,14 @@ export default function WealthHub() {
                   </div>
                 )}
                 {maintenance > 0 && (
-                  <div className="wlth-cf-row">
+                  <button
+                    type="button"
+                    className="wlth-cf-row wlth-cf-row-link"
+                    onClick={() => navigate('/finances', { state: { historyCategory: MAINTENANCE_CATEGORY } })}
+                  >
                     <span><i className="wlth-cf-dot out" /> אחזקה ותיקונים</span>
-                    <strong>{fmt(maintenance)}</strong>
-                  </div>
+                    <strong>{fmt(maintenance)} <CaretLeft size={13} weight="bold" /></strong>
+                  </button>
                 )}
               </div>
               <div className="wlth-cf-net">

@@ -77,11 +77,18 @@
   .finv-breakdown-body { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.35s var(--ease), opacity 0.3s var(--ease); }
   .finv-breakdown.open .finv-breakdown-body { max-height: 420px; opacity: 1; }
   .finv-breakdown-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 11px; }
-  .finv-bd-row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; }
+  .finv-bd-row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; width: 100%; border: none; background: none; padding: 4px 0; font-family: inherit; text-align: inherit; cursor: pointer; border-radius: var(--r-sm); transition: background var(--t-fast); }
+  .finv-bd-row:hover { background: var(--bg-alt); }
+  .finv-bd-row.active { background: var(--accent-light); }
+  .finv-bd-row.active .finv-bd-label, .finv-bd-row.active .finv-bd-amount { color: var(--accent); }
   .finv-bd-label { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .finv-bd-track { height: 8px; border-radius: var(--r-pill); background: var(--bg-alt); overflow: hidden; }
   .finv-bd-fill { height: 100%; border-radius: var(--r-pill); }
   .finv-bd-amount { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand-navy); }
+
+  /* Category filter (drill-down into a category's full history) */
+  .finv-filter-chip { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--accent-light); color: var(--accent); border-radius: var(--r-md); padding: 10px 14px; margin-bottom: 16px; font-size: 13px; font-weight: 600; }
+  .finv-filter-chip button { border: none; background: none; color: inherit; cursor: pointer; display: grid; place-items: center; }
 
   /* List */
   .finv-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
