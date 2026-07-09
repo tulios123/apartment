@@ -81,6 +81,8 @@ export function formatMsgTime(iso: string): string {
   return sameDay ? time : `${d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })} · ${time}`
 }
 
+export { canResendToBot } from './feedbackStatus'
+
 // Map the internal pipeline status (+ the human archive flag) to a CLEAN client-facing
 // pill. The client never sees internal words like 'awaiting_review'/'failed'; the archive
 // is the owner's "done" signal, so it wins over any status.

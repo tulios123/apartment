@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       return json({ error: 'unauthorized' }, 401)
     }
 
-    const { github_issue_number, status, pr_url } = await req.json().catch(() => ({}))
+    const { github_issue_number, status, pr_url, bot_message } = await req.json().catch(() => ({}))
 
     if (typeof github_issue_number !== 'number' || !Number.isInteger(github_issue_number)) {
       return json({ error: 'github_issue_number (int) required' }, 400)
@@ -45,6 +45,13 @@ Deno.serve(async (req) => {
     if (pr_url !== undefined && typeof pr_url !== 'string') {
       return json({ error: 'pr_url must be a string' }, 400)
     }
+    if (bot_message !== undefined && typeof bot_message !== 'string') {
+      return json({ error: 'bot_message must be a string' }, 400)
+    }
+    // What the bot actually said (a clarifying question, a failure reason, a fix summary) —
+    // shown verbatim in the admin console's "מול הבוט" thread, not just the generic status
+    // pill. Capped so a runaway comment can't blow up the chat bubble.
+    const botMessage = typeof bot_message === 'string' ? bot_message.trim().slice(0, 4000) : ''
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -70,13 +77,25 @@ Deno.serve(async (req) => {
     if (!data || data.length === 0) {
       return json({ error: 'no feedback row for that issue number' }, 404)
     }
+    const feedbackId = data[0].id as string
+
+    // Drop what the bot actually said into the thread as a 'bot' message — service-role
+    // only (see 039), so this is the ONE place that content ever reaches the admin console.
+    // Best-effort: a message-insert failure must never fail the status callback (see the
+    // push comment below — a non-200 here would wedge the one-run-at-a-time lock).
+    if (botMessage) {
+      try {
+        await supabase.from('feedback_messages').insert({ feedback_id: feedbackId, author: 'bot', body: botMessage })
+      } catch (e) {
+        console.error('bot message insert (non-fatal):', e)
+      }
+    }
 
     // Autonomy: push the ADMIN on each pipeline transition so they manage the fix by
     // notification instead of polling the console. Best-effort in a try/catch — a push
     // failure must NEVER fail this callback (the one-run-at-a-time lock depends on a 200
     // here to release the item; a 500 would wedge the pipeline).
     try {
-      const feedbackId = data[0].id as string
       const STATUS_PUSH: Record<string, [string, string]> = {
         in_progress: ['הבוט התחיל לעבוד על התיקון', ''],
         awaiting_review: ['התיקון מוכן לבדיקה', 'בדקו באפליקציה ואשרו את בקשת-המיזוג'],
@@ -89,9 +108,12 @@ Deno.serve(async (req) => {
         const { data: item } = await supabase.from('feedback').select('note').eq('id', feedbackId).single()
         const firstLine = String(item?.note ?? '').split('\n')[0].slice(0, 90)
         const [title, extra] = spec
+        // Prefer the bot's own words over the generic blurb — it's the actual answer/
+        // question, which is the whole point of surfacing this push.
+        const detail = botMessage ? botMessage.slice(0, 120) : extra
         await pushToOwner(supabase, adminId, {
           title,
-          body: [extra, firstLine].filter(Boolean).join('\n') || firstLine || 'עודכן סטטוס',
+          body: [detail, firstLine].filter(Boolean).join('\n') || firstLine || 'עודכן סטטוס',
           url: `/admin/feedback?item=${feedbackId}`,
           tag: `apt-feedback-${feedbackId}`,
         })

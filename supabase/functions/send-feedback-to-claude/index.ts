@@ -51,7 +51,11 @@ Deno.serve(async (req) => {
       .eq('id', feedback_id)
       .single()
     if (itemErr || !item) return json({ error: 'feedback not found' }, 404)
-    if (!['new', 'failed'].includes(item.status)) {
+    // 'awaiting_review' is resendable too: the owner reviewed an open PR, decided it
+    // doesn't actually solve it, and wants another pass — mirrors RESENDABLE_STATUSES
+    // in src/lib/feedbackStatus.ts (kept in sync manually; the two run in different
+    // runtimes and can't share an import).
+    if (!['new', 'failed', 'awaiting_review'].includes(item.status)) {
       return json({ error: `לא ניתן לשלוח פריט בסטטוס "${item.status}".` }, 409)
     }
 
@@ -93,7 +97,7 @@ Deno.serve(async (req) => {
       .from('feedback')
       .update({ status: 'sent', sent_at: now, status_updated_at: now })
       .eq('id', feedback_id)
-      .in('status', ['new', 'failed'])
+      .in('status', ['new', 'failed', 'awaiting_review'])
       .select('id')
     if (claim.error) {
       if ((claim.error as { code?: string }).code === '23505') {

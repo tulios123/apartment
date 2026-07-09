@@ -20,6 +20,7 @@ import {
   loadThread, sendMessage, subscribeThread, formatMsgTime,
   type FeedbackMsg,
 } from '../../lib/feedbackMessages'
+import { canResendToBot } from '../../lib/feedbackStatus'
 import './feedback-admin.css'
 
 interface FeedbackRow {
@@ -331,7 +332,8 @@ export default function FeedbackAdmin() {
   // ── Detail view ──────────────────────────────────────────────────────────────
   if (selected) {
     const f = selected
-    const canSend = f.status === 'new' || f.status === 'failed'
+    const canSend = canResendToBot(f.status)
+    const resendAfterReview = f.status === 'awaiting_review'
     const archived = !!f.archived_at
     const humanMsgs = messages.filter(m => m.author !== 'bot')
     const botMsgs = messages.filter(m => m.author === 'bot')
@@ -488,7 +490,8 @@ export default function FeedbackAdmin() {
                   title={!pipelineReady ? 'המערכת עדיין לא מוכנה' : lockedByOther(f.id) ? 'יש פריט אחר בתהליך — יש להמתין לסיומו' : 'שליחה לבוט לתיקון'}
                   onClick={() => setSendConfirmId(f.id)}
                 >
-                  <PaperPlaneTilt size={15} weight="fill" /> {busyId === f.id ? 'שולח…' : 'שלח לבוט לתיקון'}
+                  <PaperPlaneTilt size={15} weight="fill" />
+                  {busyId === f.id ? 'שולח…' : resendAfterReview ? 'לא נפתר — שלח שוב לבוט' : 'שלח לבוט לתיקון'}
                 </button>
               )}
               {f.github_pr_url && (
@@ -538,7 +541,11 @@ export default function FeedbackAdmin() {
         <ConfirmDialog
           open={sendConfirmId !== null}
           title="לשלוח לבוט?"
-          message="ייפתח issue בגיטהאב והבוט יתחיל לתקן ולפתוח בקשת-מיזוג. אפשר פריט אחד בכל פעם."
+          message={
+            resendAfterReview
+              ? 'תיפתח פנייה חדשה עם ההערות המעודכנות. בקשת-המיזוג הקודמת תישאר פתוחה בגיטהאב — אפשר לסגור אותה בעצמכם אם היא כבר לא רלוונטית.'
+              : 'ייפתח issue בגיטהאב והבוט יתחיל לתקן ולפתוח בקשת-מיזוג. אפשר פריט אחד בכל פעם.'
+          }
           confirmLabel="שלח"
           onConfirm={() => sendConfirmId && sendToClaude(sendConfirmId)}
           onCancel={() => setSendConfirmId(null)}
