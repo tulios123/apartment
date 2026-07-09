@@ -70,7 +70,10 @@ jobs:
           # Git push + PR are authenticated with the workflow token (permissions granted
           # above). Without this the branch/PR can't be created and a good fix reads as failed.
           github_token: ${{ github.token }}
-          claude_args: "--model sonnet --max-turns 40"
+          # CI is non-interactive — allow Claude to edit/write/run without a human
+          # approval prompt (a good fix otherwise stalls on "edit permission denied").
+          # Safe here: the run is sandboxed and every change is reviewed at the PR stage.
+          claude_args: "--model sonnet --max-turns 40 --dangerously-skip-permissions"
           show_full_output: true
           prompt: |
             A bug was reported in the apartment-management app (a Hebrew, RTL, mobile
