@@ -33,10 +33,6 @@ const TYPE_TONE: Record<DocumentType, string> = {
   receipt: 'amber', invoice: 'amber', property_photos: 'blue', other: 'muted',
 }
 
-// The core paper trail for owning + financing the apartment. Shown as a checklist
-// so the owner can see at a glance what's on file and what's still missing.
-const CHECKLIST_TYPES: DocumentType[] = ['purchase_contract', 'tabu_extract', 'mortgage_statement', 'insurance_policy']
-
 const emptyForm = { type: 'other' as DocumentType, name: '', date: '' }
 
 export default function DocumentsV2({ embedded = false }: { embedded?: boolean }) {
@@ -52,12 +48,6 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
   const [actionErr, setActionErr] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Which types are actually present (for filter chips)
-  const presentTypes = useMemo(() => {
-    const set = new Set(documents.map(d => d.type))
-    return TYPE_ORDER.filter(t => set.has(t))
-  }, [documents])
 
   const groups = useMemo(() => {
     const shown = filter === 'all' ? documents : documents.filter(d => d.type === filter)
@@ -133,14 +123,21 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       {actionErr && <div className="form-error" role="alert">{actionErr}</div>}
 
       {!loading && (
-        <section className="docv-checklist" aria-label="מסמכים מומלצים">
-          {CHECKLIST_TYPES.map(type => {
+        <section className="docv-checklist" aria-label="סוגי מסמכים">
+          <button
+            type="button"
+            className={`docv-checklist-item all ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => setFilter('all')}
+          >
+            הכול
+          </button>
+          {TYPE_ORDER.map(type => {
             const present = documents.some(d => d.type === type)
             return (
               <button
                 key={type}
                 type="button"
-                className={`docv-checklist-item ${present ? 'done' : ''}`}
+                className={`docv-checklist-item ${present ? 'done' : 'missing'} ${filter === type ? 'active' : ''}`}
                 onClick={() => handleChecklistClick(type, present)}
               >
                 {present ? <CheckCircle size={17} weight="fill" /> : <Circle size={17} />}
@@ -161,15 +158,6 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
       {!loading && documents.length > 0 && (
         <>
-          {presentTypes.length > 1 && (
-            <div className="docv-filters">
-              <button className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>הכול</button>
-              {presentTypes.map(t => (
-                <button key={t} className={filter === t ? 'on' : ''} onClick={() => setFilter(t)}>{DOC_TYPE_LABELS[t]}</button>
-              ))}
-            </div>
-          )}
-
           {groups.map(({ type, docs }) => (
             <section key={type} className="docv-group">
               <div className="docv-group-head"><h2>{DOC_TYPE_LABELS[type]}</h2><span>{docs.length}</span></div>
