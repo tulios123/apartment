@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowRight,
   Camera,
@@ -16,6 +16,10 @@ import { screenLabel } from '../../lib/screenLabel'
 import { getFeedbackScreenshotSignedUrl, uploadFeedbackScreenshot } from '../../lib/storage'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { isFeedbackAdmin } from '../../lib/admin'
+import {
+  loadThread, sendMessage, subscribeThread, formatMsgTime,
+  type FeedbackMsg,
+} from '../../lib/feedbackMessages'
 import './feedback-admin.css'
 
 interface FeedbackRow {
@@ -32,27 +36,27 @@ interface FeedbackRow {
   github_issue_number: number | null
   github_pr_url: string | null
   sent_at: string | null
+  archived_at: string | null
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  bug: 'תקלה', feature: 'רעיון', question: 'שאלה', other: 'אחר',
+// Two-bucket display that agrees with the fold + tabs: bug → תקלה, everything else
+// (feature | legacy question/other | null) → רעיון. Keeps the pill consistent with the
+// tab an item sits in (a legacy 'question' row shows 'רעיון' inside the רעיונות tab, not 'שאלה').
+function catDisplay(category: string | null): { label: string; cls: string } {
+  return category === 'bug' ? { label: 'תקלה', cls: 'c-bug' } : { label: 'רעיון', cls: 'c-feature' }
 }
 
 // The DB stores English status keys; the pipeline moves them. These are the owner-facing
-// Hebrew labels. 'fixed' items live in the archive; everything else is "active".
+// Hebrew labels for the bot timeline (the archive is driven by archived_at, not status).
 const STATUS_LABEL: Record<string, string> = {
   new: 'חדש', sent: 'נשלח', in_progress: 'בעבודה',
   awaiting_review: 'ממתין לבדיקה', fixed: 'תוקן', failed: 'נכשל',
 }
 
-// Category tabs + a separate archive. Archive = whatever reached 'fixed' (Phase 2 adds a
-// manual "mark as closed" that writes status via a service-role function).
+// Two active categories + a separate archive. Legacy question/other/null fold into רעיונות.
 const TABS = [
-  { key: 'all', label: 'הכול' },
   { key: 'bug', label: 'תקלות' },
   { key: 'feature', label: 'רעיונות' },
-  { key: 'question', label: 'שאלות' },
-  { key: 'other', label: 'אחר' },
   { key: 'archive', label: 'ארכיון' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
@@ -72,6 +76,7 @@ function normalizeFeedback(rows: unknown): FeedbackRow[] {
     github_issue_number: (r.github_issue_number as number | null) ?? null,
     github_pr_url: (r.github_pr_url as string | null) ?? null,
     sent_at: (r.sent_at as string | null) ?? null,
+    archived_at: (r.archived_at as string | null) ?? null,
   }))
 }
 
@@ -87,10 +92,11 @@ function fmtDateTime(iso: string): string {
 export default function FeedbackAdmin() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [feedback, setFeedback] = useState<FeedbackRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<TabKey>('all')
+  const [tab, setTab] = useState<TabKey>('bug')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Per-item action state.
@@ -101,9 +107,16 @@ export default function FeedbackAdmin() {
   const [savingNotes, setSavingNotes] = useState(false)
   const [sendConfirmId, setSendConfirmId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [resolveConfirmId, setResolveConfirmId] = useState<string | null>(null)
+  const [reopenConfirmId, setReopenConfirmId] = useState<string | null>(null)
+  const [resolving, setResolving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
-  // False if migration 038's columns aren't live yet — keeps "send" disabled.
   const [pipelineReady, setPipelineReady] = useState(true)
+
+  // Chat with the client.
+  const [messages, setMessages] = useState<FeedbackMsg[]>([])
+  const [replyDraft, setReplyDraft] = useState('')
+  const [sendingReply, setSendingReply] = useState(false)
 
   // Create-a-new-item form.
   const [showCreate, setShowCreate] = useState(false)
@@ -117,11 +130,11 @@ export default function FeedbackAdmin() {
   }
 
   async function loadFeedback() {
-    const full = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at'
+    const full = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, archived_at'
     const primary = await supabase.from('feedback').select(full).order('created_at', { ascending: false })
     if (!primary.error) { setPipelineReady(true); setFeedback(normalizeFeedback(primary.data)); setLoading(false); return }
-    // Schema-cache lag (038/034 not live) — fall back so the inbox still loads.
-    if (/status|admin_notes|github_|screenshot_path|sent_at|column|schema|PGRST204/i.test(primary.error.message ?? '')) {
+    // Schema-cache lag (039/038/034 not live) — fall back so the inbox still loads.
+    if (/status|admin_notes|github_|screenshot_path|sent_at|archived_at|column|schema|PGRST204/i.test(primary.error.message ?? '')) {
       setPipelineReady(false)
       const fb = await supabase.from('feedback')
         .select('id, email, note, path, category, context, created_at')
@@ -134,6 +147,18 @@ export default function FeedbackAdmin() {
   useEffect(() => {
     loadFeedback()
   }, [])
+
+  // Deep-link from a push: /admin/feedback?item=<id> opens that item. Strip the param so a
+  // repeat push of the same item re-fires (react-router memoizes searchParams by the query
+  // string — an identical ?item= would otherwise be a no-op after backing out).
+  useEffect(() => {
+    const id = searchParams.get('item')
+    if (!id) return
+    setSelectedId(id)
+    const next = new URLSearchParams(searchParams)
+    next.delete('item')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const selected = useMemo(() => feedback.find(f => f.id === selectedId) ?? null, [feedback, selectedId])
 
@@ -148,30 +173,45 @@ export default function FeedbackAdmin() {
     return () => { alive = false }
   }, [selected?.id, selected?.screenshot_path])
 
-  // Seed the editable drafts whenever a different item is opened.
+  // Seed the editable drafts + reset the composer whenever a different item is opened.
   useEffect(() => {
     setEditingNote(false)
     setNoteDraft(selected?.note ?? '')
     setAdminDraft(selected?.admin_notes ?? '')
+    setReplyDraft('')
+  }, [selected?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load + live-subscribe the client chat thread for the open item. Refetch on focus as a
+  // PWA-sleep backup for realtime.
+  useEffect(() => {
+    if (!selected) { setMessages([]); return }
+    const id = selected.id
+    let alive = true
+    const refresh = () => loadThread(id).then(m => { if (alive) setMessages(m) }).catch(() => {})
+    refresh()
+    const unsub = subscribeThread(id, (m) => {
+      setMessages(prev => prev.some(x => x.id === m.id) ? prev : [...prev, m])
+    })
+    const onVis = () => { if (document.visibilityState === 'visible') refresh() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { alive = false; unsub(); document.removeEventListener('visibilitychange', onVis) }
   }, [selected?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: 0, bug: 0, feature: 0, question: 0, other: 0, archive: 0 }
+    const c = { bug: 0, feature: 0, archive: 0 }
     for (const f of feedback) {
-      if (f.status === 'fixed') { c.archive++; continue }
-      c.all++
-      const cat = f.category && c[f.category] !== undefined ? f.category : 'other'
-      c[cat]++
+      if (f.archived_at) { c.archive++; continue }
+      if (f.category === 'bug') c.bug++
+      else c.feature++ // feature | question | other | null → רעיונות
     }
     return c
   }, [feedback])
 
   const visible = useMemo(() => {
-    if (tab === 'archive') return feedback.filter(f => f.status === 'fixed')
-    const active = feedback.filter(f => f.status !== 'fixed')
-    if (tab === 'all') return active
-    if (tab === 'other') return active.filter(f => !f.category || !['bug', 'feature', 'question'].includes(f.category))
-    return active.filter(f => f.category === tab)
+    if (tab === 'archive') return feedback.filter(f => f.archived_at != null)
+    const active = feedback.filter(f => f.archived_at == null)
+    if (tab === 'bug') return active.filter(f => f.category === 'bug')
+    return active.filter(f => f.category !== 'bug') // רעיונות = non-bug fold
   }, [feedback, tab])
 
   // ── Actions ──────────────────────────────────────────────────────────────────
@@ -240,10 +280,51 @@ export default function FeedbackAdmin() {
     loadFeedback()
   }
 
+  async function invokeError(res: { error: unknown }, fallback: string): Promise<string> {
+    try {
+      const ctx = (res.error as { context?: Response }).context
+      const body = ctx && typeof ctx.json === 'function' ? await ctx.json() : null
+      if (body?.error) return body.error as string
+    } catch { /* keep fallback */ }
+    return fallback
+  }
+
+  async function handleResolve(id: string) {
+    setResolveConfirmId(null); setResolving(true)
+    const res = await supabase.functions.invoke('resolve-feedback', { body: { feedback_id: id } })
+    setResolving(false)
+    if (res.error) { showToast(await invokeError(res, 'הסימון נכשל — נסו שוב')); return }
+    const now = new Date().toISOString()
+    setFeedback(prev => prev.map(f => f.id === id ? { ...f, archived_at: now } : f))
+    const warning = (res.data as { warning?: string } | null)?.warning
+    showToast(warning || 'סומן כטופל — הלקוח קיבל עדכון')
+  }
+
+  async function handleReopen(id: string) {
+    setReopenConfirmId(null); setResolving(true)
+    const res = await supabase.functions.invoke('resolve-feedback', { body: { feedback_id: id, reopen: true } })
+    setResolving(false)
+    if (res.error) { showToast(await invokeError(res, 'הפעולה נכשלה — נסו שוב')); return }
+    setFeedback(prev => prev.map(f => f.id === id ? { ...f, archived_at: null } : f))
+    showToast('הוחזר לרשימה הפעילה')
+  }
+
+  async function sendReply() {
+    const body = replyDraft.trim()
+    if (!body || !user || !selected) return
+    setSendingReply(true)
+    try {
+      const msg = await sendMessage({ feedbackId: selected.id, author: 'admin', body, userId: user.id, userEmail: user.email ?? null })
+      setMessages(prev => prev.some(x => x.id === msg.id) ? prev : [...prev, msg])
+      setReplyDraft('')
+    } catch { showToast('שליחת התגובה נכשלה') }
+    setSendingReply(false)
+  }
+
   // ── Guard ────────────────────────────────────────────────────────────────────
   if (!isFeedbackAdmin(user?.email)) return <Navigate to="/" replace />
 
-  const activeCount = feedback.filter(f => f.status !== 'fixed').length
+  const activeCount = feedback.filter(f => f.archived_at == null).length
   const lockedByOther = (id: string) =>
     feedback.some(o => o.id !== id && (o.status === 'sent' || o.status === 'in_progress'))
 
@@ -251,6 +332,9 @@ export default function FeedbackAdmin() {
   if (selected) {
     const f = selected
     const canSend = f.status === 'new' || f.status === 'failed'
+    const archived = !!f.archived_at
+    const humanMsgs = messages.filter(m => m.author !== 'bot')
+    const botMsgs = messages.filter(m => m.author === 'bot')
     return (
       <div className="page fbadmin-page">
         <div className="fbadmin-header">
@@ -259,41 +343,72 @@ export default function FeedbackAdmin() {
           </button>
           <div className="fbadmin-head-titles">
             <span className={`fbadmin-status s-${f.status}`}>{STATUS_LABEL[f.status] ?? f.status}</span>
-            {f.category && <span className={`fbadmin-cat c-${f.category}`}>{CATEGORY_LABEL[f.category] ?? f.category}</span>}
+            <span className={`fbadmin-cat ${catDisplay(f.category).cls}`}>{catDisplay(f.category).label}</span>
+            {archived && <span className="fbadmin-status s-fixed">בארכיון</span>}
           </div>
         </div>
 
         <div className="fbadmin-detail">
-          {/* ── מול הלקוח — the report ── */}
+          {/* ── מול הלקוח — report + two-way chat ── */}
           <section className="fbadmin-channel">
             <h3 className="fbadmin-channel-h">מול הלקוח</h3>
-            <div className="fbadmin-bubble-row">
-              <div className="fbadmin-bubble from-client">
-                {editingNote ? (
-                  <textarea className="fbadmin-edit" rows={4} value={noteDraft} onChange={e => setNoteDraft(e.target.value)} />
-                ) : (
-                  <p>{f.note}</p>
-                )}
-              </div>
-            </div>
             <div className="fbadmin-report-meta">
               {(f.path || f.context) && <span>{screenLabel(f.path)}{f.context ? ` · ${f.context}` : ''}</span>}
               <span>{f.email ?? '—'} · {fmtDateTime(f.created_at)}</span>
             </div>
 
-            {f.screenshot_path && (
-              shotUrl ? (
-                <button type="button" className="fbadmin-shot" onClick={() => viewShotNewTab(f.screenshot_path!)}>
-                  <img src={shotUrl} alt="צילום מסך מצורף" loading="lazy" />
-                </button>
-              ) : (
-                <button type="button" className="fbadmin-shot-loading" onClick={() => viewShotNewTab(f.screenshot_path!)}>
-                  <Camera size={14} weight="duotone" /> טוען צילום מצורף…
-                </button>
-              )
-            )}
+            <div className="fbadmin-thread">
+              {/* The original report as the first client bubble */}
+              <div className="fbadmin-msg from-client">
+                {editingNote ? (
+                  <textarea className="fbadmin-edit" rows={4} value={noteDraft} onChange={e => setNoteDraft(e.target.value)} />
+                ) : (
+                  <div className="fbadmin-bubble">{f.note}</div>
+                )}
+                <span className="fbadmin-msg-time">{fmtDateTime(f.created_at)}</span>
+              </div>
 
-            <p className="fbadmin-soon">מענה ישיר ללקוח + סימון "טופל" יתווספו בשלב הבא.</p>
+              {f.screenshot_path && (
+                <div className="fbadmin-msg from-client">
+                  {shotUrl ? (
+                    <button type="button" className="fbadmin-shot" onClick={() => viewShotNewTab(f.screenshot_path!)}>
+                      <img src={shotUrl} alt="צילום מסך מצורף" loading="lazy" />
+                    </button>
+                  ) : (
+                    <button type="button" className="fbadmin-shot-loading" onClick={() => viewShotNewTab(f.screenshot_path!)}>
+                      <Camera size={14} weight="duotone" /> טוען צילום…
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {humanMsgs.map(m => (
+                m.author === 'system' ? (
+                  <div key={m.id} className="fbadmin-msg-system">{m.body}</div>
+                ) : (
+                  <div key={m.id} className={`fbadmin-msg ${m.author === 'admin' ? 'from-admin' : 'from-client'}`}>
+                    <div className="fbadmin-bubble">{m.body}</div>
+                    <span className="fbadmin-msg-time">{formatMsgTime(m.created_at)}</span>
+                  </div>
+                )
+              ))}
+            </div>
+
+            {archived ? (
+              <p className="fbadmin-soon">הפריט בארכיון. להמשיך שיחה — החזירו אותו לפעיל.</p>
+            ) : (
+              <div className="fbadmin-composer">
+                <textarea
+                  rows={2}
+                  placeholder="תגובה ללקוח…"
+                  value={replyDraft}
+                  onChange={e => setReplyDraft(e.target.value)}
+                />
+                <button className="fbadmin-composer-send" onClick={sendReply} disabled={sendingReply || !replyDraft.trim()} aria-label="שליחת תגובה">
+                  <PaperPlaneTilt size={18} weight="fill" />
+                </button>
+              </div>
+            )}
           </section>
 
           {/* ── מול הבוט — the fix pipeline ── */}
@@ -340,6 +455,17 @@ export default function FeedbackAdmin() {
               )}
             </ol>
 
+            {botMsgs.length > 0 && (
+              <div className="fbadmin-thread">
+                {botMsgs.map(m => (
+                  <div key={m.id} className="fbadmin-msg from-admin">
+                    <div className="fbadmin-bubble">{m.body}</div>
+                    <span className="fbadmin-msg-time">{formatMsgTime(m.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <label className="fbadmin-field-label">הערות שלך לבוט <span>(נשלחות יחד עם התקלה)</span></label>
             <textarea
               className="fbadmin-admin-notes"
@@ -378,6 +504,17 @@ export default function FeedbackAdmin() {
             </div>
           </section>
 
+          {/* ── Resolve / reopen ── */}
+          {archived ? (
+            <button className="fbadmin-btn ghost fbadmin-reopen" disabled={resolving} onClick={() => setReopenConfirmId(f.id)}>
+              החזר לפעיל
+            </button>
+          ) : (
+            <button className="fbadmin-btn fbadmin-resolve" disabled={resolving} onClick={() => setResolveConfirmId(f.id)}>
+              <CheckCircle size={17} weight="fill" /> סמן כטופל
+            </button>
+          )}
+
           {/* ── Footer: edit / delete ── */}
           <div className="fbadmin-footer-actions">
             {editingNote ? (
@@ -405,6 +542,22 @@ export default function FeedbackAdmin() {
           confirmLabel="שלח"
           onConfirm={() => sendConfirmId && sendToClaude(sendConfirmId)}
           onCancel={() => setSendConfirmId(null)}
+        />
+        <ConfirmDialog
+          open={resolveConfirmId !== null}
+          title="לסמן כטופל?"
+          message="הפריט יעבור לארכיון, והמדווח יקבל הודעה שהטיפול הושלם."
+          confirmLabel="סמן כטופל"
+          onConfirm={() => resolveConfirmId && handleResolve(resolveConfirmId)}
+          onCancel={() => setResolveConfirmId(null)}
+        />
+        <ConfirmDialog
+          open={reopenConfirmId !== null}
+          title="להחזיר לטיפול?"
+          message="הפריט יחזור לרשימה הפעילה."
+          confirmLabel="החזר לפעיל"
+          onConfirm={() => reopenConfirmId && handleReopen(reopenConfirmId)}
+          onCancel={() => setReopenConfirmId(null)}
         />
         <ConfirmDialog
           open={deleteConfirmId !== null}
@@ -446,12 +599,12 @@ export default function FeedbackAdmin() {
         </div>
       )}
 
-      <div className="fbadmin-tabs" role="tablist">
+      <div className="fbadmin-tabs" role="group" aria-label="סינון לפי סוג">
         {TABS.map(t => (
           <button
             key={t.key}
-            role="tab"
-            aria-selected={tab === t.key}
+            type="button"
+            aria-pressed={tab === t.key}
             className={`fbadmin-tab${tab === t.key ? ' active' : ''}`}
             onClick={() => setTab(t.key)}
           >
@@ -471,13 +624,13 @@ export default function FeedbackAdmin() {
             <button key={f.id} className="fbadmin-card" onClick={() => setSelectedId(f.id)}>
               <div className="fbadmin-card-top">
                 <span className={`fbadmin-status s-${f.status}`}>{STATUS_LABEL[f.status] ?? f.status}</span>
-                {f.category && <span className={`fbadmin-cat c-${f.category}`}>{CATEGORY_LABEL[f.category] ?? f.category}</span>}
+                <span className={`fbadmin-cat ${catDisplay(f.category).cls}`}>{catDisplay(f.category).label}</span>
                 <span className="fbadmin-card-date">{fmtDate(f.created_at)}</span>
               </div>
               <p className="fbadmin-card-note">{f.note}</p>
               <div className="fbadmin-card-meta">
                 {f.screenshot_path && <span className="fbadmin-card-shot"><Camera size={12} weight="duotone" /> צילום</span>}
-                {f.status === 'awaiting_review' && <span className="fbadmin-card-flag"><CheckCircle size={12} weight="fill" /> ממתין לך</span>}
+                {f.status === 'awaiting_review' && !f.archived_at && <span className="fbadmin-card-flag"><CheckCircle size={12} weight="fill" /> ממתין לך</span>}
                 <span className="fbadmin-card-email">{f.email ?? '—'}</span>
               </div>
             </button>

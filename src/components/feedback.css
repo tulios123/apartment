@@ -160,6 +160,136 @@
   margin: 0;
 }
 
+/* ─── Phase 2: "my feedback" list + chat thread (client side) ─────────────────── */
+
+/* Segmented toggle: שליחה | המשוב שלי */
+.fb-seg {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-alt, #f1f2f4);
+  border-radius: var(--r-pill, 999px);
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.fb-seg-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  border-radius: var(--r-pill, 999px);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.fb-seg-btn.active {
+  background: var(--surface, #fff);
+  color: var(--text, #1a1a1a);
+  box-shadow: var(--shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.08));
+}
+
+/* My-feedback list */
+.fb-my-list { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; }
+.fb-my-item {
+  display: block;
+  width: 100%;
+  text-align: start;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: var(--r-md, 12px);
+  background: var(--surface, #fff);
+  padding: 11px 13px;
+  cursor: pointer;
+}
+.fb-my-item:active { transform: scale(0.995); }
+.fb-my-top { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.fb-my-cat { font-size: 12px; color: var(--text-muted, #6b7280); font-weight: 600; }
+.fb-my-date { margin-inline-start: auto; font-size: 12px; color: var(--text-muted, #6b7280); }
+.fb-my-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text, #1a1a1a);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fb-pill { display: inline-block; padding: 2px 9px; border-radius: var(--r-pill, 999px); font-size: 11.5px; font-weight: 700; }
+.fb-pill.new { background: var(--bg-alt, #f1f2f4); color: var(--text-muted, #6b7280); }
+.fb-pill.wip { background: rgba(42, 125, 225, 0.12); color: #2a7de1; }
+.fb-pill.done { background: rgba(31, 168, 113, 0.14); color: var(--success-text, #1fa871); }
+
+/* Chat thread */
+.fb-thread-wrap { display: flex; flex-direction: column; gap: 10px; }
+.fb-thread-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #6b7280);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.fb-thread { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; padding: 4px 2px; }
+.fb-msg { display: flex; flex-direction: column; max-width: 85%; gap: 2px; }
+.fb-msg.from-client { align-self: flex-start; align-items: flex-start; }
+.fb-msg.from-admin { align-self: flex-end; align-items: flex-end; }
+.fb-bubble {
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.fb-msg.from-client .fb-bubble { background: var(--bg-alt, #f1f2f4); color: var(--text, #1a1a1a); border-start-start-radius: 4px; }
+.fb-msg.from-admin .fb-bubble { background: var(--accent, #2a7de1); color: #fff; border-start-end-radius: 4px; }
+.fb-msg-time { font-size: 11px; color: var(--text-muted, #6b7280); padding: 0 4px; }
+.fb-msg-system {
+  align-self: center;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted, #6b7280);
+  background: var(--bg-alt, #f1f2f4);
+  padding: 5px 12px;
+  border-radius: var(--r-pill, 999px);
+}
+.fb-thread-closed { text-align: center; font-weight: 600; color: var(--success-text, #1fa871); padding: 12px 0 4px; margin: 0; }
+.fb-composer { display: flex; gap: 8px; align-items: flex-end; }
+.fb-composer textarea {
+  flex: 1;
+  box-sizing: border-box;
+  border: 1px solid var(--border, #e2e4e8);
+  border-radius: 16px;
+  padding: 10px 13px;
+  font: inherit;
+  font-size: 14px;
+  resize: none;
+  background: var(--bg-alt, #f7f8fa);
+  color: var(--text, #1a1a1a);
+}
+.fb-composer textarea:focus { outline: none; border-color: var(--accent, #2a7de1); }
+.fb-composer-send {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  display: grid;
+  place-items: center;
+  background: var(--accent, #2a7de1);
+  color: #fff;
+  cursor: pointer;
+}
+.fb-composer-send:disabled { opacity: 0.5; cursor: default; }
+
 /* Category badge in the owner's feedback inbox (Settings). */
 .settings-feedback-cat {
   display: inline-block;
