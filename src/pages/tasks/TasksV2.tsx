@@ -1,13 +1,14 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X, Check, CheckCircle, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText, Paperclip, Eye } from '@phosphor-icons/react'
-import { useTasks, createTask, updateTask, deleteTask } from '../../hooks/useTasks'
+import { useTasks, createTask, updateTask, deleteTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
+import { recurrenceLabel } from '../../lib/recurrence'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
@@ -162,8 +163,10 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     setTasks(prev => prev.map(x => x.id === t.id
       ? { ...x, status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null }
       : x))
-    updateTask(t.id, { status: newStatus }).then(r => {
+    updateTask(t.id, { status: newStatus }).then(async r => {
       if (r.error) { refetch(); return }
+      // Completing a repeating task opens its next occurrence, then reloads so it shows.
+      if (newStatus === 'done' && t.is_recurring) { await spawnNextOccurrence(t); refetch() }
       // C5: only prompt the money follow-up once completion persisted — an in-app
       // dialog (not a blocking native confirm() that freezes the tap).
       const f = newStatus === 'done' ? taskCompletionFollowup(t) : null
@@ -216,6 +219,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
                     <div className="tav-task-meta">
                       <span className="tav-task-cat"><Icon size={13} weight="duotone" /> {t.category}</span>
                       {t.due_date && <span className={`tav-task-due${overdue ? ' overdue' : ''}`}>{formatDate(t.due_date)}{t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ''}</span>}
+                      {t.is_recurring && recurrenceLabel(t.recurrence_days) && <span className="tav-task-badge">↻ {recurrenceLabel(t.recurrence_days)}</span>}
                       {t.source !== 'manual' && <span className="tav-task-badge">{t.source === 'recurring_item' ? 'קבוע' : 'חידוש'}</span>}
                     </div>
                   </div>

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { CircleNotch, Check, CalendarPlus, CalendarBlank, Clock, X } from '@phosphor-icons/react'
+import { CircleNotch, Check, CalendarPlus, CalendarBlank, Clock, X, ArrowsClockwise } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { shouldConfirmDiscard } from './discardGuard'
 import { createTask } from '../../hooks/useTasks'
 import { formatDate } from '../../lib/format'
+import { RECURRENCE_OPTIONS } from '../../lib/recurrence'
 import { tap } from '../../lib/haptics'
 import './capture.css'
 
@@ -19,13 +20,14 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
   const [time, setTime] = useState('')
+  const [repeat, setRepeat] = useState<number | null>(null)
   const [calOpen, setCalOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
   const [err, setErr] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   useEffect(() => {
-    if (open) { setTitle(''); setDue(''); setTime(''); setCalOpen(false); setState('idle'); setErr(null); setConfirmDiscard(false) }
+    if (open) { setTitle(''); setDue(''); setTime(''); setRepeat(null); setCalOpen(false); setState('idle'); setErr(null); setConfirmDiscard(false) }
   }, [open])
 
   async function save() {
@@ -38,7 +40,8 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
       property_id: null, recurring_item_id: null, transaction_id: null,
       title: title.trim(), due_date: due || null, due_time: (due && time) ? time : null,
       category: 'כללי', status: 'open', source: 'manual',
-      is_recurring: false, recurrence_days: null,
+      // Repeat only means something with an anchor date — drop it if the date was cleared.
+      is_recurring: !!(due && repeat), recurrence_days: (due && repeat) ? repeat : null,
     })
     if (error) { setState('idle'); setErr('לא הצלחנו לשמור — נסו שוב'); return }
     setState('done')
@@ -77,13 +80,22 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
             <span>{time || 'הוסף שעה'}</span>
             <input type="time" value={time} onChange={e => setTime(e.target.value)} aria-label="שעת יעד" />
           </label>
-          <button className="cap-date-clear" onClick={() => { setDue(''); setTime('') }} aria-label="הסר תאריך"><X size={18} /></button>
+          <button className="cap-date-clear" onClick={() => { setDue(''); setTime(''); setRepeat(null) }} aria-label="הסר תאריך"><X size={18} /></button>
         </div>
       ) : (
         <button className="cap-ghost-date" onClick={() => setCalOpen(true)}>
           <CalendarPlus size={18} weight="duotone" />
           ללא תאריך יעד · ייכנס לתוכנית העבודה
         </button>
+      )}
+
+      {due && (
+        <label className={`cap-repeat${repeat ? ' on' : ''}`}>
+          <ArrowsClockwise size={17} weight="duotone" />
+          <select value={repeat ?? ''} onChange={e => setRepeat(e.target.value ? Number(e.target.value) : null)} aria-label="חזרה">
+            {RECURRENCE_OPTIONS.map(o => <option key={o.label} value={o.value ?? ''}>{o.label}</option>)}
+          </select>
+        </label>
       )}
 
       {err && <p className="cap-error" role="alert">{err}</p>}

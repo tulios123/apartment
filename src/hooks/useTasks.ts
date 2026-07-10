@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { createGoogleTask, updateGoogleTask, deleteGoogleTask, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { syncGoogleTasks } from './useGoogleTasksSync'
 import { readCache, writeCache } from '../lib/queryCache'
+import { nextDueDate } from '../lib/recurrence'
 import type { Task } from '../types'
 
 interface Filters {
@@ -92,6 +93,25 @@ export async function createTask(data: Omit<Task, 'id' | 'owner_id' | 'created_a
   }
 
   return { data: created, error: null }
+}
+
+/**
+ * When a recurring task is completed, open its next occurrence (advance the due
+ * date by the recurrence interval). Mirrors Google Tasks: ticking a repeating task
+ * done spawns the next one. No-op for non-recurring tasks or those without a date.
+ * Returns the created row (or null) so callers can decide whether to refetch.
+ */
+export async function spawnNextOccurrence(task: Task) {
+  if (!task.is_recurring || !task.recurrence_days) return null
+  const next = nextDueDate(task.due_date, task.recurrence_days)
+  if (!next) return null
+  const { data } = await createTask({
+    property_id: task.property_id, recurring_item_id: task.recurring_item_id, transaction_id: null,
+    title: task.title, due_date: next, due_time: task.due_time,
+    category: task.category, status: 'open', source: task.source,
+    is_recurring: true, recurrence_days: task.recurrence_days,
+  })
+  return data
 }
 
 export async function updateTask(
