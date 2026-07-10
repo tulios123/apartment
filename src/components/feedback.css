@@ -75,8 +75,9 @@
 }
 .fb-form textarea:focus { outline: none; border-color: var(--accent, #2a7de1); }
 
-/* Optional screenshot attach — a dashed "add" button, or a thumbnail once picked. */
+/* Optional screenshots — thumbnails of what's picked + a dashed "add" button, wrapping. */
 .fb-attach { display: flex; }
+.fb-shots { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .fb-attach-btn {
   display: inline-flex;
   align-items: center;

@@ -52,8 +52,9 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
   // Snapshot screen + open-edit at the moment the user opens the form — before this
   // sheet mounts — so the feedback sheet never records *itself* as the context.
   const [ctx, setCtx] = useState<{ path: string; edit: string | null }>({ path: '', edit: null })
-  const [shot, setShot] = useState<File | null>(null)
-  const [shotUrl, setShotUrl] = useState<string | null>(null)
+  // Several screenshots may be attached; each carries its preview object-URL. Add or remove
+  // freely before sending (nothing is uploaded until submit).
+  const [shots, setShots] = useState<{ file: File; url: string }[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
   // The post-submit "thank you" auto-close timer — held so opening a thread (e.g. via a
   // deep-link) during the 1.5s window can cancel it instead of being slammed shut.
@@ -68,10 +69,20 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
   const [reply, setReply] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
 
-  function pickShot(file: File | null) {
-    if (shotUrl) URL.revokeObjectURL(shotUrl)   // release the previous preview
-    setShot(file)
-    setShotUrl(file ? URL.createObjectURL(file) : null)
+  function addShots(files: FileList | null) {
+    if (!files || files.length === 0) return
+    const picked = Array.from(files).map(file => ({ file, url: URL.createObjectURL(file) }))
+    setShots(prev => [...prev, ...picked])
+  }
+  function removeShot(idx: number) {
+    setShots(prev => {
+      const s = prev[idx]
+      if (s) URL.revokeObjectURL(s.url)
+      return prev.filter((_, i) => i !== idx)
+    })
+  }
+  function clearShots() {
+    setShots(prev => { prev.forEach(s => URL.revokeObjectURL(s.url)); return [] })
   }
 
   function openForm() {
@@ -80,7 +91,7 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
     setCtx({ path, edit: currentEditContext() })
     setCategory('bug')
     setNote('')
-    pickShot(null)
+    clearShots()
     setErr(false)
     setSent(false)
     setView('send')
@@ -200,22 +211,26 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
     if (ins.error || !ins.data) { setSending(false); setErr(true); return }
     const feedbackId = ins.data.id as string
 
-    if (shot) {
-      try {
-        const path = await uploadFeedbackScreenshot(shot, feedbackId, user.id)
-        await supabase.from('feedback').update({ screenshot_path: path }).eq('id', feedbackId)
-      } catch { /* ignore — the note is saved without the image */ }
+    // Upload every attached screenshot (best-effort each), then record the list.
+    const paths: string[] = []
+    for (const s of shots) {
+      try { paths.push(await uploadFeedbackScreenshot(s.file, feedbackId, user.id)) }
+      catch { /* skip this one — the note is saved regardless */ }
+    }
+    if (paths.length) {
+      // screenshot_paths is the source of truth; keep the legacy single column = first image.
+      await supabase.from('feedback').update({ screenshot_paths: paths, screenshot_path: paths[0] }).eq('id', feedbackId)
     }
 
     setSending(false)
     // Notify the owner — best-effort, never block the thank-you on it. Pass feedback_id so
     // the admin's push deep-links straight to the new item.
     supabase.functions
-      .invoke('notify-feedback', { body: { category, screen: ctx.path, editContext: ctx.edit, note: base.note, hasScreenshot: !!shot, feedback_id: feedbackId } })
+      .invoke('notify-feedback', { body: { category, screen: ctx.path, editContext: ctx.edit, note: base.note, hasScreenshot: shots.length > 0, feedback_id: feedbackId } })
       .catch(() => {})
     setSent(true)
     setNote('')
-    pickShot(null)
+    clearShots()
     clearCloseTimer()
     closeTimer.current = setTimeout(() => { setSent(false); setView('send'); setOpen(false); closeTimer.current = null }, 1500)
   }
@@ -337,21 +352,23 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
                     ref={fileRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     style={{ display: 'none' }}
-                    onChange={e => { pickShot(e.target.files?.[0] ?? null); e.target.value = '' }}
+                    onChange={e => { addShots(e.target.files); e.target.value = '' }}
                   />
-                  {shotUrl ? (
-                    <div className="fb-shot-preview">
-                      <img src={shotUrl} alt="תצוגה מקדימה של הצילום" />
-                      <button type="button" className="fb-shot-remove" onClick={() => pickShot(null)} aria-label="הסרת הצילום">
-                        <X size={13} weight="bold" />
-                      </button>
-                    </div>
-                  ) : (
+                  <div className="fb-shots">
+                    {shots.map((s, i) => (
+                      <div key={i} className="fb-shot-preview">
+                        <img src={s.url} alt="תצוגה מקדימה של הצילום" />
+                        <button type="button" className="fb-shot-remove" onClick={() => removeShot(i)} aria-label="הסרת הצילום">
+                          <X size={13} weight="bold" />
+                        </button>
+                      </div>
+                    ))}
                     <button type="button" className="fb-attach-btn" onClick={() => fileRef.current?.click()}>
-                      <Camera size={17} weight="duotone" /> צירוף צילום מסך
+                      <Camera size={17} weight="duotone" /> {shots.length ? 'עוד צילום' : 'צירוף צילום מסך'}
                     </button>
-                  )}
+                  </div>
                 </div>
 
                 <div className="fb-screen-note">מתוך: {contextLabel}</div>

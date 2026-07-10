@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // Load the item — need its content to build the issue and its current status.
     const { data: item, error: itemErr } = await supabase
       .from('feedback')
-      .select('id, note, path, admin_notes, category, context, screenshot_path, status')
+      .select('id, note, path, admin_notes, category, context, screenshot_path, screenshot_paths, status')
       .eq('id', feedback_id)
       .single()
     if (itemErr || !item) return json({ error: 'feedback not found' }, 404)
@@ -59,17 +59,19 @@ Deno.serve(async (req) => {
       return json({ error: `לא ניתן לשלוח פריט בסטטוס "${item.status}".` }, 409)
     }
 
-    // Signed URL for the screenshot (7-day expiry), if one is attached.
-    let shotUrl: string | null = null
-    if (item.screenshot_path) {
-      const { data: signed } = await supabase.storage
-        .from('feedback')
-        .createSignedUrl(item.screenshot_path, SEVEN_DAYS)
-      shotUrl = signed?.signedUrl ?? null
+    // Signed URLs for EVERY attached screenshot (7-day expiry). The array is the source of
+    // truth; fall back to the legacy single column for rows created before migration 043.
+    const shotPaths: string[] = (item.screenshot_paths && item.screenshot_paths.length)
+      ? item.screenshot_paths
+      : (item.screenshot_path ? [item.screenshot_path] : [])
+    const shotUrls: string[] = []
+    for (const p of shotPaths) {
+      const { data: signed } = await supabase.storage.from('feedback').createSignedUrl(p, SEVEN_DAYS)
+      if (signed?.signedUrl) shotUrls.push(signed.signedUrl)
     }
 
-    // Issue body — carries everything the fixer needs + parseable markers
-    // (Screenshot: <url>, feedback_id: <id>) the workflow reads back.
+    // Issue body — carries everything the fixer needs + parseable markers (one
+    // `Screenshot: <url>` line per image, `feedback_id: <id>`) the workflow reads back.
     const note = String(item.note ?? '').trim()
     const title = (note.split('\n')[0] || 'Feedback').slice(0, 200)
     const body = [
@@ -80,7 +82,7 @@ Deno.serve(async (req) => {
       `Reported path: ${item.path || '—'}`,
       `Category: ${item.category || '—'}`,
       `Context: ${item.context || '—'}`,
-      `Screenshot: ${shotUrl || 'none'}`,
+      ...(shotUrls.length ? shotUrls.map(u => `Screenshot: ${u}`) : ['Screenshot: none']),
       '',
       `feedback_id: ${item.id}`,
     ].join('\n')

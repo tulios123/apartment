@@ -10,11 +10,12 @@ import {
   PencilSimple,
   CheckCircle,
   MagnifyingGlass,
+  X,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { screenLabel } from '../../lib/screenLabel'
-import { getFeedbackScreenshotSignedUrl, uploadFeedbackScreenshot } from '../../lib/storage'
+import { getFeedbackScreenshotSignedUrl, uploadFeedbackScreenshot, removeFeedbackScreenshot } from '../../lib/storage'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { isFeedbackAdmin } from '../../lib/admin'
 import {
@@ -32,6 +33,7 @@ interface FeedbackRow {
   category: string | null
   context: string | null
   screenshot_path: string | null
+  screenshot_paths: string[]
   created_at: string
   status: string
   admin_notes: string | null
@@ -73,6 +75,7 @@ function normalizeFeedback(rows: unknown): FeedbackRow[] {
     category: (r.category as string | null) ?? null,
     context: (r.context as string | null) ?? null,
     screenshot_path: (r.screenshot_path as string | null) ?? null,
+    screenshot_paths: (r.screenshot_paths as string[] | null) ?? [],
     created_at: String(r.created_at ?? ''),
     status: (r.status as string) ?? 'new',
     admin_notes: (r.admin_notes as string | null) ?? null,
@@ -93,6 +96,13 @@ function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('he-IL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+// The attached screenshots: the array is the source of truth; fall back to the legacy
+// single column for rows created before migration 043.
+function shotPathsOf(f: { screenshot_paths?: string[] | null; screenshot_path?: string | null }): string[] {
+  if (f.screenshot_paths && f.screenshot_paths.length) return f.screenshot_paths
+  return f.screenshot_path ? [f.screenshot_path] : []
+}
+
 export default function FeedbackAdmin() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -104,7 +114,8 @@ export default function FeedbackAdmin() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Per-item action state.
-  const [shotUrl, setShotUrl] = useState<string | null>(null)
+  const [shotUrls, setShotUrls] = useState<Record<string, string>>({})  // storage path → signed URL
+  const [addingShot, setAddingShot] = useState(false)
   const [editingNote, setEditingNote] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [adminDraft, setAdminDraft] = useState('')
@@ -128,7 +139,7 @@ export default function FeedbackAdmin() {
   // Create-a-new-item form.
   const [showCreate, setShowCreate] = useState(false)
   const [newNote, setNewNote] = useState('')
-  const [newShot, setNewShot] = useState<File | null>(null)
+  const [newShots, setNewShots] = useState<File[]>([])
 
   const [toast, setToast] = useState<string | null>(null)
   function showToast(msg: string) {
@@ -137,17 +148,21 @@ export default function FeedbackAdmin() {
   }
 
   async function loadFeedback() {
-    const full = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, archived_at, preview_url'
-    const primary = await supabase.from('feedback').select(full).order('created_at', { ascending: false })
+    const order = { ascending: false } as const
+    const full = 'id, email, note, path, category, context, screenshot_path, screenshot_paths, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, archived_at, preview_url'
+    const primary = await supabase.from('feedback').select(full).order('created_at', order)
     if (!primary.error) { setPipelineReady(true); setFeedback(normalizeFeedback(primary.data)); setLoading(false); return }
-    // Schema-cache lag (039/038/034 not live) — fall back so the inbox still loads.
-    if (/status|admin_notes|github_|screenshot_path|sent_at|archived_at|column|schema|PGRST204/i.test(primary.error.message ?? '')) {
-      setPipelineReady(false)
-      const fb = await supabase.from('feedback')
-        .select('id, email, note, path, category, context, created_at')
-        .order('created_at', { ascending: false })
-      setFeedback(normalizeFeedback(fb.data))
-    }
+    // Tier 2: the newest columns (screenshot_paths/043, preview_url/042) aren't live yet —
+    // retry without them so the inbox + legacy single screenshots still load fully.
+    const pre042 = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, archived_at'
+    const t2 = await supabase.from('feedback').select(pre042).order('created_at', order)
+    if (!t2.error) { setPipelineReady(true); setFeedback(normalizeFeedback(t2.data)); setLoading(false); return }
+    // Tier 3: pipeline columns (038/039) not live either — minimal set.
+    setPipelineReady(false)
+    const fb = await supabase.from('feedback')
+      .select('id, email, note, path, category, context, created_at')
+      .order('created_at', order)
+    setFeedback(normalizeFeedback(fb.data))
     setLoading(false)
   }
 
@@ -169,16 +184,23 @@ export default function FeedbackAdmin() {
 
   const selected = useMemo(() => feedback.find(f => f.id === selectedId) ?? null, [feedback, selectedId])
 
-  // Load the attached screenshot (signed URL) when an item is opened.
+  // Load signed URLs for ALL attached screenshots when an item is opened (or its list changes).
   useEffect(() => {
-    setShotUrl(null)
-    if (!selected?.screenshot_path) return
+    setShotUrls({})
+    if (!selected) return
+    const paths = shotPathsOf(selected)
+    if (!paths.length) return
     let alive = true
-    getFeedbackScreenshotSignedUrl(selected.screenshot_path)
-      .then(url => { if (alive) setShotUrl(url) })
-      .catch(() => { /* leave as null — show a fallback link */ })
+    Promise.all(paths.map(async p => {
+      try { return [p, await getFeedbackScreenshotSignedUrl(p)] as const } catch { return null }
+    })).then(pairs => {
+      if (!alive) return
+      const map: Record<string, string> = {}
+      for (const pair of pairs) if (pair) map[pair[0]] = pair[1]
+      setShotUrls(map)
+    })
     return () => { alive = false }
-  }, [selected?.id, selected?.screenshot_path])
+  }, [selected?.id, selected?.screenshot_paths, selected?.screenshot_path])
 
   // Seed the editable drafts + reset the composer whenever a different item is opened.
   useEffect(() => {
@@ -261,14 +283,41 @@ export default function FeedbackAdmin() {
       .insert({ owner_id: user.id, email: user.email ?? null, note: newNote.trim() })
       .select('id').single()
     if (ins.error || !ins.data) { setBusyId(null); showToast('היצירה נכשלה'); return }
-    if (newShot) {
-      try {
-        const path = await uploadFeedbackScreenshot(newShot, ins.data.id as string, user.id)
-        await supabase.from('feedback').update({ screenshot_path: path }).eq('id', ins.data.id as string)
-      } catch { /* best-effort — item saved without the image */ }
+    const id = ins.data.id as string
+    const paths: string[] = []
+    for (const file of newShots) {
+      try { paths.push(await uploadFeedbackScreenshot(file, id, user.id)) } catch { /* skip this one */ }
     }
-    setBusyId(null); setShowCreate(false); setNewNote(''); setNewShot(null)
+    if (paths.length) {
+      await supabase.from('feedback').update({ screenshot_paths: paths, screenshot_path: paths[0] }).eq('id', id)
+    }
+    setBusyId(null); setShowCreate(false); setNewNote(''); setNewShots([])
     loadFeedback()
+  }
+
+  // Add a screenshot to an EXISTING item (admin): upload + append to the array.
+  async function addShotToItem(file: File | null) {
+    if (!file || !user || !selected) return
+    setAddingShot(true)
+    try {
+      const path = await uploadFeedbackScreenshot(file, selected.id, user.id)
+      const next = [...shotPathsOf(selected), path]
+      const { error } = await supabase.from('feedback').update({ screenshot_paths: next, screenshot_path: next[0] }).eq('id', selected.id)
+      if (error) throw error
+      setFeedback(prev => prev.map(f => f.id === selected.id ? { ...f, screenshot_paths: next, screenshot_path: next[0] } : f))
+    } catch { showToast('הוספת הצילום נכשלה') }
+    setAddingShot(false)
+  }
+
+  // Remove a screenshot from an existing item: drop from the array, then delete the file.
+  async function removeShotFromItem(path: string) {
+    if (!selected) return
+    const next = shotPathsOf(selected).filter(p => p !== path)
+    const { error } = await supabase.from('feedback')
+      .update({ screenshot_paths: next, screenshot_path: next[0] ?? null }).eq('id', selected.id)
+    if (error) { showToast('מחיקת הצילום נכשלה'); return }
+    setFeedback(prev => prev.map(f => f.id === selected.id ? { ...f, screenshot_paths: next, screenshot_path: next[0] ?? null } : f))
+    removeFeedbackScreenshot(path).catch(() => { /* row already updated; storage cleanup is best-effort */ })
   }
 
   async function sendToClaude(id: string) {
@@ -356,6 +405,7 @@ export default function FeedbackAdmin() {
     const canSend = canResendToBot(f.status)
     const resendAfterReview = f.status === 'awaiting_review'
     const archived = !!f.archived_at
+    const shots = shotPathsOf(f)
     const humanMsgs = messages.filter(m => m.channel === 'client')
     const botMsgs = messages.filter(m => m.channel === 'bot')
     return (
@@ -391,19 +441,32 @@ export default function FeedbackAdmin() {
                 <span className="fbadmin-msg-time">{fmtDateTime(f.created_at)}</span>
               </div>
 
-              {f.screenshot_path && (
-                <div className="fbadmin-msg from-client">
-                  {shotUrl ? (
-                    <button type="button" className="fbadmin-shot" onClick={() => viewShotNewTab(f.screenshot_path!)}>
-                      <img src={shotUrl} alt="צילום מסך מצורף" loading="lazy" />
-                    </button>
-                  ) : (
-                    <button type="button" className="fbadmin-shot-loading" onClick={() => viewShotNewTab(f.screenshot_path!)}>
-                      <Camera size={14} weight="duotone" /> טוען צילום…
-                    </button>
-                  )}
+              <div className="fbadmin-msg from-client">
+                <div className="fbadmin-shots">
+                  {shots.map(p => (
+                    <div key={p} className="fbadmin-shot-thumb">
+                      {shotUrls[p] ? (
+                        <button type="button" className="fbadmin-shot" onClick={() => viewShotNewTab(p)}>
+                          <img src={shotUrls[p]} alt="צילום מסך מצורף" loading="lazy" />
+                        </button>
+                      ) : (
+                        <button type="button" className="fbadmin-shot-loading" onClick={() => viewShotNewTab(p)}>
+                          <Camera size={14} weight="duotone" /> טוען…
+                        </button>
+                      )}
+                      <button type="button" className="fbadmin-shot-del" onClick={() => removeShotFromItem(p)} aria-label="מחק צילום">
+                        <X size={12} weight="bold" />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="fbadmin-shot-add" title="הוסף צילום מסך">
+                    <input type="file" accept="image/*" style={{ display: 'none' }} disabled={addingShot}
+                      onChange={e => { addShotToItem(e.target.files?.[0] ?? null); e.target.value = '' }} />
+                    <Camera size={16} weight="duotone" />
+                    <span>{addingShot ? '…' : 'הוסף'}</span>
+                  </label>
                 </div>
-              )}
+              </div>
 
               {humanMsgs.map(m => (
                 m.author === 'system' ? (
@@ -642,11 +705,12 @@ export default function FeedbackAdmin() {
         <div className="fbadmin-create">
           <textarea rows={3} placeholder="תיאור התקלה או הרעיון…" value={newNote} onChange={e => setNewNote(e.target.value)} />
           <label className="fbadmin-shotpick">
-            <Camera size={14} weight="duotone" /> {newShot ? newShot.name : 'צירוף צילום מסך (אופציונלי)'}
-            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setNewShot(e.target.files?.[0] ?? null)} />
+            <Camera size={14} weight="duotone" /> {newShots.length ? `${newShots.length} צילומים נבחרו` : 'צירוף צילומי מסך (אופציונלי)'}
+            <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+              onChange={e => { setNewShots(prev => [...prev, ...Array.from(e.target.files ?? [])]); e.target.value = '' }} />
           </label>
           <div className="fbadmin-detail-actions">
-            <button className="fbadmin-btn ghost" onClick={() => { setShowCreate(false); setNewNote(''); setNewShot(null) }}>ביטול</button>
+            <button className="fbadmin-btn ghost" onClick={() => { setShowCreate(false); setNewNote(''); setNewShots([]) }}>ביטול</button>
             <button className="fbadmin-btn primary" onClick={createItem} disabled={!newNote.trim() || busyId === 'new'}>
               {busyId === 'new' ? 'שומר…' : 'צור פריט'}
             </button>
@@ -684,7 +748,7 @@ export default function FeedbackAdmin() {
               </div>
               <p className="fbadmin-card-note">{f.note}</p>
               <div className="fbadmin-card-meta">
-                {f.screenshot_path && <span className="fbadmin-card-shot"><Camera size={12} weight="duotone" /> צילום</span>}
+                {shotPathsOf(f).length > 0 && <span className="fbadmin-card-shot"><Camera size={12} weight="duotone" /> {shotPathsOf(f).length > 1 ? `${shotPathsOf(f).length} צילומים` : 'צילום'}</span>}
                 {f.status === 'awaiting_review' && !f.archived_at && <span className="fbadmin-card-flag"><CheckCircle size={12} weight="fill" /> ממתין לך</span>}
                 <span className="fbadmin-card-email">{f.email ?? '—'}</span>
               </div>

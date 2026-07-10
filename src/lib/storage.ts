@@ -38,10 +38,18 @@ export async function uploadDocument(file: File, docId: string, userId?: string)
 // admin-read policy can't reach into the documents bucket. See migration 034.
 export async function uploadFeedbackScreenshot(file: File, feedbackId: string, userId: string): Promise<string> {
   assertSize(file)
-  const path = `${userId}/${feedbackId}.${fileExt(file.name)}`
+  // A unique name under {uid}/{feedbackId}/ so several screenshots on one item never collide
+  // (the first folder is still the uid, so the folder-based storage RLS is unchanged).
+  const path = `${userId}/${feedbackId}/${crypto.randomUUID()}.${fileExt(file.name)}`
   const { error } = await supabase.storage.from('feedback').upload(path, file, { upsert: true })
   if (error) throw error
   return path
+}
+
+// Delete one attached screenshot from storage (own file, or the admin). Best-effort caller.
+export async function removeFeedbackScreenshot(path: string): Promise<void> {
+  const { error } = await supabase.storage.from('feedback').remove([path])
+  if (error) throw error
 }
 
 export async function getFeedbackScreenshotSignedUrl(path: string): Promise<string> {

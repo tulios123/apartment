@@ -37,30 +37,30 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"status\": \"in_progress\"}" || true
 
-      # 2) Pull the signed screenshot URL out of the issue body and download it, so
-      #    Claude can actually see the reported bug.
-      - name: Download screenshot
+      # 2) Pull EVERY signed 'Screenshot: <url>' line out of the issue body and download it,
+      #    so Claude can see all the images the reporter attached.
+      - name: Download screenshots
         id: shot
         env:
           BODY: ${{ github.event.issue.body }}
         run: |
-          # The genuine marker is the LAST 'Screenshot:' line (the note is above it), so a
-          # user note can't spoof it with an earlier line. Also hard-restrict the host to
-          # our Supabase storage so the runner can't be pointed at an arbitrary URL (SSRF).
-          url=$(printf '%s' "$BODY" | grep -oE '^Screenshot: .+' | tail -1 | sed 's/^Screenshot: //' | tr -d '\r')
-          case "$url" in
-            https://bjholzkesnzkbogxmurw.supabase.co/storage/*) ;;
-            *) url="none" ;;
-          esac
-          if [ -n "$url" ] && [ "$url" != "none" ]; then
+          mkdir -p "$RUNNER_TEMP/shots"
+          n=0
+          # Hard-restrict the host to our Supabase storage so a user note can't point the
+          # runner at an arbitrary URL (SSRF); non-matching lines are skipped.
+          while IFS= read -r line; do
+            url=$(printf '%s' "$line" | sed 's/^Screenshot: //' | tr -d '\r')
+            case "$url" in
+              https://bjholzkesnzkbogxmurw.supabase.co/storage/*) ;;
+              *) continue ;;
+            esac
             ext=$(printf '%s' "$url" | sed -E 's/\?.*$//' | grep -oE '\.[a-zA-Z0-9]+$' || echo ".png")
             [ -z "$ext" ] && ext=".png"
-            path="$RUNNER_TEMP/feedback-screenshot$ext"
-            if curl -sfL "$url" -o "$path"; then
-              echo "path=$path" >> "$GITHUB_OUTPUT"
-              echo "Downloaded screenshot to $path"
-            fi
-          fi
+            n=$((n+1))
+            # `if` (not `&&`) so a single failed download can't abort the step under set -e.
+            if curl -sfL "$url" -o "$RUNNER_TEMP/shots/shot-$n$ext"; then echo "Downloaded screenshot $n"; fi
+          done < <(printf '%s' "$BODY" | grep -oE '^Screenshot: .+' || true)
+          if [ "$n" -gt 0 ]; then echo "dir=$RUNNER_TEMP/shots" >> "$GITHUB_OUTPUT"; fi
 
       # 2b) Pull the issue conversation (the owner's guidance/answers + Claude's earlier
       #     replies) so a follow-up run CONTINUES the chat instead of restarting from the
@@ -94,7 +94,7 @@ jobs:
             React + Supabase PWA). Everything you need is below.
 
             Issue number: ${{ github.event.issue.number }}
-            Screenshot file (may be empty if none was attached): ${{ steps.shot.outputs.path }}
+            Screenshots directory — all images the reporter attached; may be empty: ${{ steps.shot.outputs.dir }}
             Conversation so far — the owner's guidance/answers + your earlier replies; may be
             empty on the first round: ${{ steps.convo.outputs.path }}
 
@@ -111,8 +111,9 @@ jobs:
             completion. Be efficient: the fix is usually small.
 
             Do this:
-            1. Read everything above, including the screenshot and the conversation file, and
-               ADDRESS the owner's latest guidance. Locate the root cause in the code.
+            1. Read everything above, including EVERY image in the screenshots directory and
+               the conversation file, and ADDRESS the owner's latest guidance. Locate the
+               root cause in the code.
             2. Fix it minimally, following the repo's conventions (CLAUDE.md, SKILL.md).
             3. Run `npm ci` once, then `npm test` — the suite must be green.
             4. Add a regression test IF the bug has testable logic (skip for pure CSS).
