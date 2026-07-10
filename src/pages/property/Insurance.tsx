@@ -38,6 +38,12 @@ function InsuranceForm({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
+  // Stored monthly (the app is monthly-centric), but insurance is commonly quoted
+  // yearly — let the user pick the unit and convert, same pattern as onboarding's PolicyForm.
+  const [freq, setFreq] = useState<'monthly' | 'yearly'>('monthly')
+  const [amount, setAmount] = useState(initial.monthly_premium)
+  const monthlyPremium = Number(form.monthly_premium) || 0
+
   // A4: manager-only quick-fill (no AI here, so no dev-mock concern — strictly manager).
   const { user } = useAuth()
   const showFill = isManager(user?.email)
@@ -51,10 +57,25 @@ function InsuranceForm({
       end_date: '',
       notes: '',
     })
+    setFreq('monthly')
+    setAmount('85')
   }
 
   function set(k: keyof typeof emptyForm, v: string) {
     setForm(f => ({ ...f, [k]: v }))
+  }
+
+  function switchFreq(next: 'monthly' | 'yearly') {
+    setAmount(next === 'yearly' ? String(monthlyPremium * 12) : String(monthlyPremium))
+    setFreq(next)
+  }
+
+  function onAmount(raw: string) {
+    const v = raw.replace(/[^\d]/g, '')
+    setAmount(v)
+    // An empty field must store '' (not '0'), or the policy reads as "has a premium".
+    const monthly = v === '' ? '' : (freq === 'yearly' ? String(Math.round((Number(v) || 0) / 12)) : v)
+    set('monthly_premium', monthly)
   }
 
   function validate(): string | null {
@@ -104,8 +125,19 @@ function InsuranceForm({
           onChange={e => set('policy_number', e.target.value)} placeholder="אופציונלי" />
       </div>
       <div className="form-row">
-        <label>פרמיה חודשית (₪)</label>
-        <input type="text" inputMode="numeric" value={form.monthly_premium ? Number(form.monthly_premium).toLocaleString('he-IL') : ''} onChange={e => set('monthly_premium', e.target.value.replace(/[^\d]/g, ''))} placeholder="0" />
+        <label>פרמיה (₪)</label>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="toggle-group" style={{ flexShrink: 0 }}>
+            <button type="button" className={`toggle-btn${freq === 'monthly' ? ' active' : ''}`} onClick={() => switchFreq('monthly')}>חודשי</button>
+            <button type="button" className={`toggle-btn${freq === 'yearly' ? ' active' : ''}`} onClick={() => switchFreq('yearly')}>שנתי</button>
+          </div>
+          <input type="text" inputMode="numeric" placeholder="0" style={{ flex: 1 }}
+            value={amount ? Number(amount).toLocaleString('he-IL') : ''}
+            onChange={e => onAmount(e.target.value)} />
+        </div>
+        {freq === 'yearly' && monthlyPremium > 0 && (
+          <p className="form-hint">≈ {formatCurrency(monthlyPremium)} לחודש</p>
+        )}
       </div>
       <div className="form-2col">
         <div className="form-row">
