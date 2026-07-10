@@ -5,6 +5,7 @@ import { supabase } from './supabase'
 // lives here, so there's one subscribe/teardown contract.
 
 export type FeedbackAuthor = 'client' | 'admin' | 'bot' | 'system'
+export type FeedbackChannel = 'client' | 'bot'
 
 export type FeedbackMsg = {
   id: string
@@ -13,25 +14,40 @@ export type FeedbackMsg = {
   author_email: string | null
   body: string
   created_at: string
+  channel: FeedbackChannel
 }
 
-const SELECT = 'id, feedback_id, author, author_email, body, created_at'
+const SELECT = 'id, feedback_id, author, author_email, body, created_at, channel'
 
 // Load a feedback item's whole thread, oldest-first (chat order). RLS scopes it: a family
-// member only reads threads on their own items; the admin reads any.
+// member only reads their own items' CLIENT-channel messages; the admin reads all.
 export async function loadThread(feedbackId: string): Promise<FeedbackMsg[]> {
-  const { data, error } = await supabase
+  const full = await supabase
     .from('feedback_messages')
     .select(SELECT)
     .eq('feedback_id', feedbackId)
     .order('created_at', { ascending: true })
-  if (error) throw error
-  return (data ?? []) as FeedbackMsg[]
+  if (!full.error) return (full.data ?? []) as FeedbackMsg[]
+  // Pre-041 fallback: the `channel` column isn't live yet — select without it and derive
+  // the channel from the author so the two threads still separate correctly meanwhile.
+  if (/channel|column|schema|PGRST/i.test(full.error.message ?? '')) {
+    const legacy = await supabase
+      .from('feedback_messages')
+      .select('id, feedback_id, author, author_email, body, created_at')
+      .eq('feedback_id', feedbackId)
+      .order('created_at', { ascending: true })
+    return ((legacy.data ?? []) as FeedbackMsg[]).map(m => ({
+      ...m,
+      channel: (m.channel ?? (m.author === 'bot' ? 'bot' : 'client')) as FeedbackChannel,
+    }))
+  }
+  throw full.error
 }
 
-// Insert a chat message (author 'client' or 'admin' — bot/system are service-role only).
-// author_id is MANDATORY: the RLS WITH CHECK pins it to auth.uid(), so omitting it rejects
-// the insert. After a successful write, best-effort ping the counterparty-push fn.
+// Insert a CLIENT-channel chat message (author 'client' or 'admin' — bot/system, and all
+// bot-channel messages, are service-role only via edge functions). author_id is MANDATORY:
+// the RLS WITH CHECK pins it to auth.uid(), so omitting it rejects the insert. After a
+// successful write, best-effort ping the counterparty-push fn.
 export async function sendMessage(opts: {
   feedbackId: string
   author: 'client' | 'admin'
@@ -47,6 +63,7 @@ export async function sendMessage(opts: {
       author_id: opts.userId,
       author_email: opts.userEmail,
       body: opts.body,
+      channel: 'client',
     })
     .select(SELECT)
     .single()
@@ -65,7 +82,11 @@ export function subscribeThread(feedbackId: string, onInsert: (m: FeedbackMsg) =
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'feedback_messages', filter: `feedback_id=eq.${feedbackId}` },
-      (payload) => onInsert(payload.new as FeedbackMsg),
+      (payload) => {
+        const m = payload.new as FeedbackMsg
+        // Default the channel (pre-041 rows / realtime payloads may lack it) by author.
+        onInsert({ ...m, channel: (m.channel ?? (m.author === 'bot' ? 'bot' : 'client')) as FeedbackChannel })
+      },
     )
     .subscribe()
   return () => { supabase.removeChannel(ch) }

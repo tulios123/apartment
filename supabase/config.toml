@@ -27,3 +27,6 @@ verify_jwt = true
 
 [functions.resolve-feedback]
 verify_jwt = true
+
+[functions.send-bot-followup]
+verify_jwt = true

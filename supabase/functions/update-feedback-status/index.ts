@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       return json({ error: 'unauthorized' }, 401)
     }
 
-    const { github_issue_number, status, pr_url, bot_message } = await req.json().catch(() => ({}))
+    const { github_issue_number, status, pr_url, bot_message, preview_url } = await req.json().catch(() => ({}))
 
     if (typeof github_issue_number !== 'number' || !Number.isInteger(github_issue_number)) {
       return json({ error: 'github_issue_number (int) required' }, 400)
@@ -44,6 +44,9 @@ Deno.serve(async (req) => {
     }
     if (pr_url !== undefined && typeof pr_url !== 'string') {
       return json({ error: 'pr_url must be a string' }, 400)
+    }
+    if (preview_url !== undefined && typeof preview_url !== 'string') {
+      return json({ error: 'preview_url must be a string' }, 400)
     }
     if (bot_message !== undefined && typeof bot_message !== 'string') {
       return json({ error: 'bot_message must be a string' }, 400)
@@ -59,11 +62,12 @@ Deno.serve(async (req) => {
     )
 
     // Only these two columns can ever be written here — nothing else is reachable.
-    const patch: { status: string; status_updated_at: string; github_pr_url?: string } = {
+    const patch: { status: string; status_updated_at: string; github_pr_url?: string; preview_url?: string } = {
       status,
       status_updated_at: new Date().toISOString(),
     }
     if (pr_url) patch.github_pr_url = pr_url
+    if (preview_url) patch.preview_url = preview_url
 
     const { data, error } = await supabase
       .from('feedback')
@@ -85,7 +89,7 @@ Deno.serve(async (req) => {
     // push comment below — a non-200 here would wedge the one-run-at-a-time lock).
     if (botMessage) {
       try {
-        await supabase.from('feedback_messages').insert({ feedback_id: feedbackId, author: 'bot', body: botMessage })
+        await supabase.from('feedback_messages').insert({ feedback_id: feedbackId, author: 'bot', channel: 'bot', body: botMessage })
       } catch (e) {
         console.error('bot message insert (non-fatal):', e)
       }

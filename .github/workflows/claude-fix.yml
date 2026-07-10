@@ -62,6 +62,19 @@ jobs:
             fi
           fi
 
+      # 2b) Pull the issue conversation (the owner's guidance/answers + Claude's earlier
+      #     replies) so a follow-up run CONTINUES the chat instead of restarting from the
+      #     original report. This is what turns the pipeline into a real back-and-forth.
+      - name: Fetch conversation
+        id: convo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE=${{ github.event.issue.number }}
+          gh issue view "$ISSUE" --repo "${{ github.repository }}" --json comments \
+            --jq '.comments[] | "--- \(.author.login) ---\n\(.body)\n"' > "$RUNNER_TEMP/comments.txt" || true
+          echo "path=$RUNNER_TEMP/comments.txt" >> "$GITHUB_OUTPUT"
+
       # 3) Run Claude Code to fix the bug and open a PR (Opus 4.8 — the owner's most
       #    important system; worth the strongest model for hard fixes + good back-and-forth).
       - name: Run Claude
@@ -77,34 +90,41 @@ jobs:
           claude_args: "--model opus --max-turns 80 --dangerously-skip-permissions"
           show_full_output: true
           prompt: |
-            A bug was reported in the apartment-management app (a Hebrew, RTL, mobile
+            A bug/idea was reported in the apartment-management app (a Hebrew, RTL, mobile
             React + Supabase PWA). Everything you need is below.
 
             Issue number: ${{ github.event.issue.number }}
             Screenshot file (may be empty if none was attached): ${{ steps.shot.outputs.path }}
+            Conversation so far — the owner's guidance/answers + your earlier replies; may be
+            empty on the first round: ${{ steps.convo.outputs.path }}
 
             Issue body:
             ${{ github.event.issue.body }}
 
-            Work DIRECTLY and autonomously in this single session: read files and fix the
-            code YOURSELF. Do NOT spawn sub-agents, do NOT use a Task/exploration tool,
-            do NOT delegate — just do the work here to completion. Be efficient: the fix is
-            usually small — find it, apply it, verify, open the PR, without over-exploring.
+            This may be a FOLLOW-UP round: the owner talks to you from inside the app, and
+            their guidance/answers arrive as issue comments (in the conversation file above).
+            If a branch named claude-fix/${{ github.event.issue.number }} already exists on
+            origin, CHECK IT OUT and CONTINUE the work on it — do not start over.
+
+            Work DIRECTLY and autonomously in this single session: read files and fix the code
+            YOURSELF. Do NOT spawn sub-agents or a Task/exploration tool — just do the work to
+            completion. Be efficient: the fix is usually small.
 
             Do this:
-            1. Read everything above, including the screenshot file if a path is given.
-               Locate the root cause in the code.
-            2. Fix it minimally, following the repo's existing conventions (see CLAUDE.md
-               and SKILL.md).
+            1. Read everything above, including the screenshot and the conversation file, and
+               ADDRESS the owner's latest guidance. Locate the root cause in the code.
+            2. Fix it minimally, following the repo's conventions (CLAUDE.md, SKILL.md).
             3. Run `npm ci` once, then `npm test` — the suite must be green.
-            4. Add a regression test IF the bug has testable logic. For a pure CSS/styling
-               fix with no unit-testable behaviour, skip the test rather than forcing one.
-            5. Open a pull request from a branch named claude-fix/${{ github.event.issue.number }},
-               and put "Fixes #${{ github.event.issue.number }}" in the PR body.
-            6. NEVER push to main.
-            7. If there is not enough information to reproduce the bug — post a comment on
-               the issue with the specific questions you need answered, and stop. Do NOT
-               guess and do NOT open a PR in that case.
+            4. Add a regression test IF the bug has testable logic (skip for pure CSS).
+            5. Open (or update) a pull request from branch
+               claude-fix/${{ github.event.issue.number }}, with
+               "Fixes #${{ github.event.issue.number }}" in the body. NEVER push to main.
+            6. If you CAN'T reproduce it or need the owner to decide something, do NOT guess
+               and do NOT open a PR — ask the specific question instead.
+            7. ALWAYS, as your FINAL step, write a SHORT Hebrew message (1-3 sentences) to the
+               file ${{ runner.temp }}/bot_reply.txt — either "what I fixed + what to check",
+               or the specific question you need answered. This is shown to the owner in the
+               app's bot chat, so write it to them directly, in plain Hebrew.
 
       # 3b) Deploy the fix branch to a PRIVATE Cloudflare preview so the owner can test the
       #     fix on their phone BEFORE merging (production only deploys from main). The URL is
@@ -122,16 +142,23 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           # Public VAPID key (ships in the bundle anyway) — same value as deploy.yml.
           VITE_VAPID_PUBLIC_KEY: BC37k0Kv1s503cBFIfhAop05sPFlTJ4h9ZjvjWasmGQ6GZ04nT3-FO2Zq0BtTpuibti9utXxhCf33kaijGC_SaA
+        id: preview
         run: |
           # Only if Claude actually pushed a fix branch (not just questions on the issue).
           if git ls-remote --exit-code --heads origin "claude-fix/$ISSUE" >/dev/null 2>&1; then
             git fetch origin "claude-fix/$ISSUE"
-            git checkout "claude-fix/$ISSUE"
-            npm ci
-            npm run build:prod
-            # A real prod build (no dev auth bypass) against the SAME Supabase backend, so
-            # the owner logs in as themselves and tests the fix on live data before merging.
-            npx wrangler pages deploy dist --project-name=apartment --branch="claude-fix-$ISSUE" --commit-dirty=true
+            # Build in a separate worktree so the job's main checkout is never moved off its
+            # ref (later steps must not silently see the fix branch).
+            git worktree add ../fixbranch "claude-fix/$ISSUE"
+            ( cd ../fixbranch
+              npm ci
+              npm run build:prod
+              # A real prod build (no dev auth bypass) against the SAME Supabase backend, so
+              # the owner logs in as themselves and tests the fix on live data before merging.
+              npx wrangler pages deploy dist --project-name=apartment --branch="claude-fix-$ISSUE" --commit-dirty=true )
+            # Only surface a preview URL if the deploy above actually succeeded (set -e aborts
+            # the block on failure, so reaching here means it worked).
+            echo "url=https://claude-fix-$ISSUE.apartment.pages.dev" >> "$GITHUB_OUTPUT"
           else
             echo "No fix branch for #$ISSUE — skipping preview."
           fi
@@ -145,15 +172,20 @@ jobs:
         run: |
           ISSUE=${{ github.event.issue.number }}
           pr_url=$(gh pr list --repo "${{ github.repository }}" --head "claude-fix/$ISSUE" --state open --json url --jq '.[0].url // ""')
-          if [ -n "$pr_url" ]; then
-            curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
-              -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" -H "Content-Type: application/json" \
-              -d "{\"github_issue_number\": $ISSUE, \"status\": \"awaiting_review\", \"pr_url\": \"$pr_url\"}" || true
-          else
-            curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
-              -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" -H "Content-Type: application/json" \
-              -d "{\"github_issue_number\": $ISSUE, \"status\": \"failed\"}" || true
-          fi
+          # The bot's reply to the owner (what it fixed / what it needs) → surfaced in the
+          # app's bot chat as a 'bot' message. Build the JSON with jq so quotes/newlines in
+          # the reply can't break it.
+          reply="$(cat "$RUNNER_TEMP/bot_reply.txt" 2>/dev/null || true)"
+          prev="${{ steps.preview.outputs.url }}"
+          if [ -n "$pr_url" ]; then status="awaiting_review"; else status="failed"; fi
+          payload=$(jq -n --argjson issue "$ISSUE" --arg status "$status" --arg pr "$pr_url" --arg bot "$reply" --arg prev "$prev" \
+            '{github_issue_number: $issue, status: $status}
+             + (if $pr   != "" then {pr_url: $pr}        else {} end)
+             + (if $bot  != "" then {bot_message: $bot}  else {} end)
+             + (if $prev != "" then {preview_url: $prev} else {} end)')
+          curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" -H "Content-Type: application/json" \
+            -d "$payload" || true
 
       # 5) Any real failure of the run → failed.
       - name: Mark failed

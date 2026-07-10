@@ -245,8 +245,9 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
   const contextLabel = screenLabel(ctx.path) + (ctx.edit ? ` · ${ctx.edit}` : '')
   const sheetTitle = view === 'thread' ? 'המשוב שלי' : 'משוב'
   const archived = !!threadItem?.archived_at
-  // Client sees a clean human conversation — hide raw bot messages.
-  const visibleMsgs = messages.filter(m => m.author !== 'bot')
+  // Client only ever sees the CLIENT channel (RLS already enforces this; filter by channel
+  // — not author — so this is a real second layer, catching any owner→bot 'admin' message).
+  const visibleMsgs = messages.filter(m => m.channel !== 'bot')
 
   return (
     <>

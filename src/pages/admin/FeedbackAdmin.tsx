@@ -39,6 +39,7 @@ interface FeedbackRow {
   github_pr_url: string | null
   sent_at: string | null
   archived_at: string | null
+  preview_url: string | null
 }
 
 // Two-bucket display that agrees with the fold + tabs: bug → תקלה, everything else
@@ -79,6 +80,7 @@ function normalizeFeedback(rows: unknown): FeedbackRow[] {
     github_pr_url: (r.github_pr_url as string | null) ?? null,
     sent_at: (r.sent_at as string | null) ?? null,
     archived_at: (r.archived_at as string | null) ?? null,
+    preview_url: (r.preview_url as string | null) ?? null,
   }))
 }
 
@@ -119,6 +121,9 @@ export default function FeedbackAdmin() {
   const [messages, setMessages] = useState<FeedbackMsg[]>([])
   const [replyDraft, setReplyDraft] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
+  // Chat with the bot.
+  const [botDraft, setBotDraft] = useState('')
+  const [sendingBot, setSendingBot] = useState(false)
 
   // Create-a-new-item form.
   const [showCreate, setShowCreate] = useState(false)
@@ -132,7 +137,7 @@ export default function FeedbackAdmin() {
   }
 
   async function loadFeedback() {
-    const full = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, archived_at'
+    const full = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, archived_at, preview_url'
     const primary = await supabase.from('feedback').select(full).order('created_at', { ascending: false })
     if (!primary.error) { setPipelineReady(true); setFeedback(normalizeFeedback(primary.data)); setLoading(false); return }
     // Schema-cache lag (039/038/034 not live) — fall back so the inbox still loads.
@@ -181,6 +186,7 @@ export default function FeedbackAdmin() {
     setNoteDraft(selected?.note ?? '')
     setAdminDraft(selected?.admin_notes ?? '')
     setReplyDraft('')
+    setBotDraft('')
   }, [selected?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load + live-subscribe the client chat thread for the open item. Refetch on focus as a
@@ -323,6 +329,20 @@ export default function FeedbackAdmin() {
     setSendingReply(false)
   }
 
+  // Guide the bot: post the message as issue guidance and re-trigger the run. The bot's
+  // reply comes back as a 'bot' message via the pipeline callback (realtime).
+  async function sendToBot() {
+    const body = botDraft.trim()
+    if (!body || !selected) return
+    setSendingBot(true)
+    const res = await supabase.functions.invoke('send-bot-followup', { body: { feedback_id: selected.id, message: body } })
+    setSendingBot(false)
+    if (res.error) { showToast(await invokeError(res, 'השליחה לבוט נכשלה — נסו שוב')); return }
+    setBotDraft('')
+    showToast('נשלח לבוט — הוא יתחיל לעבוד ויענה כאן')
+    loadThread(selected.id).then(setMessages).catch(() => {})
+  }
+
   // ── Guard ────────────────────────────────────────────────────────────────────
   if (!isFeedbackAdmin(user?.email)) return <Navigate to="/" replace />
 
@@ -336,8 +356,8 @@ export default function FeedbackAdmin() {
     const canSend = canResendToBot(f.status)
     const resendAfterReview = f.status === 'awaiting_review'
     const archived = !!f.archived_at
-    const humanMsgs = messages.filter(m => m.author !== 'bot')
-    const botMsgs = messages.filter(m => m.author === 'bot')
+    const humanMsgs = messages.filter(m => m.channel === 'client')
+    const botMsgs = messages.filter(m => m.channel === 'bot')
     return (
       <div className="page fbadmin-page">
         <div className="fbadmin-header">
@@ -461,7 +481,7 @@ export default function FeedbackAdmin() {
             {botMsgs.length > 0 && (
               <div className="fbadmin-thread">
                 {botMsgs.map(m => (
-                  <div key={m.id} className="fbadmin-msg from-admin">
+                  <div key={m.id} className={`fbadmin-msg ${m.author === 'bot' ? 'from-admin' : 'from-client'}`}>
                     <div className="fbadmin-bubble">{m.body}</div>
                     <span className="fbadmin-msg-time">{formatMsgTime(m.created_at)}</span>
                   </div>
@@ -469,29 +489,43 @@ export default function FeedbackAdmin() {
               </div>
             )}
 
-            <label className="fbadmin-field-label">הערות שלך לבוט <span>(נשלחות יחד עם התקלה)</span></label>
-            <textarea
-              className="fbadmin-admin-notes"
-              rows={2}
-              placeholder="הנחיות/הקשר לבוט לפני השליחה…"
-              value={adminDraft}
-              onChange={e => setAdminDraft(e.target.value)}
-            />
-            {adminDraft.trim() !== (f.admin_notes ?? '').trim() && (
-              <button className="fbadmin-btn ghost sm" disabled={savingNotes} onClick={() => saveNotes(f.id)}>
-                {savingNotes ? 'שומר…' : 'שמור הערה'}
-              </button>
-            )}
+            {f.github_issue_number == null ? (
+              /* Before the first send: notes that ride along WITH the report to the bot. */
+              <>
+                <label className="fbadmin-field-label">הערות שלך לבוט <span>(נשלחות יחד עם התקלה)</span></label>
+                <textarea
+                  className="fbadmin-admin-notes"
+                  rows={2}
+                  placeholder="הנחיות/הקשר לבוט לפני השליחה…"
+                  value={adminDraft}
+                  onChange={e => setAdminDraft(e.target.value)}
+                />
+                {adminDraft.trim() !== (f.admin_notes ?? '').trim() && (
+                  <button className="fbadmin-btn ghost sm" disabled={savingNotes} onClick={() => saveNotes(f.id)}>
+                    {savingNotes ? 'שומר…' : 'שמור הערה'}
+                  </button>
+                )}
+              </>
+            ) : !archived ? (
+              /* After it's been sent: a live chat — guide the bot until the fix is right. */
+              <div className="fbadmin-composer">
+                <textarea
+                  rows={2}
+                  placeholder="כתוב לבוט — הנחיה, תשובה, או 'עדיין לא נפתר כי…'"
+                  value={botDraft}
+                  onChange={e => setBotDraft(e.target.value)}
+                />
+                <button className="fbadmin-composer-send" onClick={sendToBot} disabled={sendingBot || !botDraft.trim()} aria-label="שליחה לבוט">
+                  <PaperPlaneTilt size={18} weight="fill" />
+                </button>
+              </div>
+            ) : null}
 
-            {/* Test the fix on a private preview BEFORE merging — the fix branch is
-                deployed to claude-fix-<n>.apartment.pages.dev (same Supabase backend). */}
-            {f.status === 'awaiting_review' && f.github_issue_number != null && (
-              <a
-                className="fbadmin-btn preview"
-                href={`https://claude-fix-${f.github_issue_number}.apartment.pages.dev`}
-                target="_blank"
-                rel="noreferrer"
-              >
+            {/* Test the fix on a private preview BEFORE merging. preview_url is set by the
+                pipeline ONLY when the branch deploy actually succeeded, so there's never a
+                dead button. Hidden once archived (the preview is stale after merge). */}
+            {f.preview_url && !archived && (
+              <a className="fbadmin-btn preview" href={f.preview_url} target="_blank" rel="noreferrer">
                 <MagnifyingGlass size={16} weight="bold" /> בדוק את התיקון (לפני מיזוג)
               </a>
             )}
