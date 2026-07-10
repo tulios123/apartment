@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
+import { nextRecurrence, repeatLabel } from '../../lib/recurrence'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
@@ -164,6 +165,17 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       : x))
     updateTask(t.id, { status: newStatus }).then(r => {
       if (r.error) { refetch(); return }
+      // Completing a repeating manual task spawns its next occurrence (Google Tasks
+      // behaviour). Only manual tasks: recurring_item tasks already regenerate via
+      // the monthly generation. Needs a due_date to anchor the next date.
+      if (newStatus === 'done' && t.source === 'manual' && t.is_recurring && t.recurrence_days && t.due_date) {
+        createTask({
+          property_id: null, recurring_item_id: null, transaction_id: null,
+          title: t.title, due_date: nextRecurrence(t.due_date, t.recurrence_days), due_time: t.due_time,
+          category: t.category, status: 'open', source: 'manual',
+          is_recurring: true, recurrence_days: t.recurrence_days,
+        }).then(res => { if (!res.error) refetch() })
+      }
       // C5: only prompt the money follow-up once completion persisted — an in-app
       // dialog (not a blocking native confirm() that freezes the tap).
       const f = newStatus === 'done' ? taskCompletionFollowup(t) : null
@@ -216,6 +228,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
                     <div className="tav-task-meta">
                       <span className="tav-task-cat"><Icon size={13} weight="duotone" /> {t.category}</span>
                       {t.due_date && <span className={`tav-task-due${overdue ? ' overdue' : ''}`}>{formatDate(t.due_date)}{t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ''}</span>}
+                      {t.source === 'manual' && t.is_recurring && <span className="tav-task-badge">{repeatLabel(t.recurrence_days)}</span>}
                       {t.source !== 'manual' && <span className="tav-task-badge">{t.source === 'recurring_item' ? 'קבוע' : 'חידוש'}</span>}
                     </div>
                   </div>
