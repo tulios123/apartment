@@ -1,5 +1,5 @@
 import { trackSchedule } from './mortgage'
-import { loanPaymentForMonth } from './loans'
+import { loanPaymentForMonth, loanSplitForMonth } from './loans'
 import { monthEndISO, todayISO, parseLocalISO } from './format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
 import type { Contract, MortgageTrack, Loan } from '../types'
@@ -30,6 +30,9 @@ export interface VirtualEntry {
   date: string
   category: string
   description: string
+  /** Spitzer principal/interest split of `amount` — only set for mortgage/loan rows. */
+  principal?: number
+  interest?: number
 }
 
 /** Returns the contract active at asOf (defaults to now). */
@@ -120,10 +123,12 @@ export function monthlyVirtualEntries(
     }
 
     let mortgageTotal = 0
+    let mortgagePrincipal = 0
+    let mortgageInterest = 0
     let mortgageDate = monthStart
     for (const t of tracks) {
       const row = trackSchedule(t).find(r => r.date.slice(0, 7) === monthStr)
-      if (row) { mortgageTotal += row.payment; mortgageDate = row.date }
+      if (row) { mortgageTotal += row.payment; mortgagePrincipal += row.principal; mortgageInterest += row.interest; mortgageDate = row.date }
     }
     if (mortgageTotal > 0) {
       entries.push({
@@ -133,12 +138,15 @@ export function monthlyVirtualEntries(
         date: mortgageDate,
         category: MORTGAGE_CATEGORIES[0],
         description: 'תשלום משכנתא',
+        principal: mortgagePrincipal,
+        interest: mortgageInterest,
       })
     }
 
     for (const l of loans) {
       const p = loanPaymentForMonth(l, monthStr)
       if (p) {
+        const split = loanSplitForMonth(l, monthStr)
         entries.push({
           id: `v-loan-${l.id}-${monthStr}`,
           direction: 'expense',
@@ -146,6 +154,8 @@ export function monthlyVirtualEntries(
           date: p.date,
           category: 'הלוואה',
           description: l.label || l.lender || 'תשלום הלוואה',
+          principal: split?.principal,
+          interest: split?.interest,
         })
       }
     }

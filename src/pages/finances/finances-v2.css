@@ -125,6 +125,7 @@
   /* Recurring/fixed item (rent, mortgage…) — accent tint, distinct from the grey "תחזית". */
   .finv-tx-tag.fixed { background: var(--accent-light); color: var(--accent); }
   .finv-tx-meta { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .finv-tx-split { font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
   .finv-tx-side { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   /* Sign sits left of the number (direction:ltr) and amounts share a fixed
      column width so they line up whether or not a receipt icon is present. */

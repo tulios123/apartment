@@ -33,6 +33,30 @@ describe('monthlyVirtualEntries (single month)', () => {
   })
 })
 
+describe('monthlyVirtualEntries — principal/interest split (issue #22)', () => {
+  it('mortgage row carries the Spitzer principal+interest split, summing back to the payment', () => {
+    const t = track({ principal: 120000, annual_rate: 5, term_months: 12 })
+    const e = monthlyVirtualEntries([], [t], 2026, 6).find(x => x.id === 'v-mort-2026-06')
+    expect(e).toBeDefined()
+    expect(e!.principal).toBeGreaterThan(0)
+    expect(e!.interest).toBeGreaterThan(0)
+    expect(e!.principal! + e!.interest!).toBeCloseTo(e!.amount, 6)
+  })
+  it('monthly_fixed loan row carries the split too', () => {
+    const l = loan({ principal: 50000, annual_rate: 4, term_months: 60 })
+    const e = monthlyVirtualEntries([], [], 2026, 6, [l]).find(x => x.id === 'v-loan-l1-2026-06')
+    expect(e).toBeDefined()
+    expect(e!.principal).toBeGreaterThan(0)
+    expect(e!.interest).toBeGreaterThan(0)
+    expect(e!.principal! + e!.interest!).toBeCloseTo(e!.amount, 6)
+  })
+  it('a balloon loan (no split available) leaves principal/interest undefined', () => {
+    const l = loan({ repayment_type: 'balloon', principal: 50000 })
+    const e = monthlyVirtualEntries([], [], 2026, 6, [l]).find(x => x.id === 'v-loan-l1-2026-06')
+    expect(e).toBeUndefined() // balloon loans generate no monthly virtual entry at all
+  })
+})
+
 describe('monthlyVirtualEntries (whole year) uses LOCAL today (no UTC roll-back)', () => {
   it('includes the current month forecast at 00:30 on the 1st (Israel)', () => {
     vi.useFakeTimers()
