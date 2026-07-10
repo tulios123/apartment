@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { CircleNotch, Check, CalendarPlus, CalendarBlank, Clock, X } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { shouldConfirmDiscard } from './discardGuard'
 import { createTask } from '../../hooks/useTasks'
 import { formatDate } from '../../lib/format'
 import { tap } from '../../lib/haptics'
@@ -20,9 +22,10 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
   const [calOpen, setCalOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
   const [err, setErr] = useState<string | null>(null)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   useEffect(() => {
-    if (open) { setTitle(''); setDue(''); setTime(''); setCalOpen(false); setState('idle'); setErr(null) }
+    if (open) { setTitle(''); setDue(''); setTime(''); setCalOpen(false); setState('idle'); setErr(null); setConfirmDiscard(false) }
   }, [open])
 
   async function save() {
@@ -44,12 +47,17 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
     setTimeout(onClose, 480)
   }
 
-  // Once anything is typed, a scrim-tap / Esc / swipe-down should MINIMIZE (keep the
-  // draft) rather than silently discard it — same guard ExpenseSheet uses.
+  // Once anything is entered, a scrim-tap / Esc / swipe-down / X shouldn't silently
+  // throw the draft away. Match Google Tasks: ask before discarding (owner request #28).
   const hasData = title.trim() !== '' || due !== ''
+  function requestClose() {
+    if (confirmDiscard) return // Esc/scrim while the discard dialog is up — let it handle itself.
+    if (shouldConfirmDiscard(hasData, state)) setConfirmDiscard(true)
+    else onClose()
+  }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="משימה חדשה" minimizable={hasData}>
+    <BottomSheet open={open} onClose={requestClose} title="משימה חדשה" minimizable={false}>
       <input
         className="cap-title"
         value={title}
@@ -86,6 +94,17 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
       </button>
 
       <CalendarPopover open={calOpen} value={due} onSelect={setDue} onClose={() => setCalOpen(false)} />
+
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="למחוק את המשימה?"
+        message="הפרטים שהוזנו יימחקו."
+        confirmLabel="מחיקה"
+        cancelLabel="המשך עריכה"
+        tone="danger"
+        onConfirm={() => { setConfirmDiscard(false); onClose() }}
+        onCancel={() => setConfirmDiscard(false)}
+      />
     </BottomSheet>
   )
 }
