@@ -576,7 +576,13 @@ export default function FinancesV2() {
                 {monthVirtual.map(e => (
                   <div key={e.id} className="finv-tx projected">
                     <span className="finv-cat-icon" style={{ background: e.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{e.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
-                    <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{e.category}</span><span className="finv-tx-tag">תחזית</span></div><span className="finv-tx-meta">{formatDate(e.date)}{e.description ? ` · ${e.description}` : ''}</span></div>
+                    <div className="finv-tx-body">
+                      <div className="finv-tx-top"><span className="finv-tx-cat">{e.category}</span><span className="finv-tx-tag">תחזית</span></div>
+                      <span className="finv-tx-meta">{formatDate(e.date)}{e.description ? ` · ${e.description}` : ''}</span>
+                      {e.principal != null && e.interest != null && (
+                        <span className="finv-tx-split">קרן {fmt(e.principal)} · ריבית {fmt(e.interest)}</span>
+                      )}
+                    </div>
                     <div className="finv-tx-side"><span className={`finv-tx-amount ${e.direction}`}>{formatSignedCurrency(e.direction === 'income' ? e.amount : -e.amount)}</span></div>
                   </div>
                 ))}
