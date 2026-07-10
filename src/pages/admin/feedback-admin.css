@@ -418,6 +418,10 @@
 .fbadmin-btn.ghost:hover { border-color: var(--accent, #2a7de1); }
 .fbadmin-btn.danger { background: var(--surface, #fff); border-color: rgba(224, 83, 61, 0.4); color: var(--danger, #e0533d); margin-inline-start: auto; }
 
+/* "Test the fix before merging" — prominent, distinct from primary/success/danger */
+.fbadmin-btn.preview { width: 100%; justify-content: center; background: #6b4fd0; color: #fff; text-decoration: none; margin-bottom: 4px; }
+.fbadmin-btn.preview:hover { background: #5b40c0; }
+
 /* Resolve / reopen — full-width, above the edit/delete footer */
 .fbadmin-resolve { width: 100%; justify-content: center; background: var(--success-text, #1fa871); color: #fff; }
 .fbadmin-resolve:disabled { opacity: 0.6; cursor: default; }

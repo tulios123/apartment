@@ -106,6 +106,36 @@ jobs:
                the issue with the specific questions you need answered, and stop. Do NOT
                guess and do NOT open a PR in that case.
 
+      # 3b) Deploy the fix branch to a PRIVATE Cloudflare preview so the owner can test the
+      #     fix on their phone BEFORE merging (production only deploys from main). The URL is
+      #     deterministic — https://claude-fix-<issue>.apartment.pages.dev — so the admin
+      #     console can link to it. Best-effort (continue-on-error): a preview hiccup must
+      #     never mark a good fix as failed.
+      - name: Deploy preview
+        if: success()
+        continue-on-error: true
+        env:
+          ISSUE: ${{ github.event.issue.number }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Public VAPID key (ships in the bundle anyway) — same value as deploy.yml.
+          VITE_VAPID_PUBLIC_KEY: BC37k0Kv1s503cBFIfhAop05sPFlTJ4h9ZjvjWasmGQ6GZ04nT3-FO2Zq0BtTpuibti9utXxhCf33kaijGC_SaA
+        run: |
+          # Only if Claude actually pushed a fix branch (not just questions on the issue).
+          if git ls-remote --exit-code --heads origin "claude-fix/$ISSUE" >/dev/null 2>&1; then
+            git fetch origin "claude-fix/$ISSUE"
+            git checkout "claude-fix/$ISSUE"
+            npm ci
+            npm run build:prod
+            # A real prod build (no dev auth bypass) against the SAME Supabase backend, so
+            # the owner logs in as themselves and tests the fix on live data before merging.
+            npx wrangler pages deploy dist --project-name=apartment --branch="claude-fix-$ISSUE" --commit-dirty=true
+          else
+            echo "No fix branch for #$ISSUE — skipping preview."
+          fi
+
       # 4) Status → awaiting_review (+ PR URL) if a PR was opened, else failed
       #    (e.g. Claude posted questions instead of a fix).
       - name: Mark awaiting_review or failed

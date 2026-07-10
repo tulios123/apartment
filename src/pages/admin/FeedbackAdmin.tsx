@@ -9,6 +9,7 @@ import {
   Trash,
   PencilSimple,
   CheckCircle,
+  MagnifyingGlass,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -480,6 +481,19 @@ export default function FeedbackAdmin() {
               <button className="fbadmin-btn ghost sm" disabled={savingNotes} onClick={() => saveNotes(f.id)}>
                 {savingNotes ? 'שומר…' : 'שמור הערה'}
               </button>
+            )}
+
+            {/* Test the fix on a private preview BEFORE merging — the fix branch is
+                deployed to claude-fix-<n>.apartment.pages.dev (same Supabase backend). */}
+            {f.status === 'awaiting_review' && f.github_issue_number != null && (
+              <a
+                className="fbadmin-btn preview"
+                href={`https://claude-fix-${f.github_issue_number}.apartment.pages.dev`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MagnifyingGlass size={16} weight="bold" /> בדוק את התיקון (לפני מיזוג)
+              </a>
             )}
 
             <div className="fbadmin-detail-actions">
