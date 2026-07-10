@@ -3,6 +3,7 @@ import { Check } from '@phosphor-icons/react'
 import { INS_TYPES, formatNum, formatCurrency } from './types'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
+import { toMonthly, displayAmount } from '../../lib/premium'
 
 // Inline editor for a single insurance policy.
 export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
@@ -13,9 +14,14 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
   // holds exactly what's typed in the chosen unit so it doesn't drift while typing.
   const [freq, setFreq] = useState<'monthly' | 'yearly'>('monthly')
   const [amount, setAmount] = useState(policyForm.monthly_premium)
+  // Exact (possibly fractional) monthly premium — the source of truth for unit
+  // toggles, so flipping monthly↔yearly is lossless (1000/yr stays 1000, not 996).
+  const [exactMonthly, setExactMonthly] = useState(Number(policyForm.monthly_premium) || 0)
   const monthlyPremium = Number(policyForm.monthly_premium) || 0
   function switchFreq(next: 'monthly' | 'yearly') {
-    setAmount(next === 'yearly' ? String(monthlyPremium * 12) : String(monthlyPremium))
+    // Convert from the exact monthly base, not the rounded stored value, so a
+    // round-trip (yearly → monthly → yearly) returns the original figure.
+    setAmount(exactMonthly ? String(displayAmount(exactMonthly, next)) : '')
     setFreq(next)
   }
   function onAmount(raw: string) {
@@ -23,8 +29,10 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
     setAmount(v)
     // An empty field must store '' (not '0'), or the policy reads as "has a premium"
     // and a blank policy gets saved.
-    const monthly = v === '' ? '' : (freq === 'yearly' ? String(Math.round((Number(v) || 0) / 12)) : v)
-    setPF('monthly_premium', monthly)
+    if (v === '') { setExactMonthly(0); setPF('monthly_premium', ''); return }
+    const em = toMonthly(Number(v) || 0, freq)
+    setExactMonthly(em)
+    setPF('monthly_premium', String(Math.round(em)))
   }
 
   return (

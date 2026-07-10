@@ -6,6 +6,7 @@ import { isManager } from '../../lib/admin'
 import { useInsurance, createInsurancePolicy, updateInsurancePolicy, deleteInsurancePolicy } from '../../hooks/useInsurance'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { formatCurrency, formatDate, monthDayISO, daysBetween, todayISO } from '../../lib/format'
+import { toMonthly, displayAmount } from '../../lib/premium'
 import type { InsurancePolicy } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -42,6 +43,9 @@ function InsuranceForm({
   // yearly — let the user pick the unit and convert, same pattern as onboarding's PolicyForm.
   const [freq, setFreq] = useState<'monthly' | 'yearly'>('monthly')
   const [amount, setAmount] = useState(initial.monthly_premium)
+  // Exact (possibly fractional) monthly premium — the source of truth for unit
+  // toggles, so flipping monthly↔yearly is lossless (1000/yr stays 1000, not 996).
+  const [exactMonthly, setExactMonthly] = useState(Number(initial.monthly_premium) || 0)
   const monthlyPremium = Number(form.monthly_premium) || 0
 
   // A4: manager-only quick-fill (no AI here, so no dev-mock concern — strictly manager).
@@ -59,6 +63,7 @@ function InsuranceForm({
     })
     setFreq('monthly')
     setAmount('85')
+    setExactMonthly(85)
   }
 
   function set(k: keyof typeof emptyForm, v: string) {
@@ -66,7 +71,9 @@ function InsuranceForm({
   }
 
   function switchFreq(next: 'monthly' | 'yearly') {
-    setAmount(next === 'yearly' ? String(monthlyPremium * 12) : String(monthlyPremium))
+    // Convert from the exact monthly base, not the rounded stored value, so a
+    // round-trip (yearly → monthly → yearly) returns the original figure.
+    setAmount(exactMonthly ? String(displayAmount(exactMonthly, next)) : '')
     setFreq(next)
   }
 
@@ -74,8 +81,10 @@ function InsuranceForm({
     const v = raw.replace(/[^\d]/g, '')
     setAmount(v)
     // An empty field must store '' (not '0'), or the policy reads as "has a premium".
-    const monthly = v === '' ? '' : (freq === 'yearly' ? String(Math.round((Number(v) || 0) / 12)) : v)
-    set('monthly_premium', monthly)
+    if (v === '') { setExactMonthly(0); set('monthly_premium', ''); return }
+    const em = toMonthly(Number(v) || 0, freq)
+    setExactMonthly(em)
+    set('monthly_premium', String(Math.round(em)))
   }
 
   function validate(): string | null {
