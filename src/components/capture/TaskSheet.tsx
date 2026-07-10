@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { CircleNotch, Check, CalendarPlus, CalendarBlank, Clock, X, ArrowsClockwise } from '@phosphor-icons/react'
+import { CircleNotch, Check, CalendarPlus, CalendarBlank, Clock, X, ArrowsClockwise, CaretDown } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
+import RepeatPopover from '../ui/RepeatPopover'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { shouldConfirmDiscard } from './discardGuard'
 import { createTask } from '../../hooks/useTasks'
 import { formatDate } from '../../lib/format'
-import { RECURRENCE_OPTIONS } from '../../lib/recurrence'
+import { recurrenceLabel } from '../../lib/recurrence'
 import { tap } from '../../lib/haptics'
 import './capture.css'
 
@@ -22,12 +23,13 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
   const [time, setTime] = useState('')
   const [repeat, setRepeat] = useState<number | null>(null)
   const [calOpen, setCalOpen] = useState(false)
+  const [repeatOpen, setRepeatOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
   const [err, setErr] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   useEffect(() => {
-    if (open) { setTitle(''); setDue(''); setTime(''); setRepeat(null); setCalOpen(false); setState('idle'); setErr(null); setConfirmDiscard(false) }
+    if (open) { setTitle(''); setDue(''); setTime(''); setRepeat(null); setCalOpen(false); setRepeatOpen(false); setState('idle'); setErr(null); setConfirmDiscard(false) }
   }, [open])
 
   async function save() {
@@ -90,12 +92,11 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
       )}
 
       {due && (
-        <label className={`cap-repeat${repeat ? ' on' : ''}`}>
+        <button type="button" className={`cap-repeat${repeat ? ' on' : ''}`} onClick={() => setRepeatOpen(true)} aria-label="חזרה">
           <ArrowsClockwise size={17} weight="duotone" />
-          <select value={repeat ?? ''} onChange={e => setRepeat(e.target.value ? Number(e.target.value) : null)} aria-label="חזרה">
-            {RECURRENCE_OPTIONS.map(o => <option key={o.label} value={o.value ?? ''}>{o.label}</option>)}
-          </select>
-        </label>
+          <span className="cap-repeat-label">{recurrenceLabel(repeat) ?? 'ללא חזרה'}</span>
+          <CaretDown size={15} weight="bold" />
+        </button>
       )}
 
       {err && <p className="cap-error" role="alert">{err}</p>}
@@ -106,6 +107,7 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
       </button>
 
       <CalendarPopover open={calOpen} value={due} onSelect={setDue} onClose={() => setCalOpen(false)} />
+      <RepeatPopover open={repeatOpen} value={repeat} onSelect={setRepeat} onClose={() => setRepeatOpen(false)} />
 
       <ConfirmDialog
         open={confirmDiscard}
