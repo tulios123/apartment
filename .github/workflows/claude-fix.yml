@@ -62,7 +62,8 @@ jobs:
             fi
           fi
 
-      # 3) Run Claude Code to fix the bug and open a PR (Sonnet, pinned).
+      # 3) Run Claude Code to fix the bug and open a PR (Opus 4.8 — the owner's most
+      #    important system; worth the strongest model for hard fixes + good back-and-forth).
       - name: Run Claude
         uses: anthropics/claude-code-action@v1
         with:
@@ -73,7 +74,7 @@ jobs:
           # CI is non-interactive — allow Claude to edit/write/run without a human
           # approval prompt (a good fix otherwise stalls on "edit permission denied").
           # Safe here: the run is sandboxed and every change is reviewed at the PR stage.
-          claude_args: "--model sonnet --max-turns 80 --dangerously-skip-permissions"
+          claude_args: "--model opus --max-turns 80 --dangerously-skip-permissions"
           show_full_output: true
           prompt: |
             A bug was reported in the apartment-management app (a Hebrew, RTL, mobile
