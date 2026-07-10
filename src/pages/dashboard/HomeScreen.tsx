@@ -11,7 +11,7 @@ import { useMortgageData } from '../../hooks/useMortgageData'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
-import { useTasks, updateTask } from '../../hooks/useTasks'
+import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
@@ -213,8 +213,10 @@ export default function HomeScreen() {
     // Persist in the background; only reload if the write fails.
     setTasks(prev => prev.filter(t => t.id !== id))
     showFlash('משימה הושלמה ✓')
-    updateTask(id, { status: 'done' }).then(r => {
+    updateTask(id, { status: 'done' }).then(async r => {
       if (r.error) { showFlash('לא הצלחנו לעדכן, נסו שוב'); refetchTasks(); return }
+      // Completing a repeating task opens its next occurrence, then reloads so it shows.
+      if (task?.is_recurring) { await spawnNextOccurrence(task); refetchTasks() }
       // C5: only offer the money follow-up once completion actually persisted — so an
       // offline/failed completion never navigates the user to log money for a task
       // that bounces back. In-app dialog, not a blocking native confirm().
