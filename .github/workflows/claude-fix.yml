@@ -148,17 +148,18 @@ jobs:
           # Only if Claude actually pushed a fix branch (not just questions on the issue).
           if git ls-remote --exit-code --heads origin "claude-fix/$ISSUE" >/dev/null 2>&1; then
             git fetch origin "claude-fix/$ISSUE"
-            # Build in a separate worktree so the job's main checkout is never moved off its
-            # ref (later steps must not silently see the fix branch).
-            git worktree add ../fixbranch "claude-fix/$ISSUE"
-            ( cd ../fixbranch
-              npm ci
-              npm run build:prod
-              # A real prod build (no dev auth bypass) against the SAME Supabase backend, so
-              # the owner logs in as themselves and tests the fix on live data before merging.
-              npx wrangler pages deploy dist --project-name=apartment --branch="claude-fix-$ISSUE" --commit-dirty=true )
-            # Only surface a preview URL if the deploy above actually succeeded (set -e aborts
-            # the block on failure, so reaching here means it worked).
+            # Build the fix branch IN PLACE. Claude already left the job checkout on this
+            # branch (which is why a worktree add fails — the ref is already checked out),
+            # and the only later step reads the PR via `gh` + a temp file, never the tree —
+            # so building here is safe. -B resets the local branch to the pushed tip.
+            git checkout -B "claude-fix/$ISSUE" "origin/claude-fix/$ISSUE"
+            npm ci
+            npm run build:prod
+            # A real prod build (no dev auth bypass) against the SAME Supabase backend, so
+            # the owner logs in as themselves and tests the fix on live data before merging.
+            npx wrangler pages deploy dist --project-name=apartment --branch="claude-fix-$ISSUE" --commit-dirty=true
+            # Reached only if wrangler above succeeded (set -e), so a preview URL is emitted
+            # only for a real deploy — no dead button.
             echo "url=https://claude-fix-$ISSUE.apartment.pages.dev" >> "$GITHUB_OUTPUT"
           else
             echo "No fix branch for #$ISSUE — skipping preview."

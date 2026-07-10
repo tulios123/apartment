@@ -307,17 +307,20 @@ export default function FeedbackAdmin() {
     loadFeedback()
   }
 
-  // Add a screenshot to an EXISTING item (admin): upload + append to the array.
-  async function addShotToItem(file: File | null) {
-    if (!file || !user || !selected) return
+  // Add screenshots to an EXISTING item (admin): upload all picked + append to the array.
+  async function addShotsToItem(files: FileList | null) {
+    if (!files || files.length === 0 || !user || !selected) return
     setAddingShot(true)
-    try {
-      const path = await uploadFeedbackScreenshot(file, selected.id, user.id)
-      const next = [...shotPathsOf(selected), path]
+    const uploaded: string[] = []
+    for (const file of Array.from(files)) {
+      try { uploaded.push(await uploadFeedbackScreenshot(file, selected.id, user.id)) } catch { /* skip this one */ }
+    }
+    if (uploaded.length) {
+      const next = [...shotPathsOf(selected), ...uploaded]
       const { error } = await supabase.from('feedback').update({ screenshot_paths: next, screenshot_path: next[0] }).eq('id', selected.id)
-      if (error) throw error
-      setFeedback(prev => prev.map(f => f.id === selected.id ? { ...f, screenshot_paths: next, screenshot_path: next[0] } : f))
-    } catch { showToast('הוספת הצילום נכשלה') }
+      if (error) showToast('הוספת הצילומים נכשלה')
+      else setFeedback(prev => prev.map(f => f.id === selected.id ? { ...f, screenshot_paths: next, screenshot_path: next[0] } : f))
+    }
     setAddingShot(false)
   }
 
@@ -471,9 +474,9 @@ export default function FeedbackAdmin() {
                       </button>
                     </div>
                   ))}
-                  <label className="fbadmin-shot-add" title="הוסף צילום מסך">
-                    <input type="file" accept="image/*" style={{ display: 'none' }} disabled={addingShot}
-                      onChange={e => { addShotToItem(e.target.files?.[0] ?? null); e.target.value = '' }} />
+                  <label className="fbadmin-shot-add" title="הוסף צילומי מסך">
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} disabled={addingShot}
+                      onChange={e => { addShotsToItem(e.target.files); e.target.value = '' }} />
                     <Camera size={16} weight="duotone" />
                     <span>{addingShot ? '…' : 'הוסף'}</span>
                   </label>
