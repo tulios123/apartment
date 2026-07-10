@@ -170,6 +170,18 @@ export default function FeedbackAdmin() {
     loadFeedback()
   }, [])
 
+  // While any item is mid-fix, poll so the status pill + bot timeline update live in the
+  // console — the feedback row is intentionally NOT in realtime (that would leak admin-only
+  // columns to clients), so a short poll is how the owner sees "בעבודה → מוכן" without
+  // refreshing. Stops the moment nothing is running.
+  const anyActive = feedback.some(f => f.status === 'sent' || f.status === 'in_progress')
+  useEffect(() => {
+    if (!anyActive) return
+    const t = setInterval(() => { loadFeedback() }, 12000)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anyActive])
+
   // Deep-link from a push: /admin/feedback?item=<id> opens that item. Strip the param so a
   // repeat push of the same item re-fires (react-router memoizes searchParams by the query
   // string — an identical ?item= would otherwise be a no-op after backing out).

@@ -50,6 +50,9 @@ export async function pushToOwner(
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           body,
+          // High urgency asks the push service (APNs/FCM) to deliver promptly rather than
+          // batching — these are time-sensitive ("bot started", "fix ready", "client replied").
+          { urgency: 'high', TTL: 3600 },
         )
         delivered++
       } catch (err) {
