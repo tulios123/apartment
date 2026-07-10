@@ -58,3 +58,17 @@
   font-size: 13px; font-weight: 600; padding: 9px 12px; cursor: pointer;
 }
 .calpop-close-btn:hover { color: var(--brand-navy); }
+
+/* Repeat picker — a compact list variant of the calpop card (owner #31). */
+.repeatpop { width: min(300px, 88vw); }
+.repeatpop .calpop-head { margin-bottom: 10px; }
+.repeatpop-list { display: flex; flex-direction: column; gap: 2px; }
+.repeatpop-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; border: none; background: none; font-family: inherit;
+  font-size: 15px; font-weight: 600; color: var(--text); cursor: pointer;
+  padding: 13px 12px; border-radius: var(--r-sm); text-align: right;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.repeatpop-opt:hover { background: var(--bg-alt); }
+.repeatpop-opt.sel { background: var(--accent-light); color: var(--accent); }
