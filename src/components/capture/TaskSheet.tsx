@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CircleNotch, Check, CalendarPlus, CalendarBlank, Clock, X, ArrowsClockwise } from '@phosphor-icons/react'
+import { CircleNotch, Check, CalendarBlank, Clock, X, ArrowsClockwise } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
@@ -86,9 +86,11 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
           <button className="cap-date-clear" onClick={() => { setDue(''); setTime(''); setRepeat(null) }} aria-label="הסר תאריך"><X size={18} /></button>
         </div>
       ) : (
-        <button className="cap-ghost-date" onClick={() => setCalOpen(true)}>
-          <CalendarPlus size={18} weight="duotone" />
-          ללא תאריך יעד · ייכנס לתוכנית העבודה
+        // Google-Tasks affordance: a small clock (השעון הקטן) opens the "date & time"
+        // picker. No date is fine — the task simply lands in the work plan.
+        <button className="cap-clockbtn" onClick={() => setCalOpen(true)}>
+          <Clock size={19} weight="regular" />
+          <span>הוסף תאריך ושעה</span>
         </button>
       )}
 
