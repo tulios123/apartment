@@ -128,10 +128,10 @@ jobs:
                app's bot chat, so write it to them directly, in plain Hebrew.
 
       # 3b) Deploy the fix branch to a PRIVATE Cloudflare preview so the owner can test the
-      #     fix on their phone BEFORE merging (production only deploys from main). The URL is
-      #     deterministic — https://claude-fix-<issue>.apartment.pages.dev — so the admin
-      #     console can link to it. Best-effort (continue-on-error): a preview hiccup must
-      #     never mark a good fix as failed.
+      #     fix on their phone BEFORE merging (production only deploys from main). The alias
+      #     URL (https://claude-fix-<issue>.<project-subdomain>.pages.dev) is captured from
+      #     wrangler's output and reported to the console. Best-effort (continue-on-error):
+      #     a preview hiccup must never mark a good fix as failed.
       - name: Deploy preview
         if: success()
         continue-on-error: true
@@ -157,10 +157,14 @@ jobs:
             npm run build:prod
             # A real prod build (no dev auth bypass) against the SAME Supabase backend, so
             # the owner logs in as themselves and tests the fix on live data before merging.
-            npx wrangler pages deploy dist --project-name=apartment --branch="claude-fix-$ISSUE" --commit-dirty=true
-            # Reached only if wrangler above succeeded (set -e), so a preview URL is emitted
-            # only for a real deploy — no dead button.
-            echo "url=https://claude-fix-$ISSUE.apartment.pages.dev" >> "$GITHUB_OUTPUT"
+            # Capture the REAL alias URL from wrangler's output — the project's pages.dev
+            # subdomain carries a suffix (apartment-6s4.pages.dev), so it must not be hardcoded.
+            out=$(npx wrangler pages deploy dist --project-name=apartment --branch="claude-fix-$ISSUE" --commit-dirty=true 2>&1)
+            printf '%s\n' "$out"
+            alias=$(printf '%s' "$out" | grep -oE "https://claude-fix-$ISSUE\.[a-z0-9-]+\.pages\.dev" | head -1)
+            # Emit the preview URL only for a real, parsed alias (set -e already aborted on a
+            # wrangler failure) — so the console never shows a dead button.
+            [ -n "$alias" ] && echo "url=$alias" >> "$GITHUB_OUTPUT"
           else
             echo "No fix branch for #$ISSUE — skipping preview."
           fi
