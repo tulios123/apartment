@@ -52,6 +52,10 @@
 .calpop-cell.today { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent); }
 .calpop-cell.sel { background: var(--accent); color: #fff; box-shadow: none; }
 
+/* Time + repeat rows hosted below the grid (task sheet's "Date & Time"). */
+.calpop-footer { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.calpop-footer .cap-timechip { width: 100%; justify-content: flex-start; }
+
 .calpop-actions { display: flex; align-items: center; justify-content: flex-end; margin-top: 14px; }
 .calpop-close-btn {
   background: none; border: none; color: var(--text-muted); font-family: inherit;
