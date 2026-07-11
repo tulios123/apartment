@@ -66,6 +66,9 @@ export default function HomeScreen() {
   const [sheetSeed, setSheetSeed] = useState('')
   const [extraOpen, setExtraOpen] = useState(false)
   const [incomeOpen, setIncomeOpen] = useState(false)
+  // "+ עוד X משימות" expands the extra tasks in place rather than navigating away
+  // to the tasks screen (owner: keep the home flow, just widen it here).
+  const [tasksExpanded, setTasksExpanded] = useState(false)
   // Money follow-up after completing a money-implying task — shown as an in-app
   // dialog (not a native confirm), and only after the completion actually persisted.
   const [followup, setFollowup] = useState<TaskFollowup | null>(null)
@@ -116,6 +119,10 @@ export default function HomeScreen() {
   // so anything you add by hand is reflected in the bottom line.
   const expectedNet = Math.max(monthlyRent, rentReceived) + extraIncome - fixedExpenses - extraExpenses
 
+  // Future-dated tasks stay hidden until close (see visibleHomeTasks) — this is what
+  // actually surfaces on home. Collapsed we show the top 2; "+ עוד X" widens it in place.
+  const visibleTasks = useMemo(() => visibleHomeTasks(tasks, todayStr), [tasks, todayStr])
+
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
   const actions = useMemo<Action[]>(() => {
     const list: Action[] = []
@@ -130,10 +137,8 @@ export default function HomeScreen() {
         amount: monthlyRent - rentReceived,
       })
     }
-    // Future-dated tasks stay hidden until close (see visibleHomeTasks); only the
-    // top 2 of what's left render here.
-    visibleHomeTasks(tasks, todayStr)
-      .slice(0, 2)
+    visibleTasks
+      .slice(0, tasksExpanded ? undefined : 2)
       .forEach(t => {
         const tm = t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ''
         list.push({
@@ -158,14 +163,15 @@ export default function HomeScreen() {
           onGo: () => navigate('/property/rental'),
         })
       )
-    // Rent (≤1) + renewals (rare) keep priority; tasks already bounded to 2 above.
+    // Rent (≤1) + renewals (rare) keep priority; tasks bounded to 2 unless expanded.
     return list.filter(a => !done.has(a.id))
-  }, [monthlyRent, rentCleared, rentReceived, activeContract, tasks, upcomingRenewals, done, todayStr, navigate])
+  }, [monthlyRent, rentCleared, rentReceived, activeContract, visibleTasks, tasksExpanded, upcomingRenewals, done, todayStr, navigate])
 
-  // How many open tasks aren't shown here — drives "+ עוד X משימות". Counts both the
-  // top-2 overflow and any future-dated tasks held back until their lead window.
+  // How many surfaced (non-future-dated) tasks are still collapsed — drives "+ עוד X
+  // משימות". Only counts tasks that expanding can actually reveal; future-dated ones
+  // stay hidden until their lead window (issue #36) and live on the tasks screen.
   const shownTaskCount = actions.filter(a => a.kind === 'task').length
-  const extraTaskCount = Math.max(0, tasks.length - shownTaskCount)
+  const extraTaskCount = Math.max(0, visibleTasks.length - shownTaskCount)
 
   const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty
   const loadingFlow = loadingProperty || loadingMortgage || loadingLoans || loadingInsurance || loadingTx
@@ -370,11 +376,15 @@ export default function HomeScreen() {
                 )
               })
             )}
-            {extraTaskCount > 0 && (
-              <button className="hs-more-tasks" onClick={() => navigate('/property/tasks')}>
+            {extraTaskCount > 0 ? (
+              <button className="hs-more-tasks" onClick={() => setTasksExpanded(true)}>
                 + עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}
               </button>
-            )}
+            ) : tasksExpanded && shownTaskCount > 2 ? (
+              <button className="hs-more-tasks" onClick={() => setTasksExpanded(false)}>
+                הצג פחות
+              </button>
+            ) : null}
           </section>
 
           {/* ── Quick capture ── */}
