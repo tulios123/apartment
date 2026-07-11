@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
-import { CircleNotch, Check, CalendarPlus, CalendarBlank, Clock, X, ArrowsClockwise } from '@phosphor-icons/react'
+import { useEffect, useRef, useState } from 'react'
+import { CircleNotch, Check, CalendarBlank, Clock, X, ArrowsClockwise } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { shouldConfirmDiscard } from './discardGuard'
 import { createTask } from '../../hooks/useTasks'
 import { formatDate } from '../../lib/format'
-import { RECURRENCE_OPTIONS } from '../../lib/recurrence'
+import { RECURRENCE_OPTIONS, recurrenceLabel } from '../../lib/recurrence'
 import { tap } from '../../lib/haptics'
 import './capture.css'
 
@@ -25,9 +25,15 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
   const [err, setErr] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (open) { setTitle(''); setDue(''); setTime(''); setRepeat(null); setCalOpen(false); setState('idle'); setErr(null); setConfirmDiscard(false) }
+    if (open) {
+      setTitle(''); setDue(''); setTime(''); setRepeat(null); setCalOpen(false); setState('idle'); setErr(null); setConfirmDiscard(false)
+      // Pop the keyboard as soon as the sheet mounts (like Google Tasks). `autoFocus`
+      // alone is unreliable once the sheet animates in, so focus once more next frame.
+      requestAnimationFrame(() => inputRef.current?.focus())
+    }
   }, [open])
 
   async function save() {
@@ -62,6 +68,7 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
   return (
     <BottomSheet open={open} onClose={requestClose} title="משימה חדשה" minimizable={false}>
       <input
+        ref={inputRef}
         className="cap-title"
         value={title}
         onChange={e => { if (err) setErr(null); setTitle(e.target.value) }}
@@ -72,30 +79,19 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
 
       {due ? (
         <div className="cap-date-row">
-          <button className="cap-datechip" type="button" onClick={() => setCalOpen(true)}>
-            <CalendarBlank size={18} weight="duotone" /> {formatDate(due)}
+          <button className="cap-datechip on" type="button" onClick={() => setCalOpen(true)}>
+            <CalendarBlank size={18} weight="duotone" />
+            <span>{formatDate(due)}{time ? ` · ${time}` : ''}{repeat ? ` · ${recurrenceLabel(repeat)}` : ''}</span>
           </button>
-          <label className={`cap-timechip${time ? ' on' : ''}`}>
-            <Clock size={17} weight="duotone" />
-            <span>{time || 'הוסף שעה'}</span>
-            <input type="time" value={time} onChange={e => setTime(e.target.value)} aria-label="שעת יעד" />
-          </label>
           <button className="cap-date-clear" onClick={() => { setDue(''); setTime(''); setRepeat(null) }} aria-label="הסר תאריך"><X size={18} /></button>
         </div>
       ) : (
-        <button className="cap-ghost-date" onClick={() => setCalOpen(true)}>
-          <CalendarPlus size={18} weight="duotone" />
-          ללא תאריך יעד · ייכנס לתוכנית העבודה
+        // Google-Tasks affordance: a small clock (השעון הקטן) opens the "date & time"
+        // picker. No date is fine — the task simply lands in the work plan.
+        <button className="cap-clockbtn" onClick={() => setCalOpen(true)}>
+          <Clock size={19} weight="regular" />
+          <span>הוסף תאריך ושעה</span>
         </button>
-      )}
-
-      {due && (
-        <label className={`cap-repeat${repeat ? ' on' : ''}`}>
-          <ArrowsClockwise size={17} weight="duotone" />
-          <select value={repeat ?? ''} onChange={e => setRepeat(e.target.value ? Number(e.target.value) : null)} aria-label="חזרה">
-            {RECURRENCE_OPTIONS.map(o => <option key={o.label} value={o.value ?? ''}>{o.label}</option>)}
-          </select>
-        </label>
       )}
 
       {err && <p className="cap-error" role="alert">{err}</p>}
@@ -105,7 +101,29 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
           : 'הוספת משימה'}
       </button>
 
-      <CalendarPopover open={calOpen} value={due} onSelect={setDue} onClose={() => setCalOpen(false)} />
+      <CalendarPopover
+        open={calOpen}
+        value={due}
+        onSelect={setDue}
+        onClose={() => setCalOpen(false)}
+        footer={
+          <>
+            {/* Set-time row — native <input type=time> so the phone shows its wheel. */}
+            <label className={`cap-timechip${time ? ' on' : ''}`}>
+              <Clock size={17} weight="duotone" />
+              <span>{time || 'הוסף שעה'}</span>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)} aria-label="שעת יעד" />
+            </label>
+            {/* Repeat row — native <select> wheel, mirroring Google's "Does not repeat". */}
+            <label className={`cap-repeat${repeat ? ' on' : ''}`}>
+              <ArrowsClockwise size={17} weight="duotone" />
+              <select value={repeat ?? ''} onChange={e => setRepeat(e.target.value ? Number(e.target.value) : null)} aria-label="חזרה">
+                {RECURRENCE_OPTIONS.map(o => <option key={o.label} value={o.value ?? ''}>{o.label}</option>)}
+              </select>
+            </label>
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={confirmDiscard}

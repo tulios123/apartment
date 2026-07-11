@@ -93,15 +93,16 @@
 .numkey:active { transform: scale(0.94); background: var(--accent-light); }
 .numkey.fn { color: var(--text-muted); }
 
-/* Task: ghost date affordance */
-.cap-ghost-date {
-  display: inline-flex; align-items: center; gap: 8px; width: 100%; justify-content: center;
-  margin-top: 12px; border: 1px dashed var(--border-strong); background: transparent;
+/* Task: "small clock" affordance (Google Tasks) — compact pill, aligned to the
+   start, opening the date & time picker. */
+.cap-clockbtn {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 14px;
+  border: 1px solid var(--border); background: var(--bg-alt);
   color: var(--text-muted); font-family: inherit; font-size: 13.5px; font-weight: 600;
-  padding: 12px; border-radius: var(--r-sm); cursor: pointer;
+  padding: 9px 14px; border-radius: var(--r-pill); cursor: pointer;
   transition: border-color var(--t-fast), color var(--t-fast);
 }
-.cap-ghost-date:hover { border-color: var(--accent); color: var(--accent); }
+.cap-clockbtn:hover { border-color: var(--accent); color: var(--accent); }
 .cap-date-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .cap-date-row .cap-datechip { width: auto; flex: 1; margin-top: 0; }
 .cap-date { flex: 1; }

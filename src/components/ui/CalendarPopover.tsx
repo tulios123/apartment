@@ -11,6 +11,13 @@ type Props = {
   onClose: () => void
   min?: string             // yyyy-mm-dd — days before this are disabled
   max?: string             // yyyy-mm-dd — days after this are disabled
+  /**
+   * Extra controls rendered below the day grid — used by the task sheet to place
+   * "set time" + "repeat" inside the date picker (Google-Tasks "Date & Time" sheet).
+   * When present, picking a day keeps the popover open (so time/repeat can follow)
+   * and the close action reads "סיום" instead of "סגור".
+   */
+  footer?: React.ReactNode
 }
 
 type ViewMode = 'days' | 'months' | 'years'
@@ -23,7 +30,7 @@ const YEAR_PAGE_SIZE = 12
 const isoLocal = (y: number, m: number, d: number) =>
   `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
-export default function CalendarPopover({ open, value, onSelect, onClose, min, max }: Props) {
+export default function CalendarPopover({ open, value, onSelect, onClose, min, max, footer }: Props) {
   const base = value ? parseLocalISO(value) : new Date()
   const [view, setView] = useState({ y: base.getFullYear(), m: base.getMonth() })
   const [mode, setMode] = useState<ViewMode>('days')
@@ -70,7 +77,9 @@ export default function CalendarPopover({ open, value, onSelect, onClose, min, m
 
   function pickDay(day: number) {
     onSelect(isoLocal(view.y, view.m, day))
-    onClose()
+    // With a footer (time/repeat), stay open so the owner can keep tuning the
+    // due date — "סיום" closes it. Without one, a pick is the whole interaction.
+    if (!footer) onClose()
   }
 
   function pickMonth(m: number) {
@@ -138,8 +147,12 @@ export default function CalendarPopover({ open, value, onSelect, onClose, min, m
           </div>
         )}
 
+        {footer && mode === 'days' && value !== '' && (
+          <div className="calpop-footer">{footer}</div>
+        )}
+
         <div className="calpop-actions">
-          <button className="calpop-close-btn" onClick={onClose}>סגור</button>
+          <button className="calpop-close-btn" onClick={onClose}>{footer ? 'סיום' : 'סגור'}</button>
         </div>
       </div>
     </div>,
