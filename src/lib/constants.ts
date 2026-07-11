@@ -11,6 +11,11 @@ export const RENEWAL_WINDOW_DAYS = 60
 export const RENEWAL_REPEAT_DAYS = 28      // ~monthly push while in the window
 export const NO_LEASE_REPEAT_DAYS = 14     // fortnightly push when no active lease
 
+// A dated task surfaces on the home action list only once it's this close (or
+// overdue) — a task scheduled far ahead stays out of the way until it matters.
+// Undated backlog tasks always show.
+export const TASK_HOME_LEAD_DAYS = 2
+
 // Categories for one-time transactions
 export const INCOME_CATEGORIES = ['שכר דירה', 'אחר'] as const
 export const EXPENSE_CATEGORIES = ['תיקונים', 'ריבית', 'אחר'] as const
