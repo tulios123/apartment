@@ -14,6 +14,7 @@ import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
+import { visibleHomeTasks } from '../../lib/homeTasks'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
@@ -129,15 +130,9 @@ export default function HomeScreen() {
         amount: monthlyRent - rentReceived,
       })
     }
-    // All open tasks, smart-sorted: dated first (soonest/overdue on top), then undated
-    // backlog — so nothing without a deadline gets forgotten. Only the top 2 render here.
-    const sortedTasks = [...tasks].sort((a, b) => {
-      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date)
-      if (a.due_date) return -1
-      if (b.due_date) return 1
-      return 0
-    })
-    sortedTasks
+    // Future-dated tasks stay hidden until close (see visibleHomeTasks); only the
+    // top 2 of what's left render here.
+    visibleHomeTasks(tasks, todayStr)
       .slice(0, 2)
       .forEach(t => {
         const tm = t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ''
@@ -167,8 +162,10 @@ export default function HomeScreen() {
     return list.filter(a => !done.has(a.id))
   }, [monthlyRent, rentCleared, rentReceived, activeContract, tasks, upcomingRenewals, done, todayStr, navigate])
 
-  // How many open tasks aren't shown in the bounded top-2 — drives "+ עוד X משימות".
-  const extraTaskCount = Math.max(0, tasks.length - 2)
+  // How many open tasks aren't shown here — drives "+ עוד X משימות". Counts both the
+  // top-2 overflow and any future-dated tasks held back until their lead window.
+  const shownTaskCount = actions.filter(a => a.kind === 'task').length
+  const extraTaskCount = Math.max(0, tasks.length - shownTaskCount)
 
   const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty
   const loadingFlow = loadingProperty || loadingMortgage || loadingLoans || loadingInsurance || loadingTx
