@@ -33,6 +33,3 @@ verify_jwt = true
 
 [functions.merge-feedback-pr]
 verify_jwt = true
-
-[functions.preview-auth]
-verify_jwt = true

@@ -2,39 +2,40 @@ import { supabase } from './supabase'
 
 // Seamless fix-preview login. The per-fix Cloudflare preview lives on its own origin
 // (claude-fix-<n>.<sub>.pages.dev), so the owner's session doesn't carry over and they'd
-// otherwise have to log in again. Instead the admin console mints a one-time magic-link
-// token (the preview-auth edge fn) and hands it to the preview in the URL *fragment*
-// (#fbauth=…) — a fragment is never sent to any server, so the token stays client-side.
-// Here (on the preview) we redeem it into a real session and scrub it from the address bar.
+// otherwise have to log in again. Instead the admin console (where the owner is already
+// logged in) hands its OWN session to the preview in the URL *fragment* (#fbsess — never
+// sent to any server), and here we adopt it with setSession. This is the same shape Supabase
+// itself uses for implicit-flow OAuth redirects (access+refresh token in the fragment), and
+// it's deterministic — no token-type guessing, no server round-trip — so it "just works"
+// cross-origin. We scrub the fragment from the URL before the app UI resolves.
 
 // The per-fix preview branch deploys carry a claude-fix- host prefix.
 export function isPreviewHost(): boolean {
   try { return window.location.hostname.startsWith('claude-fix-') } catch { return false }
 }
 
-// Redeem a #fbauth=<token_hash> handoff if present. Returns true iff a session was set.
-// Safe to call unconditionally (no-op without a token) and never throws — a failed redeem
-// just falls through to the normal logged-out preview (the owner can log in manually).
+// Redeem a #fbsess handoff if present. Returns true iff a session was adopted. Safe to call
+// unconditionally (no-op without the marker) and never throws — a failed adopt just falls
+// through to the normal login screen (the owner can still sign in manually).
 export async function redeemPreviewAuth(): Promise<boolean> {
   try {
     const hash = window.location.hash || ''
-    const m = hash.match(/[#&]fbauth=([^&]+)/)
-    if (!m) return false
-    const tokenHash = decodeURIComponent(m[1])
+    if (!/[#&]fbsess=1/.test(hash)) return false
+    const at = hash.match(/[#&]at=([^&]+)/)
+    const rt = hash.match(/[#&]rt=([^&]+)/)
 
-    // Scrub the token from the URL right away — before the app UI resolves — so it isn't
-    // left in the address bar / history where it could be re-shared.
+    // Scrub the tokens from the URL right away — before the app UI resolves — so they aren't
+    // left in the address bar / history. replaceState swaps the current entry, so the
+    // token-bearing URL never becomes a navigable history record.
     const clean = window.location.pathname + window.location.search
     try { window.history.replaceState(null, '', clean) } catch { /* ignore */ }
 
-    // A generateLink({type:'magiclink'}) token verifies as 'email' in supabase-js v2; older
-    // shapes want 'magiclink'. Try 'email' first, fall back to 'magiclink'.
-    let { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' })
-    if (error) {
-      const retry = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' })
-      error = retry.error
-    }
-    if (error) { console.error('preview auth redeem failed:', error.message); return false }
+    if (!at || !rt) return false
+    const { error } = await supabase.auth.setSession({
+      access_token: decodeURIComponent(at[1]),
+      refresh_token: decodeURIComponent(rt[1]),
+    })
+    if (error) { console.error('preview session adopt failed:', error.message); return false }
 
     try { sessionStorage.setItem('fb_preview', '1') } catch { /* ignore */ }
     return true
@@ -44,8 +45,21 @@ export async function redeemPreviewAuth(): Promise<boolean> {
   }
 }
 
-// Are we inside a fix preview? True on the preview host, or once a handoff was redeemed
-// (so the banner persists across in-app navigation on the preview origin).
+// Build the #fbsess fragment that carries the owner's current session to the preview. Called
+// from the admin console; returns '' if there's no active session to hand off.
+export async function buildPreviewHandoff(): Promise<string> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    const s = data.session
+    if (!s?.access_token || !s?.refresh_token) return ''
+    return `#fbsess=1&at=${encodeURIComponent(s.access_token)}&rt=${encodeURIComponent(s.refresh_token)}`
+  } catch {
+    return ''
+  }
+}
+
+// Are we inside a fix preview? True on the preview host, or once a handoff was adopted (so
+// the banner persists across in-app navigation on the preview origin).
 export function inPreviewMode(): boolean {
   if (isPreviewHost()) return true
   try { return sessionStorage.getItem('fb_preview') === '1' } catch { return false }

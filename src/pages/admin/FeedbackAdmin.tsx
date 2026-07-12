@@ -24,6 +24,7 @@ import {
   type FeedbackMsg,
 } from '../../lib/feedbackMessages'
 import { canResendToBot } from '../../lib/feedbackStatus'
+import { buildPreviewHandoff } from '../../lib/previewAuth'
 import './feedback-admin.css'
 
 interface FeedbackRow {
@@ -419,17 +420,17 @@ export default function FeedbackAdmin() {
     showToast('הוחזר לרשימה הפעילה')
   }
 
-  // Open the fix preview ALREADY logged in as the owner: mint a one-time login token and
-  // hand it to the preview in the URL fragment (never sent to a server). Falls back to the
-  // plain preview (manual login) if the mint fails. Opens the tab synchronously first so the
-  // popup blocker doesn't eat it after the await.
+  // Open the fix preview ALREADY logged in as the owner: hand the console's own session to
+  // the preview in the URL fragment (never sent to a server; adopted with setSession +
+  // scrubbed on the preview side). Deterministic — no server round-trip. Falls back to the
+  // plain preview (manual login) if there's no session. Opens the tab synchronously first so
+  // the popup blocker doesn't eat it after the await.
   async function openPreview(previewUrl: string) {
     const win = window.open('', '_blank')
     let url = previewUrl
     try {
-      const res = await supabase.functions.invoke('preview-auth', { body: {} })
-      const th = (res.data as { token_hash?: string } | null)?.token_hash
-      if (!res.error && th) url = `${previewUrl}#fbauth=${encodeURIComponent(th)}`
+      const frag = await buildPreviewHandoff()
+      if (frag) url = `${previewUrl}${frag}`
     } catch { /* fall back to the plain preview URL */ }
     if (win) win.location.href = url
     else window.open(url, '_blank')
