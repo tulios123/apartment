@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAppReady } from '../../contexts/AppReadyContext'
 import {
   CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, ArrowLeft, Sun, CloudSun, MoonStars,
-  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretLeft,
+  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretUp, CaretLeft,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
@@ -383,8 +383,8 @@ export default function HomeScreen() {
                 + עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}
               </button>
             ) : tasksExpanded && shownTaskCount > 2 ? (
-              <button className="hs-more-tasks" onClick={() => setTasksExpanded(false)}>
-                הצג פחות
+              <button className="hs-more-tasks collapse" onClick={() => setTasksExpanded(false)}>
+                הצג פחות <CaretUp size={13} weight="bold" />
               </button>
             ) : null}
           </section>
