@@ -6,7 +6,7 @@ export default function PreviewBanner() {
   if (!inPreviewMode()) return null
   return (
     <div className="preview-banner" role="status" aria-live="polite">
-      🔧 מצב בדיקת־תיקון — נתונים אמיתיים
+      🔧 סביבת עבודה (staging) — נתונים אמיתיים
     </div>
   )
 }

@@ -9,9 +9,13 @@ import { supabase } from './supabase'
 // it's deterministic — no token-type guessing, no server round-trip — so it "just works"
 // cross-origin. We scrub the fragment from the URL before the app UI resolves.
 
-// The per-fix preview branch deploys carry a claude-fix- host prefix.
+// The staging workspace lives on a fixed `staging.` host; older per-fix deploys used a
+// claude-fix- prefix. Either counts as "not the real production app".
 export function isPreviewHost(): boolean {
-  try { return window.location.hostname.startsWith('claude-fix-') } catch { return false }
+  try {
+    const h = window.location.hostname
+    return h.startsWith('staging.') || h.startsWith('claude-fix-')
+  } catch { return false }
 }
 
 // Redeem a #fbsess handoff if present. Returns true iff a session was adopted. Safe to call

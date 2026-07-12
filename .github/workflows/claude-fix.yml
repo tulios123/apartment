@@ -137,22 +137,24 @@ jobs:
                or the specific question you need answered. This is shown to the owner in the
                app's bot chat, so write it to them directly, in plain Hebrew.
 
-      # 3b) Deploy the fix branch to a PRIVATE Cloudflare preview so the owner can test the
-      #     fix on their phone BEFORE merging (production only deploys from main). The alias
-      #     URL (https://claude-fix-<issue>.<project-subdomain>.pages.dev) is captured from
-      #     wrangler's output and reported to the console. Best-effort (continue-on-error):
-      #     a preview hiccup must never mark a good fix as failed.
-      # 3a) Heartbeat before the (slow) preview build, so the console shows the fix is done
-      #     and a testable preview is on the way — not silence between "עובד" and "מוכן".
-      - name: Heartbeat — building preview
+      # 3b) Deploy the fix to the owner's STABLE staging workspace — a single fixed origin
+      #     (https://staging.<project-subdomain>.pages.dev) that always carries the latest
+      #     bot fix, instead of a throwaway per-fix subdomain. One stable origin means the
+      #     owner logs in ONCE and stays logged in (no re-auth per fix), can add it to their
+      #     home screen as a permanent "workspace" icon, refine the fix with the bot there,
+      #     and then "מזג ופרסם" to push it to the whole app. Same Supabase backend → real
+      #     data. Best-effort (continue-on-error): a deploy hiccup must never fail a good fix.
+      # 3a) Heartbeat before the (slow) staging build, so the console shows the fix is done
+      #     and the workspace is updating — not silence between "עובד" and "מוכן".
+      - name: Heartbeat — updating staging
         if: success()
         run: |
           curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
             -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"bot_message\": \"🔨 סיימתי לתקן — בונה תצוגה מקדימה שתוכל לבדוק לפני המיזוג…\"}" || true
+            -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"bot_message\": \"🔨 סיימתי לתקן — מעדכן את סביבת־העבודה (staging) שתוכל לבדוק לפני שדוחפים לכולם…\"}" || true
 
-      - name: Deploy preview
+      - name: Deploy to staging
         if: success()
         continue-on-error: true
         env:
@@ -175,18 +177,18 @@ jobs:
             git checkout -B "claude-fix/$ISSUE" "origin/claude-fix/$ISSUE"
             npm ci
             npm run build:prod
-            # A real prod build (no dev auth bypass) against the SAME Supabase backend, so
-            # the owner logs in as themselves and tests the fix on live data before merging.
-            # Capture the REAL alias URL from wrangler's output — the project's pages.dev
-            # subdomain carries a suffix (apartment-6s4.pages.dev), so it must not be hardcoded.
-            out=$(npx wrangler pages deploy dist --project-name=apartment --branch="claude-fix-$ISSUE" --commit-dirty=true 2>&1)
+            # A real prod build (no dev auth bypass) against the SAME Supabase backend,
+            # deployed under the FIXED "staging" branch alias so the URL is stable across
+            # every fix (staging.<project-subdomain>.pages.dev). The subdomain suffix
+            # (apartment-6s4) must not be hardcoded, so parse the real alias from wrangler.
+            out=$(npx wrangler pages deploy dist --project-name=apartment --branch=staging --commit-dirty=true 2>&1)
             printf '%s\n' "$out"
-            alias=$(printf '%s' "$out" | grep -oE "https://claude-fix-$ISSUE\.[a-z0-9-]+\.pages\.dev" | head -1)
-            # Emit the preview URL only for a real, parsed alias (set -e already aborted on a
+            alias=$(printf '%s' "$out" | grep -oE "https://staging\.[a-z0-9-]+\.pages\.dev" | head -1)
+            # Emit the staging URL only for a real, parsed alias (set -e already aborted on a
             # wrangler failure) — so the console never shows a dead button.
             [ -n "$alias" ] && echo "url=$alias" >> "$GITHUB_OUTPUT"
           else
-            echo "No fix branch for #$ISSUE — skipping preview."
+            echo "No fix branch for #$ISSUE — skipping staging deploy."
           fi
 
       # 4) Status → awaiting_review (+ PR URL) if a PR was opened, else failed
