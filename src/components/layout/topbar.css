@@ -47,3 +47,25 @@
      loaded after it, so this wins on both the Android and iOS (app-locked) paths. */
   .app-layout .main-content { padding-top: calc(52px + env(safe-area-inset-top, 0px) + 12px); }
 }
+
+/* Fix-preview marker — a slim centered pill fixed at the very top, shown only on a per-fix
+   preview deploy (src/components/PreviewBanner.tsx). Purely informational; sits above the
+   topbar but below modals/toasts. */
+.preview-banner {
+  position: fixed;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 4px);
+  inset-inline: 0;
+  z-index: 75;
+  margin-inline: auto;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 4px 12px;
+  border-radius: var(--r-pill, 999px);
+  background: #6b4fd0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--shadow-md, 0 4px 14px rgba(0, 0, 0, 0.18));
+  pointer-events: none;
+}

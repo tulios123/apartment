@@ -14,6 +14,7 @@ import { ensurePushFresh, isIOS } from '../../lib/push'
 import { clearEditContext } from '../../lib/editContext'
 import FeedbackButton from '../FeedbackButton'
 import UserMenu from './UserMenu'
+import PreviewBanner from '../PreviewBanner'
 import { ErrorBoundary } from '../ErrorBoundary'
 import './topbar.css'
 
@@ -69,6 +70,7 @@ export default function Layout() {
 
   return (
     <div className="app-layout">
+      <PreviewBanner />
       {/* Mobile top bar — app title (start/right) + account & legal menu (end/left) */}
       <header className="app-topbar">
         <span className="app-topbar-title">ניהול דירה</span>

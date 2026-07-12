@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { clearQueryCache } from '../lib/queryCache'
 import { clearOnboardingDraft } from '../lib/onboardingDraft'
+import { redeemPreviewAuth } from '../lib/previewAuth'
 
 // Dev-only auto-login. Gated on import.meta.env.DEV so it is compiled out of ANY
 // production build (vite build ⇒ DEV=false) — even if the env var were misconfigured
@@ -44,14 +45,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setSession(session)
-        setLoading(false)
-        if (session?.user) {
-          const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
-          ensureOwnerRow(session.user.id, name)
-        }
-      })
+      // Fix-preview handoff: if we arrived with a #fbauth token (the owner tapped "בדוק את
+      // התיקון"), redeem it into a session BEFORE reading getSession, so the preview opens
+      // already logged in as the owner instead of the login screen. No-op without a token.
+      await redeemPreviewAuth()
+
+      const { data: { session } } = await supabase.auth.getSession()
+      setSession(session)
+      setLoading(false)
+      if (session?.user) {
+        const name = session.user.user_metadata?.full_name ?? session.user.email ?? 'User'
+        ensureOwnerRow(session.user.id, name)
+      }
     }
 
     init()

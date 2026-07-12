@@ -419,6 +419,22 @@ export default function FeedbackAdmin() {
     showToast('הוחזר לרשימה הפעילה')
   }
 
+  // Open the fix preview ALREADY logged in as the owner: mint a one-time login token and
+  // hand it to the preview in the URL fragment (never sent to a server). Falls back to the
+  // plain preview (manual login) if the mint fails. Opens the tab synchronously first so the
+  // popup blocker doesn't eat it after the await.
+  async function openPreview(previewUrl: string) {
+    const win = window.open('', '_blank')
+    let url = previewUrl
+    try {
+      const res = await supabase.functions.invoke('preview-auth', { body: {} })
+      const th = (res.data as { token_hash?: string } | null)?.token_hash
+      if (!res.error && th) url = `${previewUrl}#fbauth=${encodeURIComponent(th)}`
+    } catch { /* fall back to the plain preview URL */ }
+    if (win) win.location.href = url
+    else window.open(url, '_blank')
+  }
+
   // One-tap "merge & publish": the edge fn labels the PR → claude-merge.yml merges it →
   // claude-fix-merged.yml flips the item to 'fixed' and prod auto-deploys. We keep polling
   // (mergePendingId) until that lands, then celebrate.
@@ -661,9 +677,9 @@ export default function FeedbackAdmin() {
                 pipeline ONLY when the branch deploy actually succeeded, so there's never a
                 dead button. Hidden once archived (the preview is stale after merge). */}
             {f.preview_url && !archived && (
-              <a className="fbadmin-btn preview" href={f.preview_url} target="_blank" rel="noreferrer">
-                <MagnifyingGlass size={16} weight="bold" /> בדוק את התיקון (לפני מיזוג)
-              </a>
+              <button className="fbadmin-btn preview" onClick={() => openPreview(f.preview_url!)}>
+                <MagnifyingGlass size={16} weight="bold" /> בדוק את התיקון בחשבון שלך
+              </button>
             )}
 
             {/* One-tap merge & publish — no GitHub visit. Only for a fix that's up for
