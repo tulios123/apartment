@@ -15,7 +15,16 @@ export function isManager(email: string | null | undefined): boolean {
 // feedback admin email in the RLS policies (migration 038).
 export const FEEDBACK_ADMIN_EMAIL = 'itai.shubi@gmail.com'
 
-/** True only for the signed-in feedback admin (the owner's real account). */
+// Extra admin emails via a build-time, comma-separated list. The staging build sets
+// VITE_FEEDBACK_ADMIN_EMAILS to the staging TEST account, because that's the identity the
+// owner is logged in as on staging — so it must see the console + the promote area. The
+// edge functions mirror this at runtime via the FEEDBACK_ADMIN_EMAILS secret. Production
+// defaults to just the owner.
+const EXTRA_ADMINS = ((import.meta.env.VITE_FEEDBACK_ADMIN_EMAILS as string | undefined) || '')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+const ADMIN_SET = new Set<string>([FEEDBACK_ADMIN_EMAIL.toLowerCase(), ...EXTRA_ADMINS])
+
+/** True for the owner, plus any extra admin (e.g. the staging test account). */
 export function isFeedbackAdmin(email: string | null | undefined): boolean {
-  return email === FEEDBACK_ADMIN_EMAIL
+  return !!email && ADMIN_SET.has(email.toLowerCase())
 }

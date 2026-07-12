@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { isAdminEmail } from '../_shared/admin.ts'
 
 // Live bot chat — the owner types guidance/answers to the auto-fix bot from the "מול הבוט"
 // channel, and this fn (a) records it as a bot-channel message, (b) posts it as a comment on
@@ -50,8 +51,7 @@ Deno.serve(async (req) => {
     // Admin only.
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
     const { data: caller } = await supabase.auth.getUser(token)
-    const adminEmail = (Deno.env.get('FEEDBACK_ADMIN_EMAIL') ?? 'itai.shubi@gmail.com').toLowerCase()
-    if (!caller?.user || caller.user.email?.toLowerCase() !== adminEmail) {
+    if (!caller?.user || !isAdminEmail(caller.user.email)) {
       return json({ error: 'unauthorized' }, 401)
     }
 

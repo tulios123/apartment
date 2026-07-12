@@ -1,0 +1,50 @@
+name: Deploy staging
+
+# Builds the STAGING workspace on every push to the `staging` branch and deploys it to the
+# stable branch-alias URL (staging.<project-subdomain>.pages.dev). Same Supabase backend as
+# production, but a distinct app identity (name + orange banner) via VITE_APP_ENV=staging, and
+# the staging TEST account is granted admin via VITE_FEEDBACK_ADMIN_EMAILS so it can promote.
+# Production (deploy.yml, branch=main) is untouched. The stable URL means the owner logs in
+# once and can keep it on the home screen as a permanent workspace icon.
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build (staging flavor)
+        run: npm run build:prod && node scripts/stage-manifest.mjs
+        env:
+          VITE_APP_ENV: staging
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_VAPID_PUBLIC_KEY: BC37k0Kv1s503cBFIfhAop05sPFlTJ4h9ZjvjWasmGQ6GZ04nT3-FO2Zq0BtTpuibti9utXxhCf33kaijGC_SaA
+          # Comma-separated admin emails for the staging build — set this secret to the
+          # staging TEST account so it sees the console + "פרסם לכולם". Empty is fine (falls
+          # back to just the owner, who then must log into staging as themselves to promote).
+          VITE_FEEDBACK_ADMIN_EMAILS: ${{ secrets.VITE_FEEDBACK_ADMIN_EMAILS }}
+
+      - name: Deploy to staging alias
+        run: npx wrangler pages deploy dist --project-name=apartment --branch=staging --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

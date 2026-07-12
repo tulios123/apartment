@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { isAdminEmail } from '../_shared/admin.ts'
 
 // Section C — open a GitHub issue for a feedback item so the claude-fix workflow can
 // pick it up. Admin-only, one-run-at-a-time. Called from the feedback admin screen.
@@ -34,8 +35,7 @@ Deno.serve(async (req) => {
     // 1. Admin only — verify the caller's token and email.
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
     const { data: caller } = await supabase.auth.getUser(token)
-    const adminEmail = (Deno.env.get('FEEDBACK_ADMIN_EMAIL') ?? 'itai.shubi@gmail.com').toLowerCase()
-    if (!caller?.user || caller.user.email?.toLowerCase() !== adminEmail) {
+    if (!caller?.user || !isAdminEmail(caller.user.email)) {
       return json({ error: 'unauthorized' }, 401)
     }
 

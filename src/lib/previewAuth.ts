@@ -49,19 +49,6 @@ export async function redeemPreviewAuth(): Promise<boolean> {
   }
 }
 
-// Build the #fbsess fragment that carries the owner's current session to the preview. Called
-// from the admin console; returns '' if there's no active session to hand off.
-export async function buildPreviewHandoff(): Promise<string> {
-  try {
-    const { data } = await supabase.auth.getSession()
-    const s = data.session
-    if (!s?.access_token || !s?.refresh_token) return ''
-    return `#fbsess=1&at=${encodeURIComponent(s.access_token)}&rt=${encodeURIComponent(s.refresh_token)}`
-  } catch {
-    return ''
-  }
-}
-
 // Are we inside a fix preview? True on the preview host, or once a handoff was adopted (so
 // the banner persists across in-app navigation on the preview origin).
 export function inPreviewMode(): boolean {

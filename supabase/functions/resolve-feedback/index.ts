@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { pushToOwner } from '../_shared/push.ts'
+import { isAdminEmail } from '../_shared/admin.ts'
 
 // "סמן כטופל" / "החזר לפעיל" — ADMIN ONLY. Archives (or un-archives) a feedback item,
 // writes a 'system' message into its thread, and pushes the reporting client. This is the
@@ -33,8 +34,7 @@ Deno.serve(async (req) => {
     // Admin only — verify the caller's token and email (mirrors send-feedback-to-claude).
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
     const { data: caller } = await supabase.auth.getUser(token)
-    const adminEmail = (Deno.env.get('FEEDBACK_ADMIN_EMAIL') ?? 'itai.shubi@gmail.com').toLowerCase()
-    if (!caller?.user || caller.user.email?.toLowerCase() !== adminEmail) {
+    if (!caller?.user || !isAdminEmail(caller.user.email)) {
       return json({ error: 'unauthorized' }, 401)
     }
 

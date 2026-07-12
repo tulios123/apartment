@@ -24,9 +24,12 @@ jobs:
     if: github.event.label.name == 'claude-fix'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout staging
         uses: actions/checkout@v4
         with:
+          # Fixes now flow into the `staging` branch (auto-merged), and only reach production
+          # when the owner promotes. Claude branches off staging and opens its PR against it.
+          ref: staging
           fetch-depth: 0
 
       # 1) Status → in_progress.
@@ -111,6 +114,10 @@ jobs:
             Issue body:
             ${{ github.event.issue.body }}
 
+            This repo is checked out on the `staging` branch. Your PR targets `staging` and is
+            auto-merged once it opens (tests must be green). It will NOT reach production until
+            the owner presses "פרסם לכולם" — so never push to main; base everything on staging.
+
             This may be a FOLLOW-UP round: the owner talks to you from inside the app, and
             their guidance/answers arrive as issue comments (in the conversation file above).
             If a branch named claude-fix/${{ github.event.issue.number }} already exists on
@@ -127,90 +134,74 @@ jobs:
             2. Fix it minimally, following the repo's conventions (CLAUDE.md, SKILL.md).
             3. Run `npm ci` once, then `npm test` — the suite must be green.
             4. Add a regression test IF the bug has testable logic (skip for pure CSS).
-            5. Open (or update) a pull request from branch
-               claude-fix/${{ github.event.issue.number }}, with
+            5. If the fix needs a DB migration, it MUST be ADDITIVE and backward-compatible
+               (new nullable columns / new tables / widened checks only — never drop/rename a
+               column, never add NOT NULL without a default, never tighten a constraint). The
+               staging code and production code share ONE database, so a non-additive change
+               would break the live app. If only a non-additive change would truly fix it, do
+               NOT write it — explain that in your reply so the owner can plan a manual release.
+            6. Open (or update) a pull request from branch
+               claude-fix/${{ github.event.issue.number }} with BASE branch `staging`, and
                "Fixes #${{ github.event.issue.number }}" in the body. NEVER push to main.
-            6. If you CAN'T reproduce it or need the owner to decide something, do NOT guess
+            7. If you CAN'T reproduce it or need the owner to decide something, do NOT guess
                and do NOT open a PR — ask the specific question instead.
-            7. ALWAYS, as your FINAL step, write a SHORT Hebrew message (1-3 sentences) to the
+            8. ALWAYS, as your FINAL step, write a SHORT Hebrew message (1-3 sentences) to the
                file ${{ runner.temp }}/bot_reply.txt — either "what I fixed + what to check",
                or the specific question you need answered. This is shown to the owner in the
                app's bot chat, so write it to them directly, in plain Hebrew.
 
-      # 3b) Deploy the fix to the owner's STABLE staging workspace — a single fixed origin
-      #     (https://staging.<project-subdomain>.pages.dev) that always carries the latest
-      #     bot fix, instead of a throwaway per-fix subdomain. One stable origin means the
-      #     owner logs in ONCE and stays logged in (no re-auth per fix), can add it to their
-      #     home screen as a permanent "workspace" icon, refine the fix with the bot there,
-      #     and then "מזג ופרסם" to push it to the whole app. Same Supabase backend → real
-      #     data. Best-effort (continue-on-error): a deploy hiccup must never fail a good fix.
-      # 3a) Heartbeat before the (slow) staging build, so the console shows the fix is done
-      #     and the workspace is updating — not silence between "עובד" and "מוכן".
-      - name: Heartbeat — updating staging
+      # 3b) Heartbeat before the merge, so the console shows the fix is done and landing in the
+      #     workspace — not silence between "עובד" and "בבדיקות". The actual staging DEPLOY is
+      #     handled by deploy-staging.yml, which fires on the push to `staging` from the merge
+      #     below — this workflow no longer builds/deploys the preview itself.
+      - name: Heartbeat — merging to staging
         if: success()
         run: |
           curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
             -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"bot_message\": \"🔨 סיימתי לתקן — מעדכן את סביבת־העבודה (staging) שתוכל לבדוק לפני שדוחפים לכולם…\"}" || true
+            -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"bot_message\": \"🔨 סיימתי לתקן — ממזג לסביבת־הבדיקות (staging), עוד רגע תוכל לבדוק שם לפני שדוחפים לכולם…\"}" || true
 
-      - name: Deploy to staging
-        if: success()
-        continue-on-error: true
-        env:
-          ISSUE: ${{ github.event.issue.number }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          # Public VAPID key (ships in the bundle anyway) — same value as deploy.yml.
-          VITE_VAPID_PUBLIC_KEY: BC37k0Kv1s503cBFIfhAop05sPFlTJ4h9ZjvjWasmGQ6GZ04nT3-FO2Zq0BtTpuibti9utXxhCf33kaijGC_SaA
-        id: preview
-        run: |
-          # Only if Claude actually pushed a fix branch (not just questions on the issue).
-          if git ls-remote --exit-code --heads origin "claude-fix/$ISSUE" >/dev/null 2>&1; then
-            git fetch origin "claude-fix/$ISSUE"
-            # Build the fix branch IN PLACE. Claude already left the job checkout on this
-            # branch (which is why a worktree add fails — the ref is already checked out),
-            # and the only later step reads the PR via `gh` + a temp file, never the tree —
-            # so building here is safe. -B resets the local branch to the pushed tip.
-            git checkout -B "claude-fix/$ISSUE" "origin/claude-fix/$ISSUE"
-            npm ci
-            npm run build:prod
-            # A real prod build (no dev auth bypass) against the SAME Supabase backend,
-            # deployed under the FIXED "staging" branch alias so the URL is stable across
-            # every fix (staging.<project-subdomain>.pages.dev). The subdomain suffix
-            # (apartment-6s4) must not be hardcoded, so parse the real alias from wrangler.
-            out=$(npx wrangler pages deploy dist --project-name=apartment --branch=staging --commit-dirty=true 2>&1)
-            printf '%s\n' "$out"
-            alias=$(printf '%s' "$out" | grep -oE "https://staging\.[a-z0-9-]+\.pages\.dev" | head -1)
-            # Emit the staging URL only for a real, parsed alias (set -e already aborted on a
-            # wrangler failure) — so the console never shows a dead button.
-            [ -n "$alias" ] && echo "url=$alias" >> "$GITHUB_OUTPUT"
-          else
-            echo "No fix branch for #$ISSUE — skipping staging deploy."
-          fi
-
-      # 4) Status → awaiting_review (+ PR URL) if a PR was opened, else failed
-      #    (e.g. Claude posted questions instead of a fix).
-      - name: Mark awaiting_review or failed
+      # 4) Auto-merge the fix into `staging` → item becomes in_staging (בבדיקות): the fix now
+      #    lives in the workspace, waiting for the owner to "פרסם לכולם". The human gate is the
+      #    promote, not this merge — tests already ran green inside Claude's task. If the merge
+      #    can't go through (conflict / not mergeable) → awaiting_review ("דורש טיפול") with an
+      #    explanatory PR comment. If Claude opened NO PR (asked a question) → failed. The merge
+      #    to staging is unrestricted (only `main` carries a ruleset), so GITHUB_TOKEN can do it.
+      - name: Merge to staging + set status
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
         run: |
-          ISSUE=${{ github.event.issue.number }}
-          pr_url=$(gh pr list --repo "${{ github.repository }}" --head "claude-fix/$ISSUE" --state open --json url --jq '.[0].url // ""')
-          # The bot's reply to the owner (what it fixed / what it needs) → surfaced in the
-          # app's bot chat as a 'bot' message. Build the JSON with jq so quotes/newlines in
-          # the reply can't break it.
           reply="$(cat "$RUNNER_TEMP/bot_reply.txt" 2>/dev/null || true)"
-          prev="${{ steps.preview.outputs.url }}"
-          if [ -n "$pr_url" ]; then status="awaiting_review"; else status="failed"; fi
-          payload=$(jq -n --argjson issue "$ISSUE" --arg status "$status" --arg pr "$pr_url" --arg bot "$reply" --arg prev "$prev" \
+          pr=$(gh pr list --repo "$REPO" --head "claude-fix/$ISSUE" --base staging --state open --json number --jq '.[0].number // ""')
+          pr_url=$(gh pr list --repo "$REPO" --head "claude-fix/$ISSUE" --base staging --state open --json url --jq '.[0].url // ""')
+          if [ -z "$pr" ]; then
+            status="failed"
+          else
+            # Retry once — GitHub may not have computed mergeability the instant the PR opens.
+            merged=0
+            for attempt in 1 2; do
+              if gh pr merge "$pr" --repo "$REPO" --squash --delete-branch 2> "$RUNNER_TEMP/merge_err.txt"; then merged=1; break; fi
+              sleep 8
+            done
+            if [ "$merged" = 1 ]; then
+              # "Fixes #N" auto-close only fires on merges to the DEFAULT branch, so close it here.
+              gh issue close "$ISSUE" --repo "$REPO" --reason completed || true
+              status="in_staging"
+            else
+              err="$(head -c 500 "$RUNNER_TEMP/merge_err.txt" 2>/dev/null || true)"
+              gh pr comment "$pr" --repo "$REPO" --body "$(printf 'המיזוג האוטומטי ל-staging נכשל — צריך טיפול ידני.\n\n```\n%s\n```' "$err")" || true
+              status="awaiting_review"
+            fi
+          fi
+          # Surface the bot's reply in the app chat (jq builds the JSON so quotes/newlines are safe).
+          payload=$(jq -n --argjson issue "$ISSUE" --arg status "$status" --arg pr "$pr_url" --arg bot "$reply" \
             '{github_issue_number: $issue, status: $status}
-             + (if $pr   != "" then {pr_url: $pr}        else {} end)
-             + (if $bot  != "" then {bot_message: $bot}  else {} end)
-             + (if $prev != "" then {preview_url: $prev} else {} end)')
+             + (if $pr  != "" then {pr_url: $pr}       else {} end)
+             + (if $bot != "" then {bot_message: $bot} else {} end)')
           curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
             -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" -H "Content-Type: application/json" \
             -d "$payload" || true

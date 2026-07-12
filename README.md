@@ -1,3 +1,19 @@
+# ניהול דירה
+
+Hebrew RTL mobile PWA for managing a rented-apartment investment (React + Supabase).
+
+## Environments
+
+| | URL | Branch | Deploys |
+| --- | --- | --- | --- |
+| **Production** | https://apartment-6s4.pages.dev | `main` | `deploy.yml` on push to `main` |
+| **Staging (workspace)** | https://staging.apartment-6s4.pages.dev | `staging` | `deploy-staging.yml` on push to `staging` |
+
+Fixes from the feedback pipeline auto-merge into `staging`; the owner verifies them there and
+presses **"פרסם לכולם"** to promote `staging → main` (production). See `ROADMAP.md` / `CLAUDE.md`.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

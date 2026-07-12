@@ -23,7 +23,8 @@ function json(obj: unknown, status = 200) {
 
 // Only the pipeline-driven transitions — never 'new'/'sent' (those are set client-side
 // / by the send function). This is the whole allow-list of what the workflow may write.
-const ALLOWED_STATUS = new Set(['in_progress', 'awaiting_review', 'fixed', 'failed'])
+// 'in_staging' = the fix auto-merged into staging and is waiting for the owner to promote.
+const ALLOWED_STATUS = new Set(['in_progress', 'awaiting_review', 'in_staging', 'fixed', 'failed'])
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -34,7 +35,42 @@ Deno.serve(async (req) => {
       return json({ error: 'unauthorized' }, 401)
     }
 
-    const { github_issue_number, status, pr_url, bot_message, preview_url } = await req.json().catch(() => ({}))
+    const { github_issue_number, status, pr_url, bot_message, preview_url, action } = await req.json().catch(() => ({}))
+
+    // ── Bulk action: promote completed ──────────────────────────────────────────────
+    // promote.yml calls this after merging staging→main. Flip EVERY item waiting in staging
+    // to 'fixed' in one shot (batch promote — normally 1-2 items). Not tied to a single issue,
+    // but still as narrow as the rest of this endpoint: one transition, no arbitrary fields.
+    if (action === 'promote_completed') {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      )
+      const { data, error } = await supabase
+        .from('feedback')
+        .update({ status: 'fixed', status_updated_at: new Date().toISOString() })
+        .eq('status', 'in_staging')
+        .select('id')
+      if (error) {
+        console.error('promote_completed error:', error)
+        return json({ error: 'promote update failed' }, 500)
+      }
+      const count = data?.length ?? 0
+      try {
+        const adminId = await resolveAdminId(supabase)
+        if (adminId && count > 0) {
+          await pushToOwner(supabase, adminId, {
+            title: 'פורסם לכולם ✓',
+            body: count === 1 ? 'התיקון עלה לאפליקציה' : `${count} תיקונים עלו לאפליקציה`,
+            url: '/admin/feedback',
+            tag: 'apt-feedback-promote',
+          })
+        }
+      } catch (e) {
+        console.error('promote push (non-fatal):', e)
+      }
+      return json({ ok: true, promoted: count })
+    }
 
     if (typeof github_issue_number !== 'number' || !Number.isInteger(github_issue_number)) {
       return json({ error: 'github_issue_number (int) required' }, 400)
@@ -121,8 +157,9 @@ Deno.serve(async (req) => {
     try {
       const STATUS_PUSH: Record<string, [string, string]> = {
         in_progress: ['הבוט התחיל לעבוד על התיקון', ''],
-        awaiting_review: ['התיקון מוכן לבדיקה', 'בדקו באפליקציה ואשרו את בקשת-המיזוג'],
-        fixed: ['תוקן ומוזג ✓', ''],
+        in_staging: ['התיקון מוכן בסביבת־הבדיקות', 'בדקו ב־staging, ואז "פרסם לכולם"'],
+        awaiting_review: ['תיקון דורש טיפול', 'המיזוג ל־staging נכשל — בדקו בגיטהאב'],
+        fixed: ['פורסם לכולם ✓', ''],
         failed: ['הבוט לא הצליח', 'אפשר לחדד את ההערות ולשלוח שוב'],
       }
       const spec = STATUS_PUSH[status]

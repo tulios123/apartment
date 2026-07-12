@@ -1,0 +1,80 @@
+name: Promote staging to production
+
+# Triggered (workflow_dispatch) by the promote-staging edge function when the owner presses
+# "פרסם לכולם" in the staging workspace. Merges everything currently in `staging` into `main`
+# (main requires a PR, so it opens+merges one with the built-in GITHUB_TOKEN). Production then
+# auto-deploys off the push to main (deploy.yml). Finally it flips every in_staging feedback
+# item → fixed. On failure it opens a "promote failed" issue and leaves the items untouched.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: promote-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  FUNCTIONS_URL: https://bjholzkesnzkbogxmurw.supabase.co/functions/v1
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge staging → main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          git fetch origin main staging
+          # Nothing to promote if staging is already at main.
+          if [ "$(git rev-parse origin/staging)" = "$(git rev-parse origin/main)" ]; then
+            echo "staging == main — nothing to promote."
+            exit 0
+          fi
+          # main requires a PR (ruleset, 0 approvals) → open staging→main and merge it with the
+          # built-in token. Reuse an already-open promote PR if present.
+          pr=$(gh pr list --repo "$REPO" --head staging --base main --state open --json number --jq '.[0].number // ""')
+          if [ -z "$pr" ]; then
+            gh pr create --repo "$REPO" --base main --head staging \
+              --title "Promote staging → production" \
+              --body "Promoting the verified fixes currently in staging. Triggered from the app's 'פרסם לכולם'." || true
+            pr=$(gh pr list --repo "$REPO" --head staging --base main --state open --json number --jq '.[0].number // ""')
+          fi
+          [ -z "$pr" ] && { echo "could not open promote PR"; exit 1; }
+          # Merge commit (keeps every staging commit), retrying once for mergeability lag.
+          merged=0
+          for attempt in 1 2; do
+            if gh pr merge "$pr" --repo "$REPO" --merge; then merged=1; break; fi
+            sleep 8
+          done
+          [ "$merged" = 1 ] || { echo "promote merge failed"; exit 1; }
+          # Keep staging in sync so the next fixes branch off a staging that equals main
+          # (main is strictly ahead now → this is a fast-forward, no force). Best-effort.
+          git fetch origin main
+          git push origin "$(git rev-parse origin/main):refs/heads/staging" || true
+
+      - name: Mark all in_staging → fixed
+        if: success()
+        run: |
+          curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action":"promote_completed"}' || true
+
+      - name: Open failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue create --repo "$REPO" \
+            --title "Promote failed" \
+            --body "Promoting staging→main failed; items remain in_staging. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true

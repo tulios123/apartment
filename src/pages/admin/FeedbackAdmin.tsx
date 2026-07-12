@@ -10,7 +10,7 @@ import {
   PencilSimple,
   CheckCircle,
   MagnifyingGlass,
-  GitMerge,
+  RocketLaunch,
   X,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -24,7 +24,7 @@ import {
   type FeedbackMsg,
 } from '../../lib/feedbackMessages'
 import { canResendToBot } from '../../lib/feedbackStatus'
-import { buildPreviewHandoff } from '../../lib/previewAuth'
+import { STAGING_URL, isStaging } from '../../lib/env'
 import './feedback-admin.css'
 
 interface FeedbackRow {
@@ -58,7 +58,7 @@ function catDisplay(category: string | null): { label: string; cls: string } {
 // Hebrew labels for the bot timeline (the archive is driven by archived_at, not status).
 const STATUS_LABEL: Record<string, string> = {
   new: 'חדש', sent: 'נשלח', in_progress: 'בעבודה',
-  awaiting_review: 'ממתין לבדיקה', fixed: 'תוקן', failed: 'נכשל',
+  in_staging: 'בבדיקות', awaiting_review: 'דורש טיפול', fixed: 'פורסם', failed: 'נכשל',
 }
 
 // Two active categories + a separate archive. Legacy question/other/null fold into רעיונות.
@@ -141,11 +141,11 @@ export default function FeedbackAdmin() {
   const [resolving, setResolving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [pipelineReady, setPipelineReady] = useState(true)
-  const [mergeConfirmId, setMergeConfirmId] = useState<string | null>(null)
-  const [merging, setMerging] = useState(false)
-  // The item whose merge is in flight — keeps the live poll running (awaiting_review isn't
-  // otherwise "active") until claude-fix-merged.yml flips it to 'fixed'.
-  const [mergePendingId, setMergePendingId] = useState<string | null>(null)
+  const [promoteConfirm, setPromoteConfirm] = useState(false)
+  const [promoting, setPromoting] = useState(false)
+  // A promote is in flight — keeps the live poll running until every in_staging item flips
+  // to 'fixed' (promote.yml merged staging→main and called back).
+  const [promotePending, setPromotePending] = useState(false)
   const [tick, setTick] = useState(0)  // 1 Hz while active — drives the live elapsed counter
 
   // Chat with the client.
@@ -211,7 +211,7 @@ export default function FeedbackAdmin() {
   // columns to clients), so a short poll is how the owner sees "בעבודה → מוכן → פורסם"
   // without refreshing. Covers a running fix AND a merge in flight. Stops when idle.
   const anyActive = feedback.some(f => f.status === 'sent' || f.status === 'in_progress')
-  const pollActive = anyActive || mergePendingId !== null
+  const pollActive = anyActive || promotePending
   useEffect(() => {
     if (!pollActive) return
     const t = setInterval(() => { loadFeedback() }, 6000)
@@ -226,16 +226,16 @@ export default function FeedbackAdmin() {
     return () => clearInterval(t)
   }, [pollActive])
 
-  // Merge landed: once the pending item reaches 'fixed', celebrate + release the poll.
+  // Promote landed: once nothing is left in staging, celebrate + release the poll.
   useEffect(() => {
-    if (!mergePendingId) return
-    const row = feedback.find(f => f.id === mergePendingId)
-    if (row && row.status === 'fixed') {
-      setMergePendingId(null)
-      showToast('פורסם! 🎉 התיקון עלה לאפליקציה')
+    if (!promotePending) return
+    const stillInStaging = feedback.some(f => f.status === 'in_staging')
+    if (!stillInStaging) {
+      setPromotePending(false)
+      showToast('פורסם! 🎉 התיקונים עלו לאפליקציה')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedback, mergePendingId])
+  }, [feedback, promotePending])
 
   // Deep-link from a push: /admin/feedback?item=<id> opens that item. Strip the param so a
   // repeat push of the same item re-fires (react-router memoizes searchParams by the query
@@ -250,6 +250,12 @@ export default function FeedbackAdmin() {
   }, [searchParams, setSearchParams])
 
   const selected = useMemo(() => feedback.find(f => f.id === selectedId) ?? null, [feedback, selectedId])
+
+  // Everything sitting in the staging workspace, ready to be published to everyone.
+  const stagingReady = useMemo(
+    () => feedback.filter(f => f.status === 'in_staging' && f.archived_at == null),
+    [feedback],
+  )
 
   // Load signed URLs for ALL attached screenshots when an item is opened (or its list changes).
   useEffect(() => {
@@ -437,32 +443,17 @@ export default function FeedbackAdmin() {
   }
 
   // Open the fix preview ALREADY logged in as the owner: hand the console's own session to
-  // the preview in the URL fragment (never sent to a server; adopted with setSession +
-  // scrubbed on the preview side). Deterministic — no server round-trip. Falls back to the
-  // plain preview (manual login) if there's no session. Opens the tab synchronously first so
-  // the popup blocker doesn't eat it after the await.
-  async function openPreview(previewUrl: string) {
-    const win = window.open('', '_blank')
-    let url = previewUrl
-    try {
-      const frag = await buildPreviewHandoff()
-      if (frag) url = `${previewUrl}${frag}`
-    } catch { /* fall back to the plain preview URL */ }
-    if (win) win.location.href = url
-    else window.open(url, '_blank')
-  }
-
-  // One-tap "merge & publish": the edge fn labels the PR → claude-merge.yml merges it →
-  // claude-fix-merged.yml flips the item to 'fixed' and prod auto-deploys. We keep polling
-  // (mergePendingId) until that lands, then celebrate.
-  async function handleMerge(id: string) {
-    setMergeConfirmId(null); setMerging(true)
-    const res = await supabase.functions.invoke('merge-feedback-pr', { body: { feedback_id: id } })
-    setMerging(false)
-    if (res.error) { showToast(await invokeError(res, 'המיזוג נכשל — נסו שוב')); return }
-    setMergePendingId(id)
-    showToast('נשלח למיזוג — האתר יתעדכן בעוד רגע')
-    loadThread(id).then(setMessages).catch(() => {})
+  // "פרסם לכולם" — publish everything currently in staging to production. Triggers the
+  // promote-staging edge fn (→ promote.yml merges staging→main → prod deploys → all in_staging
+  // items flip to 'fixed'). Batch, not per-item. We keep polling (promotePending) until the
+  // in_staging list empties, then celebrate.
+  async function handlePromote() {
+    setPromoteConfirm(false); setPromoting(true)
+    const res = await supabase.functions.invoke('promote-staging', { body: {} })
+    setPromoting(false)
+    if (res.error) { showToast(await invokeError(res, 'הפרסום נכשל — נסו שוב')); return }
+    setPromotePending(true)
+    showToast('מפרסם לכולם — האתר יתעדכן בעוד רגע')
   }
 
   async function sendReply() {
@@ -627,16 +618,22 @@ export default function FeedbackAdmin() {
                   </div>
                 </li>
               )}
-              {f.status === 'awaiting_review' && (
+              {f.status === 'in_staging' && (
                 <li className="active">
                   <span className="fbadmin-tl-dot" />
-                  <div><b>התיקון מוכן — בדוק ואשר</b><span className="fbadmin-tl-when">בדוק שהתקלה נפתרה, ואז "מזג ופרסם" — והתיקון עולה לאפליקציה</span></div>
+                  <div><b>מוכן בסביבת־הבדיקות</b><span className="fbadmin-tl-when">בדוק שהתקלה נפתרה ב־staging, ואז "פרסם לכולם" — והתיקון עולה לכולם</span></div>
+                </li>
+              )}
+              {f.status === 'awaiting_review' && (
+                <li className="failed">
+                  <span className="fbadmin-tl-dot" />
+                  <div><b>דורש טיפול</b><span className="fbadmin-tl-when">המיזוג ל־staging לא עבר (התנגשות/בדיקה) — אפשר לחדד ולשלוח שוב, או לבדוק בגיטהאב</span></div>
                 </li>
               )}
               {f.status === 'fixed' && (
                 <li className="done">
                   <span className="fbadmin-tl-dot" />
-                  <div><b>תוקן ומוזג ✓</b></div>
+                  <div><b>פורסם לכולם ✓</b></div>
                 </li>
               )}
               {f.status === 'failed' && (
@@ -690,26 +687,18 @@ export default function FeedbackAdmin() {
               </div>
             ) : null}
 
-            {/* Test the fix on a private preview BEFORE merging. preview_url is set by the
-                pipeline ONLY when the branch deploy actually succeeded, so there's never a
-                dead button. Hidden once archived (the preview is stale after merge). */}
-            {f.preview_url && !archived && (
-              <button className="fbadmin-btn preview" onClick={() => openPreview(f.preview_url!)}>
-                <MagnifyingGlass size={16} weight="bold" /> בדוק את התיקון בחשבון שלך
-              </button>
-            )}
-
-            {/* One-tap merge & publish — no GitHub visit. Only for a fix that's up for
-                review with an open PR. On success prod redeploys and the item flips to תוקן. */}
-            {f.github_pr_url && f.status === 'awaiting_review' && !archived && (
-              <button
-                className="fbadmin-btn merge"
-                disabled={merging || mergePendingId === f.id}
-                onClick={() => setMergeConfirmId(f.id)}
+            {/* The fix is live in the staging workspace — jump straight to the exact screen to
+                verify it (same origin when you're already on staging; opens staging otherwise).
+                Publishing to everyone is the batch "פרסם לכולם" on the list, in the staging build. */}
+            {f.status === 'in_staging' && !archived && (
+              <a
+                className="fbadmin-btn preview"
+                href={`${STAGING_URL}${f.path && f.path.startsWith('/') ? f.path : '/'}`}
+                target="_blank"
+                rel="noreferrer"
               >
-                <GitMerge size={16} weight="bold" />
-                {mergePendingId === f.id ? 'ממזג ומפרסם…' : 'מזג ופרסם'}
-              </button>
+                <MagnifyingGlass size={16} weight="bold" /> פתח בסביבת-הבדיקות
+              </a>
             )}
 
             <div className="fbadmin-detail-actions">
@@ -773,20 +762,12 @@ export default function FeedbackAdmin() {
           title="לשלוח לבוט?"
           message={
             resendAfterReview
-              ? 'תיפתח פנייה חדשה עם ההערות המעודכנות. בקשת-המיזוג הקודמת תישאר פתוחה בגיטהאב — אפשר לסגור אותה בעצמכם אם היא כבר לא רלוונטית.'
-              : 'ייפתח issue בגיטהאב והבוט יתחיל לתקן ולפתוח בקשת-מיזוג. אפשר פריט אחד בכל פעם.'
+              ? 'הבוט יעבוד שוב עם ההערות המעודכנות, והתיקון יתעדכן בסביבת־הבדיקות. אפשר פריט אחד בכל פעם.'
+              : 'הבוט יתחיל לתקן, והתיקון יעלה אוטומטית לסביבת־הבדיקות (staging) לבדיקה — לא לאפליקציה החיה. אפשר פריט אחד בכל פעם.'
           }
           confirmLabel="שלח"
           onConfirm={() => sendConfirmId && sendToClaude(sendConfirmId)}
           onCancel={() => setSendConfirmId(null)}
-        />
-        <ConfirmDialog
-          open={mergeConfirmId !== null}
-          title="למזג ולפרסם?"
-          message="התיקון ימוזג ויעלה לאפליקציה החיה תוך כדקה-שתיים. מומלץ לבדוק אותו בתצוגה המקדימה קודם."
-          confirmLabel="מזג ופרסם"
-          onConfirm={() => mergeConfirmId && handleMerge(mergeConfirmId)}
-          onCancel={() => setMergeConfirmId(null)}
         />
         <ConfirmDialog
           open={resolveConfirmId !== null}
@@ -827,6 +808,24 @@ export default function FeedbackAdmin() {
         <h1>ניהול משוב {activeCount > 0 && <span className="fbadmin-count">{activeCount}</span>}</h1>
         <button className="fbadmin-new" onClick={() => setShowCreate(v => !v)}>{showCreate ? 'סגור' : '+ חדש'}</button>
       </div>
+
+      {/* Promote area — publishing to everyone belongs where verification happens: the staging
+          build. Shows only when there's something in staging to publish. */}
+      {isStaging && stagingReady.length > 0 && (
+        <div className="fbadmin-promote">
+          <div className="fbadmin-promote-txt">
+            <b>{stagingReady.length === 1 ? 'תיקון אחד מוכן לפרסום' : `${stagingReady.length} תיקונים מוכנים לפרסום`}</b>
+            <span>בדוק שהכול תקין כאן ב־staging, ואז פרסם לכל המשתמשים</span>
+          </div>
+          <button
+            className="fbadmin-btn promote"
+            disabled={promoting || promotePending}
+            onClick={() => setPromoteConfirm(true)}
+          >
+            <RocketLaunch size={16} weight="fill" /> {promoting || promotePending ? 'מפרסם…' : 'פרסם לכולם'}
+          </button>
+        </div>
+      )}
 
       {showCreate && (
         <div className="fbadmin-create">
@@ -876,13 +875,23 @@ export default function FeedbackAdmin() {
               <p className="fbadmin-card-note">{f.note}</p>
               <div className="fbadmin-card-meta">
                 {shotPathsOf(f).length > 0 && <span className="fbadmin-card-shot"><Camera size={12} weight="duotone" /> {shotPathsOf(f).length > 1 ? `${shotPathsOf(f).length} צילומים` : 'צילום'}</span>}
-                {f.status === 'awaiting_review' && !f.archived_at && <span className="fbadmin-card-flag"><CheckCircle size={12} weight="fill" /> ממתין לך</span>}
+                {f.status === 'in_staging' && !f.archived_at && <span className="fbadmin-card-flag"><CheckCircle size={12} weight="fill" /> מוכן לבדיקה</span>}
+                {f.status === 'awaiting_review' && !f.archived_at && <span className="fbadmin-card-flag warn"><CheckCircle size={12} weight="fill" /> דורש טיפול</span>}
                 <span className="fbadmin-card-email">{f.email ?? '—'}</span>
               </div>
             </button>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={promoteConfirm}
+        title="לפרסם לכולם?"
+        message={`התיקונים הבאים יעלו לאפליקציה החיה לכל המשתמשים תוך כדקה-שתיים:\n\n${stagingReady.map(f => `• ${f.note.split('\n')[0].slice(0, 60)}`).join('\n')}`}
+        confirmLabel="פרסם לכולם"
+        onConfirm={handlePromote}
+        onCancel={() => setPromoteConfirm(false)}
+      />
 
       {toast && <div className="fbadmin-toast" role="status" aria-live="polite">{toast}</div>}
     </div>

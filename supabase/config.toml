@@ -31,5 +31,5 @@ verify_jwt = true
 [functions.send-bot-followup]
 verify_jwt = true
 
-[functions.merge-feedback-pr]
+[functions.promote-staging]
 verify_jwt = true
