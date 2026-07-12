@@ -10,6 +10,7 @@ interface Props {
 
 interface State {
   hasError: boolean
+  message?: string
 }
 
 /**
@@ -21,8 +22,8 @@ interface State {
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false }
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true }
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, message: error?.message ? String(error.message).slice(0, 300) : undefined }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -48,6 +49,12 @@ export class ErrorBoundary extends Component<Props, State> {
             נתקלנו בתקלה בלתי צפויה. רענון הדף בדרך כלל פותר את זה.
           </div>
           <button className="error-boundary-btn" onClick={this.reset}>רענון</button>
+          {this.state.message && (
+            <details className="error-boundary-details">
+              <summary>פרטים טכניים</summary>
+              <code>{this.state.message}</code>
+            </details>
+          )}
         </div>
       </div>
     )
