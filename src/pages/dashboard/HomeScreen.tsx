@@ -14,7 +14,7 @@ import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { visibleHomeTasks } from '../../lib/homeTasks'
+import { visibleHomeTasks, sortedHomeTasks } from '../../lib/homeTasks'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
@@ -119,9 +119,12 @@ export default function HomeScreen() {
   // so anything you add by hand is reflected in the bottom line.
   const expectedNet = Math.max(monthlyRent, rentReceived) + extraIncome - fixedExpenses - extraExpenses
 
-  // Future-dated tasks stay hidden until close (see visibleHomeTasks) — this is what
-  // actually surfaces on home. Collapsed we show the top 2; "+ עוד X" widens it in place.
-  const visibleTasks = useMemo(() => visibleHomeTasks(tasks, todayStr), [tasks, todayStr])
+  // Collapsed, only near/overdue/undated tasks surface (future-dated ones stay out of
+  // "what to do now" — issue #36). Expanding "+ עוד X משימות" reveals every open task
+  // regardless of date, so nothing is truly lost from the home (owner request).
+  const collapsedTasks = useMemo(() => visibleHomeTasks(tasks, todayStr), [tasks, todayStr])
+  const allTasks = useMemo(() => sortedHomeTasks(tasks), [tasks])
+  const shownTasks = tasksExpanded ? allTasks : collapsedTasks.slice(0, 2)
 
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
   const actions = useMemo<Action[]>(() => {
@@ -137,8 +140,7 @@ export default function HomeScreen() {
         amount: monthlyRent - rentReceived,
       })
     }
-    visibleTasks
-      .slice(0, tasksExpanded ? undefined : 2)
+    shownTasks
       .forEach(t => {
         const tm = t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ''
         list.push({
@@ -165,13 +167,13 @@ export default function HomeScreen() {
       )
     // Rent (≤1) + renewals (rare) keep priority; tasks bounded to 2 unless expanded.
     return list.filter(a => !done.has(a.id))
-  }, [monthlyRent, rentCleared, rentReceived, activeContract, visibleTasks, tasksExpanded, upcomingRenewals, done, todayStr, navigate])
+  }, [monthlyRent, rentCleared, rentReceived, activeContract, shownTasks, upcomingRenewals, done, todayStr, navigate])
 
-  // How many surfaced (non-future-dated) tasks are still collapsed — drives "+ עוד X
-  // משימות". Only counts tasks that expanding can actually reveal; future-dated ones
-  // stay hidden until their lead window (issue #36) and live on the tasks screen.
+  // How many open tasks aren't shown yet — drives "+ עוד X משימות". Counts every open
+  // task (including future-dated ones held back from the collapsed view), so expanding
+  // reveals them all in place rather than leaving any stranded off the home.
   const shownTaskCount = actions.filter(a => a.kind === 'task').length
-  const extraTaskCount = Math.max(0, visibleTasks.length - shownTaskCount)
+  const extraTaskCount = Math.max(0, allTasks.length - shownTaskCount)
 
   const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty
   const loadingFlow = loadingProperty || loadingMortgage || loadingLoans || loadingInsurance || loadingTx

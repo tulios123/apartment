@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Task } from '../../types'
-import { visibleHomeTasks } from '../homeTasks'
+import { visibleHomeTasks, sortedHomeTasks } from '../homeTasks'
 
 function task(p: Partial<Task>): Task {
   return { id: 't', title: '', category: 'כללי', source: 'manual', status: 'open', ...p } as unknown as Task
@@ -42,5 +42,19 @@ describe('visibleHomeTasks', () => {
       task({ id: 'late', due_date: '2026-07-05' }),  // overdue
     ]
     expect(visibleHomeTasks(tasks, TODAY).map(x => x.id)).toEqual(['late', 'soon', 'undated'])
+  })
+})
+
+describe('sortedHomeTasks', () => {
+  it('keeps every task regardless of date, dated (soonest first) ahead of undated', () => {
+    const tasks = [
+      task({ id: 'undated', due_date: null }),
+      task({ id: 'far', due_date: '2026-08-01' }),
+      task({ id: 'soon', due_date: '2026-07-12' }),
+      task({ id: 'late', due_date: '2026-07-05' }),
+    ]
+    // Unlike visibleHomeTasks, the far-future task is NOT dropped — this is the full
+    // list the "+ עוד X משימות" pill expands into.
+    expect(sortedHomeTasks(tasks).map(x => x.id)).toEqual(['late', 'soon', 'far', 'undated'])
   })
 })
