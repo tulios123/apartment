@@ -190,6 +190,22 @@ export default function FeedbackAdmin() {
     loadFeedback()
   }, [])
 
+  // Distinct home-screen identity: the owner wants to "add this to my home screen and work
+  // from it". iOS reads the LIVE document title / apple-web-app-title when you Add to Home
+  // Screen, so on this route we swap them to "ניהול משוב" — the console gets its own icon +
+  // label, separate from the main "ניהול דירה" app. Restored on leave.
+  useEffect(() => {
+    const prevTitle = document.title
+    const meta = document.querySelector('meta[name="apple-mobile-web-app-title"]')
+    const prevMeta = meta?.getAttribute('content') ?? null
+    document.title = 'ניהול משוב'
+    meta?.setAttribute('content', 'ניהול משוב')
+    return () => {
+      document.title = prevTitle
+      if (meta && prevMeta != null) meta.setAttribute('content', prevMeta)
+    }
+  }, [])
+
   // While anything is in motion, poll so the status pill + bot timeline update live in the
   // console — the feedback row is intentionally NOT in realtime (that would leak admin-only
   // columns to clients), so a short poll is how the owner sees "בעבודה → מוכן → פורסם"
