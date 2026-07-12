@@ -10,6 +10,7 @@ import {
   PencilSimple,
   CheckCircle,
   MagnifyingGlass,
+  GitMerge,
   X,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -40,6 +41,7 @@ interface FeedbackRow {
   github_issue_number: number | null
   github_pr_url: string | null
   sent_at: string | null
+  status_updated_at: string | null
   archived_at: string | null
   preview_url: string | null
 }
@@ -82,9 +84,20 @@ function normalizeFeedback(rows: unknown): FeedbackRow[] {
     github_issue_number: (r.github_issue_number as number | null) ?? null,
     github_pr_url: (r.github_pr_url as string | null) ?? null,
     sent_at: (r.sent_at as string | null) ?? null,
+    status_updated_at: (r.status_updated_at as string | null) ?? null,
     archived_at: (r.archived_at as string | null) ?? null,
     preview_url: (r.preview_url as string | null) ?? null,
   }))
+}
+
+// Live "how long has the bot been working" counter. Pure elapsed-duration math (now − a
+// stored timestamp) — NOT calendar-date formatting, so it doesn't touch the date helpers.
+function fmtElapsed(fromIso: string | null): string {
+  if (!fromIso) return ''
+  const secs = Math.max(0, Math.floor((Date.now() - new Date(fromIso).getTime()) / 1000))
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return m > 0 ? `${m}:${String(s).padStart(2, '0')} דק׳` : `${s} שנ׳`
 }
 
 function fmtDate(iso: string): string {
@@ -127,6 +140,12 @@ export default function FeedbackAdmin() {
   const [resolving, setResolving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [pipelineReady, setPipelineReady] = useState(true)
+  const [mergeConfirmId, setMergeConfirmId] = useState<string | null>(null)
+  const [merging, setMerging] = useState(false)
+  // The item whose merge is in flight — keeps the live poll running (awaiting_review isn't
+  // otherwise "active") until claude-fix-merged.yml flips it to 'fixed'.
+  const [mergePendingId, setMergePendingId] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)  // 1 Hz while active — drives the live elapsed counter
 
   // Chat with the client.
   const [messages, setMessages] = useState<FeedbackMsg[]>([])
@@ -149,12 +168,12 @@ export default function FeedbackAdmin() {
 
   async function loadFeedback() {
     const order = { ascending: false } as const
-    const full = 'id, email, note, path, category, context, screenshot_path, screenshot_paths, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, archived_at, preview_url'
+    const full = 'id, email, note, path, category, context, screenshot_path, screenshot_paths, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, status_updated_at, archived_at, preview_url'
     const primary = await supabase.from('feedback').select(full).order('created_at', order)
     if (!primary.error) { setPipelineReady(true); setFeedback(normalizeFeedback(primary.data)); setLoading(false); return }
     // Tier 2: the newest columns (screenshot_paths/043, preview_url/042) aren't live yet —
     // retry without them so the inbox + legacy single screenshots still load fully.
-    const pre042 = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, archived_at'
+    const pre042 = 'id, email, note, path, category, context, screenshot_path, created_at, status, admin_notes, github_issue_number, github_pr_url, sent_at, status_updated_at, archived_at'
     const t2 = await supabase.from('feedback').select(pre042).order('created_at', order)
     if (!t2.error) { setPipelineReady(true); setFeedback(normalizeFeedback(t2.data)); setLoading(false); return }
     // Tier 3: pipeline columns (038/039) not live either — minimal set.
@@ -170,17 +189,36 @@ export default function FeedbackAdmin() {
     loadFeedback()
   }, [])
 
-  // While any item is mid-fix, poll so the status pill + bot timeline update live in the
+  // While anything is in motion, poll so the status pill + bot timeline update live in the
   // console — the feedback row is intentionally NOT in realtime (that would leak admin-only
-  // columns to clients), so a short poll is how the owner sees "בעבודה → מוכן" without
-  // refreshing. Stops the moment nothing is running.
+  // columns to clients), so a short poll is how the owner sees "בעבודה → מוכן → פורסם"
+  // without refreshing. Covers a running fix AND a merge in flight. Stops when idle.
   const anyActive = feedback.some(f => f.status === 'sent' || f.status === 'in_progress')
+  const pollActive = anyActive || mergePendingId !== null
   useEffect(() => {
-    if (!anyActive) return
-    const t = setInterval(() => { loadFeedback() }, 12000)
+    if (!pollActive) return
+    const t = setInterval(() => { loadFeedback() }, 6000)
     return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anyActive])
+  }, [pollActive])
+
+  // 1 Hz tick so the "running for m:ss" counter on the bot's working step advances live.
+  useEffect(() => {
+    if (!pollActive) return
+    const t = setInterval(() => setTick(x => x + 1), 1000)
+    return () => clearInterval(t)
+  }, [pollActive])
+
+  // Merge landed: once the pending item reaches 'fixed', celebrate + release the poll.
+  useEffect(() => {
+    if (!mergePendingId) return
+    const row = feedback.find(f => f.id === mergePendingId)
+    if (row && row.status === 'fixed') {
+      setMergePendingId(null)
+      showToast('פורסם! 🎉 התיקון עלה לאפליקציה')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedback, mergePendingId])
 
   // Deep-link from a push: /admin/feedback?item=<id> opens that item. Strip the param so a
   // repeat push of the same item re-fires (react-router memoizes searchParams by the query
@@ -381,6 +419,19 @@ export default function FeedbackAdmin() {
     showToast('הוחזר לרשימה הפעילה')
   }
 
+  // One-tap "merge & publish": the edge fn labels the PR → claude-merge.yml merges it →
+  // claude-fix-merged.yml flips the item to 'fixed' and prod auto-deploys. We keep polling
+  // (mergePendingId) until that lands, then celebrate.
+  async function handleMerge(id: string) {
+    setMergeConfirmId(null); setMerging(true)
+    const res = await supabase.functions.invoke('merge-feedback-pr', { body: { feedback_id: id } })
+    setMerging(false)
+    if (res.error) { showToast(await invokeError(res, 'המיזוג נכשל — נסו שוב')); return }
+    setMergePendingId(id)
+    showToast('נשלח למיזוג — האתר יתעדכן בעוד רגע')
+    loadThread(id).then(setMessages).catch(() => {})
+  }
+
   async function sendReply() {
     const body = replyDraft.trim()
     if (!body || !user || !selected) return
@@ -530,16 +581,23 @@ export default function FeedbackAdmin() {
                   </div>
                 </li>
               )}
-              {f.status === 'in_progress' && (
+              {(f.status === 'sent' || f.status === 'in_progress') && (
                 <li className="active">
                   <span className="fbadmin-tl-dot" />
-                  <div><b>הבוט עובד על התיקון…</b></div>
+                  <div>
+                    <b>הבוט עובד על התיקון<span className="fbadmin-working" aria-hidden="true"><i /><i /><i /></span></b>
+                    <span className="fbadmin-tl-when">
+                      {`רץ כבר ${fmtElapsed(f.status_updated_at ?? f.sent_at)}`}
+                      {/* tick keeps this line re-rendering every second */}
+                      <span hidden>{tick}</span>
+                    </span>
+                  </div>
                 </li>
               )}
               {f.status === 'awaiting_review' && (
                 <li className="active">
                   <span className="fbadmin-tl-dot" />
-                  <div><b>התיקון מוכן — בדוק ואשר</b><span className="fbadmin-tl-when">בדוק באפליקציה שהתקלה נפתרה, ואז מזג את בקשת-המיזוג</span></div>
+                  <div><b>התיקון מוכן — בדוק ואשר</b><span className="fbadmin-tl-when">בדוק שהתקלה נפתרה, ואז "מזג ופרסם" — והתיקון עולה לאפליקציה</span></div>
                 </li>
               )}
               {f.status === 'fixed' && (
@@ -606,6 +664,19 @@ export default function FeedbackAdmin() {
               <a className="fbadmin-btn preview" href={f.preview_url} target="_blank" rel="noreferrer">
                 <MagnifyingGlass size={16} weight="bold" /> בדוק את התיקון (לפני מיזוג)
               </a>
+            )}
+
+            {/* One-tap merge & publish — no GitHub visit. Only for a fix that's up for
+                review with an open PR. On success prod redeploys and the item flips to תוקן. */}
+            {f.github_pr_url && f.status === 'awaiting_review' && !archived && (
+              <button
+                className="fbadmin-btn merge"
+                disabled={merging || mergePendingId === f.id}
+                onClick={() => setMergeConfirmId(f.id)}
+              >
+                <GitMerge size={16} weight="bold" />
+                {mergePendingId === f.id ? 'ממזג ומפרסם…' : 'מזג ופרסם'}
+              </button>
             )}
 
             <div className="fbadmin-detail-actions">
@@ -675,6 +746,14 @@ export default function FeedbackAdmin() {
           confirmLabel="שלח"
           onConfirm={() => sendConfirmId && sendToClaude(sendConfirmId)}
           onCancel={() => setSendConfirmId(null)}
+        />
+        <ConfirmDialog
+          open={mergeConfirmId !== null}
+          title="למזג ולפרסם?"
+          message="התיקון ימוזג ויעלה לאפליקציה החיה תוך כדקה-שתיים. מומלץ לבדוק אותו בתצוגה המקדימה קודם."
+          confirmLabel="מזג ופרסם"
+          onConfirm={() => mergeConfirmId && handleMerge(mergeConfirmId)}
+          onCancel={() => setMergeConfirmId(null)}
         />
         <ConfirmDialog
           open={resolveConfirmId !== null}

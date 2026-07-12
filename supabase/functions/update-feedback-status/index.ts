@@ -39,7 +39,19 @@ Deno.serve(async (req) => {
     if (typeof github_issue_number !== 'number' || !Number.isInteger(github_issue_number)) {
       return json({ error: 'github_issue_number (int) required' }, 400)
     }
-    if (typeof status !== 'string' || !ALLOWED_STATUS.has(status)) {
+    if (bot_message !== undefined && typeof bot_message !== 'string') {
+      return json({ error: 'bot_message must be a string' }, 400)
+    }
+    // What the bot actually said (a clarifying question, a failure reason, a fix summary) —
+    // shown verbatim in the admin console's "מול הבוט" thread, not just the generic status
+    // pill. Capped so a runaway comment can't blow up the chat bubble.
+    const botMessage = typeof bot_message === 'string' ? bot_message.trim().slice(0, 4000) : ''
+    // Progress heartbeat: a bot_message with NO status just drops a live "what I'm doing
+    // now" note into the thread (realtime, admin-only channel) — no status change, no push.
+    // This lets the long workflow narrate its steps so the console feels alive instead of a
+    // frozen spinner. The status path below is unchanged.
+    const isHeartbeat = (status === undefined || status === null) && botMessage !== ''
+    if (!isHeartbeat && (typeof status !== 'string' || !ALLOWED_STATUS.has(status))) {
       return json({ error: 'invalid status' }, 400)
     }
     if (pr_url !== undefined && typeof pr_url !== 'string') {
@@ -48,18 +60,25 @@ Deno.serve(async (req) => {
     if (preview_url !== undefined && typeof preview_url !== 'string') {
       return json({ error: 'preview_url must be a string' }, 400)
     }
-    if (bot_message !== undefined && typeof bot_message !== 'string') {
-      return json({ error: 'bot_message must be a string' }, 400)
-    }
-    // What the bot actually said (a clarifying question, a failure reason, a fix summary) —
-    // shown verbatim in the admin console's "מול הבוט" thread, not just the generic status
-    // pill. Capped so a runaway comment can't blow up the chat bubble.
-    const botMessage = typeof bot_message === 'string' ? bot_message.trim().slice(0, 4000) : ''
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
+
+    // Heartbeat path — just append the live progress note and return; no row mutation.
+    if (isHeartbeat) {
+      const { data: row } = await supabase
+        .from('feedback').select('id').eq('github_issue_number', github_issue_number).single()
+      if (!row) return json({ error: 'no feedback row for that issue number' }, 404)
+      try {
+        await supabase.from('feedback_messages')
+          .insert({ feedback_id: row.id, author: 'bot', channel: 'bot', body: botMessage })
+      } catch (e) {
+        console.error('heartbeat insert (non-fatal):', e)
+      }
+      return json({ ok: true, heartbeat: true })
+    }
 
     // Only these two columns can ever be written here — nothing else is reachable.
     const patch: { status: string; status_updated_at: string; github_pr_url?: string; preview_url?: string } = {

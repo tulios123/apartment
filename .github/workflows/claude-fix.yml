@@ -75,6 +75,16 @@ jobs:
             --jq '.comments[] | "--- \(.author.login) ---\n\(.body)\n"' > "$RUNNER_TEMP/comments.txt" || true
           echo "path=$RUNNER_TEMP/comments.txt" >> "$GITHUB_OUTPUT"
 
+      # 2c) Live heartbeat → the console. The next step (Run Claude) is one long opaque
+      #     block; a bot-channel note here arrives instantly via realtime so the owner sees
+      #     the bot start working instead of a frozen "בעבודה" spinner.
+      - name: Heartbeat — analyzing
+        run: |
+          curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"bot_message\": \"🔎 קורא את הדיווח, הצילומים וההנחיות — מאתר את מקור הבעיה בקוד ומתחיל לתקן…\"}" || true
+
       # 3) Run Claude Code to fix the bug and open a PR (Opus 4.8 — the owner's most
       #    important system; worth the strongest model for hard fixes + good back-and-forth).
       - name: Run Claude
@@ -132,6 +142,16 @@ jobs:
       #     URL (https://claude-fix-<issue>.<project-subdomain>.pages.dev) is captured from
       #     wrangler's output and reported to the console. Best-effort (continue-on-error):
       #     a preview hiccup must never mark a good fix as failed.
+      # 3a) Heartbeat before the (slow) preview build, so the console shows the fix is done
+      #     and a testable preview is on the way — not silence between "עובד" and "מוכן".
+      - name: Heartbeat — building preview
+        if: success()
+        run: |
+          curl -sf -X POST "$FUNCTIONS_URL/update-feedback-status" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"bot_message\": \"🔨 סיימתי לתקן — בונה תצוגה מקדימה שתוכל לבדוק לפני המיזוג…\"}" || true
+
       - name: Deploy preview
         if: success()
         continue-on-error: true
