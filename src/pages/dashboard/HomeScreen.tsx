@@ -174,6 +174,11 @@ export default function HomeScreen() {
   // reveals them all in place rather than leaving any stranded off the home.
   const shownTaskCount = actions.filter(a => a.kind === 'task').length
   const extraTaskCount = Math.max(0, allTasks.length - shownTaskCount)
+  // How many tasks the *collapsed* view shows (capped at 2). Expanding beyond this
+  // is what the "הצג פחות" collapse undoes — so offer it whenever expanding revealed
+  // more than the collapsed view would (e.g. a lone future-dated task, where the
+  // collapsed view holds back everything and shows 0).
+  const collapsedTaskCount = Math.min(collapsedTasks.length, 2)
 
   const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty
   const loadingFlow = loadingProperty || loadingMortgage || loadingLoans || loadingInsurance || loadingTx
@@ -382,7 +387,7 @@ export default function HomeScreen() {
               <button className="hs-more-tasks" onClick={() => setTasksExpanded(true)}>
                 + עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}
               </button>
-            ) : tasksExpanded && shownTaskCount > 2 ? (
+            ) : tasksExpanded && shownTaskCount > collapsedTaskCount ? (
               <button className="hs-more-tasks collapse" onClick={() => setTasksExpanded(false)}>
                 הצג פחות <CaretUp size={13} weight="bold" />
               </button>

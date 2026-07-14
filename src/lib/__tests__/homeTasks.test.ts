@@ -57,4 +57,13 @@ describe('sortedHomeTasks', () => {
     // list the "+ עוד X משימות" pill expands into.
     expect(sortedHomeTasks(tasks).map(x => x.id)).toEqual(['late', 'soon', 'far', 'undated'])
   })
+
+  it('keeps a lone week-away task the collapsed view hides (owner: "task disappeared")', () => {
+    // The reported bug: a single task a week out vanished from the home entirely —
+    // filtered out of the collapsed view AND not counted anywhere. It must still live
+    // in the full list so "+ עוד 1 משימה" surfaces it.
+    const t = task({ id: 'week', due_date: '2026-07-18' }) // 7 days out
+    expect(visibleHomeTasks([t], TODAY)).toEqual([])
+    expect(sortedHomeTasks([t]).map(x => x.id)).toEqual(['week'])
+  })
 })
