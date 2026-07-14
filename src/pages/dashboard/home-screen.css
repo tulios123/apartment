@@ -59,6 +59,8 @@
   .hs-more-tasks.collapse { color: var(--text-muted); font-weight: 500; }
   .hs-more-tasks.collapse svg { opacity: 0.8; }
   .hs-clear-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--success-bg); color: var(--success-text); display: grid; place-items: center; flex-shrink: 0; }
+  /* Held-back scheduled tasks — accent (not success green), so "no tasks today" doesn't read as "all done". */
+  .hs-clear-icon.upcoming { background: var(--accent-light); color: var(--accent); }
   .hs-clear-title { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
   .hs-clear-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
 
