@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Bank, HandCoins, Scales, Plus, X, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
+import { Bank, HandCoins, Scales, Plus, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
 import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
 import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
 import { usePropertyData } from '../../hooks/usePropertyData'
@@ -13,6 +13,7 @@ import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import { formatCurrency, formatNum, monthDayISO } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import BottomSheet from '../../components/ui/BottomSheet'
 import { PageError } from '../../components/ui/EmptyState'
 import { ScanDocList } from './ScanDocList'
 import { ScanReview, type ScanDraft } from './ScanReview'
@@ -447,12 +448,9 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         </>
       )}
 
-      <div className={`liav-scrim ${drawerOpen ? 'open' : ''}`} onClick={closeDrawer} />
-      <aside className={`liav-drawer ${drawerOpen ? 'open' : ''}`}>
-        <div className="liav-drawer-head">
-          <h2>{editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}</h2>
-          <button onClick={closeDrawer} aria-label="סגור"><X size={20} /></button>
-        </div>
+      <BottomSheet open={drawerOpen} onClose={closeDrawer} title={editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}>
+        {/* The sheet portals to <body>, outside the scoped `.liav` — re-wrap so the field CSS applies. */}
+        <div className="liav"><div className="liav-sheet-form">
         {showFill && !editId && (
           <div className="onboarding-fill-top">
             <button type="button" className="onboarding-fill-top-btn" onClick={fillDrawerExample}>מילוי דוגמה</button>
@@ -521,7 +519,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         )}
         {formError && <div className="liav-form-err" role="alert">{formError}</div>}
         <button className="liav-save" disabled={saving} onClick={save}>{saving ? 'שומר…' : 'שמירה'}</button>
-      </aside>
+        </div></div>
+      </BottomSheet>
     </div>
   )
 }

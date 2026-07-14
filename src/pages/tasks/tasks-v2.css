@@ -94,9 +94,9 @@
   .tav-seg { display: flex; gap: 8px; }
   .tav-seg button { flex: 1; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px; border-radius: var(--r-sm); cursor: pointer; transition: all var(--t-fast) var(--ease); }
   .tav-seg button.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
-  .tav-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
-  /* Sticky action bar — always-visible primary button + iOS home-indicator clearance. */
-  .tav-save { position: sticky; bottom: 0; margin: auto -24px -24px; border-radius: 0; padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px)); }
+  /* Edit form inside the BottomSheet (portals to <body>; re-wrapped in .tav). */
+  .tav-sheet-form { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+  .tav-save { width: 100%; margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
   .tav-save:hover { background: var(--accent-hover); }
   .tav-save:active { transform: scale(0.98); }
   .tav-save:disabled { opacity: 0.5; cursor: default; }

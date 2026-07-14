@@ -19,6 +19,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import type { Transaction } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import BottomSheet from '../../components/ui/BottomSheet'
 import { PageError, EmptyState } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './finances-v2.css'
@@ -98,25 +99,7 @@ export default function FinancesV2() {
     flashTimer.current = setTimeout(() => setFlash(null), 2200)
   }
 
-  // Swipe the edit drawer back toward its left edge to dismiss it.
-  const swipe = useRef<{ x: number; y: number; horiz: boolean } | null>(null)
-  const [drawerDx, setDrawerDx] = useState(0)
-  function drawerTouchStart(e: ReactTouchEvent) { swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, horiz: false } }
-  function drawerTouchMove(e: ReactTouchEvent) {
-    const s = swipe.current; if (!s) return
-    const dx = e.touches[0].clientX - s.x, dy = e.touches[0].clientY - s.y
-    if (!s.horiz) {
-      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.4) s.horiz = true
-      else if (Math.abs(dy) > 12) { swipe.current = null; return }
-      else return
-    }
-    if (dx < 0) setDrawerDx(Math.max(dx, -window.innerWidth))
-  }
-  function drawerTouchEnd() {
-    const s = swipe.current; swipe.current = null
-    if (s && drawerDx < -70) setDrawerOpen(false)
-    setDrawerDx(0)
-  }
+  // (Edit dismissal is handled by the BottomSheet — swipe-down + scrim tap.)
 
   // Open the form pre-filled when navigated here with a prefill (e.g. from a
   // completed repair/rent task). Clear the history state so it fires only once.
@@ -608,11 +591,9 @@ export default function FinancesV2() {
         )
       })()}
 
-      <div className={`finv-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
-      <aside className={`finv-drawer ${drawerOpen ? 'open' : ''}`}
-        onTouchStart={drawerTouchStart} onTouchMove={drawerTouchMove} onTouchEnd={drawerTouchEnd}
-        style={drawerDx ? { transform: `translateX(${drawerDx}px)`, transition: 'none' } : undefined}>
-        <div className="finv-drawer-head"><h2>{editingId ? 'עריכת תנועה' : 'תנועה חדשה'}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
+      <BottomSheet open={drawerOpen} onClose={() => setDrawerOpen(false)} title={editingId ? 'עריכת תנועה' : 'תנועה חדשה'}>
+        {/* The sheet portals to <body>, outside the scoped `.finv` — re-wrap so the field CSS applies. */}
+        <div className="finv"><div className="finv-sheet-form">
         <div className="finv-seg">
           <button className={form.direction === 'expense' ? 'on' : ''} onClick={() => setDir('expense')}>הוצאה</button>
           <button className={form.direction === 'income' ? 'on' : ''} onClick={() => setDir('income')}>הכנסה</button>
@@ -637,7 +618,8 @@ export default function FinancesV2() {
         )}
         {formError && <div className="finv-form-err" role="alert">{formError}</div>}
         <button className="finv-save" disabled={saving} onClick={submitForm}>{saving ? 'שומר…' : 'שמירת תנועה'}</button>
-      </aside>
+        </div></div>
+      </BottomSheet>
     </div>
   )
 }

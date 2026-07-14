@@ -156,9 +156,9 @@
   .finv-field span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
   .finv-field input, .finv-field select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 12px; border-radius: var(--r-sm); outline: none; transition: border-color var(--t-base), box-shadow var(--t-base); }
   .finv-field input:focus, .finv-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
-  .finv-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
-  /* Sticky action bar — always-visible primary button + iOS home-indicator clearance. */
-  .finv-save { position: sticky; bottom: 0; margin: auto -24px -24px; border-radius: 0; padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px)); }
+  /* Edit form inside the BottomSheet (portals to <body>; re-wrapped in .finv). */
+  .finv-sheet-form { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+  .finv-save { width: 100%; margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
   .finv-save:hover { background: var(--accent-hover); }
   .finv-save:active { transform: scale(0.98); }
   .finv-save:disabled { opacity: 0.5; cursor: default; }
