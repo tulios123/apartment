@@ -4,8 +4,6 @@ import {
   ArrowRight,
   Camera,
   PaperPlaneTilt,
-  ArrowSquareOut,
-  GithubLogo,
   Trash,
   PencilSimple,
   CheckCircle,
@@ -152,6 +150,9 @@ export default function FeedbackAdmin() {
   const [messages, setMessages] = useState<FeedbackMsg[]>([])
   const [replyDraft, setReplyDraft] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
+  // The client follow-up chat is reference material (the bot workspace comes first), so its
+  // history starts collapsed per item and expands on demand.
+  const [showClientHistory, setShowClientHistory] = useState(false)
   // Chat with the bot.
   const [botDraft, setBotDraft] = useState('')
   const [sendingBot, setSendingBot] = useState(false)
@@ -282,6 +283,7 @@ export default function FeedbackAdmin() {
     setAdminDraft(selected?.admin_notes ?? '')
     setReplyDraft('')
     setBotDraft('')
+    setShowClientHistory(false)
   }, [selected?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load + live-subscribe the client chat thread for the open item. Refetch on focus as a
@@ -513,7 +515,7 @@ export default function FeedbackAdmin() {
 
         <div className="fbadmin-detail">
           {/* ── מול הלקוח — report + two-way chat ── */}
-          <section className="fbadmin-channel">
+          <section className="fbadmin-channel fbadmin-sec-client">
             <h3 className="fbadmin-channel-h">מול הלקוח</h3>
             <div className="fbadmin-report-meta">
               {(f.path || f.context) && <span>{screenLabel(f.path)}{f.context ? ` · ${f.context}` : ''}</span>}
@@ -558,7 +560,12 @@ export default function FeedbackAdmin() {
                 </div>
               </div>
 
-              {humanMsgs.map(m => (
+              {humanMsgs.length > 0 && !showClientHistory && (
+                <button type="button" className="fbadmin-thread-expand" onClick={() => setShowClientHistory(true)}>
+                  הצג שיחה מלאה ({humanMsgs.length})
+                </button>
+              )}
+              {showClientHistory && humanMsgs.map(m => (
                 m.author === 'system' ? (
                   <div key={m.id} className="fbadmin-msg-system">{m.body}</div>
                 ) : (
@@ -588,7 +595,7 @@ export default function FeedbackAdmin() {
           </section>
 
           {/* ── מול הבוט — the fix pipeline ── */}
-          <section className="fbadmin-channel">
+          <section className="fbadmin-channel fbadmin-sec-bot">
             <h3 className="fbadmin-channel-h">מול הבוט</h3>
             <ol className="fbadmin-timeline">
               <li className="done">
@@ -601,7 +608,6 @@ export default function FeedbackAdmin() {
                   <div>
                     <b>נשלח לבוט</b>
                     {f.sent_at && <span className="fbadmin-tl-when">{fmtDateTime(f.sent_at)}</span>}
-                    {f.github_issue_number != null && <span className="fbadmin-tl-when">תקלה #{f.github_issue_number}</span>}
                   </div>
                 </li>
               )}
@@ -621,19 +627,32 @@ export default function FeedbackAdmin() {
               {f.status === 'in_staging' && (
                 <li className="active">
                   <span className="fbadmin-tl-dot" />
-                  <div><b>מוכן בסביבת־הבדיקות</b><span className="fbadmin-tl-when">בדוק שהתקלה נפתרה ב־staging, ואז "פרסם לכולם" — והתיקון עולה לכולם</span></div>
+                  <div>
+                    <b>מוכן בסביבת־הבדיקות</b>
+                    <span className="fbadmin-tl-when">בדוק שהתקלה נפתרה, ואז "פרסם לכולם" (ברשימה) — והתיקון עולה לכולם</span>
+                    {!archived && (
+                      <a
+                        className="fbadmin-btn preview sm"
+                        href={`${STAGING_URL}${f.path && f.path.startsWith('/') ? f.path : '/'}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <MagnifyingGlass size={15} weight="bold" /> פתח בסביבת-הבדיקות
+                      </a>
+                    )}
+                  </div>
                 </li>
               )}
               {f.status === 'awaiting_review' && (
                 <li className="failed">
                   <span className="fbadmin-tl-dot" />
-                  <div><b>דורש טיפול</b><span className="fbadmin-tl-when">המיזוג ל־staging לא עבר (התנגשות/בדיקה) — אפשר לחדד ולשלוח שוב, או לבדוק בגיטהאב</span></div>
+                  <div><b>דורש טיפול</b><span className="fbadmin-tl-when">המיזוג ל־staging לא עבר (התנגשות/בדיקה) — אפשר לחדד ולשלוח שוב</span></div>
                 </li>
               )}
               {f.status === 'fixed' && (
                 <li className="done">
                   <span className="fbadmin-tl-dot" />
-                  <div><b>פורסם לכולם ✓</b></div>
+                  <div><b>פורסם לכולם ✓</b><span className="fbadmin-tl-when">התיקון עלה לכולם. אפשר "סמן כטופל" כדי לסגור מול הלקוח.</span></div>
                 </li>
               )}
               {f.status === 'failed' && (
@@ -658,7 +677,7 @@ export default function FeedbackAdmin() {
             {f.github_issue_number == null ? (
               /* Before the first send: notes that ride along WITH the report to the bot. */
               <>
-                <label className="fbadmin-field-label">הערות שלך לבוט <span>(נשלחות יחד עם התקלה)</span></label>
+                <label className="fbadmin-field-label">הערות ראשוניות לבוט <span>(נשלחות בשליחה הראשונה)</span></label>
                 <textarea
                   className="fbadmin-admin-notes"
                   rows={2}
@@ -687,22 +706,8 @@ export default function FeedbackAdmin() {
               </div>
             ) : null}
 
-            {/* The fix is live in the staging workspace — jump straight to the exact screen to
-                verify it (same origin when you're already on staging; opens staging otherwise).
-                Publishing to everyone is the batch "פרסם לכולם" on the list, in the staging build. */}
-            {f.status === 'in_staging' && !archived && (
-              <a
-                className="fbadmin-btn preview"
-                href={`${STAGING_URL}${f.path && f.path.startsWith('/') ? f.path : '/'}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <MagnifyingGlass size={16} weight="bold" /> פתח בסביבת-הבדיקות
-              </a>
-            )}
-
-            <div className="fbadmin-detail-actions">
-              {canSend && (
+            {canSend && (
+              <div className="fbadmin-detail-actions">
                 <button
                   className="fbadmin-btn primary"
                   disabled={lockedByOther(f.id) || busyId === f.id || !pipelineReady}
@@ -710,20 +715,10 @@ export default function FeedbackAdmin() {
                   onClick={() => setSendConfirmId(f.id)}
                 >
                   <PaperPlaneTilt size={15} weight="fill" />
-                  {busyId === f.id ? 'שולח…' : resendAfterReview ? 'לא נפתר — שלח שוב לבוט' : 'שלח לבוט לתיקון'}
+                  {busyId === f.id ? 'שולח…' : resendAfterReview ? 'שלח שוב לבוט' : 'שלח לבוט לתיקון'}
                 </button>
-              )}
-              {f.github_pr_url && (
-                <a className="fbadmin-btn ghost" href={f.github_pr_url} target="_blank" rel="noreferrer">
-                  <ArrowSquareOut size={15} /> בקשת-מיזוג
-                </a>
-              )}
-              {f.github_issue_number != null && (
-                <a className="fbadmin-btn ghost" href={`https://github.com/tulios123/apartment/issues/${f.github_issue_number}`} target="_blank" rel="noreferrer">
-                  <GithubLogo size={15} /> תקלה #{f.github_issue_number}
-                </a>
-              )}
-            </div>
+              </div>
+            )}
           </section>
 
           {/* ── Resolve / reopen ── */}
@@ -875,8 +870,6 @@ export default function FeedbackAdmin() {
               <p className="fbadmin-card-note">{f.note}</p>
               <div className="fbadmin-card-meta">
                 {shotPathsOf(f).length > 0 && <span className="fbadmin-card-shot"><Camera size={12} weight="duotone" /> {shotPathsOf(f).length > 1 ? `${shotPathsOf(f).length} צילומים` : 'צילום'}</span>}
-                {f.status === 'in_staging' && !f.archived_at && <span className="fbadmin-card-flag"><CheckCircle size={12} weight="fill" /> מוכן לבדיקה</span>}
-                {f.status === 'awaiting_review' && !f.archived_at && <span className="fbadmin-card-flag warn"><CheckCircle size={12} weight="fill" /> דורש טיפול</span>}
                 <span className="fbadmin-card-email">{f.email ?? '—'}</span>
               </div>
             </button>

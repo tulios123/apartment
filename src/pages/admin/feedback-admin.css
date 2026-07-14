@@ -460,6 +460,29 @@
 /* "Test the fix before merging" — prominent, distinct from primary/success/danger */
 .fbadmin-btn.preview { width: 100%; justify-content: center; background: #6b4fd0; color: #fff; text-decoration: none; margin-bottom: 4px; }
 .fbadmin-btn.preview:hover { background: #5b40c0; }
+/* Small inline variant — the staging link sits INSIDE the "מוכן בבדיקות" timeline step. */
+.fbadmin-btn.preview.sm { width: auto; align-self: flex-start; padding: 6px 12px; font-size: 13px; margin: 6px 0 0; }
+
+/* Detail section order: the bot workspace comes FIRST, the client reference below it
+   (visual order via flex `order`; DOM order is unchanged). */
+.fbadmin-detail .fbadmin-sec-bot { order: 1; }
+.fbadmin-detail .fbadmin-sec-client { order: 2; }
+.fbadmin-detail .fbadmin-resolve,
+.fbadmin-detail .fbadmin-reopen { order: 3; }
+.fbadmin-detail .fbadmin-footer-actions { order: 4; }
+
+/* Collapsed client-chat expander — the follow-up history starts folded. */
+.fbadmin-thread-expand {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--accent, #2a7de1);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 2px;
+}
 
 /* Promote area — "publish everything in staging to everyone", only in the staging build. */
 .fbadmin-promote {
@@ -478,6 +501,11 @@
 .fbadmin-btn.promote { flex-shrink: 0; background: var(--success-text, #1fa871); color: #fff; }
 .fbadmin-btn.promote:hover { background: #18956b; color: #fff; }
 .fbadmin-btn.promote:disabled { opacity: 0.6; cursor: default; }
+/* On a narrow phone, stack the publish text over a full-width button for thumb reach. */
+@media (max-width: 600px) {
+  .fbadmin-promote { flex-direction: column; align-items: stretch; }
+  .fbadmin-promote .fbadmin-btn.promote { width: 100%; }
+}
 
 /* "Needs attention" card flag (a merge that didn't go through) — warning-toned. */
 .fbadmin-card-flag.warn { color: #a97a00; }
