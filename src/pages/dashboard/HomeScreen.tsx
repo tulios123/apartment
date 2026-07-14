@@ -341,13 +341,31 @@ export default function HomeScreen() {
             {loadingActions ? (
               <Skeleton width="100%" height={78} radius={18} />
             ) : actions.length === 0 ? (
-              <div className="hs-clear">
-                <div className="hs-clear-icon"><CheckCircle size={30} weight="fill" /></div>
-                <div>
-                  <div className="hs-clear-title">הכול מטופל</div>
-                  <div className="hs-clear-sub">הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.</div>
+              // Nothing needs attention now. If scheduled (future-dated) tasks are held
+              // back behind the pill, say so plainly instead of "everything's handled" —
+              // otherwise the reassuring card hides that a task is waiting (owner: "I don't
+              // see it"). The "+ עוד" pill below reveals them.
+              extraTaskCount > 0 ? (
+                <div className="hs-clear">
+                  <div className="hs-clear-icon upcoming"><CalendarCheck size={28} weight="fill" /></div>
+                  <div>
+                    <div className="hs-clear-title">אין משימות להיום</div>
+                    <div className="hs-clear-sub">
+                      {extraTaskCount === 1
+                        ? 'יש משימה מתוזמנת לימים הקרובים — אפשר להציג אותה למטה.'
+                        : `יש ${extraTaskCount} משימות מתוזמנות לימים הקרובים — אפשר להציג אותן למטה.`}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="hs-clear">
+                  <div className="hs-clear-icon"><CheckCircle size={30} weight="fill" /></div>
+                  <div>
+                    <div className="hs-clear-title">הכול מטופל</div>
+                    <div className="hs-clear-sub">הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.</div>
+                  </div>
+                </div>
+              )
             ) : (
               actions.map(a => {
                 const isBusy = busy === a.id
@@ -385,7 +403,13 @@ export default function HomeScreen() {
             )}
             {extraTaskCount > 0 ? (
               <button className="hs-more-tasks" onClick={() => setTasksExpanded(true)}>
-                + עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}
+                {shownTaskCount === 0 ? (
+                  // Nothing is shown yet (all tasks are future-dated) — "+ עוד" ("+ more")
+                  // would read oddly, so name the scheduled tasks the tap reveals.
+                  <>הצג {extraTaskCount === 1 ? 'משימה מתוזמנת' : `${extraTaskCount} משימות מתוזמנות`} <CaretDown size={13} weight="bold" /></>
+                ) : (
+                  <>+ עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}</>
+                )}
               </button>
             ) : tasksExpanded && shownTaskCount > collapsedTaskCount ? (
               <button className="hs-more-tasks collapse" onClick={() => setTasksExpanded(false)}>
