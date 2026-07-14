@@ -1,6 +1,9 @@
 import React, { useState, useRef, useMemo } from 'react'
-import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, X, Plus, Eye, Trash, UploadSimple, PencilSimple, FolderOpen, Certificate, CheckCircle, Circle } from '@phosphor-icons/react'
+import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, X, Plus, Eye, Trash, UploadSimple, PencilSimple, FolderOpen, Certificate, CheckCircle } from '@phosphor-icons/react'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
+import { usePropertyData } from '../../hooks/usePropertyData'
+import { useMortgageData } from '../../hooks/useMortgageData'
+import { useLoansData } from '../../hooks/useLoansData'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/format'
@@ -24,8 +27,8 @@ const DOC_TYPE_LABELS: Record<DocumentType, string> = {
 
 const DOC_TYPES = Object.entries(DOC_TYPE_LABELS) as [DocumentType, string][]
 
-// Display order for grouped sections
-const TYPE_ORDER: DocumentType[] = ['purchase_contract', 'tabu_extract', 'rental_contract', 'mortgage_statement', 'loan_statement', 'insurance_policy', 'receipt', 'invoice', 'property_photos', 'other']
+// Open-ended piles (naturally many, optional) — shown as small folders, not expected "slots".
+const COLLECTIONS: DocumentType[] = ['receipt', 'invoice', 'property_photos', 'other']
 
 const TYPE_TONE: Record<DocumentType, string> = {
   purchase_contract: 'blue', tabu_extract: 'blue', rental_contract: 'teal', insurance_policy: 'purple',
@@ -38,6 +41,12 @@ const emptyForm = { type: 'other' as DocumentType, name: '', date: '' }
 export default function DocumentsV2({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth()
   const { documents, loading, error, refetch } = useDocuments()
+  // The property's real situation drives which key documents are EXPECTED — so we only ask
+  // for what actually applies (a rental contract only if it's rented, a mortgage doc only if
+  // there's a mortgage, etc.). That's the "it knows what you haven't uploaded" part.
+  const { contracts } = usePropertyData()
+  const { mortgage, tracks } = useMortgageData()
+  const { loans } = useLoansData()
   const [filter, setFilter] = useState<DocumentType | 'all'>('all')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -49,12 +58,26 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const groups = useMemo(() => {
-    const shown = filter === 'all' ? documents : documents.filter(d => d.type === filter)
-    return TYPE_ORDER
-      .map(type => ({ type, docs: shown.filter(d => d.type === type) }))
-      .filter(g => g.docs.length > 0)
-  }, [documents, filter])
+  // The KEY documents a property owner should have on file. Universal ones always show; the
+  // contextual ones appear only when the property actually has that thing.
+  const keySlots = useMemo<DocumentType[]>(() => {
+    const slots: DocumentType[] = ['tabu_extract', 'purchase_contract']
+    if (contracts.length > 0) slots.push('rental_contract')
+    if (mortgage != null || tracks.length > 0) slots.push('mortgage_statement')
+    if (loans.length > 0) slots.push('loan_statement')
+    slots.push('insurance_policy')
+    return slots
+  }, [contracts.length, mortgage, tracks.length, loans.length])
+
+  const filledCount = useMemo(
+    () => keySlots.filter(t => documents.some(d => d.type === t)).length,
+    [keySlots, documents],
+  )
+
+  const filteredDocs = useMemo(
+    () => (filter === 'all' ? [] : documents.filter(d => d.type === filter)),
+    [documents, filter],
+  )
 
   function openNew(type: DocumentType = emptyForm.type) { setForm({ ...emptyForm, type }); setFile(null); setEditingId(null); setFormError(null); setDrawerOpen(true) }
   function openEdit(doc: { id: string; type: DocumentType; name: string; date: string | null }) {
@@ -109,9 +132,12 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
     }
   }
 
-  function handleChecklistClick(type: DocumentType, present: boolean) {
-    if (present) setFilter(type)
-    else openNew(type)
+  // Tap a slot: empty → upload for that type; one doc → open it; several → browse them.
+  function openSlot(type: DocumentType) {
+    const docs = documents.filter(d => d.type === type)
+    if (docs.length === 0) { openNew(type); return }
+    if (docs.length === 1) { handleView(docs[0].storage_path); return }
+    setFilter(type)
   }
 
   return (
@@ -122,71 +148,103 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       {error && <div className="form-error" role="alert">{error}</div>}
       {actionErr && <div className="form-error" role="alert">{actionErr}</div>}
 
-      {!loading && (
-        <section className="docv-checklist" aria-label="סוגי מסמכים">
-          <button
-            type="button"
-            className={`docv-checklist-item all ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            הכול
-          </button>
-          {TYPE_ORDER.map(type => {
-            const present = documents.some(d => d.type === type)
-            return (
-              <button
-                key={type}
-                type="button"
-                className={`docv-checklist-item ${present ? 'done' : 'missing'} ${filter === type ? 'active' : ''}`}
-                onClick={() => handleChecklistClick(type, present)}
-              >
-                {present ? <CheckCircle size={17} weight="fill" /> : <Circle size={17} />}
-                {DOC_TYPE_LABELS[type]}
-              </button>
-            )
-          })}
-        </section>
-      )}
-
-      {!loading && documents.length === 0 && (
-        <div className="docv-empty">
-          <div className="empty-flat-icon"><FolderOpen size={30} weight="duotone" /></div>
-          <p>עדיין לא הועלו מסמכים</p>
-          <button className="docv-empty-btn" onClick={() => openNew()}><UploadSimple size={17} weight="bold" /> העלה מסמך</button>
-        </div>
-      )}
-
-      {!loading && documents.length > 0 && (
+      {!loading && filter === 'all' && (
         <>
-          {groups.map(({ type, docs }) => (
-            <section key={type} className="docv-group">
-              <div className="docv-group-head"><h2>{DOC_TYPE_LABELS[type]}</h2><span>{docs.length}</span></div>
-              <div className="docv-grid">
-                {docs.map(doc => (
-                  <div key={doc.id} className="docv-card">
-                    <div className={`docv-icon ${TYPE_TONE[doc.type]}`} onClick={() => handleView(doc.storage_path)} style={{ cursor: 'pointer' }}>{docIcon(doc.type)}</div>
-                    <div className="docv-info" onClick={() => handleView(doc.storage_path)} style={{ cursor: 'pointer' }}>
-                      <div className="docv-name">{doc.name}</div>
-                      {doc.date && <div className="docv-date">{formatDate(doc.date)}</div>}
-                    </div>
-                    {confirmDeleteId === doc.id ? (
-                      <span className="docv-confirm">
-                        <button className="docv-confirm-yes" onClick={() => handleDelete(doc.id, doc.storage_path)}>מחק</button>
-                        <button className="docv-confirm-no" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
-                      </span>
-                    ) : (
-                      <div className="docv-actions">
-                        <button className="docv-icon-btn" onClick={() => handleView(doc.storage_path)} aria-label="פתח"><Eye size={16} /></button>
-                        <button className="docv-icon-btn" onClick={() => openEdit(doc)} aria-label="שנה שם"><PencilSimple size={16} /></button>
-                        <button className="docv-icon-btn danger" onClick={() => setConfirmDeleteId(doc.id)} aria-label="מחק"><Trash size={16} /></button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
+          {/* ── Key document slots — the file every owner should complete ── */}
+          <section className="docv-slots" aria-label="מסמכי הנכס">
+            <div className="docv-section-head">
+              <h2>מסמכי הנכס</h2>
+              <span className="docv-progress">{filledCount}/{keySlots.length}</span>
+            </div>
+            <div className="docv-slots-grid">
+              {keySlots.map(type => {
+                const n = documents.filter(d => d.type === type).length
+                const filled = n > 0
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`docv-slot ${filled ? 'filled' : 'empty'} ${TYPE_TONE[type]}`}
+                    onClick={() => openSlot(type)}
+                  >
+                    <span className="docv-slot-icon">{docIcon(type)}</span>
+                    <span className="docv-slot-body">
+                      <span className="docv-slot-label">{DOC_TYPE_LABELS[type]}</span>
+                      <span className="docv-slot-status">{filled ? (n > 1 ? `${n} מסמכים` : 'קיים') : 'חסר — העלה'}</span>
+                    </span>
+                    <span className="docv-slot-badge">
+                      {filled ? <CheckCircle size={18} weight="fill" /> : <UploadSimple size={15} weight="bold" />}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* ── Collections — open-ended piles ── */}
+          <section className="docv-collections" aria-label="אוספים">
+            <div className="docv-section-head"><h2>אוספים</h2></div>
+            <div className="docv-coll-row">
+              {COLLECTIONS.map(type => {
+                const n = documents.filter(d => d.type === type).length
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    className="docv-coll"
+                    onClick={() => (n > 0 ? setFilter(type) : openNew(type))}
+                  >
+                    <span className={`docv-coll-icon ${TYPE_TONE[type]}`}>{docIcon(type)}</span>
+                    <span className="docv-coll-label">{DOC_TYPE_LABELS[type]}</span>
+                    <span className="docv-coll-n">{n > 0 ? n : '+'}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
         </>
+      )}
+
+      {/* ── Browse one type's documents (after tapping a slot/collection) ── */}
+      {!loading && filter !== 'all' && (
+        <section className="docv-group">
+          <div className="docv-group-head">
+            <button type="button" className="docv-back" onClick={() => setFilter('all')}>← כל המסמכים</button>
+            <h2>{DOC_TYPE_LABELS[filter]}</h2>
+            <span>{filteredDocs.length}</span>
+          </div>
+          {filteredDocs.length === 0 ? (
+            <div className="docv-empty">
+              <div className="empty-flat-icon"><FolderOpen size={30} weight="duotone" /></div>
+              <p>אין עדיין {DOC_TYPE_LABELS[filter]}</p>
+              <button className="docv-empty-btn" onClick={() => openNew(filter)}><UploadSimple size={17} weight="bold" /> העלה</button>
+            </div>
+          ) : (
+            <div className="docv-grid">
+              {filteredDocs.map(doc => (
+                <div key={doc.id} className="docv-card">
+                  <div className={`docv-icon ${TYPE_TONE[doc.type]}`} onClick={() => handleView(doc.storage_path)} style={{ cursor: 'pointer' }}>{docIcon(doc.type)}</div>
+                  <div className="docv-info" onClick={() => handleView(doc.storage_path)} style={{ cursor: 'pointer' }}>
+                    <div className="docv-name">{doc.name}</div>
+                    {doc.date && <div className="docv-date">{formatDate(doc.date)}</div>}
+                  </div>
+                  {confirmDeleteId === doc.id ? (
+                    <span className="docv-confirm">
+                      <button className="docv-confirm-yes" onClick={() => handleDelete(doc.id, doc.storage_path)}>מחק</button>
+                      <button className="docv-confirm-no" onClick={() => setConfirmDeleteId(null)}>ביטול</button>
+                    </span>
+                  ) : (
+                    <div className="docv-actions">
+                      <button className="docv-icon-btn" onClick={() => handleView(doc.storage_path)} aria-label="פתח"><Eye size={16} /></button>
+                      <button className="docv-icon-btn" onClick={() => openEdit(doc)} aria-label="שנה שם"><PencilSimple size={16} /></button>
+                      <button className="docv-icon-btn danger" onClick={() => setConfirmDeleteId(doc.id)} aria-label="מחק"><Trash size={16} /></button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       <button className="docv-fab" onClick={() => openNew()} aria-label="מסמך חדש"><Plus size={26} weight="bold" /></button>

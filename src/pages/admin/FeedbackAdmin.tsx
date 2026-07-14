@@ -844,11 +844,15 @@ export default function FeedbackAdmin() {
 
       {/* Promote area — publishing to everyone belongs where verification happens: the staging
           build. Shows only when there's something in staging to publish. */}
-      {isStaging && stagingReady.length > 0 && (
+      {isStaging && (
         <div className="fbadmin-promote">
           <div className="fbadmin-promote-txt">
-            <b>{stagingReady.length === 1 ? 'תיקון אחד מוכן לפרסום' : `${stagingReady.length} תיקונים מוכנים לפרסום`}</b>
-            <span>בדוק שהכול תקין כאן ב־staging, ואז פרסם לכל המשתמשים</span>
+            <b>{stagingReady.length === 0
+              ? 'פרסום לכל המשתמשים'
+              : stagingReady.length === 1 ? 'תיקון אחד מוכן לפרסום' : `${stagingReady.length} תיקונים מוכנים לפרסום`}</b>
+            <span>{stagingReady.length === 0
+              ? 'כל מה שנבדק כאן ב־staging (כולל שינויים חדשים) יעלה לאפליקציה החיה'
+              : 'בדוק שהכול תקין כאן ב־staging, ואז פרסם לכל המשתמשים'}</span>
           </div>
           <button
             className="fbadmin-btn promote"
@@ -918,7 +922,9 @@ export default function FeedbackAdmin() {
       <ConfirmDialog
         open={promoteConfirm}
         title="לפרסם לכולם?"
-        message={`התיקונים הבאים יעלו לאפליקציה החיה לכל המשתמשים תוך כדקה-שתיים:\n\n${stagingReady.map(f => `• ${f.note.split('\n')[0].slice(0, 60)}`).join('\n')}`}
+        message={stagingReady.length === 0
+          ? 'כל השינויים שנבדקו כאן ב־staging יעלו לאפליקציה החיה לכל המשתמשים תוך כדקה-שתיים.'
+          : `התיקונים הבאים יעלו לאפליקציה החיה לכל המשתמשים תוך כדקה-שתיים:\n\n${stagingReady.map(f => `• ${f.note.split('\n')[0].slice(0, 60)}`).join('\n')}`}
         confirmLabel="פרסם לכולם"
         onConfirm={handlePromote}
         onCancel={() => setPromoteConfirm(false)}

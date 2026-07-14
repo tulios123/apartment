@@ -64,4 +64,43 @@
   .docv-save:active { transform: scale(0.98); }
   .docv-save:disabled { opacity: 0.5; cursor: default; }
   .docv-form-err { font-size: 13px; color: var(--danger-text); }
+
+  /* ── Section heads ── */
+  .docv-section-head { display: flex; align-items: baseline; gap: 8px; margin: 4px 2px 12px; }
+  .docv-section-head h2 { font-size: 15px; font-weight: 700; margin: 0; }
+  .docv-progress { font-size: 12px; font-weight: 700; color: var(--text-muted); background: var(--bg-alt); border-radius: var(--r-pill); padding: 2px 9px; }
+
+  /* ── Key document slots — filled vs missing, prompt to upload ── */
+  .docv-slots { margin-bottom: 22px; }
+  .docv-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .docv-slot { display: flex; align-items: center; gap: 10px; text-align: start; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px; cursor: pointer; font-family: inherit; transition: box-shadow var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+  .docv-slot:hover { box-shadow: var(--shadow-sm); border-color: var(--accent); }
+  .docv-slot.empty { border-style: dashed; border-color: var(--border-strong); background: var(--bg); }
+  .docv-slot-icon { flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--r-sm); display: grid; place-items: center; }
+  .docv-slot.blue .docv-slot-icon { background: var(--accent-light); color: var(--accent); }
+  .docv-slot.teal .docv-slot-icon { background: var(--teal-bg); color: var(--teal-text); }
+  .docv-slot.purple .docv-slot-icon { background: var(--accent-2-bg); color: var(--accent-2); }
+  .docv-slot.empty .docv-slot-icon { background: var(--bg-alt); color: var(--text-muted); }
+  .docv-slot-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+  .docv-slot-label { font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.25; }
+  .docv-slot-status { font-size: 11.5px; color: var(--text-muted); }
+  .docv-slot.filled .docv-slot-status { color: var(--success-text); }
+  .docv-slot-badge { flex-shrink: 0; display: grid; place-items: center; color: var(--text-muted); }
+  .docv-slot.filled .docv-slot-badge { color: var(--success-text); }
+
+  /* ── Collections — open-ended piles as small folders ── */
+  .docv-collections { margin-bottom: 18px; }
+  .docv-coll-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .docv-coll { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 7px 8px; cursor: pointer; font-family: inherit; transition: border-color var(--t-fast) var(--ease); }
+  .docv-coll:hover { border-color: var(--accent); }
+  .docv-coll-icon { flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; }
+  .docv-coll-icon svg { width: 16px; height: 16px; }
+  .docv-coll-icon.amber { background: var(--warning-bg); color: var(--warning-text); }
+  .docv-coll-icon.blue { background: var(--accent-light); color: var(--accent); }
+  .docv-coll-icon.muted { background: var(--bg-alt); color: var(--text-muted); }
+  .docv-coll-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .docv-coll-n { font-size: 11.5px; font-weight: 700; color: var(--text-muted); background: var(--bg-alt); border-radius: var(--r-pill); min-width: 18px; height: 18px; padding: 0 5px; display: inline-grid; place-items: center; }
+
+  /* ── Browse-a-type back link ── */
+  .docv-back { background: none; border: none; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
 }
