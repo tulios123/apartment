@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react'
-import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, X, Plus, Eye, Trash, UploadSimple, PencilSimple, FolderOpen, Certificate, CheckCircle } from '@phosphor-icons/react'
+import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, Plus, Eye, Trash, UploadSimple, PencilSimple, FolderOpen, Certificate, CheckCircle } from '@phosphor-icons/react'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useMortgageData } from '../../hooks/useMortgageData'
@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatDate } from '../../lib/format'
 import type { DocumentType } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import BottomSheet from '../../components/ui/BottomSheet'
 import './documents-v2.css'
 import { DateField } from '../../components/ui/DateField'
 
@@ -249,10 +250,9 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
       <button className="docv-fab" onClick={() => openNew()} aria-label="מסמך חדש"><Plus size={26} weight="bold" /></button>
 
-      <div className={`docv-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
-      <aside className={`docv-drawer ${drawerOpen ? 'open' : ''}`}>
-        <div className="docv-drawer-head"><h2>{editingId ? 'עריכת מסמך' : 'מסמך חדש'}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
-        <div className="docv-drawer-body">
+      <BottomSheet open={drawerOpen} onClose={() => setDrawerOpen(false)} title={editingId ? 'עריכת מסמך' : 'מסמך חדש'}>
+        {/* The sheet portals to <body>, outside the scoped `.docv` — re-wrap so the field CSS applies. */}
+        <div className="docv"><div className="docv-sheet-form">
         <label className="docv-field"><span>סוג</span><select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as DocumentType }))}>{DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
         <label className="docv-field"><span>שם{editingId ? '' : ' (אופציונלי)'}</span><input type="text" placeholder="ברירת מחדל: שם הקובץ" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></label>
         <label className="docv-field"><span>תאריך (אופציונלי)</span><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} ariaLabel="תאריך" /></label>
@@ -266,9 +266,9 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
           </div>
         )}
         {formError && <div className="docv-form-err" role="alert">{formError}</div>}
-        </div>
         <button className="docv-save" disabled={saving} onClick={handleSubmit}>{saving ? 'שומר…' : 'שמירה'}</button>
-      </aside>
+        </div></div>
+      </BottomSheet>
     </div>
   )
 }
