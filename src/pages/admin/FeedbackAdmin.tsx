@@ -155,6 +155,7 @@ export default function FeedbackAdmin() {
   // Chat with the bot.
   const [botDraft, setBotDraft] = useState('')
   const [sendingBot, setSendingBot] = useState(false)
+  const [botShots, setBotShots] = useState<File[]>([])  // screenshots to attach to the guidance
 
   // Create-a-new-item form.
   const [showCreate, setShowCreate] = useState(false)
@@ -259,10 +260,14 @@ export default function FeedbackAdmin() {
 
   // Load signed URLs for ALL attached screenshots when an item is opened (or its list changes).
   useEffect(() => {
-    setShotUrls({})
-    if (!selected) return
-    const paths = shotPathsOf(selected)
-    if (!paths.length) return
+    if (!selected) { setShotUrls({}); return }
+    // Sign every screenshot visible in the detail: the report's images AND any attached to a
+    // chat message (the owner attaching screenshots to the bot mid-conversation).
+    const paths = [...new Set([
+      ...shotPathsOf(selected),
+      ...messages.flatMap(m => m.screenshot_paths ?? []),
+    ])]
+    if (!paths.length) { setShotUrls({}); return }
     let alive = true
     Promise.all(paths.map(async p => {
       try { return [p, await getFeedbackScreenshotSignedUrl(p)] as const } catch { return null }
@@ -273,7 +278,7 @@ export default function FeedbackAdmin() {
       setShotUrls(map)
     })
     return () => { alive = false }
-  }, [selected?.id, selected?.screenshot_paths, selected?.screenshot_path])
+  }, [selected?.id, selected?.screenshot_paths, selected?.screenshot_path, messages])
 
   // Seed the editable drafts + reset the composer whenever a different item is opened.
   useEffect(() => {
@@ -282,6 +287,7 @@ export default function FeedbackAdmin() {
     setAdminDraft(selected?.admin_notes ?? '')
     setReplyDraft('')
     setBotDraft('')
+    setBotShots([])
     setShowClientHistory(false)
   }, [selected?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -473,12 +479,20 @@ export default function FeedbackAdmin() {
   // reply comes back as a 'bot' message via the pipeline callback (realtime).
   async function sendToBot() {
     const body = botDraft.trim()
-    if (!body || !selected) return
+    if ((!body && botShots.length === 0) || !selected || !user) return
     setSendingBot(true)
-    const res = await supabase.functions.invoke('send-bot-followup', { body: { feedback_id: selected.id, message: body } })
+    // Upload any attached screenshots first, then hand their paths to the bot along with the
+    // text — send-bot-followup signs them into the GitHub comment so the next run sees them.
+    const paths: string[] = []
+    for (const file of botShots) {
+      try { paths.push(await uploadFeedbackScreenshot(file, selected.id, user.id)) } catch { /* skip this one */ }
+    }
+    const res = await supabase.functions.invoke('send-bot-followup', {
+      body: { feedback_id: selected.id, message: body, screenshot_paths: paths },
+    })
     setSendingBot(false)
     if (res.error) { showToast(await invokeError(res, 'השליחה לבוט נכשלה — נסו שוב')); return }
-    setBotDraft('')
+    setBotDraft(''); setBotShots([])
     showToast('נשלח לבוט — הוא יתחיל לעבוד ויענה כאן')
     loadThread(selected.id).then(setMessages).catch(() => {})
   }
@@ -657,6 +671,21 @@ export default function FeedbackAdmin() {
                 {botMsgs.map(m => (
                   <div key={m.id} className={`fbadmin-msg ${m.author === 'bot' ? 'from-admin' : 'from-client'}`}>
                     <div className="fbadmin-bubble">{m.body}</div>
+                    {m.screenshot_paths && m.screenshot_paths.length > 0 && (
+                      <div className="fbadmin-shots">
+                        {m.screenshot_paths.map(p => (
+                          shotUrls[p] ? (
+                            <button key={p} type="button" className="fbadmin-shot" onClick={() => viewShotNewTab(p)}>
+                              <img src={shotUrls[p]} alt="צילום מצורף" loading="lazy" />
+                            </button>
+                          ) : (
+                            <button key={p} type="button" className="fbadmin-shot-loading" onClick={() => viewShotNewTab(p)}>
+                              <Camera size={14} weight="duotone" /> טוען…
+                            </button>
+                          )
+                        ))}
+                      </div>
+                    )}
                     <span className="fbadmin-msg-time">{formatMsgTime(m.created_at)}</span>
                   </div>
                 ))}
@@ -681,17 +710,37 @@ export default function FeedbackAdmin() {
                 )}
               </>
             ) : !archived ? (
-              /* After it's been sent: a live chat — guide the bot until the fix is right. */
-              <div className="fbadmin-composer">
-                <textarea
-                  rows={2}
-                  placeholder="כתוב לבוט — הנחיה, תשובה, או 'עדיין לא נפתר כי…'"
-                  value={botDraft}
-                  onChange={e => setBotDraft(e.target.value)}
-                />
-                <button className="fbadmin-composer-send" onClick={sendToBot} disabled={sendingBot || !botDraft.trim()} aria-label="שליחה לבוט">
-                  <PaperPlaneTilt size={18} weight="fill" />
-                </button>
+              /* After it's been sent: a live chat — guide the bot (with screenshots) until the
+                 fix is right. */
+              <div className="fbadmin-botcomposer">
+                {botShots.length > 0 && (
+                  <div className="fbadmin-pending-shots">
+                    {botShots.map((_, i) => (
+                      <span key={i} className="fbadmin-pending-chip">
+                        <Camera size={13} weight="duotone" /> צילום {i + 1}
+                        <button type="button" onClick={() => setBotShots(s => s.filter((_, j) => j !== i))} aria-label="הסר צילום">
+                          <X size={11} weight="bold" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="fbadmin-composer">
+                  <label className="fbadmin-composer-attach" title="צירוף צילומים לבוט">
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                      onChange={e => { setBotShots(s => [...s, ...Array.from(e.target.files ?? [])]); e.target.value = '' }} />
+                    <Camera size={20} weight="duotone" />
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="כתוב לבוט — הנחיה, תשובה, או 'עדיין לא נפתר כי…'"
+                    value={botDraft}
+                    onChange={e => setBotDraft(e.target.value)}
+                  />
+                  <button className="fbadmin-composer-send" onClick={sendToBot} disabled={sendingBot || (!botDraft.trim() && botShots.length === 0)} aria-label="שליחה לבוט">
+                    <PaperPlaneTilt size={18} weight="fill" />
+                  </button>
+                </div>
               </div>
             ) : null}
 

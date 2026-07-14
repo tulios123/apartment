@@ -321,6 +321,44 @@
   cursor: pointer;
 }
 .fbadmin-composer-send:disabled { opacity: 0.5; cursor: default; }
+
+/* Bot composer — attach screenshots to a guidance message (mid-conversation). */
+.fbadmin-botcomposer { display: flex; flex-direction: column; gap: 8px; }
+.fbadmin-pending-shots { display: flex; flex-wrap: wrap; gap: 6px; }
+.fbadmin-pending-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--bg-alt, #f1f2f4);
+  color: var(--text, #1a1a1a);
+  font-size: 12px;
+  font-weight: 600;
+}
+.fbadmin-pending-chip button {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger, #e0533d);
+  color: #fff;
+  cursor: pointer;
+}
+.fbadmin-composer-attach {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-alt, #f1f2f4);
+  color: var(--text-muted, #6b7280);
+  cursor: pointer;
+}
+.fbadmin-composer-attach:hover { color: var(--accent, #2a7de1); }
 .fbadmin-edit {
   width: 100%;
   box-sizing: border-box;

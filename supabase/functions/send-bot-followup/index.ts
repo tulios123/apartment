@@ -55,10 +55,15 @@ Deno.serve(async (req) => {
       return json({ error: 'unauthorized' }, 401)
     }
 
-    const { feedback_id, message } = await req.json().catch(() => ({}))
+    const { feedback_id, message, screenshot_paths } = await req.json().catch(() => ({}))
     if (!feedback_id || typeof feedback_id !== 'string') return json({ error: 'feedback_id required' }, 400)
     const body = typeof message === 'string' ? message.trim() : ''
-    if (!body) return json({ error: 'message required' }, 400)
+    // Storage paths of screenshots the owner already uploaded from the console — attach them
+    // to this guidance so the bot sees them mid-conversation, not only on the first report.
+    const shotPaths: string[] = Array.isArray(screenshot_paths)
+      ? (screenshot_paths as unknown[]).filter((p): p is string => typeof p === 'string' && p.length > 0).slice(0, 6)
+      : []
+    if (!body && shotPaths.length === 0) return json({ error: 'message or screenshots required' }, 400)
 
     const { data: item } = await supabase
       .from('feedback')
@@ -74,7 +79,17 @@ Deno.serve(async (req) => {
     const pat = Deno.env.get('GITHUB_PAT')
     if (!pat) return json({ error: 'GITHUB_PAT not configured' }, 500)
 
-    // 1) Record the owner's guidance in the bot channel (service role → channel='bot').
+    // Sign the attached screenshots (7-day) so the workflow can download them into the bot's
+    // task, exactly like the initial report's images.
+    const signedShots: string[] = []
+    for (const p of shotPaths) {
+      const { data: signed } = await supabase.storage.from('feedback').createSignedUrl(p, 60 * 60 * 24 * 7)
+      if (signed?.signedUrl) signedShots.push(signed.signedUrl)
+    }
+    const shownBody = body || '📎 צירפתי צילומים'
+
+    // 1) Record the owner's guidance in the bot channel (service role → channel='bot'), with
+    //    the attached screenshots so the console renders them in the chat bubble.
     const { data: inserted } = await supabase
       .from('feedback_messages')
       .insert({
@@ -82,14 +97,17 @@ Deno.serve(async (req) => {
         author: 'admin',
         author_id: caller.user.id,
         author_email: caller.user.email ?? null,
-        body,
+        body: shownBody,
         channel: 'bot',
+        screenshot_paths: shotPaths,
       })
       .select('id')
       .single()
 
-    // 2) Post it as an issue comment so the next run reads it as owner guidance.
-    const comment = `🧑‍💻 **הנחיה מהבעלים:**\n\n${body}`
+    // 2) Post it as an issue comment so the next run reads it as owner guidance. The
+    //    `Screenshot: <url>` lines are exactly what claude-fix's download step scans for.
+    const shotLines = signedShots.map(u => `Screenshot: ${u}`).join('\n')
+    const comment = [`🧑‍💻 **הנחיה מהבעלים:**`, '', shownBody, ...(shotLines ? ['', shotLines] : [])].join('\n')
     const cRes = await gh(`/issues/${issue}/comments`, 'POST', pat, { body: comment })
     if (!cRes.ok) {
       const detail = await cRes.text()
