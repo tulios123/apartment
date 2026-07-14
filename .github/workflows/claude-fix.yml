@@ -15,6 +15,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write   # to dispatch deploy-staging after the merge (a GITHUB_TOKEN push won't)
 
 env:
   FUNCTIONS_URL: https://bjholzkesnzkbogxmurw.supabase.co/functions/v1
@@ -190,6 +191,11 @@ jobs:
             if [ "$merged" = 1 ]; then
               # "Fixes #N" auto-close only fires on merges to the DEFAULT branch, so close it here.
               gh issue close "$ISSUE" --repo "$REPO" --reason completed || true
+              # CRITICAL: a push to staging made by GITHUB_TOKEN does NOT trigger deploy-staging.yml
+              # (GitHub blocks token pushes from starting workflows, to avoid loops). Without this
+              # the fix merges into the staging BRANCH but staging.<sub>.pages.dev stays STALE and
+              # the owner "doesn't see the fix". Explicitly dispatch the staging deploy.
+              gh workflow run deploy-staging.yml --repo "$REPO" --ref staging || true
               status="in_staging"
             else
               err="$(head -c 500 "$RUNNER_TEMP/merge_err.txt" 2>/dev/null || true)"

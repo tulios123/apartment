@@ -16,6 +16,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write   # to dispatch deploy.yml after the merge (a GITHUB_TOKEN push won't)
 
 env:
   FUNCTIONS_URL: https://bjholzkesnzkbogxmurw.supabase.co/functions/v1
@@ -56,6 +57,10 @@ jobs:
             sleep 8
           done
           [ "$merged" = 1 ] || { echo "promote merge failed"; exit 1; }
+          # A GITHUB_TOKEN merge to main does NOT trigger deploy.yml (GitHub blocks token pushes
+          # from starting workflows), so production would stay STALE after "פרסם לכולם".
+          # Explicitly dispatch the production deploy.
+          gh workflow run deploy.yml --repo "$REPO" --ref main || true
           # Keep staging in sync so the next fixes branch off a staging that equals main
           # (main is strictly ahead now → this is a fast-forward, no force). Best-effort.
           git fetch origin main
