@@ -7,7 +7,6 @@ import {
   Trash,
   PencilSimple,
   CheckCircle,
-  MagnifyingGlass,
   RocketLaunch,
   X,
 } from '@phosphor-icons/react'
@@ -22,7 +21,7 @@ import {
   type FeedbackMsg,
 } from '../../lib/feedbackMessages'
 import { canResendToBot } from '../../lib/feedbackStatus'
-import { STAGING_URL, isStaging } from '../../lib/env'
+import { isStaging } from '../../lib/env'
 import './feedback-admin.css'
 
 interface FeedbackRow {
@@ -628,18 +627,8 @@ export default function FeedbackAdmin() {
                 <li className="active">
                   <span className="fbadmin-tl-dot" />
                   <div>
-                    <b>מוכן בסביבת־הבדיקות</b>
-                    <span className="fbadmin-tl-when">בדוק שהתקלה נפתרה, ואז "פרסם לכולם" (ברשימה) — והתיקון עולה לכולם</span>
-                    {!archived && (
-                      <a
-                        className="fbadmin-btn preview sm"
-                        href={`${STAGING_URL}${f.path && f.path.startsWith('/') ? f.path : '/'}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <MagnifyingGlass size={15} weight="bold" /> פתח בסביבת-הבדיקות
-                      </a>
-                    )}
+                    <b>מוכן — התיקון כבר פעיל כאן</b>
+                    <span className="fbadmin-tl-when">התיקון עלה לאפליקציה שאתה נמצא בה (staging) — בדוק שהכול תקין (רענן אם צריך), ואז "פרסם לכולם" ברשימה, והוא עולה לכל המשתמשים.</span>
                   </div>
                 </li>
               )}
