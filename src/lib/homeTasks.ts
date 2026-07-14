@@ -3,22 +3,30 @@ import { TASK_HOME_LEAD_DAYS } from './constants'
 import type { Task } from '../types'
 
 /**
- * Which tasks surface on the home action list, in display order.
+ * All open tasks in home display order: dated first (soonest/overdue on top),
+ * then undated backlog. This is the full list revealed when "+ עוד X משימות"
+ * is expanded — nothing is hidden here, regardless of date.
+ */
+export function sortedHomeTasks(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date)
+    if (a.due_date) return -1
+    if (b.due_date) return 1
+    return 0
+  })
+}
+
+/**
+ * Which tasks surface on the *collapsed* home action list, in display order.
  *
  * A task scheduled for a specific future date stays hidden until it's within the
  * lead window (`TASK_HOME_LEAD_DAYS` days out) or already overdue — a date far
  * ahead shouldn't clutter "what to do now". Undated backlog tasks always show so
- * nothing deadline-less gets forgotten.
- *
- * Sorted dated-first (soonest/overdue on top), then undated backlog.
+ * nothing deadline-less gets forgotten. Expanding the "+ עוד X משימות" pill still
+ * reveals the held-back future ones (see `sortedHomeTasks`).
  */
 export function visibleHomeTasks(tasks: Task[], today: string): Task[] {
-  return tasks
-    .filter(t => !t.due_date || daysBetween(today, t.due_date) <= TASK_HOME_LEAD_DAYS)
-    .sort((a, b) => {
-      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date)
-      if (a.due_date) return -1
-      if (b.due_date) return 1
-      return 0
-    })
+  return sortedHomeTasks(
+    tasks.filter(t => !t.due_date || daysBetween(today, t.due_date) <= TASK_HOME_LEAD_DAYS),
+  )
 }

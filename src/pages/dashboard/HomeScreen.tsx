@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAppReady } from '../../contexts/AppReadyContext'
 import {
   CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, ArrowLeft, Sun, CloudSun, MoonStars,
-  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretLeft,
+  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretUp, CaretLeft,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
@@ -14,7 +14,7 @@ import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { visibleHomeTasks } from '../../lib/homeTasks'
+import { visibleHomeTasks, sortedHomeTasks } from '../../lib/homeTasks'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
@@ -119,9 +119,12 @@ export default function HomeScreen() {
   // so anything you add by hand is reflected in the bottom line.
   const expectedNet = Math.max(monthlyRent, rentReceived) + extraIncome - fixedExpenses - extraExpenses
 
-  // Future-dated tasks stay hidden until close (see visibleHomeTasks) — this is what
-  // actually surfaces on home. Collapsed we show the top 2; "+ עוד X" widens it in place.
-  const visibleTasks = useMemo(() => visibleHomeTasks(tasks, todayStr), [tasks, todayStr])
+  // Collapsed, only near/overdue/undated tasks surface (future-dated ones stay out of
+  // "what to do now" — issue #36). Expanding "+ עוד X משימות" reveals every open task
+  // regardless of date, so nothing is truly lost from the home (owner request).
+  const collapsedTasks = useMemo(() => visibleHomeTasks(tasks, todayStr), [tasks, todayStr])
+  const allTasks = useMemo(() => sortedHomeTasks(tasks), [tasks])
+  const shownTasks = tasksExpanded ? allTasks : collapsedTasks.slice(0, 2)
 
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
   const actions = useMemo<Action[]>(() => {
@@ -137,8 +140,7 @@ export default function HomeScreen() {
         amount: monthlyRent - rentReceived,
       })
     }
-    visibleTasks
-      .slice(0, tasksExpanded ? undefined : 2)
+    shownTasks
       .forEach(t => {
         const tm = t.due_time ? ` · ${t.due_time.slice(0, 5)}` : ''
         list.push({
@@ -165,13 +167,18 @@ export default function HomeScreen() {
       )
     // Rent (≤1) + renewals (rare) keep priority; tasks bounded to 2 unless expanded.
     return list.filter(a => !done.has(a.id))
-  }, [monthlyRent, rentCleared, rentReceived, activeContract, visibleTasks, tasksExpanded, upcomingRenewals, done, todayStr, navigate])
+  }, [monthlyRent, rentCleared, rentReceived, activeContract, shownTasks, upcomingRenewals, done, todayStr, navigate])
 
-  // How many surfaced (non-future-dated) tasks are still collapsed — drives "+ עוד X
-  // משימות". Only counts tasks that expanding can actually reveal; future-dated ones
-  // stay hidden until their lead window (issue #36) and live on the tasks screen.
+  // How many open tasks aren't shown yet — drives "+ עוד X משימות". Counts every open
+  // task (including future-dated ones held back from the collapsed view), so expanding
+  // reveals them all in place rather than leaving any stranded off the home.
   const shownTaskCount = actions.filter(a => a.kind === 'task').length
-  const extraTaskCount = Math.max(0, visibleTasks.length - shownTaskCount)
+  const extraTaskCount = Math.max(0, allTasks.length - shownTaskCount)
+  // How many tasks the *collapsed* view shows (capped at 2). Expanding beyond this
+  // is what the "הצג פחות" collapse undoes — so offer it whenever expanding revealed
+  // more than the collapsed view would (e.g. a lone future-dated task, where the
+  // collapsed view holds back everything and shows 0).
+  const collapsedTaskCount = Math.min(collapsedTasks.length, 2)
 
   const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty
   const loadingFlow = loadingProperty || loadingMortgage || loadingLoans || loadingInsurance || loadingTx
@@ -380,9 +387,9 @@ export default function HomeScreen() {
               <button className="hs-more-tasks" onClick={() => setTasksExpanded(true)}>
                 + עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}
               </button>
-            ) : tasksExpanded && shownTaskCount > 2 ? (
-              <button className="hs-more-tasks" onClick={() => setTasksExpanded(false)}>
-                הצג פחות
+            ) : tasksExpanded && shownTaskCount > collapsedTaskCount ? (
+              <button className="hs-more-tasks collapse" onClick={() => setTasksExpanded(false)}>
+                הצג פחות <CaretUp size={13} weight="bold" />
               </button>
             ) : null}
           </section>

@@ -52,8 +52,12 @@
 
   /* Minimal "show all" affordance — small, elegant text but a ≥44px tall hit area
      (via padding) so a thumb tap never lands on the task row directly above it. */
-  .hs-more-tasks { align-self: stretch; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--accent); padding: 13px 8px; border-radius: var(--r-md); transition: background var(--t-fast) var(--ease); -webkit-tap-highlight-color: transparent; }
+  .hs-more-tasks { align-self: stretch; display: inline-flex; align-items: center; justify-content: center; gap: 5px; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--accent); padding: 13px 8px; border-radius: var(--r-md); transition: background var(--t-fast) var(--ease); -webkit-tap-highlight-color: transparent; }
   .hs-more-tasks:hover { background: var(--hover-bg); }
+  /* Collapse ("הצג פחות") — a calm, secondary counterpart to the accent "+ עוד" pill,
+     with an up-caret so folding back reads as the reverse of expanding. */
+  .hs-more-tasks.collapse { color: var(--text-muted); font-weight: 500; }
+  .hs-more-tasks.collapse svg { opacity: 0.8; }
   .hs-clear-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--success-bg); color: var(--success-text); display: grid; place-items: center; flex-shrink: 0; }
   .hs-clear-title { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
   .hs-clear-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
