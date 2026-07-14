@@ -252,6 +252,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       <div className={`docv-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside className={`docv-drawer ${drawerOpen ? 'open' : ''}`}>
         <div className="docv-drawer-head"><h2>{editingId ? 'עריכת מסמך' : 'מסמך חדש'}</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
+        <div className="docv-drawer-body">
         <label className="docv-field"><span>סוג</span><select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as DocumentType }))}>{DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
         <label className="docv-field"><span>שם{editingId ? '' : ' (אופציונלי)'}</span><input type="text" placeholder="ברירת מחדל: שם הקובץ" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></label>
         <label className="docv-field"><span>תאריך (אופציונלי)</span><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} ariaLabel="תאריך" /></label>
@@ -265,6 +266,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
           </div>
         )}
         {formError && <div className="docv-form-err" role="alert">{formError}</div>}
+        </div>
         <button className="docv-save" disabled={saving} onClick={handleSubmit}>{saving ? 'שומר…' : 'שמירה'}</button>
       </aside>
     </div>
