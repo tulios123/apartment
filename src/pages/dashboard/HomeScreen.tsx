@@ -14,7 +14,7 @@ import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { visibleHomeTasks, sortedHomeTasks } from '../../lib/homeTasks'
+import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask } from '../../lib/homeTasks'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
@@ -124,6 +124,10 @@ export default function HomeScreen() {
   // regardless of date, so nothing is truly lost from the home (owner request).
   const collapsedTasks = useMemo(() => visibleHomeTasks(tasks, todayStr), [tasks, todayStr])
   const allTasks = useMemo(() => sortedHomeTasks(tasks), [tasks])
+  // The soonest future-dated task the collapsed view holds back — named with its date on
+  // the home so a task scheduled for a specific day reads as the owner's own, not a vague
+  // "scheduled task" they can't place (owner: "there's a task a week out but I don't see it").
+  const nextScheduled = useMemo(() => nextScheduledTask(tasks, todayStr), [tasks, todayStr])
   const shownTasks = tasksExpanded ? allTasks : collapsedTasks.slice(0, 2)
 
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
@@ -352,8 +356,10 @@ export default function HomeScreen() {
                     <div className="hs-clear-title">אין משימות להיום</div>
                     <div className="hs-clear-sub">
                       {extraTaskCount === 1
-                        ? 'יש משימה מתוזמנת לימים הקרובים — אפשר להציג אותה למטה.'
-                        : `יש ${extraTaskCount} משימות מתוזמנות לימים הקרובים — אפשר להציג אותן למטה.`}
+                        ? nextScheduled
+                          ? `המשימה "${nextScheduled.title}" מתוזמנת ל-${formatDate(nextScheduled.due_date)} — אפשר להציג אותה למטה.`
+                          : 'יש משימה מתוזמנת — אפשר להציג אותה למטה.'
+                        : `יש ${extraTaskCount} משימות מתוזמנות${nextScheduled ? ` (הקרובה ל-${formatDate(nextScheduled.due_date)})` : ''} — אפשר להציג אותן למטה.`}
                     </div>
                   </div>
                 </div>
@@ -405,8 +411,10 @@ export default function HomeScreen() {
               <button className="hs-more-tasks" onClick={() => setTasksExpanded(true)}>
                 {shownTaskCount === 0 ? (
                   // Nothing is shown yet (all tasks are future-dated) — "+ עוד" ("+ more")
-                  // would read oddly, so name the scheduled tasks the tap reveals.
-                  <>הצג {extraTaskCount === 1 ? 'משימה מתוזמנת' : `${extraTaskCount} משימות מתוזמנות`} <CaretDown size={13} weight="bold" /></>
+                  // would read oddly, so name the scheduled task (with its date) the tap reveals.
+                  <>הצג {extraTaskCount === 1
+                    ? `משימה מתוזמנת${nextScheduled ? ` ל-${formatDate(nextScheduled.due_date)}` : ''}`
+                    : `${extraTaskCount} משימות מתוזמנות`} <CaretDown size={13} weight="bold" /></>
                 ) : (
                   <>+ עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}</>
                 )}
