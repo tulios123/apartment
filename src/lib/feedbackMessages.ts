@@ -15,9 +15,10 @@ export type FeedbackMsg = {
   body: string
   created_at: string
   channel: FeedbackChannel
+  screenshot_paths: string[]
 }
 
-const SELECT = 'id, feedback_id, author, author_email, body, created_at, channel'
+const SELECT = 'id, feedback_id, author, author_email, body, created_at, channel, screenshot_paths'
 
 // Load a feedback item's whole thread, oldest-first (chat order). RLS scopes it: a family
 // member only reads their own items' CLIENT-channel messages; the admin reads all.
@@ -39,6 +40,7 @@ export async function loadThread(feedbackId: string): Promise<FeedbackMsg[]> {
     return ((legacy.data ?? []) as FeedbackMsg[]).map(m => ({
       ...m,
       channel: (m.channel ?? (m.author === 'bot' ? 'bot' : 'client')) as FeedbackChannel,
+      screenshot_paths: m.screenshot_paths ?? [],
     }))
   }
   throw full.error
@@ -85,7 +87,11 @@ export function subscribeThread(feedbackId: string, onInsert: (m: FeedbackMsg) =
       (payload) => {
         const m = payload.new as FeedbackMsg
         // Default the channel (pre-041 rows / realtime payloads may lack it) by author.
-        onInsert({ ...m, channel: (m.channel ?? (m.author === 'bot' ? 'bot' : 'client')) as FeedbackChannel })
+        onInsert({
+          ...m,
+          channel: (m.channel ?? (m.author === 'bot' ? 'bot' : 'client')) as FeedbackChannel,
+          screenshot_paths: m.screenshot_paths ?? [],
+        })
       },
     )
     .subscribe()

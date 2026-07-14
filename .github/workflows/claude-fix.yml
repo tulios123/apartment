@@ -41,14 +41,20 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"github_issue_number\": ${{ github.event.issue.number }}, \"status\": \"in_progress\"}" || true
 
-      # 2) Pull EVERY signed 'Screenshot: <url>' line out of the issue body and download it,
-      #    so Claude can see all the images the reporter attached.
+      # 2) Pull EVERY signed 'Screenshot: <url>' line out of the issue BODY *and its COMMENTS*
+      #    and download it, so Claude sees images the reporter attached on the first report AND
+      #    screenshots the owner attaches MID-conversation (send-bot-followup posts them as a
+      #    comment). Both are scanned so a follow-up round gets the new images too.
       - name: Download screenshots
         id: shot
         env:
           BODY: ${{ github.event.issue.body }}
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
         run: |
           mkdir -p "$RUNNER_TEMP/shots"
+          comments=$(gh issue view "$ISSUE" --repo "$REPO" --json comments --jq '.comments[].body' 2>/dev/null || true)
           n=0
           # Hard-restrict the host to our Supabase storage so a user note can't point the
           # runner at an arbitrary URL (SSRF); non-matching lines are skipped.
@@ -63,7 +69,7 @@ jobs:
             n=$((n+1))
             # `if` (not `&&`) so a single failed download can't abort the step under set -e.
             if curl -sfL "$url" -o "$RUNNER_TEMP/shots/shot-$n$ext"; then echo "Downloaded screenshot $n"; fi
-          done < <(printf '%s' "$BODY" | grep -oE '^Screenshot: .+' || true)
+          done < <(printf '%s\n%s' "$BODY" "$comments" | grep -oE '^Screenshot: .+' || true)
           if [ "$n" -gt 0 ]; then echo "dir=$RUNNER_TEMP/shots" >> "$GITHUB_OUTPUT"; fi
 
       # 2b) Pull the issue conversation (the owner's guidance/answers + Claude's earlier
