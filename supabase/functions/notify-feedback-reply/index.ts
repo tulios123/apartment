@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { pushToOwner, resolveAdminId } from '../_shared/push.ts'
+import { isAdminEmail } from '../_shared/admin.ts'
 
 // Pushes the COUNTERPARTY after a chat message is inserted (via RLS) on a feedback item:
 //   • admin replied  → push the reporting client ("עדכון על המשוב שלך").
@@ -61,15 +62,14 @@ Deno.serve(async (req) => {
       .single()
     if (!fb) return json({ error: 'feedback not found' }, 404)
 
-    const adminEmail = (Deno.env.get('FEEDBACK_ADMIN_EMAIL') ?? 'itai.shubi@gmail.com').toLowerCase()
-    const callerEmail = caller.user.email?.toLowerCase()
     const feedbackId = msg.feedback_id as string
     const snippet = String(msg.body ?? '').slice(0, 90)
     const tag = `apt-feedback-${feedbackId}`
 
     if (msg.author === 'admin') {
-      // Only the actual admin may have posted an 'admin' message — push the client.
-      if (callerEmail !== adminEmail) return json({ error: 'forbidden' }, 403)
+      // Only an actual admin may have posted an 'admin' message — push the client. Uses the
+      // admin SET (isAdminEmail) so the second management account (tuliosking) is authorized.
+      if (!isAdminEmail(caller.user.email)) return json({ error: 'forbidden' }, 403)
       const tmpl = Deno.env.get('CLIENT_THREAD_URL_TEMPLATE') ?? '/?fb={id}'
       const delivered = await pushToOwner(supabase, fb.owner_id, {
         title: 'עדכון על המשוב שלך',

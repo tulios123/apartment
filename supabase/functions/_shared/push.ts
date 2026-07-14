@@ -22,9 +22,14 @@ export type PushPayload = { title: string; body: string; url: string; tag: strin
 // Resolve the feedback-admin account (itai's real login) to its owner_id, or null if not
 // found. Used to route "new item" / "bot status" / "client replied" pushes to the owner.
 export async function resolveAdminId(supabase: SupabaseClient): Promise<string | null> {
-  const adminEmail = (Deno.env.get('FEEDBACK_ADMIN_EMAIL') ?? 'itai.shubi@gmail.com').toLowerCase()
+  // Feedback pushes go to the MANAGEMENT account (FEEDBACK_NOTIFY_EMAIL = tuliosking) so they
+  // land on the staging/management app, NOT the owner's personal account. Falls back to
+  // FEEDBACK_ADMIN_EMAIL (itai) if the notify address isn't configured.
+  const notifyEmail = (
+    Deno.env.get('FEEDBACK_NOTIFY_EMAIL') ?? Deno.env.get('FEEDBACK_ADMIN_EMAIL') ?? 'itai.shubi@gmail.com'
+  ).toLowerCase()
   const { data: list } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 })
-  return list?.users.find((u) => u.email?.toLowerCase() === adminEmail)?.id ?? null
+  return list?.users.find((u) => u.email?.toLowerCase() === notifyEmail)?.id ?? null
 }
 
 // Push a payload to every device an owner has registered. Dead endpoints (404/410) are

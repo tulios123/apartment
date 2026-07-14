@@ -15,6 +15,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write   # to dispatch deploy-staging after the merge (a GITHUB_TOKEN push won't)
 
 env:
   FUNCTIONS_URL: https://bjholzkesnzkbogxmurw.supabase.co/functions/v1
@@ -146,14 +147,16 @@ jobs:
             7. If you CAN'T reproduce it or need the owner to decide something, do NOT guess
                and do NOT open a PR — ask the specific question instead.
             8. ALWAYS, as your FINAL step, write a SHORT Hebrew message (1-3 sentences) to the
-               file ${{ runner.temp }}/bot_reply.txt — either "what I fixed + what to check",
-               or the specific question you need answered. This is shown to the owner in the
-               app's bot chat, so write it to them directly, in plain Hebrew.
+               file ${{ runner.temp }}/bot_reply.txt. Write it like a helpful human teammate
+               texting the owner — warm, natural, first-person, and SPECIFIC. Name the exact
+               screen/behavior you changed and tell them precisely what to check in the app; if
+               you need a decision, ask ONE clear question. Plain conversational Hebrew — NOT a
+               robotic template, no headings, no "בוצע:"/"סטטוס:"-style labels, no English.
 
       # 3b) Heartbeat before the merge, so the console shows the fix is done and landing in the
       #     workspace — not silence between "עובד" and "בבדיקות". The actual staging DEPLOY is
-      #     handled by deploy-staging.yml, which fires on the push to `staging` from the merge
-      #     below — this workflow no longer builds/deploys the preview itself.
+      #     done by deploy-staging.yml, dispatched EXPLICITLY after the merge below (a merge push
+      #     by GITHUB_TOKEN does NOT trigger it) — this workflow no longer builds it inline.
       - name: Heartbeat — merging to staging
         if: success()
         run: |
@@ -190,6 +193,11 @@ jobs:
             if [ "$merged" = 1 ]; then
               # "Fixes #N" auto-close only fires on merges to the DEFAULT branch, so close it here.
               gh issue close "$ISSUE" --repo "$REPO" --reason completed || true
+              # CRITICAL: a push to staging made by GITHUB_TOKEN does NOT trigger deploy-staging.yml
+              # (GitHub blocks token pushes from starting workflows, to avoid loops). Without this
+              # the fix merges into the staging BRANCH but staging.<sub>.pages.dev stays STALE and
+              # the owner "doesn't see the fix". Explicitly dispatch the staging deploy.
+              gh workflow run deploy-staging.yml --repo "$REPO" --ref staging || true
               status="in_staging"
             else
               err="$(head -c 500 "$RUNNER_TEMP/merge_err.txt" 2>/dev/null || true)"

@@ -22,7 +22,16 @@ export const FEEDBACK_ADMIN_EMAIL = 'itai.shubi@gmail.com'
 // defaults to just the owner.
 const EXTRA_ADMINS = ((import.meta.env.VITE_FEEDBACK_ADMIN_EMAILS as string | undefined) || '')
   .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
-const ADMIN_SET = new Set<string>([FEEDBACK_ADMIN_EMAIL.toLowerCase(), ...EXTRA_ADMINS])
+// tuliosking@gmail.com is the owner's dedicated MANAGEMENT account — a real Google account
+// (so it logs into the installed iOS PWA reliably, unlike a magic-link account). It's a
+// permanent admin on EVERY build (prod + staging), not a per-build test identity, so it's
+// baked in here rather than passed via the build env. The RLS policies + edge functions
+// mirror this (migration 045 / the FEEDBACK_ADMIN_EMAILS secret).
+const ADMIN_SET = new Set<string>([
+  FEEDBACK_ADMIN_EMAIL.toLowerCase(),
+  'tuliosking@gmail.com',
+  ...EXTRA_ADMINS,
+])
 
 /** True for the owner, plus any extra admin (e.g. the staging test account). */
 export function isFeedbackAdmin(email: string | null | undefined): boolean {

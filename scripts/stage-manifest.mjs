@@ -2,7 +2,7 @@
 // deploy-staging.yml). Gives the workspace a distinct identity so it's unmistakable next to
 // the real app on the home screen: a different name and a warning-orange theme. Never runs
 // for production. No-op-safe if a file/pattern is missing.
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
 const NAME = 'דירה · בדיקות'
 const SHORT = 'בדיקות'
@@ -18,6 +18,17 @@ try {
   console.log('staged manifest:', NAME)
 } catch (e) {
   console.error('manifest patch skipped:', e.message)
+}
+
+// Swap in the staging-badged icons (orange frame + badge) so the home-screen ICON is visually
+// distinct too, not just the name. The *-staging.png variants ship in public/ → dist/.
+try {
+  await copyFile('dist/apple-touch-icon-staging.png', 'dist/apple-touch-icon.png')
+  await copyFile('dist/icon-192-staging.png', 'dist/icon-192.png')
+  await copyFile('dist/icon-512-staging.png', 'dist/icon-512.png')
+  console.log('staged icons')
+} catch (e) {
+  console.error('icon swap skipped:', e.message)
 }
 
 try {
