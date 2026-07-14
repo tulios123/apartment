@@ -354,13 +354,10 @@ export default function HomeScreen() {
                   <div className="hs-clear-icon upcoming"><CalendarCheck size={28} weight="fill" /></div>
                   <div>
                     <div className="hs-clear-title">אין משימות להיום</div>
-                    <div className="hs-clear-sub">
-                      {extraTaskCount === 1
-                        ? nextScheduled
-                          ? `המשימה "${nextScheduled.title}" מתוזמנת ל-${formatDate(nextScheduled.due_date)} — אפשר להציג אותה למטה.`
-                          : 'יש משימה מתוזמנת — אפשר להציג אותה למטה.'
-                        : `יש ${extraTaskCount} משימות מתוזמנות${nextScheduled ? ` (הקרובה ל-${formatDate(nextScheduled.due_date)})` : ''} — אפשר להציג אותן למטה.`}
-                    </div>
+                    {/* Calm, single line. The pill below already names the scheduled task and its
+                        date, so repeating the count/date/"show below" here read as crowded (owner:
+                        "the collapsed state looks too busy and conveys stress"). */}
+                    <div className="hs-clear-sub">הכול רגוע — אין מה שדורש אותך עכשיו.</div>
                   </div>
                 </div>
               ) : (
