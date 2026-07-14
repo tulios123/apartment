@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Task } from '../../types'
-import { visibleHomeTasks, sortedHomeTasks } from '../homeTasks'
+import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask } from '../homeTasks'
 
 function task(p: Partial<Task>): Task {
   return { id: 't', title: '', category: 'כללי', source: 'manual', status: 'open', ...p } as unknown as Task
@@ -65,5 +65,29 @@ describe('sortedHomeTasks', () => {
     const t = task({ id: 'week', due_date: '2026-07-18' }) // 7 days out
     expect(visibleHomeTasks([t], TODAY)).toEqual([])
     expect(sortedHomeTasks([t]).map(x => x.id)).toEqual(['week'])
+  })
+})
+
+describe('nextScheduledTask', () => {
+  it('names the lone week-away task the collapsed view holds back', () => {
+    const t = task({ id: 'week', title: 'ביקורת מים', due_date: '2026-07-18' })
+    expect(nextScheduledTask([t], TODAY)?.id).toEqual('week')
+  })
+
+  it('returns the SOONEST held-back task when several are scheduled', () => {
+    const tasks = [
+      task({ id: 'far', due_date: '2026-08-01' }),
+      task({ id: 'nearer', due_date: '2026-07-20' }),
+    ]
+    expect(nextScheduledTask(tasks, TODAY)?.id).toEqual('nearer')
+  })
+
+  it('ignores tasks already inside the lead window, undated, or overdue', () => {
+    const tasks = [
+      task({ id: 'edge', due_date: '2026-07-13' }), // within window → not "held back"
+      task({ id: 'undated', due_date: null }),
+      task({ id: 'late', due_date: '2026-07-01' }),
+    ]
+    expect(nextScheduledTask(tasks, TODAY)).toBeNull()
   })
 })
