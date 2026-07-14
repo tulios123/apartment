@@ -7,6 +7,11 @@ name: Promote staging to production
 # item → fixed. On failure it opens a "promote failed" issue and leaves the items untouched.
 on:
   workflow_dispatch:
+  # The promote-staging edge fn labels a fresh issue with `promote-now` (Issues-scoped PAT is
+  # enough) — that fires this, so "פרסם לכולם" needs no Actions-scoped PAT. workflow_dispatch
+  # stays as a manual fallback.
+  issues:
+    types: [labeled]
 
 concurrency:
   group: promote-staging
@@ -23,6 +28,8 @@ env:
 
 jobs:
   promote:
+    # Only our own promote label (or a manual dispatch) — ignore every other issue label.
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'promote-now'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,6 +80,15 @@ jobs:
             -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
             -H "Content-Type: application/json" \
             -d '{"action":"promote_completed"}' || true
+
+      # The promote-request issue was just a trigger — close it once the run is done (either
+      # way), so promote issues don't pile up. Only when this run came from a labeled issue.
+      - name: Close the promote request issue
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh issue close "${{ github.event.issue.number }}" --repo "$REPO" --reason completed || true
 
       - name: Open failure issue
         if: failure()
