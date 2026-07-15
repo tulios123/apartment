@@ -381,7 +381,9 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   <div key={t.id} className={`liav-card${isOpen ? ' open' : ''}`}>
                     <button className="liav-card-head" onClick={() => setOpen(isOpen ? null : t.id)}>
                       <span className={`liav-badge ${color}`}>{TRACK_LABEL[t.track_type]}</span>
-                      <div className="liav-card-main"><div className="liav-card-title">{fmt(s.pay)} לחודש</div><div className="liav-card-sub">ריבית {Number(t.annual_rate).toFixed(1)}%{s.endYear ? ` · עד ${s.endYear}` : ''}{t.label ? ` · ${t.label}` : ''}</div></div>
+                      {/* Product decision 15.07: linked tracks are computed NOMINALLY (no CPI
+                          linkage yet) — disclose it wherever the track's numbers are read. */}
+                      <div className="liav-card-main"><div className="liav-card-title">{fmt(s.pay)} לחודש</div><div className="liav-card-sub">ריבית {Number(t.annual_rate).toFixed(1)}%{t.track_type === 'fixed_linked' ? ' · ללא הצמדה למדד' : ''}{s.endYear ? ` · עד ${s.endYear}` : ''}{t.label ? ` · ${t.label}` : ''}</div></div>
                       <div className="liav-card-balance"><b>{fmt(s.balance)}</b><span>יתרה</span></div>
                       <CaretDown className="liav-card-caret" size={16} weight="bold" />
                     </button>
