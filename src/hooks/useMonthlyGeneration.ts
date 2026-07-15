@@ -6,6 +6,17 @@ import { RENEWAL_WINDOW_DAYS, RENT_CATEGORIES } from '../lib/constants'
 const GENERATION_KEY = 'monthly_generation'
 const RENT_SET = new Set(RENT_CATEGORIES as readonly string[])
 
+// R13 (shared device): the "already generated this month" marker is PER ACCOUNT.
+// A single global key meant the second account in the same browser silently
+// skipped its whole month (no rent task, no fixed expenses).
+const generationKey = (ownerId: string) => `${GENERATION_KEY}:${ownerId}`
+
+/** Clear the generation marker (Settings reset tools). Drops the legacy global key too. */
+export function clearGenerationCache(ownerId?: string): void {
+  localStorage.removeItem(GENERATION_KEY)
+  if (ownerId) localStorage.removeItem(generationKey(ownerId))
+}
+
 // Guards against concurrent runs (React StrictMode double-invokes effects in
 // dev, and two mounts/tabs could race) — without this both runs read "no
 // existing rows" before either inserts, producing duplicate generated tasks.
@@ -34,27 +45,30 @@ async function insertGenerated(table: 'transactions' | 'tasks', rows: object[], 
 
 export function useMonthlyGeneration() {
   useEffect(() => {
-    const key = currentMonthKey()
-    if (localStorage.getItem(GENERATION_KEY) === key) return
     if (inFlight) return
     inFlight = true
-    generate(key).finally(() => { inFlight = false })
+    generate().finally(() => { inFlight = false })
   }, [])
 }
 
-async function generate(monthKey: string) {
+async function generate() {
   try {
-    await runGeneration()
-    localStorage.setItem(GENERATION_KEY, monthKey)
+    // The per-user marker needs the user first — so the check moved inside the
+    // async path (the legacy global key is removed so it can't suppress anyone).
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    localStorage.removeItem(GENERATION_KEY)
+    const key = generationKey(user.id)
+    const monthKey = currentMonthKey()
+    if (localStorage.getItem(key) === monthKey) return
+    await runGeneration(user.id)
+    localStorage.setItem(key, monthKey)
   } catch {
     // Don't set the key — next mount will retry
   }
 }
 
-async function runGeneration() {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-  const ownerId = user.id
+async function runGeneration(ownerId: string) {
 
   const now = new Date()
   const year = now.getFullYear()

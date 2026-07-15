@@ -13,6 +13,7 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
+import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask } from '../../lib/homeTasks'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
@@ -64,6 +65,9 @@ export default function HomeScreen() {
   const [quick, setQuick] = useState('')
   const [sheet, setSheet] = useState<null | 'expense' | 'task'>(null)
   const [sheetSeed, setSheetSeed] = useState('')
+  // V3: when the expense sheet is docked (minimized) and its launcher is tapped again,
+  // `open` doesn't change — bumping this restores the sheet instead of a dead tap.
+  const [expenseExpandKey, setExpenseExpandKey] = useState(0)
   const [extraOpen, setExtraOpen] = useState(false)
   const [incomeOpen, setIncomeOpen] = useState(false)
   // "+ עוד X משימות" expands the extra tasks in place rather than navigating away
@@ -196,9 +200,24 @@ export default function HomeScreen() {
   async function approveRent(amount: number) {
     setBusy('rent')
     try {
+      // V2: link the approval to the rent recurring-item, so the daily reminder's
+      // "already recorded this month" check matches it and stops nagging. Best-effort —
+      // approving must still work if the lookup fails (the link only silences the nag).
+      let rentItemId: string | null = null
+      try {
+        const { data: rentItems } = await supabase
+          .from('recurring_items')
+          .select('id')
+          .eq('direction', 'income')
+          .in('category', RENT_CATEGORIES as unknown as string[])
+          .lte('start_date', todayStr)
+          .or(`end_date.is.null,end_date.gte.${todayStr}`)
+          .limit(1)
+        rentItemId = rentItems?.[0]?.id ?? null
+      } catch { /* reminder-linkage only */ }
       const { error } = await createTransaction({
         contract_id: activeContract?.id ?? null,
-        recurring_item_id: null,
+        recurring_item_id: rentItemId,
         document_id: null,
         direction: 'income',
         amount,
@@ -258,6 +277,8 @@ export default function HomeScreen() {
     if (!parsed) {
       setSheetSeed(quick.trim())
       setSheet('expense')
+      // Already open-but-docked → restore it (V3); the docked data is preserved.
+      if (sheet === 'expense') setExpenseExpandKey(k => k + 1)
       return
     }
     // AI "magic" path: classify inline, but confirm the parsed amount before writing so
@@ -438,7 +459,11 @@ export default function HomeScreen() {
               </button>
             </form>
             <div className="hs-fabs">
-              <button onClick={() => { setSheetSeed(''); setSheet('expense') }}>
+              <button onClick={() => {
+                // Docked sheet + another tap = restore it (V3), preserving typed data.
+                if (sheet === 'expense') { setExpenseExpandKey(k => k + 1); return }
+                setSheetSeed(''); setSheet('expense')
+              }}>
                 <Plus size={16} weight="bold" /> הוצאה
               </button>
               <button onClick={() => setSheet('task')}>
@@ -562,6 +587,7 @@ export default function HomeScreen() {
         open={sheet === 'expense'}
         onClose={() => setSheet(null)}
         initialDesc={sheetSeed}
+        expandKey={expenseExpandKey}
         onDone={async (label) => { showFlash(label); await refetchTx() }}
       />
       <TaskSheet

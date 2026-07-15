@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
 import { PageError } from '../../components/ui/EmptyState'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { ScanDocList } from './ScanDocList'
 import { ScanReview, type ScanDraft } from './ScanReview'
 import type { MortgageTrack, Loan, TrackType, LoanRepaymentType } from '../../types'
@@ -26,7 +27,7 @@ const TRACK_COLOR: Record<TrackType, string> = { prime: 'blue', fixed_unlinked: 
 const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => d ? new Date(d).getFullYear() : null
 
-const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '', annual_rate: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()) }
+const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()) }
 const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()) }
 const isAnchoredType = (t: TrackType) => t === 'prime' || t === 'variable'
 
@@ -60,6 +61,9 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [actionErr, setActionErr] = useState<string | null>(null)
+  // Deleting a track/loan removes real money data — confirm first, like every other
+  // delete in the app (the buttons used to delete on a single stray tap).
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: 'track' | 'loan'; id: string } | null>(null)
 
   // ── AI document scan (mortgage statement / loan doc → review form) ──
   type TrackDraft = typeof emptyTrack
@@ -78,7 +82,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const useMock = import.meta.env.DEV || isManager(user?.email)  // AI mock/demo — also in dev, never bills
   function fillDrawerExample() {
     if (kind === 'mortgage') {
-      setTForm({ track_type: 'fixed_unlinked', label: 'מסלול לדוגמה', principal: '600000', annual_rate: '4.5', term_months: '360', grace_months: '0', start_date: monthDayISO(new Date()) })
+      setTForm({ track_type: 'fixed_unlinked', label: 'מסלול לדוגמה', principal: '600000', annual_rate: '4.5', prime_rate: '', margin: '', term_months: '360', grace_months: '0', start_date: monthDayISO(new Date()) })
     } else {
       setLForm({ repayment_type: 'monthly_fixed', track_type: 'fixed_unlinked', label: 'הלוואה לדוגמה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6', prime_rate: '', margin: '', term_months: '60', grace_months: '0', start_date: monthDayISO(new Date()) })
     }
@@ -108,7 +112,12 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setActionErr(null); setDrawerOpen(true) }
   function editTrack(t: MortgageTrack) {
     setKind('mortgage'); setEditId(t.id); setFormError(null); setActionErr(null)
-    setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
+    // R8: load the anchor/margin split too — editing a prime/variable track used to
+    // show only the folded effective rate and the save wiped the stored split.
+    // Older anchored tracks that never stored the split: seed anchor = the folded
+    // effective rate, margin = 0 (same effective rate, nothing corrupted on save).
+    const anchoredNoSplit = isAnchoredType(t.track_type) && t.prime_rate == null
+    setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), prime_rate: t.prime_rate != null ? String(t.prime_rate) : (anchoredNoSplit ? String(t.annual_rate) : ''), margin: t.margin != null ? String(t.margin) : (anchoredNoSplit ? '0' : ''), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
     setGraceOn((t.grace_months ?? 0) > 0)
     setDrawerOpen(true)
   }
@@ -133,6 +142,10 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       label: '',
       principal: t.principal != null ? String(t.principal) : '',
       annual_rate: rate ? String(rate) : '',
+      // R8: keep the extracted anchor/margin split alongside the folded rate, so a
+      // scanned prime/variable track stays editable as anchor+margin later.
+      prime_rate: anchored && t.prime_rate != null ? String(t.prime_rate) : '',
+      margin: anchored && t.margin != null ? String(t.margin) : '',
       term_months: t.term_months != null ? String(t.term_months) : '',
       grace_months: t.grace_months != null ? String(t.grace_months) : '0',
       start_date: t.start_date ? String(t.start_date) : monthDayISO(new Date()),
@@ -163,10 +176,17 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         const mortgageId = mortgage?.id ?? (await ensureMortgage(user.id)).id
         await Promise.all(drafts.map(d => {
           const t = d as TrackDraft
+          // R8: persist the anchor/margin split only when it still folds to the saved
+          // rate (the review card edits the folded rate — a stale split would lie).
+          const anchored = isAnchoredType(t.track_type)
+          const splitOk = anchored && t.prime_rate !== '' &&
+            Math.abs((Number(t.prime_rate || 0) + Number(t.margin || 0)) - Number(t.annual_rate || 0)) < 0.005
           return upsertMortgageTrack({
             mortgage_id: mortgageId, owner_id: user.id,
             label: t.label || null, track_type: t.track_type,
             principal: Number(t.principal) || 0, annual_rate: Number(t.annual_rate || 0),
+            prime_rate: splitOk ? Number(t.prime_rate || 0) : null,
+            margin: splitOk ? Number(t.margin || 0) : null,
             term_months: Number(t.term_months || 0), grace_months: Number(t.grace_months || 0),
             start_date: t.start_date,
           })
@@ -260,10 +280,16 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         if (Number(tForm.term_months || 0) <= 0) throw new Error('יש להזין תקופה (מספר חודשים)')
         if (graceOn && Number(tForm.grace_months || 0) >= Number(tForm.term_months || 0)) throw new Error('תקופת הגרייס חייבת להיות קצרה מהתקופה הכוללת')
         const mortgageId = mortgage?.id ?? (await ensureMortgage(user.id)).id
+        // R8: prime/variable tracks are entered as anchor + margin (like loans);
+        // annual_rate stays the folded effective rate that drives the schedule.
+        const tAnchored = isAnchoredType(tForm.track_type)
+        const tEffRate = tAnchored ? Number(tForm.prime_rate || 0) + Number(tForm.margin || 0) : Number(tForm.annual_rate || 0)
         await upsertMortgageTrack({
           id: editId ?? undefined, mortgage_id: mortgageId, owner_id: user.id,
           label: tForm.label || null, track_type: tForm.track_type,
-          principal: Number(tForm.principal), annual_rate: Number(tForm.annual_rate || 0),
+          principal: Number(tForm.principal), annual_rate: tEffRate,
+          prime_rate: tAnchored ? Number(tForm.prime_rate || 0) : null,
+          margin: tAnchored ? Number(tForm.margin || 0) : null,
           term_months: Number(tForm.term_months || 0), grace_months: graceOn ? Number(tForm.grace_months || 0) : 0, start_date: tForm.start_date,
         })
         refetchM()
@@ -362,7 +388,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                       </div>
                       <div className="liav-detail-actions">
                         <button className="liav-detail-btn" onClick={() => editTrack(t)}><PencilSimple size={14} /> עריכה</button>
-                        <button className="liav-detail-btn danger" onClick={() => removeTrack(t.id)}><Trash size={14} /> מחיקה</button>
+                        <button className="liav-detail-btn danger" onClick={() => setConfirmDelete({ kind: 'track', id: t.id })}><Trash size={14} /> מחיקה</button>
                       </div>
                     </div></div>
                   </div>
@@ -409,7 +435,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                       </div>
                       <div className="liav-detail-actions">
                         <button className="liav-detail-btn" onClick={() => editLoan(l)}><PencilSimple size={14} /> עריכה</button>
-                        <button className="liav-detail-btn danger" onClick={() => removeLoan(l.id)}><Trash size={14} /> מחיקה</button>
+                        <button className="liav-detail-btn danger" onClick={() => setConfirmDelete({ kind: 'loan', id: l.id })}><Trash size={14} /> מחיקה</button>
                       </div>
                     </div></div>
                   </div>
@@ -422,7 +448,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                     <div className="liav-balloon-main"><div className="liav-balloon-title">{l.label || 'הלוואת בלון'}{l.lender ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {l.lender}</span> : null}</div></div>
                     <div className="liav-balloon-amount">{fmt(l.principal)}</div>
                     <button className="liav-detail-btn icon-only" style={{ marginInlineStart: 8 }} onClick={() => editLoan(l)} aria-label="עריכת הלוואה" title="עריכה"><PencilSimple size={14} /></button>
-                    <button className="liav-detail-btn danger icon-only" onClick={() => removeLoan(l.id)} aria-label="מחיקת הלוואה" title="מחיקה"><Trash size={14} /></button>
+                    <button className="liav-detail-btn danger icon-only" onClick={() => setConfirmDelete({ kind: 'loan', id: l.id })} aria-label="מחיקת הלוואה" title="מחיקה"><Trash size={14} /></button>
                   </div>
                   <div className="liav-balloon-note">בלון · נפרע במכירת הנכס · ללא תשלום חודשי</div>
                 </div>
@@ -462,8 +488,17 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
             <label className="liav-field"><span>סוג מסלול</span><select value={tForm.track_type} onChange={e => setTForm(f => ({ ...f, track_type: e.target.value as TrackType }))}>{MORTGAGE_TRACK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
             <div className="liav-row2">
               <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(tForm.principal)} onChange={e => setTForm(f => ({ ...f, principal: e.target.value.replace(/[^\d]/g, '') }))} autoFocus={drawerOpen} /></label>
-              <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={tForm.annual_rate} onChange={e => setTForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>
+              {isAnchoredType(tForm.track_type)
+                ? <div className="liav-field" />
+                : <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={tForm.annual_rate} onChange={e => setTForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>}
             </div>
+            {/* R8: prime/variable tracks keep the anchor+margin split (mirrors the loan form). */}
+            {isAnchoredType(tForm.track_type) && (
+              <div className="liav-row2">
+                <label className="liav-field"><span>עוגן (פריים/בסיס) %</span><input type="number" step="0.01" value={tForm.prime_rate} onChange={e => setTForm(f => ({ ...f, prime_rate: e.target.value }))} placeholder="6.00" /></label>
+                <label className="liav-field"><span>מרווח % (פריים מינוס = שלילי)</span><input type="number" step="0.01" value={tForm.margin} onChange={e => setTForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
+              </div>
+            )}
             <div className="liav-row2">
               <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={tForm.term_months} onChange={e => setTForm(f => ({ ...f, term_months: e.target.value }))} /></label>
               {graceOn
@@ -521,6 +556,20 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         <button className="liav-save" disabled={saving} onClick={save}>{saving ? 'שומר…' : 'שמירה'}</button>
         </div></div>
       </BottomSheet>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        tone="danger"
+        title={confirmDelete?.kind === 'track' ? 'למחוק את המסלול?' : 'למחוק את ההלוואה?'}
+        message="הנתונים והתשלום החודשי בתחזית יוסרו. אי אפשר לבטל את הפעולה."
+        confirmLabel="מחיקה"
+        onConfirm={() => {
+          if (confirmDelete?.kind === 'track') removeTrack(confirmDelete.id)
+          else if (confirmDelete) removeLoan(confirmDelete.id)
+          setConfirmDelete(null)
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

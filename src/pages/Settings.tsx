@@ -17,8 +17,8 @@ import {
   disablePush,
   sendTestNotification,
 } from '../lib/push'
+import { clearGenerationCache } from '../hooks/useMonthlyGeneration'
 
-const GENERATION_KEY = 'monthly_generation'
 // The dev/test account (reached via the ?manager login) is the manager console:
 // it keeps the reset tools on the live app AND reads everyone's feedback. Family
 // accounts (incl. the owner's personal email) never see these. Must stay in sync
@@ -88,7 +88,9 @@ export default function Settings() {
   async function disableNotifications() {
     setPushBusy(true)
     try {
-      await disablePush()
+      // Explicit user choice → persist the opt-out so the app-open refresh doesn't
+      // silently re-subscribe this account (the toggle used to revert — R15).
+      await disablePush(user?.id)
       setPushState('default')
     } catch (e) {
       showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
@@ -106,7 +108,7 @@ export default function Settings() {
   }
 
   function resetGenerationCache() {
-    localStorage.removeItem(GENERATION_KEY)
+    clearGenerationCache(user?.id)
     resetListCache()
     showStatus('המטמון אופס — הגנרציה החודשית תרוץ מחדש בטעינה הבאה')
   }
@@ -138,7 +140,7 @@ export default function Settings() {
         await supabase.storage.from('documents').remove(docs.map(d => d.storage_path))
       }
 
-      localStorage.removeItem(GENERATION_KEY)
+      clearGenerationCache(user.id)
       window.location.reload()
     } catch (e) {
       showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
