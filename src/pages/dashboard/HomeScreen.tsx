@@ -15,7 +15,7 @@ import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask } from '../../lib/homeTasks'
+import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
@@ -128,10 +128,10 @@ export default function HomeScreen() {
   // regardless of date, so nothing is truly lost from the home (owner request).
   const collapsedTasks = useMemo(() => visibleHomeTasks(tasks, todayStr), [tasks, todayStr])
   const allTasks = useMemo(() => sortedHomeTasks(tasks), [tasks])
-  // The soonest future-dated task the collapsed view holds back — named with its date on
-  // the home so a task scheduled for a specific day reads as the owner's own, not a vague
-  // "scheduled task" they can't place (owner: "there's a task a week out but I don't see it").
-  const nextScheduled = useMemo(() => nextScheduledTask(tasks, todayStr), [tasks, todayStr])
+  // How many tasks are scheduled for the future (beyond the lead window) — drives the
+  // gentle "+N בעתיד" hint in the header, so the owner always sees at a glance that
+  // something is queued ahead without it crowding "what to do now" (owner request).
+  const futureTaskCount = useMemo(() => futureScheduledTasks(tasks, todayStr).length, [tasks, todayStr])
   const shownTasks = tasksExpanded ? allTasks : collapsedTasks.slice(0, 2)
 
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
@@ -375,10 +375,12 @@ export default function HomeScreen() {
                   <div className="hs-clear-icon upcoming"><CalendarCheck size={28} weight="fill" /></div>
                   <div>
                     <div className="hs-clear-title">אין משימות להיום</div>
-                    {/* Calm, single line. The pill below already names the scheduled task and its
-                        date, so repeating the count/date/"show below" here read as crowded (owner:
-                        "the collapsed state looks too busy and conveys stress"). */}
-                    <div className="hs-clear-sub">הכול רגוע — אין מה שדורש אותך עכשיו.</div>
+                    {/* The gentle "+N בעתיד" hint lives here, as the calm sub-line of the empty
+                        state — instead of a header banner the owner didn't like (#47). No date,
+                        no extra chrome: just a soft note that something is queued ahead. */}
+                    <div className="hs-clear-sub">
+                      {futureTaskCount === 1 ? 'עוד משימה אחת בעתיד' : `עוד ${futureTaskCount} משימות בעתיד`}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -429,10 +431,9 @@ export default function HomeScreen() {
               <button className="hs-more-tasks" onClick={() => setTasksExpanded(true)}>
                 {shownTaskCount === 0 ? (
                   // Nothing is shown yet (all tasks are future-dated) — "+ עוד" ("+ more")
-                  // would read oddly, so name the scheduled task (with its date) the tap reveals.
-                  <>הצג {extraTaskCount === 1
-                    ? `משימה מתוזמנת${nextScheduled ? ` ל-${formatDate(nextScheduled.due_date)}` : ''}`
-                    : `${extraTaskCount} משימות מתוזמנות`} <CaretDown size={13} weight="bold" /></>
+                  // would read oddly, so gently name the scheduled tasks the tap reveals.
+                  // No date here — the owner found the spelled-out date busy and ugly (#47).
+                  <>הצג {extraTaskCount === 1 ? 'משימה מתוזמנת' : `${extraTaskCount} משימות מתוזמנות`} <CaretDown size={13} weight="bold" /></>
                 ) : (
                   <>+ עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}</>
                 )}

@@ -7,7 +7,15 @@ import './bottom-sheet.css'
 
 type Props = {
   open: boolean
+  /** A "hard" close: the X button (and typically the save path). Fires immediately. */
   onClose: () => void
+  /**
+   * A "soft" dismiss: scrim-tap / swipe-down / Esc — the accident-prone vectors.
+   * Falls back to onClose when omitted. Forms that want the deliberate X to close at
+   * once while a stray gesture asks first pass their guarded handler here (and the raw
+   * close as onClose); the X always calls onClose.
+   */
+  onDismiss?: () => void
   title?: string
   children: React.ReactNode
   /**
@@ -41,7 +49,7 @@ type Props = {
  * stacking/RTL/overflow context. Bottom-anchored slide, grab handle with
  * swipe-down-to-dismiss, scrim-tap + Esc to close, body scroll-lock.
  */
-export default function BottomSheet({ open, onClose, title, children, minimizable = true, track = true, elevated = false, expandKey }: Props) {
+export default function BottomSheet({ open, onClose, onDismiss, title, children, minimizable = true, track = true, elevated = false, expandKey }: Props) {
   // Keep mounted through the slide-out, then unmount to keep the DOM clean.
   const [mounted, setMounted] = useState(open)
   const [minimized, setMinimized] = useState(false)
@@ -105,8 +113,8 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
   // once the form has input) dock it instead of closing; otherwise close outright.
   const dismiss = useCallback(() => {
     if (minimizable && !minimized) setMinimized(true)
-    else onClose()
-  }, [minimizable, minimized, onClose])
+    else (onDismiss ?? onClose)()
+  }, [minimizable, minimized, onDismiss, onClose])
 
   // Esc to dismiss.
   useEffect(() => {
@@ -143,7 +151,7 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
   function onTouchEnd() {
     // Past the downward threshold: dock the sheet if it's allowed to stay
     // (preserves typed-in data), otherwise just close it.
-    if (!minimized && dragY > 90) { if (minimizable) setMinimized(true); else onClose() }
+    if (!minimized && dragY > 90) { if (minimizable) setMinimized(true); else (onDismiss ?? onClose)() }
     else if (minimized && dragY < -40) setMinimized(false)
     setDragY(0)
     startY.current = null

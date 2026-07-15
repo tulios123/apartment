@@ -13,6 +13,7 @@ import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { shouldConfirmDiscard } from '../../lib/discardGuard'
 import './tasks-v2.css'
 import { DateField } from '../../components/ui/DateField'
 
@@ -48,6 +49,8 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [attaching, setAttaching] = useState(false)
   const [followup, setFollowup] = useState<TaskFollowup | null>(null)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const openSnapshot = useRef('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const taskDocs = editing ? documents.filter(d => d.task_id === editing.id) : []
@@ -113,10 +116,22 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   }
 
   function openEdit(t: Task) {
-    setEditForm({ title: t.title, category: t.category, due_date: t.due_date ?? '', due_time: t.due_time?.slice(0, 5) ?? '', status: t.status })
+    const f = { title: t.title, category: t.category, due_date: t.due_date ?? '', due_time: t.due_time?.slice(0, 5) ?? '', status: t.status }
+    setEditForm(f); openSnapshot.current = JSON.stringify(f)
     setEditErr(null)
     setActionErr(null)   // moving on clears any stale delete-failure banner
+    setConfirmDiscard(false)
     setEditing(t); setDrawerOpen(true)
+  }
+
+  // A dismiss shouldn't silently drop edits; ask only when the form changed from what it opened with.
+  const isDirty = JSON.stringify(editForm) !== openSnapshot.current
+  function forceClose() { setConfirmDiscard(false); setDrawerOpen(false) }
+  // X = deliberate → close at once; a gesture asks first when the form is dirty.
+  function requestClose() {
+    if (confirmDiscard) return
+    if (shouldConfirmDiscard(isDirty, saving ? 'saving' : 'idle')) setConfirmDiscard(true)
+    else forceClose()
   }
 
   async function handleEditSave() {
@@ -270,7 +285,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       )}
 
       {/* Edit sheet */}
-      <BottomSheet open={drawerOpen} onClose={() => setDrawerOpen(false)} title="עריכת משימה">
+      <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={requestClose} minimizable={false} title="עריכת משימה">
         {/* The sheet portals to <body>, outside the scoped `.tav` — re-wrap so the field CSS applies. */}
         <div className="tav"><div className="tav-sheet-form">
         <label className="tav-field"><span>כותרת</span><input type="text" value={editForm.title} onChange={e => { if (editErr) setEditErr(null); setEditForm(f => ({ ...f, title: e.target.value })) }} /></label>
@@ -311,6 +326,14 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         {editErr && <div className="form-error" role="alert">{editErr}</div>}
         <button className="tav-save" disabled={saving} onClick={handleEditSave}>{saving ? 'שומר…' : 'שמירה'}</button>
         </div></div>
+        <ConfirmDialog
+          open={confirmDiscard}
+          title="לצאת בלי לשמור?"
+          message="השינויים לא יישמרו."
+          confirmLabel="יציאה" cancelLabel="המשך עריכה" tone="danger"
+          onConfirm={forceClose}
+          onCancel={() => setConfirmDiscard(false)}
+        />
       </BottomSheet>
 
       <ConfirmDialog

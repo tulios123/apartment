@@ -12,6 +12,8 @@ import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
 import './documents-v2.css'
 import { DateField } from '../../components/ui/DateField'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { shouldConfirmDiscard } from '../../lib/discardGuard'
 
 const DOC_TYPE_LABELS: Record<DocumentType, string> = {
   purchase_contract: 'חוזה רכישה',
@@ -57,6 +59,8 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
   const [formError, setFormError] = useState<string | null>(null)
   const [actionErr, setActionErr] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const openSnapshot = useRef('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // The KEY documents a property owner should have on file. Universal ones always show; the
@@ -80,10 +84,24 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
     [documents, filter],
   )
 
-  function openNew(type: DocumentType = emptyForm.type) { setForm({ ...emptyForm, type }); setFile(null); setEditingId(null); setFormError(null); setDrawerOpen(true) }
+  function openNew(type: DocumentType = emptyForm.type) { const f = { ...emptyForm, type }; setForm(f); openSnapshot.current = JSON.stringify(f); setFile(null); setEditingId(null); setFormError(null); setConfirmDiscard(false); setDrawerOpen(true) }
   function openEdit(doc: { id: string; type: DocumentType; name: string; date: string | null }) {
-    setForm({ type: doc.type, name: doc.name, date: doc.date ?? '' })
-    setFile(null); setEditingId(doc.id); setFormError(null); setDrawerOpen(true)
+    const f = { type: doc.type, name: doc.name, date: doc.date ?? '' }
+    setForm(f); openSnapshot.current = JSON.stringify(f)
+    setFile(null); setEditingId(doc.id); setFormError(null); setConfirmDiscard(false); setDrawerOpen(true)
+  }
+
+  // Dismissing (scrim-tap / swipe-down / Esc / X) shouldn't silently drop typed input.
+  // Ask only when the form actually changed from what it opened with (a file counts too);
+  // a pristine form — including an untouched edit — closes without a prompt.
+  const isDirty = JSON.stringify(form) !== openSnapshot.current || file != null
+  function forceClose() { setConfirmDiscard(false); setDrawerOpen(false) }
+  // The X is deliberate → close at once (forceClose). A gesture (scrim/swipe/Esc) is
+  // accident-prone → ask first when the form is dirty.
+  function requestClose() {
+    if (confirmDiscard) return
+    if (shouldConfirmDiscard(isDirty, saving ? 'saving' : 'idle')) setConfirmDiscard(true)
+    else forceClose()
   }
 
   async function handleSubmit() {
@@ -250,7 +268,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
       <button className="docv-fab" onClick={() => openNew()} aria-label="מסמך חדש"><Plus size={26} weight="bold" /></button>
 
-      <BottomSheet open={drawerOpen} onClose={() => setDrawerOpen(false)} title={editingId ? 'עריכת מסמך' : 'מסמך חדש'}>
+      <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={requestClose} minimizable={false} title={editingId ? 'עריכת מסמך' : 'מסמך חדש'}>
         {/* The sheet portals to <body>, outside the scoped `.docv` — re-wrap so the field CSS applies. */}
         <div className="docv"><div className="docv-sheet-form">
         <label className="docv-field"><span>סוג</span><select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as DocumentType }))}>{DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
@@ -268,6 +286,14 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
         {formError && <div className="docv-form-err" role="alert">{formError}</div>}
         <button className="docv-save" disabled={saving} onClick={handleSubmit}>{saving ? 'שומר…' : 'שמירה'}</button>
         </div></div>
+        <ConfirmDialog
+          open={confirmDiscard}
+          title="לצאת בלי לשמור?"
+          message="מה שהוזן לא יישמר."
+          confirmLabel="יציאה" cancelLabel="המשך עריכה" tone="danger"
+          onConfirm={forceClose}
+          onCancel={() => setConfirmDiscard(false)}
+        />
       </BottomSheet>
     </div>
   )

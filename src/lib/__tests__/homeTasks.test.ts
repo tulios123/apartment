@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Task } from '../../types'
-import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask } from '../homeTasks'
+import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask, futureScheduledTasks } from '../homeTasks'
 
 function task(p: Partial<Task>): Task {
   return { id: 't', title: '', category: 'כללי', source: 'manual', status: 'open', ...p } as unknown as Task
@@ -89,5 +89,27 @@ describe('nextScheduledTask', () => {
       task({ id: 'late', due_date: '2026-07-01' }),
     ]
     expect(nextScheduledTask(tasks, TODAY)).toBeNull()
+  })
+})
+
+describe('futureScheduledTasks', () => {
+  it('counts only tasks scheduled beyond the lead window, soonest first', () => {
+    const tasks = [
+      task({ id: 'far', due_date: '2026-08-01' }),
+      task({ id: 'nearer', due_date: '2026-07-20' }),
+      task({ id: 'edge', due_date: '2026-07-13' }), // within window → excluded
+      task({ id: 'undated', due_date: null }),       // excluded
+      task({ id: 'late', due_date: '2026-07-01' }),  // overdue → excluded
+    ]
+    // Drives the gentle "+N בעתיד" hint — exactly the two future-dated tasks.
+    expect(futureScheduledTasks(tasks, TODAY).map(x => x.id)).toEqual(['nearer', 'far'])
+  })
+
+  it('is empty when nothing is scheduled ahead', () => {
+    const tasks = [
+      task({ id: 'today', due_date: TODAY }),
+      task({ id: 'undated', due_date: null }),
+    ]
+    expect(futureScheduledTasks(tasks, TODAY)).toEqual([])
   })
 })

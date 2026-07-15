@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Backspace, CircleNotch, Check, ArrowRight, CalendarBlank, Paperclip, X } from '@phosphor-icons/react'
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { shouldConfirmDiscard } from '../../lib/discardGuard'
 import { createTransaction } from '../../hooks/useTransactions'
 import { uploadDocument, MAX_UPLOAD_BYTES } from '../../lib/storage'
 import { supabase } from '../../lib/supabase'
@@ -56,6 +58,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   const [state, setState] = useState<'idle' | 'saving' | 'done'>('idle')
   const [err, setErr] = useState<string | null>(null)
   const [receipt, setReceipt] = useState<File | null>(null)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const [calOpen, setCalOpen] = useState(false)
   const descRef = useRef<HTMLInputElement>(null)
@@ -81,6 +84,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
       setState('idle')
       setErr(null)
       setReceipt(null)
+      setConfirmDiscard(false)
     }
   }, [open, initialDesc, initialAmount, today])
 
@@ -144,9 +148,15 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
     setErr(null)
     setStep(2)
   }
-  // Only let a swipe-down dock the sheet once the user has actually put something
-  // in; an untouched sheet should just close.
+  // A gesture-dismiss (scrim/swipe/Esc) shouldn't silently drop what was entered; ask
+  // first when there's data. The X closes at once (deliberate). An untouched sheet closes
+  // silently either way.
   const hasData = amount !== '' || desc.trim() !== '' || receipt !== null
+  function requestClose() {
+    if (confirmDiscard) return
+    if (shouldConfirmDiscard(hasData, state)) setConfirmDiscard(true)
+    else onClose()
+  }
   const dateLabel = date === today ? 'היום' : date === yesterday ? 'אתמול' : formatDate(date)
 
   async function save() {
@@ -190,7 +200,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="הוצאה חדשה" minimizable={hasData} expandKey={expandKey}>
+    <BottomSheet open={open} onClose={onClose} onDismiss={requestClose} title="הוצאה חדשה" minimizable={false} expandKey={expandKey}>
       <div className="cap-steps-wrap" style={trackH ? { height: trackH } : undefined}>
         <div className="cap-steps" style={{ direction: 'ltr', transform: `translateX(${(step - 1) * -100}%)` }}>
 
@@ -296,6 +306,15 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
       </div>
 
       <CalendarPopover open={calOpen} value={date} max={today} onSelect={setDate} onClose={() => setCalOpen(false)} />
+
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="לצאת בלי לשמור?"
+        message="מה שהוזן לא יישמר."
+        confirmLabel="יציאה" cancelLabel="המשך עריכה" tone="danger"
+        onConfirm={() => { setConfirmDiscard(false); onClose() }}
+        onCancel={() => setConfirmDiscard(false)}
+      />
     </BottomSheet>
   )
 }
