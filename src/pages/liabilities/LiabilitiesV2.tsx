@@ -500,7 +500,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         </>
       )}
 
-      <BottomSheet open={drawerOpen} onClose={closeDrawer} minimizable={false} title={editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}>
+      <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={closeDrawer} minimizable={false} title={editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}>
         {/* The sheet portals to <body>, outside the scoped `.liav` — re-wrap so the field CSS applies. */}
         <div className="liav"><div className="liav-sheet-form">
         {showFill && !editId && (

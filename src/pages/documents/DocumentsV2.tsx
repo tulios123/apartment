@@ -95,10 +95,13 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
   // Ask only when the form actually changed from what it opened with (a file counts too);
   // a pristine form — including an untouched edit — closes without a prompt.
   const isDirty = JSON.stringify(form) !== openSnapshot.current || file != null
+  function forceClose() { setConfirmDiscard(false); setDrawerOpen(false) }
+  // The X is deliberate → close at once (forceClose). A gesture (scrim/swipe/Esc) is
+  // accident-prone → ask first when the form is dirty.
   function requestClose() {
     if (confirmDiscard) return
     if (shouldConfirmDiscard(isDirty, saving ? 'saving' : 'idle')) setConfirmDiscard(true)
-    else setDrawerOpen(false)
+    else forceClose()
   }
 
   async function handleSubmit() {
@@ -265,7 +268,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
       <button className="docv-fab" onClick={() => openNew()} aria-label="מסמך חדש"><Plus size={26} weight="bold" /></button>
 
-      <BottomSheet open={drawerOpen} onClose={requestClose} minimizable={false} title={editingId ? 'עריכת מסמך' : 'מסמך חדש'}>
+      <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={requestClose} minimizable={false} title={editingId ? 'עריכת מסמך' : 'מסמך חדש'}>
         {/* The sheet portals to <body>, outside the scoped `.docv` — re-wrap so the field CSS applies. */}
         <div className="docv"><div className="docv-sheet-form">
         <label className="docv-field"><span>סוג</span><select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as DocumentType }))}>{DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
@@ -288,7 +291,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
           title="לצאת בלי לשמור?"
           message="מה שהוזן לא יישמר."
           confirmLabel="יציאה" cancelLabel="המשך עריכה" tone="danger"
-          onConfirm={() => { setConfirmDiscard(false); setDrawerOpen(false) }}
+          onConfirm={forceClose}
           onCancel={() => setConfirmDiscard(false)}
         />
       </BottomSheet>

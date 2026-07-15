@@ -286,10 +286,12 @@ export default function FinancesV2() {
   // A dismiss shouldn't silently drop what was typed; ask only when the form changed from
   // what it opened with. A pristine or untouched-prefill form closes without a prompt.
   const isDirty = JSON.stringify(form) !== openSnapshot.current
+  function forceClose() { setConfirmDiscard(false); setDrawerOpen(false) }
+  // X = deliberate → close at once; a gesture asks first when the form is dirty.
   function requestClose() {
     if (confirmDiscard) return
     if (shouldConfirmDiscard(isDirty, saving ? 'saving' : 'idle')) setConfirmDiscard(true)
-    else setDrawerOpen(false)
+    else forceClose()
   }
 
   async function loadTxDocs(txId: string) {
@@ -612,7 +614,7 @@ export default function FinancesV2() {
         )
       })()}
 
-      <BottomSheet open={drawerOpen} onClose={requestClose} minimizable={false} title={editingId ? 'עריכת תנועה' : 'תנועה חדשה'}>
+      <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={requestClose} minimizable={false} title={editingId ? 'עריכת תנועה' : 'תנועה חדשה'}>
         {/* The sheet portals to <body>, outside the scoped `.finv` — re-wrap so the field CSS applies. */}
         <div className="finv"><div className="finv-sheet-form">
         <div className="finv-seg">
@@ -645,7 +647,7 @@ export default function FinancesV2() {
           title="לצאת בלי לשמור?"
           message="מה שהוזן לא יישמר."
           confirmLabel="יציאה" cancelLabel="המשך עריכה" tone="danger"
-          onConfirm={() => { setConfirmDiscard(false); setDrawerOpen(false) }}
+          onConfirm={forceClose}
           onCancel={() => setConfirmDiscard(false)}
         />
       </BottomSheet>

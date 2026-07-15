@@ -126,10 +126,12 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
   // A dismiss shouldn't silently drop edits; ask only when the form changed from what it opened with.
   const isDirty = JSON.stringify(editForm) !== openSnapshot.current
+  function forceClose() { setConfirmDiscard(false); setDrawerOpen(false) }
+  // X = deliberate → close at once; a gesture asks first when the form is dirty.
   function requestClose() {
     if (confirmDiscard) return
     if (shouldConfirmDiscard(isDirty, saving ? 'saving' : 'idle')) setConfirmDiscard(true)
-    else setDrawerOpen(false)
+    else forceClose()
   }
 
   async function handleEditSave() {
@@ -283,7 +285,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       )}
 
       {/* Edit sheet */}
-      <BottomSheet open={drawerOpen} onClose={requestClose} minimizable={false} title="עריכת משימה">
+      <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={requestClose} minimizable={false} title="עריכת משימה">
         {/* The sheet portals to <body>, outside the scoped `.tav` — re-wrap so the field CSS applies. */}
         <div className="tav"><div className="tav-sheet-form">
         <label className="tav-field"><span>כותרת</span><input type="text" value={editForm.title} onChange={e => { if (editErr) setEditErr(null); setEditForm(f => ({ ...f, title: e.target.value })) }} /></label>
@@ -329,7 +331,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           title="לצאת בלי לשמור?"
           message="השינויים לא יישמרו."
           confirmLabel="יציאה" cancelLabel="המשך עריכה" tone="danger"
-          onConfirm={() => { setConfirmDiscard(false); setDrawerOpen(false) }}
+          onConfirm={forceClose}
           onCancel={() => setConfirmDiscard(false)}
         />
       </BottomSheet>

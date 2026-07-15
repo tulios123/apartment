@@ -66,7 +66,7 @@ export default function TaskSheet({ open, onClose, onDone }: Props) {
   }
 
   return (
-    <BottomSheet open={open} onClose={requestClose} title="משימה חדשה" minimizable={false}>
+    <BottomSheet open={open} onClose={onClose} onDismiss={requestClose} title="משימה חדשה" minimizable={false}>
       <input
         ref={inputRef}
         className="cap-title"
