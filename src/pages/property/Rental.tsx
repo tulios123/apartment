@@ -338,13 +338,21 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
     return UTILITIES.map(u => ({ utility: u, payer: getUtilPayer(contractId, u), amount: getUtilAmount(contractId, u) }))
   }
 
+  // A PARTIAL save (contract created, a later step — utilities/rent-sync — failed)
+  // must not create a SECOND contract when the user taps שמירה again. Remember the
+  // id created in this modal session and let the retry continue as an update
+  // (mirrors the onboarding-finish savedRef pattern).
+  const createdContractIdRef = useRef<string | null>(null)
+
   function openNewContract() {
     setEditingContract(null)
+    createdContractIdRef.current = null
     setShowContractModal(true)
   }
 
   function openEditContract(c: Contract) {
     setEditingContract(c)
+    createdContractIdRef.current = null
     setShowContractModal(true)
   }
 
@@ -365,13 +373,16 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
       renewal_alert_days: [90, 30],
     }
     let contractId: string
-    if (editingContract) {
+    if (editingContract || createdContractIdRef.current) {
+      // Editing — or retrying after a partial save that already created the contract.
+      const existingId = editingContract?.id ?? createdContractIdRef.current!
       const { owner_id, property_id, ...updates } = payload
       void owner_id; void property_id
-      await updateContract(editingContract.id, updates)
-      contractId = editingContract.id
+      await updateContract(existingId, updates)
+      contractId = existingId
     } else {
       const contract = await createContract(payload)
+      createdContractIdRef.current = contract.id
       contractId = contract.id
       // R12: docs scanned while this contract was still unsaved were stored with
       // contract_id null — link them to the contract they belong to now that it
@@ -396,6 +407,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
     })
     setShowContractModal(false)
     setEditingContract(null)
+    createdContractIdRef.current = null
     refetch()
     onContractsChange?.()
   }
