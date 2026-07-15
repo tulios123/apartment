@@ -49,7 +49,12 @@ export function activeContract<T extends { start_date: string; end_date: string 
 
 /** Total rent received across all contracts from each start_date up to asOf. */
 export function rentReceivedToDate(contracts: Contract[], asOf: Date = new Date()): number {
-  let total = 0
+  // N6: ONE apartment ⇒ at most ONE rent payment per calendar month. Overlapping
+  // contract rows (the old lease's tail overlapping the new lease's start — common
+  // when a renewal is entered loosely) used to double-count those months. Walk each
+  // contract's due payments and dedup by calendar month; when two contracts claim
+  // the same month, the LATER-STARTING one (the newer lease) wins.
+  const byMonth = new Map<number, { startMs: number; rent: number }>()
   for (const c of contracts) {
     // EDGE-03: LOCAL parse, consistent with the rest of the date math.
     const start = parseLocalISO(c.start_date)
@@ -61,8 +66,16 @@ export function rentReceivedToDate(contracts: Contract[], asOf: Date = new Date(
     // its payment day (the start's day-of-month) has been reached.
     const monthsSpan = (cap.getFullYear() - start.getFullYear()) * 12 + (cap.getMonth() - start.getMonth())
     const months = monthsSpan + (cap.getDate() >= start.getDate() ? 1 : 0)
-    total += Math.max(0, months) * c.monthly_rent
+    for (let i = 0; i < months; i++) {
+      const monthIdx = start.getFullYear() * 12 + start.getMonth() + i // calendar month of payment i
+      const cur = byMonth.get(monthIdx)
+      if (!cur || start.getTime() > cur.startMs) {
+        byMonth.set(monthIdx, { startMs: start.getTime(), rent: Number(c.monthly_rent) || 0 })
+      }
+    }
   }
+  let total = 0
+  for (const v of byMonth.values()) total += v.rent
   return total
 }
 

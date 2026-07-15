@@ -121,6 +121,20 @@ describe('rentReceivedToDate — counts payments due, not calendar months spanne
     expect(rentReceivedToDate([c], new Date(2026, 1, 14))).toBe(1 * 5000) // before the 15th
     expect(rentReceivedToDate([c], new Date(2026, 1, 15))).toBe(2 * 5000) // on the 15th
   })
+  it('N6: overlapping contracts count each month ONCE — the newer lease wins', () => {
+    // Old lease runs Jan→Jun; its renewal was entered from May (2-month overlap) at a
+    // higher rent. One apartment = one rent per month: Jan–Apr old (4×5000), May–Dec
+    // new (8×5500). The old per-contract sum double-counted May+June.
+    const old = contract({ id: 'c-old', start_date: '2026-01-01', end_date: '2026-06-30', monthly_rent: 5000 })
+    const renewal = contract({ id: 'c-new', start_date: '2026-05-01', end_date: '2027-04-30', monthly_rent: 5500 })
+    expect(rentReceivedToDate([old, renewal], new Date(2026, 11, 31))).toBe(4 * 5000 + 8 * 5500)
+    // Order must not matter.
+    expect(rentReceivedToDate([renewal, old], new Date(2026, 11, 31))).toBe(4 * 5000 + 8 * 5500)
+  })
+  it('N6: a single non-overlapping lease is unchanged by the dedup', () => {
+    const c = contract({ start_date: '2026-01-01', end_date: '2027-01-01', monthly_rent: 5000 })
+    expect(rentReceivedToDate([c], new Date(2026, 5, 15))).toBe(6 * 5000)
+  })
 })
 
 describe('paid-to-date helpers', () => {

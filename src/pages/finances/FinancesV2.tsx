@@ -135,10 +135,14 @@ export default function FinancesV2() {
   const realRentExists = transactions.some(t => t.direction === 'income' && RENT.includes(t.category))
   const realMortgageExists = transactions.some(t => t.direction === 'expense' && MORT.includes(t.category))
   const realInsuranceExists = transactions.some(t => t.direction === 'expense' && t.category === 'ביטוח')
+  // N7: loans had no suppression — a recorded real loan payment showed NEXT TO the
+  // forecast row and the month double-counted (rent/mortgage/insurance already had this).
+  const realLoanExists = transactions.some(t => t.direction === 'expense' && t.category === 'הלוואה')
   const shownVirtual = virtualEntries.filter(e => {
     if (e.direction === 'income' && RENT.includes(e.category) && realRentExists) return false
     if (e.direction === 'expense' && MORT.includes(e.category) && realMortgageExists) return false
     if (e.direction === 'expense' && e.category === 'ביטוח' && realInsuranceExists) return false
+    if (e.direction === 'expense' && e.category === 'הלוואה' && realLoanExists) return false
     return true
   })
 

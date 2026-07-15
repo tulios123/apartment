@@ -50,19 +50,30 @@ export function useInvestmentData(): InvestmentData {
       ])
       if (costsRes.error) throw costsRes.error
       if (txRes.error) throw txRes.error
+      // ב4: these three used to degrade to [] on error — the screen then presented
+      // WRONG money (rent 0, interest 0) as truth, and even cached it. Fail loudly;
+      // the page shows its error state and the cached snapshot stays untouched.
+      if (tracksRes.error) throw tracksRes.error
+      if (contractsRes.error) throw contractsRes.error
+      if (loansRes.error) throw loansRes.error
 
       // numeric(14,2) columns arrive as STRINGS from supabase-js — coerce at the
       // boundary so the reduces below add numbers, not concatenate strings.
       const txs = (txRes.data ?? []).map(t => ({ ...t, amount: Number(t.amount) || 0 }))
-      const mortgageTracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
-      const contracts = (contractsRes.error ? [] : (contractsRes.data ?? [])) as Contract[]
-      const loans = (loansRes.error ? [] : (loansRes.data ?? [])) as Loan[]
+      const mortgageTracks = (tracksRes.data ?? []) as MortgageTrack[]
+      const contracts = (contractsRes.data ?? []) as Contract[]
+      const loans = (loansRes.data ?? []) as Loan[]
 
       const nextCosts = (costsRes.data ?? []).map(c => ({ ...c, amount: Number(c.amount) || 0 }))
       const nextRent = rentReceivedToDate(contracts)
       const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === INTEREST_CATEGORY).reduce((s, t) => s + t.amount, 0)
       const loansInterest = loans.reduce((s, l) => s + loanInterestToDate(l), 0)
-      const nextInterest = manualInterest + interestToDate(mortgageTracks) + loansInterest
+      // N8: a hand-logged 'ריבית' expense describes the SAME financing the schedules
+      // already model — summing both double-counted interest. When a schedule exists
+      // it is the source of truth; manual entries only fill the gap when nothing is
+      // modeled (no tracks and no loans).
+      const scheduleInterest = interestToDate(mortgageTracks) + loansInterest
+      const nextInterest = mortgageTracks.length > 0 || loans.length > 0 ? scheduleInterest : manualInterest
       const nextMaintenance = txs.filter(t => t.direction === 'expense' && t.category === MAINTENANCE_CATEGORY).reduce((s, t) => s + t.amount, 0)
 
       setCosts(nextCosts)

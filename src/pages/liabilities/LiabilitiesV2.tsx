@@ -11,6 +11,7 @@ import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanInterestToDate, loanEndDate } from '../../lib/loans'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import { formatCurrency, formatNum, monthDayISO } from '../../lib/format'
+import { monthlyVirtualEntries } from '../../lib/projections'
 import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
@@ -93,7 +94,14 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const loanBal = loansSummary.monthlyBalance || 0
   const balloonBal = loansSummary.balloonOutstanding || 0
   const total = mortgageBalance + loanBal + balloonBal
-  const monthly = (summary.monthlyPayment || 0) + (loansSummary.monthlyPayment || 0)
+  // W7/R9: "תשלום חודשי" = THIS month's actual outlay from the same schedule source
+  // the ledger/home use (monthlyVirtualEntries) — grace months show the grace payment,
+  // paid-off / not-yet-started tracks and loans contribute 0. The old sum of nominal
+  // lifetime payments overstated during grace and kept counting finished loans.
+  const nowD = new Date()
+  const monthly = monthlyVirtualEntries([], tracks, nowD.getFullYear(), nowD.getMonth() + 1, monthlyLoans, [])
+    .filter(e => e.direction === 'expense')
+    .reduce((s, e) => s + e.amount, 0)
   const pct = (v: number) => total > 0 ? (v / total) * 100 : 0
 
   function trackStats(t: MortgageTrack) {
