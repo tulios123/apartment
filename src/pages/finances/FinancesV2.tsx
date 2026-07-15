@@ -21,6 +21,8 @@ import type { Transaction } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
 import { PageError, EmptyState } from '../../components/ui/EmptyState'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { shouldConfirmDiscard } from '../../lib/discardGuard'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './finances-v2.css'
 import { DateField } from '../../components/ui/DateField'
@@ -85,6 +87,8 @@ export default function FinancesV2() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const openSnapshot = useRef('')
   const [txDocs, setTxDocs] = useState<{ id: string; name: string; storage_path: string }[]>([])
   const [receiptBusy, setReceiptBusy] = useState(false)
   const receiptRef = useRef<HTMLInputElement>(null)
@@ -108,15 +112,18 @@ export default function FinancesV2() {
     if (!pf) return
     const direction: Dir = pf.direction ?? 'expense'
     const validCats = (direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES) as readonly string[]
-    setForm({
+    const pref = {
       ...emptyForm,
       direction,
       category: pf.category && validCats.includes(pf.category) ? pf.category : validCats[0],
       description: pf.description ?? '',
       amount: pf.amount != null ? String(pf.amount) : '',
-    })
+    }
+    setForm(pref)
+    openSnapshot.current = JSON.stringify(pref)
     setEditingId(null)
     setFormError(null)
+    setConfirmDiscard(false)
     setDrawerOpen(true)
     navigate(location.pathname, { replace: true })
   }, [location.state, location.pathname, navigate])
@@ -268,11 +275,21 @@ export default function FinancesV2() {
   const inPct = income + expense > 0 ? (income / (income + expense)) * 100 : 50
   const breakdown = view === 'month' ? monthBreakdown : view === 'year' ? yearBreakdown : rangeBreakdown
 
-  function openNew() { setForm(emptyForm); setEditingId(null); setTxDocs([]); setFormError(null); setDrawerOpen(true) }
+  function openNew() { setForm(emptyForm); openSnapshot.current = JSON.stringify(emptyForm); setEditingId(null); setTxDocs([]); setFormError(null); setConfirmDiscard(false); setDrawerOpen(true) }
   function openEdit(t: Transaction) {
-    setForm({ direction: t.direction, amount: String(t.amount), date: t.date, category: t.category, description: t.description ?? '', payment_method: t.payment_method ?? '' })
-    setEditingId(t.id); setTxDocs([]); setFormError(null); setDrawerOpen(true)
+    const f = { direction: t.direction, amount: String(t.amount), date: t.date, category: t.category, description: t.description ?? '', payment_method: t.payment_method ?? '' }
+    setForm(f); openSnapshot.current = JSON.stringify(f)
+    setEditingId(t.id); setTxDocs([]); setFormError(null); setConfirmDiscard(false); setDrawerOpen(true)
     loadTxDocs(t.id)
+  }
+
+  // A dismiss shouldn't silently drop what was typed; ask only when the form changed from
+  // what it opened with. A pristine or untouched-prefill form closes without a prompt.
+  const isDirty = JSON.stringify(form) !== openSnapshot.current
+  function requestClose() {
+    if (confirmDiscard) return
+    if (shouldConfirmDiscard(isDirty, saving ? 'saving' : 'idle')) setConfirmDiscard(true)
+    else setDrawerOpen(false)
   }
 
   async function loadTxDocs(txId: string) {
@@ -595,7 +612,7 @@ export default function FinancesV2() {
         )
       })()}
 
-      <BottomSheet open={drawerOpen} onClose={() => setDrawerOpen(false)} title={editingId ? 'עריכת תנועה' : 'תנועה חדשה'}>
+      <BottomSheet open={drawerOpen} onClose={requestClose} minimizable={false} title={editingId ? 'עריכת תנועה' : 'תנועה חדשה'}>
         {/* The sheet portals to <body>, outside the scoped `.finv` — re-wrap so the field CSS applies. */}
         <div className="finv"><div className="finv-sheet-form">
         <div className="finv-seg">
@@ -623,6 +640,14 @@ export default function FinancesV2() {
         {formError && <div className="finv-form-err" role="alert">{formError}</div>}
         <button className="finv-save" disabled={saving} onClick={submitForm}>{saving ? 'שומר…' : 'שמירת תנועה'}</button>
         </div></div>
+        <ConfirmDialog
+          open={confirmDiscard}
+          title="לצאת בלי לשמור?"
+          message="מה שהוזן לא יישמר."
+          confirmLabel="יציאה" cancelLabel="המשך עריכה" tone="danger"
+          onConfirm={() => { setConfirmDiscard(false); setDrawerOpen(false) }}
+          onCancel={() => setConfirmDiscard(false)}
+        />
       </BottomSheet>
     </div>
   )

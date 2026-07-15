@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { shouldConfirmDiscard } from '../discardGuard'
+// (discardGuard moved from components/capture → lib; shared by capture sheets + page forms)
 
 describe('shouldConfirmDiscard', () => {
   it('does not prompt for an empty draft', () => {

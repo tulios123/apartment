@@ -3,7 +3,7 @@ import { CircleNotch, Check, CalendarBlank, Clock, X, ArrowsClockwise } from '@p
 import BottomSheet from '../ui/BottomSheet'
 import CalendarPopover from '../ui/CalendarPopover'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
-import { shouldConfirmDiscard } from './discardGuard'
+import { shouldConfirmDiscard } from '../../lib/discardGuard'
 import { createTask } from '../../hooks/useTasks'
 import { formatDate } from '../../lib/format'
 import { RECURRENCE_OPTIONS, recurrenceLabel } from '../../lib/recurrence'

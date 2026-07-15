@@ -17,6 +17,7 @@ import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
 import { PageError } from '../../components/ui/EmptyState'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { shouldConfirmDiscard } from '../../lib/discardGuard'
 import { ScanDocList } from './ScanDocList'
 import { ScanReview, type ScanDraft } from './ScanReview'
 import type { MortgageTrack, Loan, TrackType, LoanRepaymentType } from '../../types'
@@ -60,6 +61,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const [graceOn, setGraceOn] = useState(false)
   const [lForm, setLForm] = useState(emptyLoan)
   const [saving, setSaving] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const openSnapshot = useRef('')
   const [formError, setFormError] = useState<string | null>(null)
   const [actionErr, setActionErr] = useState<string | null>(null)
   // Deleting a track/loan removes real money data — confirm first, like every other
@@ -116,8 +119,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     return { balance, interestPaid, interestLeft, endYear, pay, paidPct }
   }
 
-  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); setGraceOn(false); setFormError(null); setActionErr(null); setDrawerOpen(true) }
-  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); setGraceOn(false); setFormError(null); setActionErr(null); setDrawerOpen(true) }
+  function openAddMortgage() { setKind('mortgage'); setEditId(null); setTForm(emptyTrack); openSnapshot.current = JSON.stringify(emptyTrack); setGraceOn(false); setFormError(null); setActionErr(null); setConfirmDiscard(false); setDrawerOpen(true) }
+  function openAddLoan() { setKind('loan'); setEditId(null); setLForm(emptyLoan); openSnapshot.current = JSON.stringify(emptyLoan); setGraceOn(false); setFormError(null); setActionErr(null); setConfirmDiscard(false); setDrawerOpen(true) }
   function editTrack(t: MortgageTrack) {
     setKind('mortgage'); setEditId(t.id); setFormError(null); setActionErr(null)
     // R8: load the anchor/margin split too — editing a prime/variable track used to
@@ -125,18 +128,31 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     // Older anchored tracks that never stored the split: seed anchor = the folded
     // effective rate, margin = 0 (same effective rate, nothing corrupted on save).
     const anchoredNoSplit = isAnchoredType(t.track_type) && t.prime_rate == null
-    setTForm({ track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), prime_rate: t.prime_rate != null ? String(t.prime_rate) : (anchoredNoSplit ? String(t.annual_rate) : ''), margin: t.margin != null ? String(t.margin) : (anchoredNoSplit ? '0' : ''), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date })
+    const tf = { track_type: t.track_type, label: t.label ?? '', principal: String(t.principal), annual_rate: String(t.annual_rate), prime_rate: t.prime_rate != null ? String(t.prime_rate) : (anchoredNoSplit ? String(t.annual_rate) : ''), margin: t.margin != null ? String(t.margin) : (anchoredNoSplit ? '0' : ''), term_months: String(t.term_months), grace_months: String(t.grace_months ?? 0), start_date: t.start_date }
+    setTForm(tf); openSnapshot.current = JSON.stringify(tf)
     setGraceOn((t.grace_months ?? 0) > 0)
+    setConfirmDiscard(false)
     setDrawerOpen(true)
   }
   function editLoan(l: Loan) {
     setKind('loan'); setEditId(l.id); setFormError(null); setActionErr(null)
-    setLForm({ repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? monthDayISO(new Date()) })
+    const lf = { repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? monthDayISO(new Date()) }
+    setLForm(lf); openSnapshot.current = JSON.stringify(lf)
     setGraceOn((l.grace_months ?? 0) > 0)
+    setConfirmDiscard(false)
     setDrawerOpen(true)
   }
 
-  function closeDrawer() { setDrawerOpen(false) }
+  // A dismiss shouldn't silently drop typed input; ask only when the active form changed
+  // from what it opened with. A pristine or untouched-edit form closes without a prompt.
+  // The save path calls forceClose() so a just-saved (still-populated) form never prompts.
+  const isDirty = JSON.stringify(kind === 'mortgage' ? tForm : lForm) !== openSnapshot.current
+  function forceClose() { setConfirmDiscard(false); setDrawerOpen(false) }
+  function closeDrawer() {
+    if (confirmDiscard) return
+    if (shouldConfirmDiscard(isDirty, saving ? 'saving' : 'idle')) setConfirmDiscard(true)
+    else setDrawerOpen(false)
+  }
 
   // Map an extracted record to the drawer's form shape. For an anchored mortgage
   // track (prime/variable) the track form holds one effective rate, so fold
@@ -323,7 +339,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         })
         refetchL()
       }
-      closeDrawer()
+      forceClose()
     } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
     setSaving(false)
   }
@@ -484,7 +500,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         </>
       )}
 
-      <BottomSheet open={drawerOpen} onClose={closeDrawer} title={editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}>
+      <BottomSheet open={drawerOpen} onClose={closeDrawer} minimizable={false} title={editId ? (kind === 'mortgage' ? 'עריכת מסלול' : 'עריכת הלוואה') : (kind === 'mortgage' ? 'הוספת מסלול משכנתא' : 'הוספת הלוואה')}>
         {/* The sheet portals to <body>, outside the scoped `.liav` — re-wrap so the field CSS applies. */}
         <div className="liav"><div className="liav-sheet-form">
         {showFill && !editId && (
@@ -565,6 +581,14 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         {formError && <div className="liav-form-err" role="alert">{formError}</div>}
         <button className="liav-save" disabled={saving} onClick={save}>{saving ? 'שומר…' : 'שמירה'}</button>
         </div></div>
+        <ConfirmDialog
+          open={confirmDiscard}
+          title="לצאת בלי לשמור?"
+          message="מה שהוזן לא יישמר."
+          confirmLabel="יציאה" cancelLabel="המשך עריכה" tone="danger"
+          onConfirm={forceClose}
+          onCancel={() => setConfirmDiscard(false)}
+        />
       </BottomSheet>
 
       <ConfirmDialog
