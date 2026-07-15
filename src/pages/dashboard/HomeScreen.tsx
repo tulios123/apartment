@@ -15,7 +15,7 @@ import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask, futureScheduledTasks } from '../../lib/homeTasks'
+import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
@@ -128,10 +128,6 @@ export default function HomeScreen() {
   // regardless of date, so nothing is truly lost from the home (owner request).
   const collapsedTasks = useMemo(() => visibleHomeTasks(tasks, todayStr), [tasks, todayStr])
   const allTasks = useMemo(() => sortedHomeTasks(tasks), [tasks])
-  // The soonest future-dated task the collapsed view holds back — named with its date on
-  // the home so a task scheduled for a specific day reads as the owner's own, not a vague
-  // "scheduled task" they can't place (owner: "there's a task a week out but I don't see it").
-  const nextScheduled = useMemo(() => nextScheduledTask(tasks, todayStr), [tasks, todayStr])
   // How many tasks are scheduled for the future (beyond the lead window) — drives the
   // gentle "+N בעתיד" hint in the header, so the owner always sees at a glance that
   // something is queued ahead without it crowding "what to do now" (owner request).
@@ -442,10 +438,9 @@ export default function HomeScreen() {
               <button className="hs-more-tasks" onClick={() => setTasksExpanded(true)}>
                 {shownTaskCount === 0 ? (
                   // Nothing is shown yet (all tasks are future-dated) — "+ עוד" ("+ more")
-                  // would read oddly, so name the scheduled task (with its date) the tap reveals.
-                  <>הצג {extraTaskCount === 1
-                    ? `משימה מתוזמנת${nextScheduled ? ` ל-${formatDate(nextScheduled.due_date)}` : ''}`
-                    : `${extraTaskCount} משימות מתוזמנות`} <CaretDown size={13} weight="bold" /></>
+                  // would read oddly, so gently name the scheduled tasks the tap reveals.
+                  // No date here — the owner found the spelled-out date busy and ugly (#47).
+                  <>הצג {extraTaskCount === 1 ? 'משימה מתוזמנת' : `${extraTaskCount} משימות מתוזמנות`} <CaretDown size={13} weight="bold" /></>
                 ) : (
                   <>+ עוד {extraTaskCount} {extraTaskCount === 1 ? 'משימה' : 'משימות'}</>
                 )}
