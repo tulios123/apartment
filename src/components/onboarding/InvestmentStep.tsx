@@ -11,7 +11,7 @@ import { useOnboarding } from './context'
 
 export function InvestmentStep() {
   const {
-    advance, price,
+    advance, price, error,
     equityMode, setEquityMode, equityValue, setEquityValue,
     focusedInput, setFocusedInput, equityAmount, equityPercent,
     derivedEquityAmount, derivedEquityPct,
@@ -242,6 +242,7 @@ export function InvestmentStep() {
         )}
       </div>
       <button type="submit" className="btn-onboard-primary onboarding-cta-full">המשך</button>
+      {error && <p className="onboarding-error" role="alert">{error}</p>}
       <FinishEarly />
     </form>
   )
