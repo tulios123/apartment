@@ -19,18 +19,6 @@
   .hs-greet-icon { width: 34px; height: 34px; border-radius: 11px; background: var(--accent-light); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
   .hs-greet h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-navy); }
   .hs-status { font-size: 14px; color: var(--text-muted); margin-top: 8px; }
-  /* Gentle "+N בעתיד" hint — a soft, low-contrast chip that never competes with the
-     status line. Calm by design (owner: "something subtle"). */
-  .hs-future-hint {
-    display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
-    background: var(--accent-light); color: var(--accent);
-    border: none; cursor: pointer; font-family: inherit;
-    font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
-    transition: filter var(--t-fast) var(--ease);
-    -webkit-tap-highlight-color: transparent;
-  }
-  .hs-future-hint:hover { filter: brightness(0.96); }
-  .hs-future-hint svg { opacity: 0.85; }
 
   .hs-flash { background: var(--success-bg); color: var(--success-text); font-size: 13.5px; font-weight: 600; padding: 11px 16px; border-radius: var(--r-md); margin-bottom: 14px; animation: hsFlash 0.3s var(--ease) both; }
 
