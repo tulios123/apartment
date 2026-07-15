@@ -15,7 +15,7 @@ import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask } from '../../lib/homeTasks'
+import { visibleHomeTasks, sortedHomeTasks, nextScheduledTask, futureScheduledTasks } from '../../lib/homeTasks'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
@@ -132,6 +132,10 @@ export default function HomeScreen() {
   // the home so a task scheduled for a specific day reads as the owner's own, not a vague
   // "scheduled task" they can't place (owner: "there's a task a week out but I don't see it").
   const nextScheduled = useMemo(() => nextScheduledTask(tasks, todayStr), [tasks, todayStr])
+  // How many tasks are scheduled for the future (beyond the lead window) — drives the
+  // gentle "+N בעתיד" hint in the header, so the owner always sees at a glance that
+  // something is queued ahead without it crowding "what to do now" (owner request).
+  const futureTaskCount = useMemo(() => futureScheduledTasks(tasks, todayStr).length, [tasks, todayStr])
   const shownTasks = tasksExpanded ? allTasks : collapsedTasks.slice(0, 2)
 
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
@@ -341,6 +345,15 @@ export default function HomeScreen() {
                 ? 'יש פעולה אחת שמחכה לך.'
                 : `יש ${actions.length} פעולות שמחכות לך.`}
           </p>
+        )}
+        {/* Gentle "+N בעתיד" hint — a soft, always-present note that tasks are queued
+            ahead, without pulling them into "what to do now". Tapping reveals them in
+            the action list below (owner: "something subtle like +1 tasks in the future"). */}
+        {!loadingActions && property && futureTaskCount > 0 && (
+          <button className="hs-future-hint" onClick={() => setTasksExpanded(true)}>
+            <CalendarCheck size={13} weight="fill" />
+            {futureTaskCount === 1 ? 'עוד משימה אחת בעתיד' : `עוד ${futureTaskCount} משימות בעתיד`}
+          </button>
         )}
       </header>
 
