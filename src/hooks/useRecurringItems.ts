@@ -77,7 +77,10 @@ export async function syncRentRecurringItem(
 
   if (!contract.requires_approval) {
     if (rentItems.length > 0) {
-      await supabase.from('recurring_items').delete().in('id', rentItems.map(i => i.id))
+      // R11: a swallowed delete failure left the rent item behind — the rent then kept
+      // generating approval tasks the owner just turned off. Surface it to the caller.
+      const { error } = await supabase.from('recurring_items').delete().in('id', rentItems.map(i => i.id))
+      if (error) throw error
     }
     return
   }
@@ -95,13 +98,15 @@ export async function syncRentRecurringItem(
   }
 
   if (rentItems.length > 0) {
-    await supabase.from('recurring_items').update(fields).eq('id', rentItems[0].id)
+    const { error } = await supabase.from('recurring_items').update(fields).eq('id', rentItems[0].id)
+    if (error) throw error
     if (rentItems.length > 1) {
       // Collapse any accidental duplicates.
-      await supabase.from('recurring_items').delete().in('id', rentItems.slice(1).map(i => i.id))
+      const { error: dupErr } = await supabase.from('recurring_items').delete().in('id', rentItems.slice(1).map(i => i.id))
+      if (dupErr) throw dupErr
     }
   } else {
-    await supabase.from('recurring_items').insert({
+    const { error } = await supabase.from('recurring_items').insert({
       ...fields,
       owner_id: ownerId,
       // The schema constrains day_of_month to 1–28; the number input's max isn't
@@ -109,6 +114,7 @@ export async function syncRentRecurringItem(
       day_of_month: Math.min(28, Math.max(1, opts?.dayOfMonth ?? 1)),
       renewal_alert_days: [90, 30],
     })
+    if (error) throw error
   }
 }
 

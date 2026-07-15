@@ -28,6 +28,12 @@ type Props = {
    * The feedback sheet sets this so it's usable when opened from inside an open dialog.
    */
   elevated?: boolean
+  /**
+   * Restore-from-docked signal (V3). When the sheet is minimized, tapping its launcher
+   * again doesn't change `open` — the parent bumps this counter instead, and the sheet
+   * un-minimizes (data preserved) rather than appearing dead.
+   */
+  expandKey?: number
 }
 
 /**
@@ -35,7 +41,7 @@ type Props = {
  * stacking/RTL/overflow context. Bottom-anchored slide, grab handle with
  * swipe-down-to-dismiss, scrim-tap + Esc to close, body scroll-lock.
  */
-export default function BottomSheet({ open, onClose, title, children, minimizable = true, track = true, elevated = false }: Props) {
+export default function BottomSheet({ open, onClose, title, children, minimizable = true, track = true, elevated = false, expandKey }: Props) {
   // Keep mounted through the slide-out, then unmount to keep the DOM clean.
   const [mounted, setMounted] = useState(open)
   const [minimized, setMinimized] = useState(false)
@@ -79,6 +85,12 @@ export default function BottomSheet({ open, onClose, title, children, minimizabl
       return () => clearTimeout(t)
     }
   }, [open])
+
+  // V3: the launcher was tapped while we're docked — restore. (Starts at 0 → falsy →
+  // no effect on mount; only real bumps un-minimize.)
+  useEffect(() => {
+    if (expandKey) setMinimized(false)
+  }, [expandKey])
 
   // Lock background scroll only while expanded (minimized leaves the page usable).
   useEffect(() => {

@@ -5,6 +5,7 @@ import { GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { clearQueryCache } from '../lib/queryCache'
 import { clearOnboardingDraft } from '../lib/onboardingDraft'
 import { redeemPreviewAuth } from '../lib/previewAuth'
+import { disablePush } from '../lib/push'
 
 // Dev-only auto-login. Gated on import.meta.env.DEV so it is compiled out of ANY
 // production build (vite build ⇒ DEV=false) — even if the env var were misconfigured
@@ -109,6 +110,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // signOut, while we still hold the user id the draft is keyed by.
     clearOnboardingDraft(session?.user?.id)
     clearQueryCache()
+    // R15 (shared device): release this device's push subscription while we're still
+    // authenticated (RLS requires it to delete the row). Otherwise the previous
+    // account's reminders keep landing on whoever holds the device next. Best-effort —
+    // a push hiccup must never block signing out. No opt-out flag: the same account's
+    // next sign-in re-subscribes automatically.
+    try { await disablePush() } catch { /* best-effort */ }
     await supabase.auth.signOut()
   }
 

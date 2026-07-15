@@ -58,7 +58,9 @@ function ContractForm({
   initial: Partial<typeof emptyContract>
   initialUtils: UtilDraft[]
   contractId: string | null
-  onSave: (data: typeof emptyContract, utils: UtilDraft[]) => Promise<void>
+  // scanDocIds: docs uploaded in THIS form session while the contract was still
+  // unsaved (contract_id null) — the parent back-links them after create (R12).
+  onSave: (data: typeof emptyContract, utils: UtilDraft[], scanDocIds: string[]) => Promise<void>
   onCancel: () => void
   onDocsChanged: () => void
 }) {
@@ -195,7 +197,7 @@ function ContractForm({
     setSaving(true)
     setErr(null)
     try {
-      await onSave(form, utils)
+      await onSave(form, utils, sessionDocIds)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'שגיאה')
     } finally {
@@ -346,7 +348,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
     setShowContractModal(true)
   }
 
-  async function handleContractSave(form: typeof emptyContract, utils: UtilDraft[]) {
+  async function handleContractSave(form: typeof emptyContract, utils: UtilDraft[], scanDocIds: string[] = []) {
     if (!user || !property) return
     const payload = {
       owner_id: user.id,
@@ -371,6 +373,15 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
     } else {
       const contract = await createContract(payload)
       contractId = contract.id
+      // R12: docs scanned while this contract was still unsaved were stored with
+      // contract_id null — link them to the contract they belong to now that it
+      // exists (otherwise they float unattached in Documents). Best-effort per doc.
+      if (scanDocIds.length > 0) {
+        const cid = contractId
+        await Promise.all(scanDocIds.map(id =>
+          updateDocument(id, { contract_id: cid }).catch(() => { /* re-linkable from Documents */ }),
+        ))
+      }
     }
     await upsertUtilities(contractId, utils.map(u => ({ utility: u.utility, payer: u.payer, amount: u.payer === 'owner' ? u.amount : null })))
     // Keep the rent-collection recurring item in sync with requires_approval.

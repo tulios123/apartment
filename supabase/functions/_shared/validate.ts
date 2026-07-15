@@ -37,6 +37,10 @@ function base64Bytes(b64: string): number {
 // Distinguishes "the caller sent something invalid" (400) from a real server fault (500).
 export class ValidationError extends Error {}
 
+// The caller exceeded their per-hour extract budget (429). Kept here so errorResponse
+// can map it, and rateLimit.ts can throw it, without a circular import.
+export class RateLimitError extends Error {}
+
 // Cheap pre-parse rejection using Content-Length, so a huge body never gets read
 // into memory / parsed. Header may be absent — then we fall through to the precise
 // per-file checks after parsing.
@@ -89,14 +93,21 @@ export function parseAndValidateFiles(body: unknown): ExtractFile[] {
   return files
 }
 
-// Standard error responder — 400 + the Hebrew message for validation failures,
-// 500 + a generic Hebrew message for anything else (details go to the logs, not
-// the client).
+// Standard error responder — the Hebrew message + matching status:
+//   429 rate-limit (RateLimitError), 400 bad input (ValidationError), 500 otherwise
+//   (generic message; the real details go to the logs, not the client).
 export function errorResponse(e: unknown, corsHeaders: Record<string, string>): Response {
-  const isValidation = e instanceof ValidationError
-  const message = isValidation ? e.message : 'אירעה שגיאה בעיבוד המסמך. נסו שוב.'
+  let status = 500
+  let message = 'אירעה שגיאה בעיבוד המסמך. נסו שוב.'
+  if (e instanceof RateLimitError) {
+    status = 429
+    message = e.message
+  } else if (e instanceof ValidationError) {
+    status = 400
+    message = e.message
+  }
   return new Response(JSON.stringify({ error: message }), {
-    status: isValidation ? 400 : 500,
+    status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 }

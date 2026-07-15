@@ -16,6 +16,8 @@ type Props = {
   onClose: () => void
   initialDesc?: string
   initialAmount?: number
+  /** Bumped by the parent to restore the sheet from its docked (minimized) state (V3). */
+  expandKey?: number
   onDone: (label: string) => void
 }
 
@@ -43,7 +45,7 @@ function isoOffset(days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function ExpenseSheet({ open, onClose, initialDesc = '', initialAmount, onDone }: Props) {
+export default function ExpenseSheet({ open, onClose, initialDesc = '', initialAmount, expandKey, onDone }: Props) {
   const [step, setStep] = useState<1 | 2>(1)
   const [amount, setAmount] = useState('')
   const [desc, setDesc] = useState('')
@@ -188,7 +190,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="הוצאה חדשה" minimizable={hasData}>
+    <BottomSheet open={open} onClose={onClose} title="הוצאה חדשה" minimizable={hasData} expandKey={expandKey}>
       <div className="cap-steps-wrap" style={trackH ? { height: trackH } : undefined}>
         <div className="cap-steps" style={{ direction: 'ltr', transform: `translateX(${(step - 1) * -100}%)` }}>
 

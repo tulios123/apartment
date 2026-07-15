@@ -17,8 +17,8 @@ import {
   disablePush,
   sendTestNotification,
 } from '../lib/push'
+import { clearGenerationCache } from '../hooks/useMonthlyGeneration'
 
-const GENERATION_KEY = 'monthly_generation'
 // The dev/test account (reached via the ?manager login) is the manager console:
 // it keeps the reset tools on the live app AND reads everyone's feedback. Family
 // accounts (incl. the owner's personal email) never see these. Must stay in sync
@@ -88,7 +88,9 @@ export default function Settings() {
   async function disableNotifications() {
     setPushBusy(true)
     try {
-      await disablePush()
+      // Explicit user choice → persist the opt-out so the app-open refresh doesn't
+      // silently re-subscribe this account (the toggle used to revert — R15).
+      await disablePush(user?.id)
       setPushState('default')
     } catch (e) {
       showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
@@ -106,7 +108,7 @@ export default function Settings() {
   }
 
   function resetGenerationCache() {
-    localStorage.removeItem(GENERATION_KEY)
+    clearGenerationCache(user?.id)
     resetListCache()
     showStatus('המטמון אופס — הגנרציה החודשית תרוץ מחדש בטעינה הבאה')
   }
@@ -115,30 +117,39 @@ export default function Settings() {
     if (!user) return
     setResetting(true)
     try {
-      const { data: docs } = await supabase
+      const { data: docs, error: docsErr } = await supabase
         .from('documents')
         .select('storage_path')
         .eq('owner_id', user.id)
+      if (docsErr) throw docsErr
 
-      await supabase.from('transactions').delete().eq('owner_id', user.id)
-      await supabase.from('tasks').delete().eq('owner_id', user.id)
-      await supabase.from('documents').delete().eq('owner_id', user.id)
-      await supabase.from('recurring_items').delete().eq('owner_id', user.id)
-      await supabase.from('investment_costs').delete().eq('owner_id', user.id)
-      await supabase.from('insurance_policies').delete().eq('owner_id', user.id)
-      await supabase.from('contracts').delete().eq('owner_id', user.id)
-      await supabase.from('mortgage_tracks').delete().eq('owner_id', user.id)
-      await supabase.from('mortgages').delete().eq('owner_id', user.id)
+      // R14: supabase returns {error} without throwing — an unchecked failed delete
+      // used to be skipped silently and the reload showed a half-wiped account that
+      // looked like data corruption. Check every step; any failure aborts with a
+      // message and WITHOUT reloading, so the state stays inspectable.
+      const del = async (table: string) => {
+        const { error } = await supabase.from(table).delete().eq('owner_id', user.id)
+        if (error) throw new Error(`מחיקת ${table} נכשלה — ${error.message}`)
+      }
+      await del('transactions')
+      await del('tasks')
+      await del('documents')
+      await del('recurring_items')
+      await del('investment_costs')
+      await del('insurance_policies')
+      await del('contracts')
+      await del('mortgage_tracks')
+      await del('mortgages')
       // loans (monthly + balloon) carry owner_id and a SET NULL property FK, so a
       // property delete leaves them orphaned — clear them explicitly before properties.
-      await supabase.from('loans').delete().eq('owner_id', user.id)
-      await supabase.from('properties').delete().eq('owner_id', user.id)
+      await del('loans')
+      await del('properties')
 
       if (docs && docs.length > 0) {
         await supabase.storage.from('documents').remove(docs.map(d => d.storage_path))
       }
 
-      localStorage.removeItem(GENERATION_KEY)
+      clearGenerationCache(user.id)
       window.location.reload()
     } catch (e) {
       showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))

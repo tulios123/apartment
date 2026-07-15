@@ -39,7 +39,8 @@ export async function createDocument(doc: Omit<Document, 'created_at'>): Promise
 
 export async function updateDocument(
   id: string,
-  fields: Partial<Pick<Document, 'name' | 'type' | 'date'>>
+  // contract_id: back-linking a doc scanned before its contract existed (R12).
+  fields: Partial<Pick<Document, 'name' | 'type' | 'date' | 'contract_id'>>
 ): Promise<void> {
   const { error } = await supabase.from('documents').update(fields).eq('id', id)
   if (error) throw error

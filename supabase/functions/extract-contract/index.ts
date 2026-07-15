@@ -1,5 +1,6 @@
 import { extractText, getDocumentProxy } from 'npm:unpdf'
 import { parseAndValidateFiles, guardRequestSize, errorResponse } from '../_shared/validate.ts'
+import { enforceExtractRateLimit } from '../_shared/rateLimit.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,6 +38,8 @@ Deno.serve(async (req) => {
     guardRequestSize(req)
     const body = await req.json()
     const files = parseAndValidateFiles(body)
+    // Per-owner rolling-hour budget on the billed Anthropic calls (429 if exceeded).
+    await enforceExtractRateLimit(req, 'extract-contract')
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')

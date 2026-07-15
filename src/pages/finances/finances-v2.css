@@ -144,7 +144,7 @@
   .finv-fab:active { transform: scale(0.92); }
   .finv-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
   .finv-scrim.open { opacity: 1; pointer-events: auto; }
-  .finv-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .finv-drawer { position: fixed; top: 0; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .finv-drawer.open { transform: translateX(0); }
   .finv-drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
   .finv-drawer-head h2 { font-size: 18px; font-weight: 700; color: var(--brand-navy); }
@@ -156,7 +156,9 @@
   .finv-field span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
   .finv-field input, .finv-field select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 15px; padding: 11px 12px; border-radius: var(--r-sm); outline: none; transition: border-color var(--t-base), box-shadow var(--t-base); }
   .finv-field input:focus, .finv-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
-  .finv-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
+  /* Edit form inside the BottomSheet (portals to <body>; re-wrapped in .finv). */
+  .finv-sheet-form { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+  .finv-save { width: 100%; margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
   .finv-save:hover { background: var(--accent-hover); }
   .finv-save:active { transform: scale(0.98); }
   .finv-save:disabled { opacity: 0.5; cursor: default; }

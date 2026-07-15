@@ -82,7 +82,7 @@
   /* Edit drawer */
   .tav-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
   .tav-scrim.open { opacity: 1; pointer-events: auto; }
-  .tav-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .tav-drawer { position: fixed; top: 0; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .tav-drawer.open { transform: translateX(0); }
   .tav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
   .tav-drawer-head h2 { font-size: 18px; font-weight: 700; color: var(--brand-navy); }
@@ -94,7 +94,9 @@
   .tav-seg { display: flex; gap: 8px; }
   .tav-seg button { flex: 1; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px; border-radius: var(--r-sm); cursor: pointer; transition: all var(--t-fast) var(--ease); }
   .tav-seg button.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
-  .tav-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
+  /* Edit form inside the BottomSheet (portals to <body>; re-wrapped in .tav). */
+  .tav-sheet-form { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+  .tav-save { width: 100%; margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
   .tav-save:hover { background: var(--accent-hover); }
   .tav-save:active { transform: scale(0.98); }
   .tav-save:disabled { opacity: 0.5; cursor: default; }

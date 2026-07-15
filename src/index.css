@@ -11,6 +11,11 @@
   --danger:#e0533d; --danger-bg:#fde6e1; --danger-text:#b23420;
   --warning:#b06a00; --warning-bg:#fdf2dc; --warning-text:#8a5200;
   --accent-2:#6d4ad6; --accent-2-bg:#ece7fb;
+  /* Soft tints — subtle fills behind chips/rows. Previously referenced with only
+     inline fallbacks (never defined), so dark mode had no say; defined here + in the
+     dark block so both themes control them. Values match the dominant fallbacks. */
+  --accent-soft:rgba(10,31,68,.06); --accent-soft-hover:rgba(10,31,68,.10);
+  --success-soft:rgba(26,127,55,.05); --danger-soft:rgba(224,83,61,.08);
   /* Chart / decorative accents */
   --accent-coral:#f0654e; --accent-teal:#2bb39b; --sage:#dde7e0;
   --teal-bg:#d8f0eb; --teal-text:#0c7a66;
@@ -59,6 +64,9 @@
     --danger:#ef6a53; --danger-bg:#381b17; --danger-text:#f2917f;
     --warning:#d99a3a; --warning-bg:#322610; --warning-text:#e7b667;
     --accent-2:#9279e6; --accent-2-bg:#211a37;
+    /* Soft tints go light-on-dark (a navy tint would vanish on a dark surface). */
+    --accent-soft:rgba(79,153,239,.14); --accent-soft-hover:rgba(79,153,239,.22);
+    --success-soft:rgba(47,197,135,.14); --danger-soft:rgba(239,106,83,.16);
     --teal-bg:#10302a; --teal-text:#54c9b0;
     --shadow-sm:0 1px 2px rgba(0,0,0,0.40); --shadow-md:0 4px 14px rgba(0,0,0,0.45); --shadow-lg:0 14px 36px rgba(0,0,0,0.55);
 }

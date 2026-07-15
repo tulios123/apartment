@@ -48,6 +48,14 @@ export async function isSubscribed(): Promise<boolean> {
   return !!sub
 }
 
+// R15: the user's explicit "notifications off" choice, per account (a shared device
+// can host two accounts with different preferences). Without it, ensurePushFresh
+// re-subscribed on the next app open — the off toggle silently reverted.
+const optOutKey = (ownerId: string) => `push_opt_out:${ownerId}`
+export function pushOptedOut(ownerId: string): boolean {
+  return localStorage.getItem(optOutKey(ownerId)) === '1'
+}
+
 /**
  * Request permission, subscribe via PushManager, and persist the subscription
  * (upsert on endpoint). Throws 'denied' if the user declines.
@@ -84,6 +92,8 @@ export async function enablePush(ownerId: string): Promise<void> {
     { onConflict: 'endpoint' },
   )
   if (error) throw error
+  // Turning pushes on always clears a previous explicit opt-out for this account.
+  localStorage.removeItem(optOutKey(ownerId))
 }
 
 /**
@@ -96,19 +106,48 @@ export async function enablePush(ownerId: string): Promise<void> {
 export async function ensurePushFresh(ownerId: string): Promise<void> {
   if (!pushSupported() || !pushConfigured()) return
   if (Notification.permission !== 'granted') return
+  // R15: respect an explicit off — don't silently re-subscribe the account that
+  // turned notifications off (the toggle used to revert on the next app open).
+  if (pushOptedOut(ownerId)) return
   try {
     const reg = await navigator.serviceWorker.getRegistration()
     if (!reg) return
     const sub = await reg.pushManager.getSubscription()
-    if (sub) return // still alive — nothing to do
-    await enablePush(ownerId)
+    if (!sub) { await enablePush(ownerId); return }
+    // R15: a live browser subscription may still be REGISTERED TO THE PREVIOUS
+    // ACCOUNT on a shared device (their reminders would land here). Re-key the
+    // endpoint to the current account. RLS blocks updating someone else's row —
+    // in that case drop this endpoint and subscribe fresh under the current user
+    // (the old row goes dead and the daily function prunes it on 404/410).
+    const json = sub.toJSON()
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      {
+        owner_id: ownerId,
+        endpoint: sub.endpoint,
+        p256dh: json.keys?.p256dh ?? '',
+        auth: json.keys?.auth ?? '',
+        user_agent: navigator.userAgent,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: 'endpoint' },
+    )
+    if (error) {
+      await sub.unsubscribe()
+      await enablePush(ownerId)
+    }
   } catch {
     // Best-effort recovery — never block app start on it.
   }
 }
 
-/** Remove this device's subscription from the server and unsubscribe locally. */
-export async function disablePush(): Promise<void> {
+/**
+ * Remove this device's subscription from the server and unsubscribe locally.
+ * Pass `optOutOwnerId` when this is the user's explicit choice (Settings toggle) so
+ * it persists across app opens; omit it for the sign-out cleanup, where the next
+ * sign-in should re-subscribe that account automatically.
+ */
+export async function disablePush(optOutOwnerId?: string): Promise<void> {
+  if (optOutOwnerId) localStorage.setItem(optOutKey(optOutOwnerId), '1')
   if (!pushSupported()) return
   const reg = await navigator.serviceWorker.getRegistration()
   const sub = await reg?.pushManager.getSubscription()

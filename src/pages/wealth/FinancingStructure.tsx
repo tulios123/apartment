@@ -105,7 +105,8 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
               {tracks.map(t => (
                 <div key={t.id} className="wlth-track-row">
                   <span className="wlth-track-dot" style={{ background: TRACK_COLOR[t.track_type] }} />
-                  <span className="wlth-track-name">{TRACK_LABEL[t.track_type]}{t.label ? ` · ${t.label}` : ''}</span>
+                  {/* Product decision 15.07: linked tracks are computed nominally — disclose. */}
+                  <span className="wlth-track-name">{TRACK_LABEL[t.track_type]}{t.track_type === 'fixed_linked' ? ' (ללא הצמדה למדד)' : ''}{t.label ? ` · ${t.label}` : ''}</span>
                   <span className="wlth-track-rate">{Number(t.annual_rate).toFixed(1)}%</span>
                   <span className="wlth-track-bal">{fmt(trackBalance(t))}</span>
                 </div>

@@ -48,9 +48,11 @@
   .docv-fab:active { transform: scale(0.92); }
   .docv-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
   .docv-scrim.open { opacity: 1; pointer-events: auto; }
-  .docv-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 24px; z-index: 100; display: flex; flex-direction: column; gap: 14px; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .docv-drawer { position: fixed; top: 0; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); left: 0; width: min(400px, 92vw); background: var(--bg-card); box-shadow: var(--shadow-lg); padding: 0; z-index: 100; display: flex; flex-direction: column; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
+  /* Header stays put, body scrolls, save button is a pinned footer — always visible. */
+  .docv-drawer-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 16px 24px; display: flex; flex-direction: column; gap: 14px; }
   .docv-drawer.open { transform: translateX(0); }
-  .docv-drawer-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .docv-drawer-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 14px; border-bottom: 1px solid var(--border); }
   .docv-drawer-head h2 { font-size: 18px; font-weight: 700; color: var(--brand-navy); }
   .docv-drawer-head button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
   .docv-field { display: flex; flex-direction: column; gap: 6px; }
@@ -60,9 +62,13 @@
   .docv-filepick { display: inline-flex; align-items: center; gap: 8px; background: var(--bg); border: 1px dashed var(--border-strong); color: var(--text-muted); font-family: inherit; font-size: 14px; padding: 12px; border-radius: var(--r-sm); cursor: pointer; transition: border-color var(--t-fast), color var(--t-fast); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .docv-filepick:hover { border-color: var(--accent); color: var(--accent); }
   .docv-save { margin-top: 8px; background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; padding: 13px; border-radius: var(--r-sm); transition: background var(--t-base) var(--ease), transform 0.1s var(--ease); }
+  /* Full-width primary button inside the BottomSheet (the sheet handles position + safe-area). */
+  .docv-save { width: 100%; }
   .docv-save:hover { background: var(--accent-hover); }
   .docv-save:active { transform: scale(0.98); }
   .docv-save:disabled { opacity: 0.5; cursor: default; }
+  /* Stack the form fields vertically inside the BottomSheet body. */
+  .docv-sheet-form { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
   .docv-form-err { font-size: 13px; color: var(--danger-text); }
 
   /* ── Section heads ── */

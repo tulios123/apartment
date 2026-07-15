@@ -11,6 +11,7 @@ import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowu
 import { recurrenceLabel } from '../../lib/recurrence'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
+import BottomSheet from '../../components/ui/BottomSheet'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import './tasks-v2.css'
 import { DateField } from '../../components/ui/DateField'
@@ -268,10 +269,10 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         </>
       )}
 
-      {/* Edit drawer */}
-      <div className={`tav-scrim ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
-      <aside className={`tav-drawer ${drawerOpen ? 'open' : ''}`}>
-        <div className="tav-drawer-head"><h2>עריכת משימה</h2><button onClick={() => setDrawerOpen(false)} aria-label="סגור"><X size={20} /></button></div>
+      {/* Edit sheet */}
+      <BottomSheet open={drawerOpen} onClose={() => setDrawerOpen(false)} title="עריכת משימה">
+        {/* The sheet portals to <body>, outside the scoped `.tav` — re-wrap so the field CSS applies. */}
+        <div className="tav"><div className="tav-sheet-form">
         <label className="tav-field"><span>כותרת</span><input type="text" value={editForm.title} onChange={e => { if (editErr) setEditErr(null); setEditForm(f => ({ ...f, title: e.target.value })) }} /></label>
         <label className="tav-field"><span>קטגוריה</span><select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}>{TASK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
         <div className="tav-field">
@@ -309,7 +310,8 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         </div>
         {editErr && <div className="form-error" role="alert">{editErr}</div>}
         <button className="tav-save" disabled={saving} onClick={handleEditSave}>{saving ? 'שומר…' : 'שמירה'}</button>
-      </aside>
+        </div></div>
+      </BottomSheet>
 
       <ConfirmDialog
         open={!!followup}
