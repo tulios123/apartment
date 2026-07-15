@@ -32,14 +32,22 @@ export function visibleHomeTasks(tasks: Task[], today: string): Task[] {
 }
 
 /**
+ * Every future-dated task held back from the collapsed home (beyond the lead window),
+ * soonest first. These are the tasks the owner scheduled for a specific day that the
+ * "what to do now" view intentionally keeps out — surfaced as a gentle "+N בעתיד" hint.
+ */
+export function futureScheduledTasks(tasks: Task[], today: string): Task[] {
+  return sortedHomeTasks(
+    tasks.filter(t => t.due_date && daysBetween(today, t.due_date) > TASK_HOME_LEAD_DAYS),
+  )
+}
+
+/**
  * The soonest future-dated task held back from the collapsed home (beyond the lead
  * window), or null if none. Used to name it concretely on the home — "משימה מתוזמנת
  * ל-<date>" — so a task the owner scheduled for a specific day is recognisably theirs
  * instead of a vague "scheduled task" they don't connect to (owner: "I don't see it").
  */
 export function nextScheduledTask(tasks: Task[], today: string): Task | null {
-  const held = sortedHomeTasks(
-    tasks.filter(t => t.due_date && daysBetween(today, t.due_date) > TASK_HOME_LEAD_DAYS),
-  )
-  return held[0] ?? null
+  return futureScheduledTasks(tasks, today)[0] ?? null
 }
