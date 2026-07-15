@@ -63,12 +63,17 @@ export function InvestmentStep() {
               }
               return (
                 <input
-                  type="number" min="0" step="0.1"
+                  type="number" min="0" max="100" step="0.1"
                   className={isGrey ? 'input-ph-grey' : ''}
                   value={focusedInput === 'equity' ? equityValue : (equityValue || eqDefRaw)}
                   onFocus={() => setFocusedInput('equity')}
                   onBlur={() => setFocusedInput(null)}
-                  onChange={e => setEquityValue(e.target.value)}
+                  // W4: `max` doesn't constrain TYPED values — clamp so an equity
+                  // percent above 100 can't corrupt the stored self_equity.
+                  onChange={e => {
+                    const v = e.target.value
+                    setEquityValue(v !== '' && Number(v) > 100 ? '100' : v)
+                  }}
                   style={{ flex: 1 }}
                 />
               )

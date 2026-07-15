@@ -504,6 +504,17 @@ export default function HomeScreen() {
                     </div>
                     <div className="hs-track"><div className={`hs-track-fill${rentCleared ? ' ok' : ''}`} style={{ width: `${rentPct}%` }} /></div>
                   </div>
+                ) : propertyError ? (
+                  // R16: a transient contracts-fetch error must not claim "אין חוזה
+                  // שכירות פעיל" — that's a false statement about the user's data.
+                  // (A failed load with NO cached property is caught by the PageError
+                  // gate above; this covers error-with-cached-property renders.)
+                  <div className="hs-addlease" role="alert" style={{ cursor: 'default' }}>
+                    <span className="hs-addlease-text">
+                      <span className="hs-addlease-title">לא הצלחנו לטעון את חוזה השכירות</span>
+                      <span className="hs-addlease-sub">בדקו את החיבור ורעננו את המסך</span>
+                    </span>
+                  </div>
                 ) : (
                   <button type="button" className="hs-addlease" onClick={() => navigate('/property/rental')}>
                     <span className="hs-addlease-icon"><HandCoins size={20} weight="duotone" /></span>

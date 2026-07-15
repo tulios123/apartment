@@ -324,7 +324,12 @@ export function useOnboardingState(onComplete: () => void) {
           })
           if (res.error) throw res.error
           data = res.data
-          try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+          // R3: never cache an EMPTY extraction — it would permanently block retrying
+          // the same file (a clearer photo of the same page hashes differently, but a
+          // transient model miss on the identical file deserves another shot).
+          if ((data?.tracks ?? []).length > 0) {
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+          }
         }
       }
       const raw = (data?.tracks ?? []) as Record<string, unknown>[]
@@ -382,7 +387,10 @@ export function useOnboardingState(onComplete: () => void) {
           const res = await supabase.functions.invoke('extract-loan', { body: { files } })
           if (res.error) throw res.error
           data = res.data
-          try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+          // R3: don't cache an empty extraction (see aiFillMortgage).
+          if ((data?.loans ?? []).length > 0) {
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+          }
         }
       }
       const raw = (data?.loans ?? []) as Record<string, unknown>[]
@@ -459,7 +467,10 @@ export function useOnboardingState(onComplete: () => void) {
           })
           if (res.error) throw res.error
           data = res.data
-          try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+          // R3: cache only when the extraction actually found something (see aiFillMortgage).
+          if (data && Object.values(data).some(v => v != null && v !== '')) {
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+          }
         }
       }
       const d = data ?? {}
@@ -513,7 +524,10 @@ export function useOnboardingState(onComplete: () => void) {
           })
           if (res.error) throw res.error
           data = res.data
-          try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+          // R3: cache only when the extraction actually found something (see aiFillMortgage).
+          if (data && Object.values(data).some(v => v != null && v !== '')) {
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)) } catch { /* quota — skip caching */ }
+          }
         }
       }
       const d = data ?? {}

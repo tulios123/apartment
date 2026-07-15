@@ -22,6 +22,9 @@ function issues(kind: 'mortgage' | 'loan', d: ScanDraft): string[] {
   if (monthly) {
     if (num(d.term_months) <= 0) out.push('תקופה')
     if (num(d.annual_rate) <= 0) out.push('ריבית')
+    // R10: the manual drawer blocks grace ≥ term — a scanned draft must not bypass it
+    // (a mis-read grace would make the whole schedule interest-only forever).
+    if (num(d.grace_months) > 0 && num(d.grace_months) >= num(d.term_months)) out.push('גרייס ארוך מהתקופה')
   }
   return out
 }
