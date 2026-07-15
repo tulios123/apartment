@@ -342,15 +342,6 @@ export default function HomeScreen() {
                 : `יש ${actions.length} פעולות שמחכות לך.`}
           </p>
         )}
-        {/* Gentle "+N בעתיד" hint — a soft, always-present note that tasks are queued
-            ahead, without pulling them into "what to do now". Tapping reveals them in
-            the action list below (owner: "something subtle like +1 tasks in the future"). */}
-        {!loadingActions && property && futureTaskCount > 0 && (
-          <button className="hs-future-hint" onClick={() => setTasksExpanded(true)}>
-            <CalendarCheck size={13} weight="fill" />
-            {futureTaskCount === 1 ? 'עוד משימה אחת בעתיד' : `עוד ${futureTaskCount} משימות בעתיד`}
-          </button>
-        )}
       </header>
 
       {flash && <div className="hs-flash" role="status">{flash}</div>}
@@ -384,10 +375,12 @@ export default function HomeScreen() {
                   <div className="hs-clear-icon upcoming"><CalendarCheck size={28} weight="fill" /></div>
                   <div>
                     <div className="hs-clear-title">אין משימות להיום</div>
-                    {/* Calm, single line. The pill below already names the scheduled task and its
-                        date, so repeating the count/date/"show below" here read as crowded (owner:
-                        "the collapsed state looks too busy and conveys stress"). */}
-                    <div className="hs-clear-sub">הכול רגוע — אין מה שדורש אותך עכשיו.</div>
+                    {/* The gentle "+N בעתיד" hint lives here, as the calm sub-line of the empty
+                        state — instead of a header banner the owner didn't like (#47). No date,
+                        no extra chrome: just a soft note that something is queued ahead. */}
+                    <div className="hs-clear-sub">
+                      {futureTaskCount === 1 ? 'עוד משימה אחת בעתיד' : `עוד ${futureTaskCount} משימות בעתיד`}
+                    </div>
                   </div>
                 </div>
               ) : (
