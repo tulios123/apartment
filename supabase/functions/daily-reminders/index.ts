@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { pendingApprovalItems, reminderLine } from '../_shared/reminders.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -97,24 +98,18 @@ Deno.serve(async (req) => {
 
       const dueItems = (items ?? []).filter((it) => it.day_of_month <= todayDay)
       if (dueItems.length > 0) {
+        // All of this month's transactions — we need both the recurring-item links
+        // AND the plain category/direction, so a rent deposit recorded outside the
+        // home "approve" button still silences the check-deposit push (feedback #53).
         const { data: txThisMonth } = await supabase
           .from('transactions')
-          .select('recurring_item_id')
+          .select('recurring_item_id, direction, category')
           .eq('owner_id', ownerId)
           .gte('date', monthStart)
           .lte('date', today)
-          .not('recurring_item_id', 'is', null)
-        const recorded = new Set((txThisMonth ?? []).map((t) => t.recurring_item_id))
-        for (const it of dueItems) {
-          if (recorded.has(it.id)) continue
+        for (const it of pendingApprovalItems(dueItems, txThisMonth ?? [])) {
           section1ItemIds.add(it.id)
-          // Post-dated-check rent → remind to DEPOSIT the check, not "collect rent".
-          if (it.direction === 'income' && it.payment_method === 'check') {
-            lines.push(`הפקדת צ׳ק שכר דירה${it.payee ? ` – ${it.payee}` : ''}`)
-          } else {
-            const label = it.direction === 'income' ? 'גביית' : 'תשלום'
-            lines.push(`${label} ${it.category}${it.payee ? ` – ${it.payee}` : ''}`)
-          }
+          lines.push(reminderLine(it))
         }
       }
 
