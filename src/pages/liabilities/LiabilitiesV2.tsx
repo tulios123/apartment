@@ -54,6 +54,11 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const loanDocs = documents.filter(d => d.type === 'loan_statement')
 
   const [open, setOpen] = useState<string | null>(null)
+  // Collapse the long lists by default (owner request): mortgage tracks, and the loan
+  // groups. Regular loans only get a toggle when there's more than one.
+  const [tracksOpen, setTracksOpen] = useState(false)
+  const [regularLoansOpen, setRegularLoansOpen] = useState(false)
+  const [balloonOpen, setBalloonOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [kind, setKind] = useState<'mortgage' | 'loan'>('mortgage')
   const [editId, setEditId] = useState<string | null>(null)
@@ -217,6 +222,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           })
         }))
         refetchM()
+        setTracksOpen(true)   // show the scanned tracks, not hidden behind a collapsed header
       } else {
         await Promise.all(drafts.map(d => {
           const l = d as LoanDraft
@@ -233,6 +239,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           })
         }))
         refetchL()
+        setRegularLoansOpen(true); setBalloonOpen(true)   // show the scanned loans in their groups
       }
       setScanResult(null)
     } catch {
@@ -318,6 +325,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           term_months: Number(tForm.term_months || 0), grace_months: graceOn ? Number(tForm.grace_months || 0) : 0, start_date: tForm.start_date,
         })
         refetchM()
+        setTracksOpen(true)   // reveal the section so the just-saved track isn't hidden behind a collapsed header
       } else {
         if (!lForm.principal || Number(lForm.principal) <= 0) throw new Error('יש להזין קרן (סכום ההלוואה)')
         const isMonthly = lForm.repayment_type === 'monthly_fixed'
@@ -340,6 +348,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           payment_day: isMonthly && lForm.payment_day ? Number(lForm.payment_day) : null,
         })
         refetchL()
+        // reveal the right loan group so the just-saved loan isn't hidden behind a collapsed header
+        if (lForm.repayment_type === 'balloon') setBalloonOpen(true); else setRegularLoansOpen(true)
       }
       forceClose()
     } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
@@ -392,8 +402,18 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           </div>
 
           <section className="liav-section">
-              <div className="liav-section-head"><Bank size={18} weight="duotone" color="var(--brand-navy)" /><h2>תמהיל המשכנתא</h2>{tracks.length > 0 && <span className="count">· {tracks.length} מסלולים</span>}</div>
-              {tracks.map(t => {
+              {tracks.length > 0 ? (
+                <h2 className="liav-group-h">
+                  <button type="button" className="liav-group-toggle" onClick={() => setTracksOpen(o => !o)} aria-expanded={tracksOpen}>
+                    <Bank size={18} weight="duotone" color="var(--brand-navy)" />
+                    <span className="liav-group-title">תמהיל המשכנתא · {tracks.length} מסלולים</span>
+                    <CaretDown className={`liav-group-caret${tracksOpen ? ' open' : ''}`} size={16} weight="bold" />
+                  </button>
+                </h2>
+              ) : (
+                <div className="liav-section-head"><Bank size={18} weight="duotone" color="var(--brand-navy)" /><h2>תמהיל המשכנתא</h2></div>
+              )}
+              {tracksOpen && tracks.map(t => {
                 const s = trackStats(t); const color = TRACK_COLOR[t.track_type]; const isOpen = open === t.id
                 return (
                   <div key={t.id} className={`liav-card${isOpen ? ' open' : ''}`}>
@@ -422,7 +442,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   </div>
                 )
               })}
-              {tracks.length > 0 && mortgage && (
+              {tracksOpen && mortgage && (
                 <label className="liav-payday">
                   <span>יום חיוב חודשי</span>
                   <select
@@ -459,7 +479,16 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
 
           <section className="liav-section">
               <div className="liav-section-head"><HandCoins size={18} weight="duotone" color="var(--brand-navy)" /><h2>הלוואות</h2></div>
-              {monthlyLoans.map(l => {
+              {monthlyLoans.length > 1 && (
+                <h3 className="liav-group-h">
+                  <button type="button" className="liav-group-toggle sub" onClick={() => setRegularLoansOpen(o => !o)} aria-expanded={regularLoansOpen}>
+                    <span className="liav-group-title">הלוואות רגילות · {monthlyLoans.length}</span>
+                    <span className="liav-group-sum">{fmt(loansSummary.monthlyPayment)}/חודש</span>
+                    <CaretDown className={`liav-group-caret${regularLoansOpen ? ' open' : ''}`} size={16} weight="bold" />
+                  </button>
+                </h3>
+              )}
+              {(monthlyLoans.length <= 1 || regularLoansOpen) && monthlyLoans.map(l => {
                 const bal = loanBalance(l); const isOpen = open === l.id
                 const paidPct = l.principal > 0 ? ((l.principal - bal) / l.principal) * 100 : 0
                 return (
@@ -485,7 +514,17 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   </div>
                 )
               })}
-              {balloonLoans.map(l => (
+              {balloonLoans.length > 0 && (
+                <h3 className="liav-group-h">
+                  <button type="button" className="liav-group-toggle sub" onClick={() => setBalloonOpen(o => !o)} aria-expanded={balloonOpen}>
+                    <Scales size={16} weight="duotone" color="var(--warning-text)" />
+                    <span className="liav-group-title">הלוואות בלון · {balloonLoans.length}</span>
+                    <span className="liav-group-sum">{fmt(balloonBal)}</span>
+                    <CaretDown className={`liav-group-caret${balloonOpen ? ' open' : ''}`} size={16} weight="bold" />
+                  </button>
+                </h3>
+              )}
+              {balloonOpen && balloonLoans.map(l => (
                 <div key={l.id} className="liav-balloon">
                   <div className="liav-balloon-top">
                     <div className="liav-balloon-icon"><Scales size={20} weight="duotone" /></div>
@@ -594,7 +633,12 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
             )}
             <label className="liav-field"><span>תאריך התחלה</span><DateField value={lForm.start_date} onChange={v => setLForm(f => ({ ...f, start_date: v }))} ariaLabel="תאריך התחלה" /></label>
             {lForm.repayment_type === 'monthly_fixed' && (
-              <label className="liav-field"><span>יום חיוב בחודש (1–28, ברירת־מחדל: יום ההתחלה)</span><input type="number" min="1" max="28" inputMode="numeric" placeholder="למשל 10" value={lForm.payment_day} onChange={e => setLForm(f => ({ ...f, payment_day: e.target.value.replace(/[^\d]/g, '') }))} /></label>
+              <label className="liav-field"><span>יום חיוב</span>
+                <select value={lForm.payment_day} onChange={e => setLForm(f => ({ ...f, payment_day: e.target.value }))}>
+                  <option value="">כמו יום ההתחלה</option>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={String(d)}>{d} בחודש</option>)}
+                </select>
+              </label>
             )}
             <label className="liav-field"><span>תווית (אופציונלי)</span><input type="text" value={lForm.label} onChange={e => setLForm(f => ({ ...f, label: e.target.value }))} /></label>
           </>
