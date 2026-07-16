@@ -1,9 +1,18 @@
 # RUN_STATE.md — night run 16-17.07.2026 (machine clock unreliable; labels are machine time)
 
 **Branch:** staging (commits go directly here; no checkout — shared working tree). **Run doc:** NIGHT_RUN.md (repo root).
-**Counts:** found 0 · fixed 0 · improved 0 · parked 0 · KNOWN-deduped 0
-**Last checkpoint commit:** 471d992 (stage-0 docs)
-**Next action:** onboarding E2E (fill-plan subagent running) → finish-early path → full walk → seed. Static-sweep subagent (S2+S5) running in background.
+**Counts:** found 4 · fixed 1 · improved 0 · parked 0 · KNOWN-deduped (baseline built)
+**Last checkpoint commit:** (AUD-001 committing now)
+**Next action:** Stage 1 core flows on the seeded dataset (seed first) + triage the S2 layout findings from the onboarding partial-data pass. Static-sweep report in hand.
+
+## Findings ledger (live)
+- **AUD-001** [FIXED] P1 · onboarding finish (סיימו עכשיו / insurance סיום) silently saved an incomplete open mortgage-track/loan form with FABRICATED defaults (term→360, rate→5) the user never entered — bypassing the step's own completeness gate. Fix: finish now runs the same gate → raises a "חסרים פרטים" dialog (חזרה להשלמה / המשך בלי לשמור), and handleFinish only folds a draft that passes the gate. Untouched forms still skip silently (raw-field hasData). Evidence: e2e/onboarding.spec.ts (2 specs fail-before/pass-after) + full-walk + untouched-skip. Root of KNOWN R1/R2. tsc+135 vitest+build green.
+- **AUD-002** [OPEN P2 · S2] Layout: full-width bottom CTAs overlap the fixed bottom-nav on sparse states — HomeScreen `.hs-addlease` "הוסיפו שוכר" (64–90% overlap w/ nav) and PropertyAdmin `.btn-primary "+ חוזה חדש"` (37%). Auto-filed by layout-integrity pass on partial-data home/property. Needs bottom padding / safe-area above nav.
+- **AUD-003** [OPEN P3 · S2] Touch targets < 44pt: `.finv-monthnav-btn` 34×34, `.hs-quick-go` 38×38, account-menu back 38×38, `.usermenu-avatar` 49×34 (h<44), `.hs-link "פירוט"` 32×16, `.fb-fab` 42×42. Multiple screens. Bump to 44pt floor.
+- **AUD-004** [OPEN P2] Console: `DevNotes` setState-in-render warning ("Cannot update a component (DevNotes) while rendering BrowserRouter") + recurring `TypeError: Load failed` (aborted fetch on nav) during onboarding→app. DevNotes is dev/manager-only; Load-failed likely nav-aborted version/supabase fetch — confirm benign or add abort handling.
+
+## Static-sweep report (subagent, retained)
+tsc clean · 135 vitest green · build ok (single 1.04MB JS chunk — SW-06 code-split opportunity). Key items: SW-05 vitest picks up e2e specs (FIX applied: vite.config test.exclude); SW-07 onboarding forked its own format.ts copies; SW-08 four private monthDayISO reimpls; SW-11 dup MANAGER_EMAIL constant; SW-12 hooks lack fetch cancellation; SW-21 track-color palette defined in 4 places. eslint 28 errors (mostly react-hooks/refs on the discard-guard snapshot pattern — intentional, React-Compiler backlog). Full list in subagent output.
 
 ## Stages
 | stage | title | status |

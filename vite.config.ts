@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
@@ -39,5 +40,9 @@ export default defineConfig({
     host: true,
     allowedHosts: true,
     port: process.env.PORT ? Number(process.env.PORT) : undefined,
+  },
+  test: {
+    // e2e/ holds Playwright specs — vitest must not pick them up (they error the run).
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', 'scripts/**'],
   },
 })
