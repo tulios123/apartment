@@ -49,7 +49,10 @@ export function useMortgageData(): MortgageData {
       if (mortgageRes.error) throw mortgageRes.error
       if (tracksRes.error) throw tracksRes.error
       const nextMortgage = mortgageRes.data?.[0] ?? null
-      const nextTracks = (tracksRes.data ?? []) as MortgageTrack[]
+      // One billing day per mortgage — stamp it onto every track so the (per-track)
+      // schedule math reads it without threading the value through every call site.
+      const rawTracks = (tracksRes.data ?? []) as MortgageTrack[]
+      const nextTracks = rawTracks.map(t => ({ ...t, payment_day: nextMortgage?.payment_day ?? null }))
       setMortgage(nextMortgage)
       setTracks(nextTracks)
       writeCache<MortgageSnapshot>(cacheKey, { mortgage: nextMortgage, tracks: nextTracks })
@@ -145,5 +148,11 @@ export async function upsertMortgageTrack(data: {
 
 export async function deleteMortgageTrack(id: string): Promise<void> {
   const { error } = await supabase.from('mortgage_tracks').delete().eq('id', id)
+  if (error) throw error
+}
+
+/** Set the billing day-of-month for the whole mortgage (null → fall back to start-date day). */
+export async function setMortgagePaymentDay(mortgageId: string, paymentDay: number | null): Promise<void> {
+  const { error } = await supabase.from('mortgages').update({ payment_day: paymentDay }).eq('id', mortgageId)
   if (error) throw error
 }

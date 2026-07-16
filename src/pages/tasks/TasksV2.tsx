@@ -181,8 +181,13 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       : x))
     updateTask(t.id, { status: newStatus }).then(async r => {
       if (r.error) { refetch(); return }
-      // Completing a repeating task opens its next occurrence, then reloads so it shows.
-      if (newStatus === 'done' && t.is_recurring) { await spawnNextOccurrence(t); refetch() }
+      // Completing a repeating task opens its next occurrence. Merge the created row into
+      // local state instead of a full refetch, so the list updates smoothly (no flicker)
+      // and the new open occurrence just appears in place.
+      if (newStatus === 'done' && t.is_recurring) {
+        const nextRow = await spawnNextOccurrence(t)
+        if (nextRow) setTasks(prev => (prev.some(x => x.id === (nextRow as Task).id) ? prev : [...prev, nextRow as Task]))
+      }
       // C5: only prompt the money follow-up once completion persisted — an in-app
       // dialog (not a blocking native confirm() that freezes the tap).
       const f = newStatus === 'done' ? taskCompletionFollowup(t) : null

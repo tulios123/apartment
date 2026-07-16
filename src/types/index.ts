@@ -124,6 +124,7 @@ export interface Mortgage {
   property_id: string | null
   lender: string | null
   notes: string | null
+  payment_day: number | null   // billing day-of-month for the whole mortgage; null → start-date day
   created_at: string
 }
 
@@ -140,6 +141,9 @@ export interface MortgageTrack {
   term_months: number
   grace_months: number
   start_date: string
+  /** Denormalized from the parent mortgage at load (one billing day per mortgage);
+   *  the schedule reads it per-track. null → fall back to the start-date day. */
+  payment_day?: number | null
   created_at: string
 }
 
@@ -160,6 +164,7 @@ export interface Loan {
   term_months: number | null       // monthly_fixed only
   grace_months: number | null      // monthly_fixed only — interest-only months at start
   start_date: string | null
+  payment_day: number | null       // billing day-of-month; null → start-date day
   notes: string | null
   created_at: string
 }

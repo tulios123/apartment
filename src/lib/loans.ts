@@ -1,5 +1,5 @@
 import type { Loan } from '../types'
-import { monthlyPayment } from './mortgage'
+import { monthlyPayment, paymentDate } from './mortgage'
 
 /** Whole months elapsed from start up to and including asOf (0 before/at start). */
 export function monthsElapsed(startDate: string | null, asOf: Date = new Date()): number {
@@ -9,21 +9,6 @@ export function monthsElapsed(startDate: string | null, asOf: Date = new Date())
     (asOf.getFullYear() - start.getFullYear()) * 12 +
     (asOf.getMonth() - start.getMonth())
   return Math.max(0, months)
-}
-
-function addMonths(iso: string, months: number): string {
-  // Parse Y-M-D directly and clamp the day to the target month's length. Using
-  // Date.setMonth lets a day-31 start overflow (Jan-31 + 1mo → "Feb 31" → Mar 3),
-  // which skips February and puts TWO payment rows in March. Clamping maps each month
-  // index to exactly one date in the right month. Stays LOCAL Y-M-D (never toISOString,
-  // which rolls back a day in timezones ahead of UTC).
-  const [y, m, day] = iso.slice(0, 10).split('-').map(Number)
-  const idx = (m - 1) + months
-  const ty = y + Math.floor(idx / 12)
-  const tm = ((idx % 12) + 12) % 12 // 0-11, correct for negative months too
-  const lastDay = new Date(ty, tm + 1, 0).getDate() // day 0 of next month = last day of tm
-  const cd = Math.min(day, lastDay)
-  return `${ty}-${String(tm + 1).padStart(2, '0')}-${String(cd).padStart(2, '0')}`
 }
 
 /** LOCAL Y-M-D — never toISOString (UTC rolls back a day in timezones ahead of UTC,
@@ -67,7 +52,9 @@ function loanSchedule(loan: Loan): LoanRow[] {
       if (i === term) prin = balance // absorb rounding drift
     }
     balance = Math.max(0, balance - prin)
-    rows.push({ date: addMonths(start, i), interest, principal: prin, balance })
+    // monthOffset i-1 → the first payment falls in the start month, billed on the loan's
+    // payment_day (falls back to the start-date day when unset).
+    rows.push({ date: paymentDate(start, i - 1, loan.payment_day), interest, principal: prin, balance })
   }
   return rows
 }
@@ -139,5 +126,6 @@ export function monthsRemaining(loan: Loan, asOf: Date = new Date()): number {
 /** End date (ISO yyyy-mm-dd) of a monthly_fixed loan, or null if not derivable. */
 export function loanEndDate(loan: Loan): string | null {
   if (loan.repayment_type !== 'monthly_fixed' || !loan.start_date || !loan.term_months) return null
-  return addMonths(loan.start_date, loan.term_months)
+  // Last payment falls in month (term-1) since the first now lands in the start month.
+  return paymentDate(loan.start_date, loan.term_months - 1, loan.payment_day)
 }

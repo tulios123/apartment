@@ -59,7 +59,7 @@ export function useDashboardStats(): DashboardStats {
         const in90 = new Date(); in90.setDate(in90.getDate() + 90)
         const in90Str = monthDayISO(in90)
 
-        const [txRes, tasksRes, renewalRes, allContractsRes, tracksRes] = await Promise.all([
+        const [txRes, tasksRes, renewalRes, allContractsRes, tracksRes, mortgageRes] = await Promise.all([
           supabase
             .from('transactions')
             .select('id, direction, amount, date, category, description, payment_method, contract_id, recurring_item_id, document_id, owner_id, created_at')
@@ -80,6 +80,7 @@ export function useDashboardStats(): DashboardStats {
             .order('end_date', { ascending: true }),
           supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', user!.id),
           supabase.from('mortgage_tracks').select('*').eq('owner_id', user!.id),
+          supabase.from('mortgages').select('payment_day').eq('owner_id', user!.id).limit(1),
         ])
 
         if (txRes.error) throw txRes.error
@@ -90,7 +91,11 @@ export function useDashboardStats(): DashboardStats {
         // can't poison the all-time totals.
         const txs = (txRes.data ?? []).map(t => ({ ...t, amount: Number(t.amount) || 0 }))
         const allContracts = (allContractsRes.data ?? []) as Contract[]
-        const tracks = (tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[]
+        // Stamp the mortgage's single billing day onto each track (see useMortgageData),
+        // so the schedule dates match the ledger's mortgage forecast.
+        const mortPayDay = (mortgageRes.error ? null : (mortgageRes.data?.[0]?.payment_day ?? null))
+        const tracks = ((tracksRes.error ? [] : (tracksRes.data ?? [])) as MortgageTrack[])
+          .map(t => ({ ...t, payment_day: mortPayDay }))
         // C7-B: surface (don't silently swallow) a secondary-query failure — rather
         // than computing rent/mortgage totals on empty arrays and showing ₪0 as if real.
         if (allContractsRes.error || tracksRes.error) setPartial(true)
