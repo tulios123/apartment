@@ -21,7 +21,6 @@ import { activeContract as findActiveContract, monthlyVirtualEntries } from '../
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
-import type { Task } from '../../types'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
@@ -254,14 +253,13 @@ export default function HomeScreen() {
     showFlash(nextStr ? `בוצע ✓ · חוזר ${formatDate(nextStr)}` : 'משימה הושלמה ✓')
     updateTask(id, { status: 'done' }).then(async r => {
       if (r.error) { showFlash('לא הצלחנו לעדכן, נסו שוב'); refetchTasks(); return }
-      // Completing a repeating task opens its next occurrence. Merge the created row
-      // straight into local state — NOT a refetch — so there's no empty-state flash and
-      // the task never "jumps back" into its old slot. Being future-dated, it settles into
-      // the "+N בעתיד" hint (or tomorrow's slot for a daily task), recognisably next.
-      if (task?.is_recurring) {
-        const nextRow = await spawnNextOccurrence(task)
-        if (nextRow) setTasks(prev => (prev.some(t => t.id === (nextRow as Task).id) ? prev : [...prev, nextRow as Task]))
-      }
+      // Completing a repeating task creates its next occurrence — but DON'T surface it in
+      // the current view. An identical "סיים" card popping into the same slot the instant
+      // you complete reads as "nothing happened / it's still here" (owner feedback). We
+      // create it in the background for later; it appears on the next load, near its due
+      // date. The "בוצע ✓ · חוזר <date>" flash already confirms the recurrence, so the
+      // completion feels final instead of a no-op.
+      if (task?.is_recurring) await spawnNextOccurrence(task)
       // C5: only offer the money follow-up once completion actually persisted — so an
       // offline/failed completion never navigates the user to log money for a task
       // that bounces back. In-app dialog, not a blocking native confirm().
