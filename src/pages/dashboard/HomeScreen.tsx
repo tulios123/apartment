@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAppReady } from '../../contexts/AppReadyContext'
 import {
   CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, ArrowLeft, Sun, CloudSun, MoonStars,
-  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretUp, CaretLeft,
+  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretUp, CaretLeft, ArrowsClockwise,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
@@ -16,10 +16,12 @@ import { useTransactions, createTransaction } from '../../hooks/useTransactions'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
+import { nextDueDate } from '../../lib/recurrence'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
+import type { Task } from '../../types'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
@@ -32,7 +34,7 @@ const fmt = (v: number) => formatCurrency(v)
 
 type Action =
   | { id: string; kind: 'rent'; title: string; sub: string; amount: number }
-  | { id: string; kind: 'task'; title: string; sub: string; taskId: string }
+  | { id: string; kind: 'task'; title: string; sub: string; taskId: string; recurring: boolean }
   | { id: string; kind: 'renewal'; title: string; sub: string; onGo: () => void }
 
 function greeting(name: string): { text: string; Icon: typeof Sun } {
@@ -160,6 +162,7 @@ export default function HomeScreen() {
             : t.due_date === todayStr ? `להיום${tm}`
             : `${formatDate(t.due_date)}${tm}`,
           taskId: t.id,
+          recurring: !!t.is_recurring,
         })
       })
     upcomingRenewals
@@ -245,11 +248,20 @@ export default function HomeScreen() {
     // backlog task slides up into its slot and "+ עוד X משימות" decrements in real time.
     // Persist in the background; only reload if the write fails.
     setTasks(prev => prev.filter(t => t.id !== id))
-    showFlash('משימה הושלמה ✓')
+    // Recurrence-aware feedback: for a repeating task, say WHEN it comes back — so the
+    // next occurrence appearing later reads as "scheduled again", not "my tick didn't take".
+    const nextStr = task?.is_recurring ? nextDueDate(task.due_date, task.recurrence_days) : null
+    showFlash(nextStr ? `בוצע ✓ · חוזר ${formatDate(nextStr)}` : 'משימה הושלמה ✓')
     updateTask(id, { status: 'done' }).then(async r => {
       if (r.error) { showFlash('לא הצלחנו לעדכן, נסו שוב'); refetchTasks(); return }
-      // Completing a repeating task opens its next occurrence, then reloads so it shows.
-      if (task?.is_recurring) { await spawnNextOccurrence(task); refetchTasks() }
+      // Completing a repeating task opens its next occurrence. Merge the created row
+      // straight into local state — NOT a refetch — so there's no empty-state flash and
+      // the task never "jumps back" into its old slot. Being future-dated, it settles into
+      // the "+N בעתיד" hint (or tomorrow's slot for a daily task), recognisably next.
+      if (task?.is_recurring) {
+        const nextRow = await spawnNextOccurrence(task)
+        if (nextRow) setTasks(prev => (prev.some(t => t.id === (nextRow as Task).id) ? prev : [...prev, nextRow as Task]))
+      }
       // C5: only offer the money follow-up once completion actually persisted — so an
       // offline/failed completion never navigates the user to log money for a task
       // that bounces back. In-app dialog, not a blocking native confirm().
@@ -404,7 +416,12 @@ export default function HomeScreen() {
                     </div>
                     <div className="hs-card-body">
                       <div className="hs-card-title">{a.title}</div>
-                      <div className="hs-card-sub">{a.sub}</div>
+                      <div className="hs-card-sub">
+                        {a.sub}
+                        {a.kind === 'task' && a.recurring && (
+                          <span className="hs-recur"><ArrowsClockwise size={11} weight="bold" /> חוזר</span>
+                        )}
+                      </div>
                     </div>
                     <div className="hs-card-cta">
                       {a.kind === 'rent' ? (

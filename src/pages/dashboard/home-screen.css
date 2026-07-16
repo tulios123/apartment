@@ -38,6 +38,9 @@
   .hs-card-body { flex: 1; min-width: 0; }
   .hs-card-title { font-size: 14.5px; font-weight: 700; color: var(--brand-navy); line-height: 1.35; }
   .hs-card-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+  /* Small "recurring" marker so a repeating task is recognisable — and its next
+     occurrence, when it reappears later, reads as scheduled rather than un-done. */
+  .hs-recur { display: inline-flex; align-items: center; gap: 3px; margin-inline-start: 6px; font-size: 11px; font-weight: 600; color: var(--accent); vertical-align: middle; }
   .hs-card-cta { flex-shrink: 0; }
 
   .hs-btn { display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 16px; border-radius: var(--r-pill); transition: transform 0.1s var(--ease), box-shadow var(--t-base) var(--ease), background var(--t-base) var(--ease); white-space: nowrap; }
