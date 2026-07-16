@@ -2,8 +2,8 @@
 
 **Branch:** staging (commits go directly here; no checkout — shared working tree). **Run doc:** NIGHT_RUN.md (repo root).
 **Counts:** found 0 · fixed 0 · improved 0 · parked 0 · KNOWN-deduped 0
-**Last checkpoint commit:** (pending first commit)
-**Next action:** Stage 0 item 5 — e2e infra files (playwright.config, e2e/lib), then pre-flight gate.
+**Last checkpoint commit:** 471d992 (stage-0 docs)
+**Next action:** onboarding E2E (fill-plan subagent running) → finish-early path → full walk → seed. Static-sweep subagent (S2+S5) running in background.
 
 ## Stages
 | stage | title | status |
@@ -22,10 +22,11 @@
 - [x] Baseline docs read → KNOWN_ISSUES_BASELINE.md (subagent, saved)
 - [x] PROMPT_REVIEW.md written (10 factual corrections applied, 4 checks added)
 - [x] @playwright/test + webkit + chromium installed (allowed package.json edit)
-- [ ] playwright.config.ts + e2e/lib (login/archive/layout/console/network helpers)
-- [ ] Pre-flight gate: dev server + Playwright reach authed Home (bypass=true confirmed in .env.local)
-- [ ] Admin data-reset on test account → clean-account onboarding E2E → empty states → seed
-- [ ] scripts/audit/seed-stress.ts + cleanup-stress.ts (anon key + dev sign-in; both safety flags; cleanup smoke-tested first)
+- [x] playwright.config.ts + e2e/lib (login/archive/layout/console/network helpers)
+- [x] Pre-flight gate PASSED: webkit iPhone16Pro reaches authed Home, dark boots, 0 console hits (e2e/preflight.spec.ts)
+- [x] Admin data-reset PASSED on test account → onboarding shows clean (e2e/reset.spec.ts; evidence archived)
+- [ ] Clean-account onboarding E2E (finish-early path + full walk + back-at-each-step) → empty states → seed
+- [x] scripts/audit/seed-stress.ts + cleanup-stress.ts written (anon key + dev sign-in; both safety flags) — cleanup smoke-test before seed
 - [x] UX_FOUNDATIONS lenses A–E (items 1–33) slotted as stage riders (F+ missing at source)
 
 ## Coverage matrix
