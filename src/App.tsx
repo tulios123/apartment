@@ -18,6 +18,7 @@ import { PrivacyPolicy, TermsOfService, Accessibility } from './pages/legal/Lega
 import DevNotes from './components/DevNotes'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { OfflineBanner } from './components/OfflineBanner'
+import UpdateBanner from './components/UpdateBanner'
 import { pushNotifTarget } from './lib/notifNav'
 
 function AppRoutes() {
@@ -181,6 +182,7 @@ export default function App() {
   return (
     <AuthProvider>
       <OfflineBanner />
+      <UpdateBanner />
       <ErrorBoundary boundary="root">
         <AppRoutes />
       </ErrorBoundary>

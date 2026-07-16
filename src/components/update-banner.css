@@ -1,0 +1,55 @@
+/* Calm "update available" pill, floating just above the bottom nav. Accent-tinted so it
+   reads as helpful, not alarming; nudges up on mobile to clear the tab bar + safe area. */
+.update-banner {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 190;
+  margin-inline: auto;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 18px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--r-pill);
+  box-shadow: 0 8px 28px rgba(10, 31, 68, 0.28);
+  animation: updateBannerIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* On mobile the bottom nav occupies the bottom edge — lift the pill above it. */
+@media (max-width: 640px) {
+  .update-banner { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+}
+
+.update-banner-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.update-banner-btn {
+  flex-shrink: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 7px 16px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease);
+}
+.update-banner-btn:hover { background: rgba(255, 255, 255, 0.34); }
+.update-banner-btn:active { transform: scale(0.97); }
+
+@keyframes updateBannerIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}

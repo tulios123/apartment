@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { User, CaretDown, Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut, ChatDots } from '@phosphor-icons/react'
+import { User, CaretDown, Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut, ChatDots, ArrowsClockwise, Check } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { isFeedbackAdmin } from '../../lib/admin'
+import { useVersionCheck } from '../../hooks/useVersionCheck'
 import './user-menu.css'
 
 // Avatar button in the top bar that opens an account/legal dropdown (mirrors the
@@ -11,6 +12,7 @@ import './user-menu.css'
 // context; scrim-tap / Esc / any item click closes it; focus returns to the avatar.
 export default function UserMenu() {
   const { user, signOut } = useAuth()
+  const { updateAvailable, buildId } = useVersionCheck()
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement | null>(null)
 
@@ -71,6 +73,17 @@ export default function UserMenu() {
             <button className="usermenu-item usermenu-signout" role="menuitem" onClick={() => { setOpen(false); signOut() }}>
               <SignOut size={20} /><span>יציאה</span>
             </button>
+            <div className="usermenu-sep" />
+            <div className="usermenu-version">
+              <span className="usermenu-version-id">גרסה {buildId}</span>
+              {updateAvailable ? (
+                <button className="usermenu-version-update" onClick={() => window.location.reload()}>
+                  <ArrowsClockwise size={13} weight="bold" /> עדכון זמין · רענן
+                </button>
+              ) : (
+                <span className="usermenu-version-ok"><Check size={13} weight="bold" /> מעודכן</span>
+              )}
+            </div>
           </div>
         </div>,
         document.body,
