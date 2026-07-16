@@ -113,10 +113,15 @@
   .wlth-cf-net strong.out { color: var(--brand-navy); }
 
   /* ── Edit overlay (reuses existing form components) ────────── */
-  .wlth-editor { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; animation: wlthEditorIn 0.25s var(--ease); }
-  .wlth-editor-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg-card); }
+  /* Above the fixed app top-bar (z-index 95) — otherwise the header (with its back
+     button) hides behind it and the editor looks like it has no way back. */
+  .wlth-editor { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column; animation: wlthEditorIn 0.25s var(--ease); }
+  /* Back chevron leads (right in RTL), then the title. Clear safe-area now that the
+     editor covers the top-bar's notch area. */
+  .wlth-editor-head { display: flex; align-items: center; justify-content: flex-start; gap: 6px; padding: 14px 14px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); border-bottom: 1px solid var(--border); background: var(--bg-card); }
   .wlth-editor-head h2 { font-size: 17px; font-weight: 700; color: var(--brand-navy); margin: 0; }
-  .wlth-editor-head button { border: none; background: var(--bg-alt); color: var(--text); width: 36px; height: 36px; border-radius: var(--r-pill); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .wlth-editor-head button { border: none; background: transparent; color: var(--text); width: 40px; height: 40px; border-radius: var(--r-pill); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-inline-start: -6px; }
+  .wlth-editor-head button:hover { background: var(--bg-alt); }
   .wlth-editor-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 20px calc(56px + env(safe-area-inset-bottom) + 24px); max-width: 760px; width: 100%; margin: 0 auto; }
   .wlth-editor-section { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: none; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
   .wlth-editor-section:first-child { margin-top: 0; }

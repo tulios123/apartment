@@ -91,11 +91,11 @@
   .liav-add-row { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
   .liav-add-row .liav-add-track { margin-top: 0; }
 
-  /* One billing day for the whole mortgage. */
-  .liav-payday { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 2px; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-sm); }
-  .liav-payday > span { font-size: 13.5px; font-weight: 600; color: var(--text); }
-  .liav-payday select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 14px; padding: 8px 10px; border-radius: var(--r-sm); outline: none; }
-  .liav-payday select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  /* One billing day for the whole mortgage — a quiet secondary setting, not a card. */
+  .liav-payday { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 2px 8px; padding: 2px 0; }
+  .liav-payday > span { font-size: 12.5px; font-weight: 500; color: var(--text-muted); }
+  .liav-payday select { background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 8px; border-radius: var(--r-sm); outline: none; }
+  .liav-payday select:focus { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 3px var(--accent-ring); }
   .liav-scan-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--accent); background: var(--accent-light); color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px; border-radius: var(--r-sm); cursor: pointer; }
   .liav-scan-btn:hover:not(:disabled) { background: var(--primary-light); }
   .liav-scan-btn:disabled { opacity: 0.6; cursor: default; }
