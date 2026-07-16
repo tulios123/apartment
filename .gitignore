@@ -27,3 +27,7 @@ dist-ssr
 .verify-screenshots/
 verify_onboarding.js
 supabase/.temp/
+
+# audit run artifacts
+e2e/.results/
+docs/audit/evidence/
