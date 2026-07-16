@@ -100,6 +100,8 @@ export function useOnboardingState(onComplete: () => void) {
   // running — finishing is deferred until the read completes so the extracted
   // data isn't silently dropped (see requestFinish + the effect below handleFinish).
   const [pendingFinish, setPendingFinish] = useState(false)
+  // AUD-001: the finish-path completeness dialog (same gate as the steps' המשך).
+  const [finishPrompt, setFinishPrompt] = useState(false)
   const [notifOn, setNotifOn] = useState(false)
   const [notifBusy, setNotifBusy] = useState(false)
 
@@ -279,6 +281,51 @@ export function useOnboardingState(onComplete: () => void) {
       return (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
     }
     return parseFloat(d.annual_rate) || 0
+  }
+
+  // ── Shared completeness gate (AUD-001) ───────────────────────────────────────
+  // The SAME bar the mortgage/loans steps enforce on המשך, applied to every finish
+  // entry point (סיימו עכשיו + the insurance step's סיום). Without it, finishing
+  // with a half-filled track/loan form silently saved backfilled values (5%/360mo
+  // for tracks, 0% for loans) the user never typed or confirmed.
+  const trackMissingFields = (d: TrackDraft): string[] => {
+    const m: string[] = []
+    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
+    if (trackEffectiveRate(d) <= 0) m.push('ריבית')
+    if (!d.term_months) m.push('תקופה')
+    return m
+  }
+  const loanMissingFields = (d: LoanDraft): string[] => {
+    const m: string[] = []
+    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
+    if (d.repayment_type === 'monthly_fixed') {
+      if (loanDraftRate(d) <= 0) m.push('ריבית')
+      if (!d.term_months) m.push('תקופה')
+    }
+    return m
+  }
+  // Items a finish right now would drop or mis-save: incomplete saved tracks/loans
+  // plus an open form the user actually typed into. "Has data" tests only RAW typed
+  // fields — never the grey-placeholder rate default — so an untouched auto-open form
+  // is skipped silently (as before), while a half-filled one blocks (no fabrication).
+  const trackDraftHasData = (d: TrackDraft) =>
+    (parseFloat(d.principal) || 0) > 0 || !!d.annual_rate || !!d.prime_rate || !!d.margin || !!d.term_months
+  const loanDraftHasData = (d: LoanDraft) =>
+    (parseFloat(d.principal) || 0) > 0 || !!d.annual_rate || !!d.prime_rate || !!d.margin || !!d.term_months
+  const finishBlockers: { kind: 'track' | 'loan'; label: string; missing: string[] }[] = []
+  {
+    const effTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
+    if (showTrackForm && editingIdx === null && trackDraftHasData(trackForm)) effTracks.push(trackForm)
+    for (const t of effTracks) {
+      const missing = trackMissingFields(t)
+      if (missing.length) finishBlockers.push({ kind: 'track', label: MORTGAGE_TRACK_TYPES.find(x => x.value === t.track_type)?.label ?? 'מסלול', missing })
+    }
+    const effLoans = loans.map((l, i) => (i === editingLoanIdx ? loanForm : l))
+    if (showLoanForm && editingLoanIdx === null && loanDraftHasData(loanForm)) effLoans.push(loanForm)
+    for (const l of effLoans) {
+      const missing = loanMissingFields(l)
+      if (missing.length) finishBlockers.push({ kind: 'loan', label: l.label || l.lender || 'הלוואה', missing })
+    }
   }
 
   // ── AI mortgage fill ─────────────────────────────────────────────────────────
@@ -654,7 +701,9 @@ export function useOnboardingState(onComplete: () => void) {
         margin: d.margin || '-0.500',
         term_months: d.term_months || '360',
       })
-      const pendingTrackValid = (parseFloat(trackForm.principal) || 0) > 0
+      // AUD-001: fold an open form draft into the save ONLY when it passes the same
+      // completeness bar as the step gate — never backfill a half-filled draft.
+      const pendingTrackValid = trackMissingFields(trackForm).length === 0
       const allTracks = [...tracks]
       if (pendingTrackValid) {
         if (editingIdx !== null) allTracks[editingIdx] = normTrack(trackForm)
@@ -662,7 +711,7 @@ export function useOnboardingState(onComplete: () => void) {
       }
       const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0)
 
-      const pendingLoanValid = (parseFloat(loanForm.principal) || 0) > 0
+      const pendingLoanValid = loanMissingFields(loanForm).length === 0
       const allLoans = [...loans]
       if (pendingLoanValid) {
         if (editingLoanIdx !== null) allLoans[editingLoanIdx] = normalizeLoanDraft()
@@ -920,8 +969,55 @@ export function useOnboardingState(onComplete: () => void) {
   // defer the actual save until it resolves (the effect below fires it) so the
   // extracted property/mortgage/rental data makes it into the save.
   function requestFinish() {
+    // AUD-001: the finish path enforces the steps' own completeness gate — an
+    // incomplete track/loan (saved, or open in a form) raises the dialog instead
+    // of being silently dropped or saved with backfilled defaults.
+    if (finishBlockers.length > 0) { setFinishPrompt(true); return }
     if (anyAiBusy) { setPendingFinish(true); return }
     handleFinish()
+  }
+
+  function dismissFinishPrompt() { setFinishPrompt(false) }
+
+  // "חזרה להשלמה" — land on the step owning the first incomplete item, in edit mode.
+  function finishPromptBackToComplete() {
+    setFinishPrompt(false)
+    const trackIdx = tracks.findIndex(t => trackMissingFields(t).length > 0)
+    const trackOpenIncomplete = (showTrackForm || editingIdx !== null) && trackMissingFields(trackForm).length > 0
+    if (trackIdx >= 0 || trackOpenIncomplete) {
+      if (!trackOpenIncomplete && trackIdx >= 0) {
+        setEditingIdx(trackIdx)
+        setTrackForm({ ...tracks[trackIdx] })
+        setGraceOn((parseInt(tracks[trackIdx].grace_months) || 0) > 0)
+        setShowTrackForm(false)
+      }
+      setStep('mortgage')
+      return
+    }
+    const loanIdx = loans.findIndex(l => loanMissingFields(l).length > 0)
+    const loanOpenIncomplete = (showLoanForm || editingLoanIdx !== null) && loanMissingFields(loanForm).length > 0
+    if (loanIdx >= 0 || loanOpenIncomplete) {
+      if (!loanOpenIncomplete && loanIdx >= 0) {
+        setEditingLoanIdx(loanIdx)
+        setLoanForm({ ...loans[loanIdx] })
+        setLoanGraceOn((parseInt(loans[loanIdx].grace_months) || 0) > 0)
+        setShowLoanForm(false)
+      }
+      setStep('loans')
+    }
+  }
+
+  // "המשך בלי לשמור" — drop the incomplete items (exactly what the steps' dialogs do),
+  // then finish. Deferred via pendingFinish so handleFinish reads the cleared state.
+  function finishPromptContinueWithout() {
+    setFinishPrompt(false)
+    setTracks(prev => prev.filter(t => trackMissingFields(t).length === 0))
+    setLoans(prev => prev.filter(l => loanMissingFields(l).length === 0))
+    setShowTrackForm(false)
+    setEditingIdx(null)
+    setShowLoanForm(false)
+    setEditingLoanIdx(null)
+    setPendingFinish(true)
   }
 
   useEffect(() => {
@@ -1290,6 +1386,7 @@ export function useOnboardingState(onComplete: () => void) {
     loansMonthlyPrincipal, loansBalloonTotal,
     // submit
     handleFinish, requestFinish, anyAiBusy, pendingFinish,
+    finishPrompt, finishBlockers, dismissFinishPrompt, finishPromptBackToComplete, finishPromptContinueWithout,
     // dev fill
     fillTestPurchase, fillTestMortgage, fillTestInvestment,
     fillTestRental, fillTestInsurance, fillTestLoans,

@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { CaretRight } from '@phosphor-icons/react'
 import { OnboardingContext } from '../components/onboarding/context'
 import { useOnboardingState } from '../components/onboarding/useOnboardingState'
@@ -17,7 +18,13 @@ interface Props { onComplete: () => void }
 // brain); each step is its own component reading it through OnboardingContext.
 export default function Onboarding({ onComplete }: Props) {
   const state = useOnboardingState(onComplete)
-  const { step, back, navDir } = state
+  const { step, back, navDir, finishPrompt, finishBlockers, dismissFinishPrompt, finishPromptBackToComplete, finishPromptContinueWithout } = state
+  // Same title grammar as the steps' own dialogs — specific when possible.
+  const finishPromptTitle = finishBlockers.length && finishBlockers.every(b => b.kind === 'track')
+    ? 'חסרים פרטים במסלול'
+    : finishBlockers.length && finishBlockers.every(b => b.kind === 'loan')
+      ? 'חסרים פרטים בהלוואה'
+      : 'חסרים פרטים'
   // Back lives as a top-right chevron (native RTL: "back" goes toward the start = right).
   // Hidden on the bookends — welcome has nowhere to go back to, done is terminal.
   const showBack = step !== 'welcome' && step !== 'done'
@@ -50,6 +57,29 @@ export default function Onboarding({ onComplete }: Props) {
           </div>
         </div>
       </div>
+      {/* AUD-001: finishing (סיימו עכשיו / סיום) with an incomplete track/loan raises
+          the same completeness dialog the steps raise on המשך — nothing is silently
+          dropped or saved with backfilled values. */}
+      {finishPrompt && createPortal(
+        <div className="onboarding-dialog-overlay" onClick={dismissFinishPrompt}>
+          <div className="onboarding-dialog" role="dialog" aria-modal="true" aria-labelledby="onboarding-finish-dialog-title" onClick={e => e.stopPropagation()}>
+            <div className="onboarding-dialog-title" id="onboarding-finish-dialog-title">{finishPromptTitle}</div>
+            <p className="onboarding-dialog-lead">אם תסיימו עכשיו, הפריטים האלה לא יישמרו:</p>
+            <ul className="onboarding-dialog-list">
+              {finishBlockers.map((b, i) => (
+                <li key={i}>
+                  <strong>{b.kind === 'track' ? 'מסלול משכנתא' : 'הלוואה'} · {b.label}</strong> — חסר {b.missing.join(', ')}
+                </li>
+              ))}
+            </ul>
+            <div className="onboarding-dialog-actions">
+              <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={finishPromptBackToComplete}>חזרה להשלמה</button>
+              <button type="button" className="btn-onboard-skip onboarding-cta-full" onClick={finishPromptContinueWithout}>המשך בלי לשמור</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
       {/* No feedback FAB here: Onboarding renders OUTSIDE the <BrowserRouter> (App.tsx),
           and FeedbackButton uses router hooks (the /?fb= deep link) which throw
           "useLocation() may be used only in the context of a <Router>" — crashing every

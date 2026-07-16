@@ -34,3 +34,28 @@ export async function saveShot(page: Page, screen: string, state: string, theme:
 // Tag helpers for rows this run creates (cleanup targets these).
 export const E2E_TAG = '[E2E]'
 export const STRESS_TAG = '[STRESS]'
+
+// The onboarding wizard backs its state up to localStorage (key onboarding_draft:<uid>)
+// and only clears it on a fully successful finish. Across test runs a leftover draft
+// re-hydrates stale tracks/loans — so clear it (on every navigation) before any
+// onboarding test. In-session (SPA) state is React memory, unaffected by this.
+export async function clearOnboardingDraft(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('onboarding_draft'))
+        .forEach((k) => localStorage.removeItem(k))
+    } catch { /* storage unavailable */ }
+  })
+}
+
+// Wipe the test account via the protected Settings reset and land back on Onboarding.
+export async function resetAccount(page: Page) {
+  await gotoAuthed(page, '/settings')
+  const resetBtn = page.getByRole('button', { name: 'איפוס כל הנתונים' })
+  await resetBtn.scrollIntoViewIfNeeded()
+  await resetBtn.click()
+  await page.getByRole('button', { name: 'מחק הכול' }).click()
+  await page.waitForLoadState('load')
+  await page.locator('.onboarding-wrap').waitFor({ state: 'visible', timeout: 30_000 })
+}
