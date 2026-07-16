@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { PencilSimple, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import InvestmentCosts from '../property/InvestmentCosts'
@@ -164,19 +165,25 @@ export default function WealthHub() {
         </>
       )}
 
-      {editing && (
-        <div className="wlth-editor" role="dialog" aria-modal="true" aria-label="עריכת מימון ועלויות">
-          <div className="wlth-editor-head">
-            <button onClick={closeEditor} aria-label="חזור"><CaretRight size={24} weight="bold" /></button>
-            <h2>עריכת מימון ועלויות</h2>
+      {editing && createPortal(
+        // Portal to <body> so the full-screen editor is a top-level sibling of the fixed
+        // app top-bar (z-index 95) and reliably paints above it — not trapped in the page's
+        // stacking context. Re-wrap in `.wlth` since wealth.css is scoped to it.
+        <div className="wlth">
+          <div className="wlth-editor" role="dialog" aria-modal="true" aria-label="עריכת מימון ועלויות">
+            <div className="wlth-editor-head">
+              <button onClick={closeEditor} aria-label="חזור"><CaretRight size={24} weight="bold" /></button>
+              <h2>עריכת מימון ועלויות</h2>
+            </div>
+            <div className="wlth-editor-body">
+              <h3 className="wlth-editor-section">משכנתא והלוואות</h3>
+              <LiabilitiesV2 embedded />
+              <h3 className="wlth-editor-section">הון עצמי ועלויות רכישה</h3>
+              <InvestmentCosts />
+            </div>
           </div>
-          <div className="wlth-editor-body">
-            <h3 className="wlth-editor-section">משכנתא והלוואות</h3>
-            <LiabilitiesV2 embedded />
-            <h3 className="wlth-editor-section">הון עצמי ועלויות רכישה</h3>
-            <InvestmentCosts />
-          </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
