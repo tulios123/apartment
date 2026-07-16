@@ -86,6 +86,7 @@ export async function upsertLoan(data: {
   term_months?: number | null
   grace_months?: number | null
   start_date?: string | null
+  payment_day?: number | null
   notes?: string | null
 }): Promise<Loan> {
   const payload = {
@@ -100,6 +101,7 @@ export async function upsertLoan(data: {
     term_months: data.term_months ?? null,
     grace_months: data.grace_months ?? null,
     start_date: data.start_date ?? null,
+    payment_day: data.payment_day ?? null,
     notes: data.notes ?? null,
   }
   if (data.id) {

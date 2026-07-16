@@ -66,9 +66,29 @@ describe('trackSchedule — a day-31 start lands exactly one row per month', () 
   it('does not skip February or double up March (setMonth overflow)', () => {
     const t = track({ principal: 120000, annual_rate: 6, term_months: 6, start_date: '2026-01-31' })
     const months = trackSchedule(t).map(r => r.date.slice(0, 7))
-    expect(months).toEqual(['2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'])
+    // First payment falls in the START month (Jan), one row per month, day clamped.
+    expect(months).toEqual(['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'])
+    expect(trackSchedule(t)[0].date).toBe('2026-01-31')
     // The day is clamped to each month's length — Feb → 28, not overflowed into March.
-    expect(trackSchedule(t)[0].date).toBe('2026-02-28')
+    expect(trackSchedule(t)[1].date).toBe('2026-02-28')
+  })
+})
+
+describe('trackSchedule — first payment in the start month + billing day', () => {
+  it('dates the first payment in the start month (not a month later)', () => {
+    const t = track({ principal: 100000, annual_rate: 5, term_months: 12, start_date: '2026-03-01' })
+    const rows = trackSchedule(t)
+    expect(rows[0].date).toBe('2026-03-01')            // March start → March payment
+    expect(rows.map(r => r.date.slice(0, 7))[0]).toBe('2026-03')
+  })
+  it('payment_day overrides the day-of-month for every payment', () => {
+    const t = track({ principal: 100000, annual_rate: 5, term_months: 3, start_date: '2026-03-01', payment_day: 10 } as Partial<MortgageTrack>)
+    const dates = trackSchedule(t).map(r => r.date)
+    expect(dates).toEqual(['2026-03-10', '2026-04-10', '2026-05-10'])
+  })
+  it('a payment_day past the month length is clamped (31 → Feb 28)', () => {
+    const t = track({ principal: 100000, annual_rate: 5, term_months: 2, start_date: '2026-01-01', payment_day: 31 } as Partial<MortgageTrack>)
+    expect(trackSchedule(t).map(r => r.date)).toEqual(['2026-01-31', '2026-02-28'])
   })
 })
 

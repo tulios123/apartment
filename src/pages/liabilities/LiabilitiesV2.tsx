@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Bank, HandCoins, Scales, Plus, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
-import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
+import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack, setMortgagePaymentDay } from '../../hooks/useMortgageData'
 import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
@@ -30,7 +30,7 @@ const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => d ? new Date(d).getFullYear() : null
 
 const emptyTrack = { track_type: 'prime' as TrackType, label: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()) }
-const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()) }
+const emptyLoan = { repayment_type: 'monthly_fixed' as LoanRepaymentType, track_type: 'fixed_unlinked' as TrackType, label: '', lender: '', principal: '', annual_rate: '', prime_rate: '', margin: '', term_months: '', grace_months: '0', start_date: monthDayISO(new Date()), payment_day: '' }
 const isAnchoredType = (t: TrackType) => t === 'prime' || t === 'variable'
 
 // Manager/dev fixtures: in local dev or the dev@test.local manager account, the AI
@@ -88,7 +88,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
     if (kind === 'mortgage') {
       setTForm({ track_type: 'fixed_unlinked', label: 'מסלול לדוגמה', principal: '600000', annual_rate: '4.5', prime_rate: '', margin: '', term_months: '360', grace_months: '0', start_date: monthDayISO(new Date()) })
     } else {
-      setLForm({ repayment_type: 'monthly_fixed', track_type: 'fixed_unlinked', label: 'הלוואה לדוגמה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6', prime_rate: '', margin: '', term_months: '60', grace_months: '0', start_date: monthDayISO(new Date()) })
+      setLForm({ repayment_type: 'monthly_fixed', track_type: 'fixed_unlinked', label: 'הלוואה לדוגמה', lender: 'בנק לאומי', principal: '120000', annual_rate: '6', prime_rate: '', margin: '', term_months: '60', grace_months: '0', start_date: monthDayISO(new Date()), payment_day: '' })
     }
   }
 
@@ -136,7 +136,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   }
   function editLoan(l: Loan) {
     setKind('loan'); setEditId(l.id); setFormError(null); setActionErr(null)
-    const lf = { repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? monthDayISO(new Date()) }
+    const lf = { repayment_type: l.repayment_type, track_type: l.track_type ?? 'fixed_unlinked', label: l.label ?? '', lender: l.lender ?? '', principal: String(l.principal), annual_rate: l.annual_rate != null ? String(l.annual_rate) : '', prime_rate: l.prime_rate != null ? String(l.prime_rate) : '', margin: l.margin != null ? String(l.margin) : '', term_months: l.term_months != null ? String(l.term_months) : '', grace_months: String(l.grace_months ?? 0), start_date: l.start_date ?? monthDayISO(new Date()), payment_day: l.payment_day != null ? String(l.payment_day) : '' }
     setLForm(lf); openSnapshot.current = JSON.stringify(lf)
     setGraceOn((l.grace_months ?? 0) > 0)
     setConfirmDiscard(false)
@@ -188,6 +188,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       term_months: !isBalloon && l.term_months != null ? String(l.term_months) : '',
       grace_months: l.grace_months != null ? String(l.grace_months) : '0',
       start_date: l.start_date ? String(l.start_date) : monthDayISO(new Date()),
+      payment_day: '',
     }
   }
 
@@ -336,6 +337,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           margin: anchored ? Number(lForm.margin || 0) : null,
           term_months: isMonthly ? Number(lForm.term_months || 0) : null,
           grace_months: isMonthly && graceOn ? Number(lForm.grace_months || 0) : 0, start_date: lForm.start_date,
+          payment_day: isMonthly && lForm.payment_day ? Number(lForm.payment_day) : null,
         })
         refetchL()
       }
@@ -420,6 +422,22 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   </div>
                 )
               })}
+              {tracks.length > 0 && mortgage && (
+                <label className="liav-payday">
+                  <span>יום חיוב חודשי</span>
+                  <select
+                    value={mortgage.payment_day != null ? String(mortgage.payment_day) : ''}
+                    onChange={async e => {
+                      const day = e.target.value ? Number(e.target.value) : null
+                      try { await setMortgagePaymentDay(mortgage.id, day); refetchM() }
+                      catch { setActionErr('לא הצלחנו לעדכן את יום החיוב — נסו שוב') }
+                    }}
+                  >
+                    <option value="">כמו יום ההתחלה</option>
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d} בחודש</option>)}
+                  </select>
+                </label>
+              )}
               <div className="liav-add-row">
                 <button className="liav-add-track" onClick={openAddMortgage}><Plus size={15} weight="bold" /> הוסף מסלול משכנתא</button>
                 <button className="liav-scan-btn" onClick={() => mortgageDocRef.current?.click()} disabled={aiBusy !== null}>
@@ -575,6 +593,9 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
               </>
             )}
             <label className="liav-field"><span>תאריך התחלה</span><DateField value={lForm.start_date} onChange={v => setLForm(f => ({ ...f, start_date: v }))} ariaLabel="תאריך התחלה" /></label>
+            {lForm.repayment_type === 'monthly_fixed' && (
+              <label className="liav-field"><span>יום חיוב בחודש (1–28, ברירת־מחדל: יום ההתחלה)</span><input type="number" min="1" max="28" inputMode="numeric" placeholder="למשל 10" value={lForm.payment_day} onChange={e => setLForm(f => ({ ...f, payment_day: e.target.value.replace(/[^\d]/g, '') }))} /></label>
+            )}
             <label className="liav-field"><span>תווית (אופציונלי)</span><input type="text" value={lForm.label} onChange={e => setLForm(f => ({ ...f, label: e.target.value }))} /></label>
           </>
         )}

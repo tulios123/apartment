@@ -27,14 +27,18 @@ export function monthlyPayment(principal: number, annualRate: number, termMonths
   return (principal * r * f) / (f - 1)
 }
 
-function addMonths(iso: string, months: number): string {
-  // Parse Y-M-D directly and clamp the day to the target month's length. Using
-  // Date.setMonth lets a day-31 start overflow (Jan-31 + 1mo → "Feb 31" → Mar 3),
-  // which skips February and puts TWO payment rows in March. Clamping maps each month
-  // index to exactly one date in the right month. Stays LOCAL Y-M-D (never toISOString,
-  // which rolls back a day in timezones ahead of UTC).
-  const [y, m, day] = iso.slice(0, 10).split('-').map(Number)
-  const idx = (m - 1) + months
+/**
+ * Date of the payment `monthOffset` whole months after the START month, billed on
+ * `paymentDay` (the mortgage's billing day) — or the start-date's day when unset. The day
+ * is clamped to the target month's length, so a 31st bill lands on Feb 28 and never
+ * overflows (Date.setMonth would push "Feb 31" into March, skipping Feb and doubling March).
+ * monthOffset 0 = the START month, so the FIRST payment falls in the start month.
+ * LOCAL Y-M-D throughout — never toISOString (UTC rolls a day back in Israel).
+ */
+export function paymentDate(startISO: string, monthOffset: number, paymentDay?: number | null): string {
+  const [y, m, sd] = startISO.slice(0, 10).split('-').map(Number)
+  const day = (paymentDay != null && paymentDay >= 1) ? paymentDay : sd
+  const idx = (m - 1) + monthOffset
   const ty = y + Math.floor(idx / 12)
   const tm = ((idx % 12) + 12) % 12 // 0-11, correct for negative months too
   const lastDay = new Date(ty, tm + 1, 0).getDate() // day 0 of next month = last day of tm
@@ -70,7 +74,9 @@ export function trackSchedule(track: MortgageTrack): ScheduleRow[] {
     balance = Math.max(0, balance - prin)
     rows.push({
       monthIndex: i,
-      date: addMonths(start_date, i),
+      // monthOffset i-1 → payment 1 falls in the start month, billed on the mortgage's
+      // payment_day (falls back to the start-date day when unset).
+      date: paymentDate(start_date, i - 1, track.payment_day),
       payment,
       interest,
       principal: prin,
@@ -98,7 +104,9 @@ export function combineSchedules(tracks: MortgageTrack[]): ScheduleRow[] {
       if (row) { payment += row.payment; interest += row.interest; principal += row.principal }
       // Carry-forward outstanding balance for this track as of `date`:
       // 0 before the track starts, its principal until the first payment, then the latest row balance.
-      if (tracks[ti].start_date <= date) {
+      // Compare by MONTH so a track whose billing day is earlier than its start-date day still
+      // counts as active in its own start month (its first payment now falls in that month).
+      if (tracks[ti].start_date.slice(0, 7) <= date.slice(0, 7)) {
         let bal = Number(tracks[ti].principal) || 0   // numeric col → string; coerce so the carry-forward adds (not concatenates)
         for (const r of rows) {
           if (r.date <= date) bal = r.balance

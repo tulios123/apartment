@@ -38,6 +38,15 @@ describe('loanBalance', () => {
   })
 })
 
+describe('loan schedule — first payment in the start month + billing day', () => {
+  it('dates the first payment in the start month, and payment_day sets the day', () => {
+    const l = loan({ principal: 60000, annual_rate: 5, term_months: 6, start_date: '2026-03-01', payment_day: 10 })
+    // March start → March payment, on the 10th.
+    expect(loanPaymentForMonth(l, '2026-03')?.date).toBe('2026-03-10')
+    expect(loanPaymentForMonth(l, '2026-04')?.date).toBe('2026-04-10')
+  })
+})
+
 describe('loan schedule — a day-31 start still has a February payment', () => {
   it('Feb and March each have exactly one payment (no setMonth overflow)', () => {
     const l = loan({ principal: 60000, annual_rate: 5, term_months: 6, start_date: '2026-01-31' })
@@ -90,8 +99,9 @@ describe('helpers', () => {
     expect(monthsRemaining(l, new Date(2026, 5, 15))).toBe(7)
     expect(monthsRemaining(loan({ repayment_type: 'balloon' }), new Date(2026, 5, 15))).toBe(0)
   })
-  it('loanEndDate = start + term (null for balloon)', () => {
-    expect(loanEndDate(loan({ term_months: 12, start_date: '2026-01-01' }))).toBe('2027-01-01')
+  it('loanEndDate = the last payment month (start + term − 1, null for balloon)', () => {
+    // First payment now falls in the start month, so 12 payments span Jan–Dec 2026.
+    expect(loanEndDate(loan({ term_months: 12, start_date: '2026-01-01' }))).toBe('2026-12-01')
     expect(loanEndDate(loan({ repayment_type: 'balloon' }))).toBeNull()
   })
 })
