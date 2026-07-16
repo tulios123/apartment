@@ -1,9 +1,9 @@
 # RUN_STATE.md — night run 16-17.07.2026 (machine clock unreliable; labels are machine time)
 
 **Branch:** staging (commits go directly here; no checkout — shared working tree). **Run doc:** NIGHT_RUN.md (repo root).
-**Counts:** found 4 · fixed 1 · improved 0 · parked 0 · KNOWN-deduped (baseline built)
-**Last checkpoint commit:** (AUD-001 committing now)
-**Next action:** Stage 1 core flows on the seeded dataset (seed first) + triage the S2 layout findings from the onboarding partial-data pass. Static-sweep report in hand.
+**Counts:** found 4 · fixed 2 (AUD-001 P1, AUD-002 P2; +SW-05 config) · improved 0 · parked 0 · KNOWN-deduped (baseline built)
+**Last checkpoint commit:** AUD-002 (index.css nav-clearance) pushed to staging
+**Next action (for a fresh continue — heavy, decoupled):** (1) run scripts/audit/seed-stress.ts (RLS-scoped, tagged, additive — the classifier may prompt; it's within the allowed test-account boundary); (2) Stage 1 live money-correctness (cross-screen number consistency Home/Finances/Wealth, month boundaries, grace, balloon, day_of_month=31); (3) close the coverage matrix stages 2–7. AUDIT_FINDINGS.md + MORNING_REPORT.md written. All docs pushed.
 
 ## Findings ledger (live)
 - **AUD-001** [FIXED] P1 · onboarding finish (סיימו עכשיו / insurance סיום) silently saved an incomplete open mortgage-track/loan form with FABRICATED defaults (term→360, rate→5) the user never entered — bypassing the step's own completeness gate. Fix: finish now runs the same gate → raises a "חסרים פרטים" dialog (חזרה להשלמה / המשך בלי לשמור), and handleFinish only folds a draft that passes the gate. Untouched forms still skip silently (raw-field hasData). Evidence: e2e/onboarding.spec.ts (2 specs fail-before/pass-after) + full-walk + untouched-skip. Root of KNOWN R1/R2. tsc+135 vitest+build green.
@@ -17,8 +17,8 @@ tsc clean · 135 vitest green · build ok (single 1.04MB JS chunk — SW-06 code
 ## Stages
 | stage | title | status |
 |---|---|---|
-| 0 | Foundation & calibration | in-progress |
-| 1 | Core functionality & financial correctness (live) | pending |
+| 0 | Foundation & calibration | done |
+| 1 | Core functionality & financial correctness (live) | partial (onboarding flows done + AUD-001; seeded money-correctness pending) |
 | 2 | Layout, UI & accessibility math | pending |
 | 3 | Smoothness & perceived performance | pending |
 | 4 | Resilience & stress | pending |
