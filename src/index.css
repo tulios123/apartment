@@ -3601,7 +3601,10 @@ input[type="date"] {
     margin-left: 0;
     margin-right: 0;
     padding: 16px;
-    padding-bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
+    /* Clear the fixed bottom-nav (~64px: 52px link + 12px padding) with a gap, so a
+       full-width CTA at the end of a short screen (e.g. Home's "הוסיפו חוזה" empty
+       state) never sits under the nav — AUD-002. */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom) + 16px);
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
