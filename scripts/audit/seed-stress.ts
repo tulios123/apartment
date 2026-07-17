@@ -102,7 +102,9 @@ await insert('contracts', [{
 
 // ---- recurring items incl. day_of_month=31 ----
 await insert('recurring_items', [
-  { owner_id: userId, direction: 'expense', amount: 62.9, category: 'אחר', day_of_month: 31, start_date: localISO(addMonthsClamped(today, -3)), payee: `${TAG} הוראת-קבע יום-31`, execution_type: 'automatic', renewal_alert_days: [] },
+  // day_of_month is DB-constrained to 1–28 (001_initial_schema.sql) and the app clamps to
+  // 28 (useRecurringItems). 31 was invalid and aborted the whole seed — use the real max, 28.
+  { owner_id: userId, direction: 'expense', amount: 62.9, category: 'אחר', day_of_month: 28, start_date: localISO(addMonthsClamped(today, -3)), payee: `${TAG} הוראת-קבע יום-28 (מקס)`, execution_type: 'automatic', renewal_alert_days: [] },
   { owner_id: userId, direction: 'expense', amount: 118, category: 'ביטוח', day_of_month: 1, start_date: localISO(addMonthsClamped(today, -2)), end_date: localISO(addMonthsClamped(today, -1)), payee: `${TAG} פריט-עם-עבר end_date`, execution_type: 'automatic', renewal_alert_days: [] },
 ])
 
