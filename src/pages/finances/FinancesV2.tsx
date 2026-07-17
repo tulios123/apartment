@@ -12,6 +12,7 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { monthlyVirtualEntries } from '../../lib/projections'
+import { isForecastMonth } from '../../lib/forecast'
 import type { VirtualEntry } from '../../lib/projections'
 import { supabase } from '../../lib/supabase'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
@@ -273,6 +274,9 @@ export default function FinancesV2() {
   const expense = view === 'month' ? mExpense : view === 'year' ? yearTotals.expense : rangeTotals.expense
   const net = income - expense
   const inPct = income + expense > 0 ? (income / (income + expense)) * 100 : 50
+  // A future month's balance is entirely forecast (rent/mortgage not yet booked),
+  // so it must not read like a settled past month — badge the header with "צפי".
+  const monthIsForecast = view === 'month' && isForecastMonth(year, month, today)
   const breakdown = view === 'month' ? monthBreakdown : view === 'year' ? yearBreakdown : rangeBreakdown
 
   function openNew() { setForm(emptyForm); openSnapshot.current = JSON.stringify(emptyForm); setEditingId(null); setTxDocs([]); setFormError(null); setConfirmDiscard(false); setDrawerOpen(true) }
@@ -455,7 +459,10 @@ export default function FinancesV2() {
       )}
 
       <div className="finv-summary">
-        <div className="finv-summary-label">{view === 'month' ? 'מאזן החודש' : view === 'year' ? 'מאזן השנה' : 'מאזן התקופה'}</div>
+        <div className="finv-summary-label">
+          {view === 'month' ? 'מאזן החודש' : view === 'year' ? 'מאזן השנה' : 'מאזן התקופה'}
+          {monthIsForecast && <span className="finv-summary-forecast">צפי</span>}
+        </div>
         <div className={`finv-summary-net ${net >= 0 ? 'pos' : 'neg'}`}>{formatSignedCurrency(net)}</div>
         <div className="finv-summary-bar"><div className="in" style={{ width: `${inPct}%` }} /><div className="out" style={{ width: `${100 - inPct}%` }} /></div>
         <div className="finv-summary-tiles">
