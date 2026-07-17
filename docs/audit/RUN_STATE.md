@@ -1,9 +1,15 @@
 # RUN_STATE.md — night run 16-17.07.2026 (machine clock unreliable; labels are machine time)
 
 **Branch:** staging (commits go directly here; no checkout — shared working tree). **Run doc:** NIGHT_RUN.md (repo root).
-**Counts:** found 4 · fixed 2 (AUD-001 P1, AUD-002 P2; +SW-05 config) · improved 0 · parked 0 · KNOWN-deduped (baseline built)
-**Last checkpoint commit:** AUD-002 (index.css nav-clearance) pushed to staging
-**Next action (for a fresh continue — heavy, decoupled):** (1) run scripts/audit/seed-stress.ts (RLS-scoped, tagged, additive — the classifier may prompt; it's within the allowed test-account boundary); (2) Stage 1 live money-correctness (cross-screen number consistency Home/Finances/Wealth, month boundaries, grace, balloon, day_of_month=31); (3) close the coverage matrix stages 2–7. AUDIT_FINDINGS.md + MORNING_REPORT.md written. All docs pushed.
+**Counts:** found 4 · fixed 2 (AUD-001 P1, AUD-002 P2; +SW-05 config) · improved 0 · parked 0 · Stage-1 money tests PASSED (0 new findings)
+**Last checkpoint commit:** AUD-002 (index.css nav-clearance) pushed. Then (17.07 continue): Stage-1 seed-INDEPENDENT live money tests run & PASSED (docs only).
+**Next action:** seed-stress.ts is **BLOCKED by the auto-mode classifier** (bypass flag `--i-know-this-is-shared-supabase` not user-named) — owner must run `npx tsx scripts/audit/seed-stress.ts --owner-email dev@test.local --i-know-this-is-shared-supabase` (or add a Bash perm rule). Then run the seed-DEPENDENT Stage-1 tests: grace (18mo track), balloon loan, recurring day_of_month=31, ~400-tx stress. Then close coverage matrix stages 2–7.
+
+## Stage 1 live money results (17.07 continue) — seed-independent, on the E2E baseline (mortgage 1 track + 'הלוואה משלימה [E2E]' loan + rent 4,300)
+- **Cross-screen consistency (Home/Finances/Wealth) — PASS.** Identical numbers on all three: mortgage 5,019 (Wealth = Finances; principal 1,515 + interest 3,504), loan 2,320 (Wealth = Finances), fixed-expenses total 7,413 (Finances category breakdown = Home 'תשלומים קבועים'), rent 4,300, month forecast −3,113 (Finances balance = Home 'צפי לסוף החודש'). Wealth accelerator split 3,235+4,104=7,339 reconciles to the per-item principal/interest splits.
+- **Month boundaries — PASS.** Exactly one mortgage row per month, dated the 17th every month (17.7 → 17.1.2027), no skipped month, no doubles.
+- **First-payment-in-start-month — PASS.** Mortgage starts July → first payment July (17.7); June/May/April carry NO mortgage row (no phantom pre-start payment).
+- **Pending seed:** grace, balloon, day_of_month=31, ~400-tx stress. No new findings from the seed-independent tests (the money engine is cross-screen consistent).
 
 ## Findings ledger (live)
 - **AUD-001** [FIXED] P1 · onboarding finish (סיימו עכשיו / insurance סיום) silently saved an incomplete open mortgage-track/loan form with FABRICATED defaults (term→360, rate→5) the user never entered — bypassing the step's own completeness gate. Fix: finish now runs the same gate → raises a "חסרים פרטים" dialog (חזרה להשלמה / המשך בלי לשמור), and handleFinish only folds a draft that passes the gate. Untouched forms still skip silently (raw-field hasData). Evidence: e2e/onboarding.spec.ts (2 specs fail-before/pass-after) + full-walk + untouched-skip. Root of KNOWN R1/R2. tsc+135 vitest+build green.
@@ -18,7 +24,7 @@ tsc clean · 135 vitest green · build ok (single 1.04MB JS chunk — SW-06 code
 | stage | title | status |
 |---|---|---|
 | 0 | Foundation & calibration | done |
-| 1 | Core functionality & financial correctness (live) | partial (onboarding flows done + AUD-001; seeded money-correctness pending) |
+| 1 | Core functionality & financial correctness (live) | partial (onboarding+AUD-001 done; seed-INDEP money tests PASSED — consistency/boundaries/first-payment; grace/balloon/day-31/stress pending seed) |
 | 2 | Layout, UI & accessibility math | pending |
 | 3 | Smoothness & perceived performance | pending |
 | 4 | Resilience & stress | pending |
