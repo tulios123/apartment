@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
 import { nextDueDate } from '../../lib/recurrence'
+import { reentryGuard } from '../../lib/reentryGuard'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { parseQuick, predictCategory } from '../../lib/quickParse'
@@ -61,6 +62,7 @@ export default function HomeScreen() {
   const { transactions, loading: loadingTx, error: txError, refetch: refetchTx } = useTransactions({ year, month })
 
   const [busy, setBusy] = useState<string | null>(null)
+  const rentGuard = useRef(reentryGuard())
   const [done, setDone] = useState<Set<string>>(new Set())
   const [flash, setFlash] = useState<string | null>(null)
   const [quick, setQuick] = useState('')
@@ -200,6 +202,10 @@ export default function HomeScreen() {
   useEffect(() => { if (homeLoaded) markReady() }, [homeLoaded, markReady])
 
   async function approveRent(amount: number) {
+    // disabled={isBusy} closes only after a re-render — a ghost double-tap fires the
+    // handler twice in one tick and used to insert two rent transactions. The guard
+    // blocks synchronously (same hole the onboarding finish plugs with finishingRef).
+    if (!rentGuard.current.enter()) return
     setBusy('rent')
     try {
       // V2: link the approval to the rent recurring-item, so the daily reminder's
@@ -235,6 +241,7 @@ export default function HomeScreen() {
     } catch {
       showFlash('לא הצלחנו לרשום, נסו שוב')
     } finally {
+      rentGuard.current.exit()
       setBusy(null)
     }
   }
