@@ -39,7 +39,7 @@ Columns: light@393, dark@393, light@320.
 | Finances year | V | V | V | breakdown-accordion false-positive investigated |
 | Finances range | V | V | V | |
 | Finances expense sheet | V | V | V | + dirty-discard flow |
-| Finances tx drawer (edit) | U | U | U | row-click selector didn't open drawer in runner; edit path exercised via sheet (same BottomSheet) — revisit with better selector |
+| Finances tx drawer (edit) | V | V | V | opened on a temp real tx via the row edit action ("עריכת תנועה", no overflow, all 3 configs); temp rows cleaned, baseline re-verified (−3,113 · 97,260) |
 | Wealth main | V | V | V | + stress state |
 | Wealth liabilities | V | V | V | |
 | Scan review / doc list | C | C | C | needs a real scanned doc; code-level (ScanReview/ScanDocList in LiabilitiesV2) |
