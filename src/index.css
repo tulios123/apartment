@@ -2683,6 +2683,16 @@ input[type="date"] {
   box-shadow: 0 0 0 3px var(--danger-bg, rgba(214, 69, 69, 0.14));
 }
 
+/* Per-field validation note — sits directly under the offending input once the
+   user starts correcting (the click-time summary lives by the save button). */
+.onboarding-field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger-text, #b23420);
+}
+
 /* Quiet plausibility hint (e.g. "looks like years, not months") — informative
    amber text, visually lighter than the blocking alert box. */
 .onboarding-soft-warning {

@@ -167,7 +167,7 @@ export function LoansStep() {
                 {isEditing && <LoanForm
                   onSave={() => finalizeLoan(i)}
                   onCancel={() => { setEditingLoanIdx(null); setSaveAttempted(false) }}
-                  alert={saveAttempted ? loanIssues(loanForm) : null} />}
+                  alert={saveAttempted ? loanIssues(loanForm) : null} pulse={alertPulse} />}
               </div>
             )
           })}
@@ -177,7 +177,7 @@ export function LoansStep() {
       {/* Inline form for new loan */}
       {showLoanForm && <LoanForm onSave={finalizeNewLoan}
         onCancel={() => { setShowLoanForm(false); setSaveAttempted(false) }}
-        alert={saveAttempted && editingLoanIdx === null ? loanIssues(loanForm) : null} />}
+        alert={saveAttempted && editingLoanIdx === null ? loanIssues(loanForm) : null} pulse={alertPulse} />}
 
       {/* Add loan button — always shown */}
       <button type="button" className="btn-onboard-skip onboarding-add-btn"

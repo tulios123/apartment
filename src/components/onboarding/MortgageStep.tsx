@@ -213,7 +213,7 @@ export function MortgageStep() {
                 {isEditing && <TrackForm
                   onSave={() => finalizeTrack(i)}
                   onCancel={() => { setEditingIdx(null); setSaveAttempted(false) }}
-                  alert={saveAttempted ? trackIssues(trackForm) : null} />}
+                  alert={saveAttempted ? trackIssues(trackForm) : null} pulse={alertPulse} />}
               </div>
             )
           })}
@@ -223,7 +223,7 @@ export function MortgageStep() {
       {/* Inline track form for new track */}
       {showTrackForm && <TrackForm onSave={finalizeNewTrack}
         onCancel={() => { setShowTrackForm(false); setSaveAttempted(false) }}
-        alert={saveAttempted && editingIdx === null ? newTrackIssues : null} />}
+        alert={saveAttempted && editingIdx === null ? newTrackIssues : null} pulse={alertPulse} />}
 
       {/* Add track button — always shown */}
       <button type="button" className="btn-onboard-skip onboarding-add-btn"
