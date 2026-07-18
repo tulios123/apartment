@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { AppReadyContext } from './contexts/AppReadyContext'
 import { supabase } from './lib/supabase'
+import { probeHasProperty } from './lib/bootCheck'
 import Layout from './components/layout/Layout'
 import { Splash } from './components/ui/Splash'
 import Login from './pages/Login'
@@ -48,13 +49,15 @@ function AppRoutes() {
     let timer: ReturnType<typeof setTimeout>
 
     async function check() {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('id')
-        .eq('owner_id', user!.id)
-        .limit(1)
+      // probeHasProperty folds BOTH failure shapes — supabase `{ error }` and a
+      // rejected fetch (offline / reset connection) — into 'error'. A raw await
+      // here used to let network rejections escape the retry ladder entirely,
+      // trapping the user on an infinite splash (AUD-011).
+      const result = await probeHasProperty(() =>
+        supabase.from('properties').select('id').eq('owner_id', user!.id).limit(1),
+      )
       if (cancelled) return
-      if (error) {
+      if (result === 'error') {
         // C3: an errored check is UNKNOWN, never "no property". Keep hasProperty
         // null (stay on Splash) and retry with capped backoff; after a few
         // failures surface a manual retry rather than routing to Onboarding.
@@ -64,7 +67,7 @@ function AppRoutes() {
         return
       }
       setPropertyError(false)
-      setHasProperty((data?.length ?? 0) > 0)
+      setHasProperty(result)
     }
 
     check()
