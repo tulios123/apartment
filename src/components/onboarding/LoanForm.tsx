@@ -2,14 +2,19 @@ import { Check } from '@phosphor-icons/react'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType } from '../../types'
 import { formatNum } from './types'
+import type { DraftIssue, IssueField } from './validation'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
-// Inline editor for a single supplementary/balloon loan.
-export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCancel: () => void; alert?: string[] | null }) {
+// Inline editor for a single supplementary/balloon loan. `alert` carries the
+// precise per-field issues after a blocked save — each message is shown and the
+// offending input itself is outlined.
+export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCancel: () => void; alert?: DraftIssue[] | null }) {
   const { loanForm, setLF, loanGraceOn, setLoanGraceOn } = useOnboarding()
   const isMonthly = loanForm.repayment_type === 'monthly_fixed'
   const isAnchored = loanForm.track_type === 'prime' || loanForm.track_type === 'variable'
+  const errFields = new Set((alert ?? []).map(i => i.field))
+  const err = (f: IssueField) => errFields.has(f) ? { className: 'input-invalid', 'aria-invalid': true as const } : {}
 
   return (
     <div className="onboarding-inline-form">
@@ -36,7 +41,7 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
       )}
       <div className="onboarding-field">
         <label>סכום ההלוואה (₪)</label>
-        <input type="text" inputMode="numeric" placeholder="0"
+        <input type="text" inputMode="numeric" placeholder="0" {...err('principal')}
           value={formatNum(loanForm.principal)}
           onChange={e => setLF('principal', e.target.value.replace(/[^\d]/g, ''))} />
       </div>
@@ -56,14 +61,14 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label>{loanForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
-                  <input type="number" step="0.01"
+                  <input type="number" step="0.01" {...err('rate')}
                     placeholder={loanForm.track_type === 'prime' ? '6' : '3.5'}
                     value={loanForm.prime_rate}
                     onChange={e => setLF('prime_rate', e.target.value)} />
                 </div>
                 <div className="onboarding-field">
                   <label>מרווח % (פריים מינוס = שלילי)</label>
-                  <input type="number" step="0.01"
+                  <input type="number" step="0.01" {...err('rate')}
                     placeholder={loanForm.track_type === 'prime' ? '-0.5' : '1.5'}
                     value={loanForm.margin}
                     onChange={e => setLF('margin', e.target.value)} />
@@ -71,7 +76,7 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
               </div>
               <div className="onboarding-field">
                 <label>תקופה (חודשים)</label>
-                <input type="number" min="1" placeholder="60" value={loanForm.term_months}
+                <input type="number" min="1" placeholder="60" {...err('term')} value={loanForm.term_months}
                   onChange={e => setLF('term_months', e.target.value)} />
               </div>
             </>
@@ -79,12 +84,12 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
             <div className="onboarding-row">
               <div className="onboarding-field">
                 <label>ריבית שנתית (%)</label>
-                <input type="number" step="0.01" min="0" placeholder="5" value={loanForm.annual_rate}
+                <input type="number" step="0.01" min="0" placeholder="5" {...err('rate')} value={loanForm.annual_rate}
                   onChange={e => setLF('annual_rate', e.target.value)} />
               </div>
               <div className="onboarding-field">
                 <label>תקופה (חודשים)</label>
-                <input type="number" min="1" placeholder="60" value={loanForm.term_months}
+                <input type="number" min="1" placeholder="60" {...err('term')} value={loanForm.term_months}
                   onChange={e => setLF('term_months', e.target.value)} />
               </div>
             </div>
@@ -116,7 +121,9 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
         </p>
       )}
       {alert && alert.length > 0 && (
-        <div className="onboarding-loan-form-alert" role="alert">חסר {alert.join(' · ')}</div>
+        <div className="onboarding-loan-form-alert" role="alert">
+          {alert.map((iss, i) => <div key={i}>{iss.message}</div>)}
+        </div>
       )}
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>

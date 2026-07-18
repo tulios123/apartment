@@ -5,6 +5,13 @@ import type { TrackDraft, LoanDraft } from './types'
 // (המשך), the finish path (סיימו עכשיו / סיום) and unit tests. These bars used to
 // be duplicated per call-site and drifted — e.g. a term of "0" months passed the
 // string-truthiness check everywhere, then silently became 360 at save.
+//
+// Each issue names the offending field (so forms can outline the exact input)
+// and carries a precise, self-contained Hebrew message — "חסרה תקופה" for an
+// empty field vs "התקופה חייבת להיות לפחות חודש אחד" for a typed 0.
+
+export type IssueField = 'principal' | 'rate' | 'term'
+export type DraftIssue = { field: IssueField; message: string }
 
 /** Effective annual rate of a track draft — anchor+margin for prime/variable
  *  (with the form's grey-placeholder defaults), plain fixed rate otherwise. */
@@ -29,29 +36,60 @@ export function loanDraftRate(d: LoanDraft): number {
 }
 
 /** A term must be a positive whole number of months — "0", a negative value and
- *  an empty field all count as missing, so the save-path fallback (360) can never
+ *  an empty field all count as invalid, so the save-path fallback (360) can never
  *  replace a number the user actually typed. */
 export function termMonthsValid(raw: string): boolean {
   return (parseInt(raw, 10) || 0) > 0
 }
 
-export function trackMissingFields(d: TrackDraft): string[] {
-  const m: string[] = []
-  if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
-  if (trackEffectiveRate(d) <= 0) m.push('ריבית')
-  if (!termMonthsValid(d.term_months)) m.push('תקופה')
-  return m
+const principalIssue = (raw: string): DraftIssue | null => {
+  if (raw === '') return { field: 'principal', message: 'חסר סכום' }
+  if ((parseFloat(raw) || 0) <= 0) return { field: 'principal', message: 'הסכום חייב להיות גדול מאפס' }
+  return null
 }
 
-export function loanMissingFields(d: LoanDraft): string[] {
-  const m: string[] = []
-  if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
-  if (d.repayment_type === 'monthly_fixed') {
-    if (loanDraftRate(d) <= 0) m.push('ריבית')
-    if (!termMonthsValid(d.term_months)) m.push('תקופה')
-  }
-  return m
+const termIssue = (raw: string): DraftIssue | null => {
+  if (raw === '') return { field: 'term', message: 'חסרה תקופה (בחודשים)' }
+  if (!termMonthsValid(raw)) return { field: 'term', message: 'התקופה חייבת להיות לפחות חודש אחד' }
+  return null
 }
+
+export function trackIssues(d: TrackDraft): DraftIssue[] {
+  const issues: DraftIssue[] = []
+  const p = principalIssue(d.principal)
+  if (p) issues.push(p)
+  if (trackEffectiveRate(d) <= 0) {
+    // Only variable (no grey defaults) can be "empty"; prime/fixed reach ≤0 only
+    // through values the user actually typed (e.g. an over-large negative margin).
+    issues.push(d.track_type === 'variable' && !d.prime_rate && !d.margin
+      ? { field: 'rate', message: 'חסרה ריבית (עוגן ומרווח)' }
+      : { field: 'rate', message: 'הריבית המשוקללת חייבת להיות גדולה מאפס' })
+  }
+  const t = termIssue(d.term_months)
+  if (t) issues.push(t)
+  return issues
+}
+
+export function loanIssues(d: LoanDraft): DraftIssue[] {
+  const issues: DraftIssue[] = []
+  const p = principalIssue(d.principal)
+  if (p) issues.push(p)
+  if (d.repayment_type === 'monthly_fixed') {
+    if (loanDraftRate(d) <= 0) {
+      const anchored = d.track_type === 'prime' || d.track_type === 'variable'
+      const empty = anchored ? (!d.prime_rate && !d.margin) : !d.annual_rate
+      issues.push(empty
+        ? { field: 'rate', message: anchored ? 'חסרה ריבית (עוגן ומרווח)' : 'חסרה ריבית' }
+        : { field: 'rate', message: 'הריבית חייבת להיות גדולה מאפס' })
+    }
+    const t = termIssue(d.term_months)
+    if (t) issues.push(t)
+  }
+  return issues
+}
+
+/** The issue messages joined for compact one-line display (cards, dialog rows). */
+export const issueText = (issues: DraftIssue[]) => issues.map(i => i.message).join(' · ')
 
 // "Has data" tests only RAW typed fields — never the grey-placeholder rate
 // defaults — so an untouched auto-open form is skipped silently, while a

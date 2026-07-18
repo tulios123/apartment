@@ -23,8 +23,8 @@ import {
 import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } from './types'
 import { finishOutcome, emptySavedSections, type SavedSections } from './finish'
 import {
-  trackEffectiveRate, loanDraftRate, trackMissingFields, loanMissingFields,
-  trackDraftHasData, loanDraftHasData, clampGraceMonths,
+  trackEffectiveRate, loanDraftRate, trackIssues, loanIssues,
+  trackDraftHasData, loanDraftHasData, clampGraceMonths, type DraftIssue,
 } from './validation'
 
 // Manager/dev demo extractions: in local dev or the dev@test.local manager account
@@ -274,19 +274,19 @@ export function useOnboardingState(onComplete: () => void) {
   // entry point (סיימו עכשיו + the insurance step's סיום). Without it, finishing
   // with a half-filled track/loan form silently saved backfilled values (5%/360mo
   // for tracks, 0% for loans) the user never typed or confirmed.
-  const finishBlockers: { kind: 'track' | 'loan'; label: string; missing: string[] }[] = []
+  const finishBlockers: { kind: 'track' | 'loan'; label: string; issues: DraftIssue[] }[] = []
   {
     const effTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
     if (showTrackForm && editingIdx === null && trackDraftHasData(trackForm)) effTracks.push(trackForm)
     for (const t of effTracks) {
-      const missing = trackMissingFields(t)
-      if (missing.length) finishBlockers.push({ kind: 'track', label: MORTGAGE_TRACK_TYPES.find(x => x.value === t.track_type)?.label ?? 'מסלול', missing })
+      const issues = trackIssues(t)
+      if (issues.length) finishBlockers.push({ kind: 'track', label: MORTGAGE_TRACK_TYPES.find(x => x.value === t.track_type)?.label ?? 'מסלול', issues })
     }
     const effLoans = loans.map((l, i) => (i === editingLoanIdx ? loanForm : l))
     if (showLoanForm && editingLoanIdx === null && loanDraftHasData(loanForm)) effLoans.push(loanForm)
     for (const l of effLoans) {
-      const missing = loanMissingFields(l)
-      if (missing.length) finishBlockers.push({ kind: 'loan', label: l.label || l.lender || 'הלוואה', missing })
+      const issues = loanIssues(l)
+      if (issues.length) finishBlockers.push({ kind: 'loan', label: l.label || l.lender || 'הלוואה', issues })
     }
   }
 
@@ -665,7 +665,7 @@ export function useOnboardingState(onComplete: () => void) {
       })
       // AUD-001: fold an open form draft into the save ONLY when it passes the same
       // completeness bar as the step gate — never backfill a half-filled draft.
-      const pendingTrackValid = trackMissingFields(trackForm).length === 0
+      const pendingTrackValid = trackIssues(trackForm).length === 0
       const allTracks = [...tracks]
       if (pendingTrackValid) {
         if (editingIdx !== null) allTracks[editingIdx] = normTrack(trackForm)
@@ -673,7 +673,7 @@ export function useOnboardingState(onComplete: () => void) {
       }
       const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0)
 
-      const pendingLoanValid = loanMissingFields(loanForm).length === 0
+      const pendingLoanValid = loanIssues(loanForm).length === 0
       const allLoans = [...loans]
       if (pendingLoanValid) {
         if (editingLoanIdx !== null) allLoans[editingLoanIdx] = normalizeLoanDraft()
@@ -816,9 +816,15 @@ export function useOnboardingState(onComplete: () => void) {
           const rentVal = parseFloat(monthlyRent) || 0
           if (!companyName.trim() || !startDate || !endDate || rentVal <= 0) {
             // Don't silently drop a partly-filled rental — a contract needs all of
-            // company + start + end + rent, so flag it instead of losing the input.
+            // company + start + end + rent, so name exactly what's missing instead
+            // of losing the input behind a generic message.
             if (companyName.trim() || monthlyRent || startDate || endDate) {
-              failures.push('שכירות (חסרים שם/תאריכים/סכום)')
+              const gaps: string[] = []
+              if (!companyName.trim()) gaps.push('שם השוכר')
+              if (!startDate) gaps.push('תאריך התחלה')
+              if (!endDate) gaps.push('תאריך סיום')
+              if (rentVal <= 0) gaps.push(monthlyRent ? 'שכר דירה גדול מאפס' : 'שכר הדירה')
+              failures.push(`שכירות (חסר: ${gaps.join(', ')})`)
             }
             return
           }
@@ -948,8 +954,8 @@ export function useOnboardingState(onComplete: () => void) {
   // "חזרה להשלמה" — land on the step owning the first incomplete item, in edit mode.
   function finishPromptBackToComplete() {
     setFinishPrompt(false)
-    const trackIdx = tracks.findIndex(t => trackMissingFields(t).length > 0)
-    const trackOpenIncomplete = (showTrackForm || editingIdx !== null) && trackMissingFields(trackForm).length > 0
+    const trackIdx = tracks.findIndex(t => trackIssues(t).length > 0)
+    const trackOpenIncomplete = (showTrackForm || editingIdx !== null) && trackIssues(trackForm).length > 0
     if (trackIdx >= 0 || trackOpenIncomplete) {
       if (!trackOpenIncomplete && trackIdx >= 0) {
         setEditingIdx(trackIdx)
@@ -960,8 +966,8 @@ export function useOnboardingState(onComplete: () => void) {
       setStep('mortgage')
       return
     }
-    const loanIdx = loans.findIndex(l => loanMissingFields(l).length > 0)
-    const loanOpenIncomplete = (showLoanForm || editingLoanIdx !== null) && loanMissingFields(loanForm).length > 0
+    const loanIdx = loans.findIndex(l => loanIssues(l).length > 0)
+    const loanOpenIncomplete = (showLoanForm || editingLoanIdx !== null) && loanIssues(loanForm).length > 0
     if (loanIdx >= 0 || loanOpenIncomplete) {
       if (!loanOpenIncomplete && loanIdx >= 0) {
         setEditingLoanIdx(loanIdx)
@@ -977,8 +983,8 @@ export function useOnboardingState(onComplete: () => void) {
   // then finish. Deferred via pendingFinish so handleFinish reads the cleared state.
   function finishPromptContinueWithout() {
     setFinishPrompt(false)
-    setTracks(prev => prev.filter(t => trackMissingFields(t).length === 0))
-    setLoans(prev => prev.filter(l => loanMissingFields(l).length === 0))
+    setTracks(prev => prev.filter(t => trackIssues(t).length === 0))
+    setLoans(prev => prev.filter(l => loanIssues(l).length === 0))
     setShowTrackForm(false)
     setEditingIdx(null)
     setShowLoanForm(false)
@@ -1320,7 +1326,7 @@ export function useOnboardingState(onComplete: () => void) {
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
     trackEffectiveRate, trackMonthlyPayment, trackTypeLabel,
-    trackMissingFields, loanMissingFields, trackDraftHasData, loanDraftHasData,
+    trackIssues, loanIssues, trackDraftHasData, loanDraftHasData,
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
     effectiveTrackForm, previewMonthly, previewGrace,
     // AI mortgage fill

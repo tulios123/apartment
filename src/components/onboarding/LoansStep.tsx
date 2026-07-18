@@ -7,12 +7,13 @@ import { LoanForm } from './LoanForm'
 import { FinishEarly } from './FinishEarly'
 import { DocFileList } from './DocFileList'
 import { emptyLoan, formatCurrency } from './types'
+import { issueText } from './validation'
 import { useOnboarding } from './context'
 
 export function LoansStep() {
   const {
     advance, keyDeliveryDate,
-    loans, setLoans, loanDraftRate, loanTypeLabel, loanMissingFields,
+    loans, setLoans, loanDraftRate, loanTypeLabel, loanIssues,
     editingLoanIdx, setEditingLoanIdx, setLoanForm, setLoanGraceOn, loanForm, showLoanForm, setShowLoanForm,
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
@@ -32,8 +33,7 @@ export function LoansStep() {
   // The only required loan details are amount + (for a monthly loan) rate + term.
   // Lender/description are optional (a placeholder default counts) and never block.
   // The bar is the SHARED gate (./validation) — the same one the finish path enforces.
-  const loanMissing = loanMissingFields
-  const loanReady = (d: (typeof loans)[number]) => loanMissing(d).length === 0
+  const loanReady = (d: (typeof loans)[number]) => loanIssues(d).length === 0
 
   // The open row's live truth is the working form, not its last-saved snapshot.
   const effectiveLoans = loans.map((l, i) => (i === editingLoanIdx ? loanForm : l))
@@ -120,7 +120,7 @@ export function LoansStep() {
             const isEditing = editingLoanIdx === i
             // While open, reflect the live form so "missing" updates as the user types.
             const view = isEditing ? loanForm : d
-            const missing = loanMissing(view)
+            const issues = loanIssues(view)
             return (
               <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                 <div className="onboarding-list-row-header"
@@ -146,10 +146,10 @@ export function LoansStep() {
                       {isMonthly && d.term_months && <><span>·</span><span>{d.term_months} ח׳</span></>}
                       {d.lender.trim() && <><span>·</span><span>{d.lender.trim()}</span></>}
                     </div>
-                    {missing.length > 0 && (
+                    {issues.length > 0 && (
                       <div className="onboarding-track-missing onboarding-track-missing--flash"
                         key={isEditing ? `m-${i}-${alertPulse}` : `m-${i}`}>
-                        חסר {missing.join(' · ')}
+                        {issueText(issues)}
                       </div>
                     )}
                   </div>
@@ -160,7 +160,7 @@ export function LoansStep() {
                 {isEditing && <LoanForm
                   onSave={() => finalizeLoan(i)}
                   onCancel={() => { setEditingLoanIdx(null); setSaveAttempted(false) }}
-                  alert={saveAttempted ? loanMissing(loanForm) : null} />}
+                  alert={saveAttempted ? loanIssues(loanForm) : null} />}
               </div>
             )
           })}
@@ -214,7 +214,7 @@ export function LoansStep() {
             <ul className="onboarding-dialog-list">
               {unsavedLoans.map((l, idx) => (
                 <li key={idx}>
-                  <strong>{l.label.trim() || loanTypeLabel(l.repayment_type)}</strong> — חסר {loanMissing(l).join(', ')}
+                  <strong>{l.label.trim() || loanTypeLabel(l.repayment_type)}</strong> — {issueText(loanIssues(l))}
                 </li>
               ))}
             </ul>

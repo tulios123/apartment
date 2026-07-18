@@ -7,6 +7,7 @@ import { TrackForm } from './TrackForm'
 import { FinishEarly } from './FinishEarly'
 import { DocFileList } from './DocFileList'
 import { emptyTrack, emptyLoan, formatCurrency } from './types'
+import { issueText } from './validation'
 import { formatDate } from '../../lib/format'
 import { useOnboarding } from './context'
 
@@ -16,7 +17,7 @@ export function MortgageStep() {
     mortgageAiBusy, mortgageDocRef, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     mortgageDocFiles, removeDocFile, renameDocFile,
     tracks, setTracks, trackForm, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
-    trackMissingFields, trackDraftHasData,
+    trackIssues, trackDraftHasData,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
@@ -40,8 +41,7 @@ export function MortgageStep() {
 
   // A track is "ready" only with all required details: principal + rate + term (months).
   // The bar is the SHARED gate (./validation) — the same one the finish path enforces.
-  const trackMissing = trackMissingFields
-  const trackReady = (d: (typeof tracks)[number]) => trackMissing(d).length === 0
+  const trackReady = (d: (typeof tracks)[number]) => trackIssues(d).length === 0
   const effectiveTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
   const incompleteTracks = effectiveTracks.filter(t => !trackReady(t))
 
@@ -144,7 +144,7 @@ export function MortgageStep() {
               : 0
             const isEditing = editingIdx === i
             const view = isEditing ? trackForm : d
-            const missing = trackMissing(view)
+            const issues = trackIssues(view)
             return (
               <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                 <div className="onboarding-list-row-header"
@@ -182,10 +182,10 @@ export function MortgageStep() {
                         ? <span>החל {formatDate(d.start_date)}</span>
                         : <span className="text-muted">תאריך התחלה אוטומטי</span>}
                     </div>
-                    {missing.length > 0 && (
+                    {issues.length > 0 && (
                       <div className="onboarding-track-missing onboarding-track-missing--flash"
                         key={isEditing ? `m-${i}-${alertPulse}` : `m-${i}`}>
-                        חסר {missing.join(' · ')}
+                        {issueText(issues)}
                       </div>
                     )}
                   </div>
@@ -203,7 +203,7 @@ export function MortgageStep() {
                 {isEditing && <TrackForm
                   onSave={() => finalizeTrack(i)}
                   onCancel={() => { setEditingIdx(null); setSaveAttempted(false) }}
-                  alert={saveAttempted ? trackMissing(trackForm) : null} />}
+                  alert={saveAttempted ? trackIssues(trackForm) : null} />}
               </div>
             )
           })}
@@ -263,7 +263,7 @@ export function MortgageStep() {
             <ul className="onboarding-dialog-list">
               {unsavedTracks.map((t, idx) => (
                 <li key={idx}>
-                  <strong>{trackTypeLabel(t.track_type)}</strong> — חסר {trackMissing(t).join(', ')}
+                  <strong>{trackTypeLabel(t.track_type)}</strong> — {issueText(trackIssues(t))}
                 </li>
               ))}
             </ul>

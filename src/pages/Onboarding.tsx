@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { CaretRight } from '@phosphor-icons/react'
 import { OnboardingContext } from '../components/onboarding/context'
+import { issueText } from '../components/onboarding/validation'
 import { useOnboardingState } from '../components/onboarding/useOnboardingState'
 import { WelcomeStep } from '../components/onboarding/WelcomeStep'
 import { DocumentsStep } from '../components/onboarding/DocumentsStep'
@@ -68,7 +69,7 @@ export default function Onboarding({ onComplete }: Props) {
             <ul className="onboarding-dialog-list">
               {finishBlockers.map((b, i) => (
                 <li key={i}>
-                  <strong>{b.kind === 'track' ? 'מסלול משכנתא' : 'הלוואה'} · {b.label}</strong> — חסר {b.missing.join(', ')}
+                  <strong>{b.kind === 'track' ? 'מסלול משכנתא' : 'הלוואה'} · {b.label}</strong> — {issueText(b.issues)}
                 </li>
               ))}
             </ul>

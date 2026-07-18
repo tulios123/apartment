@@ -2676,6 +2676,13 @@ input[type="date"] {
   box-shadow: var(--shadow-focus);
 }
 
+/* A field named in a validation issue — outlined so the user sees exactly which
+   box to fix (wins over the grey-placeholder class and the focus accent). */
+.onboarding-field input.input-invalid {
+  border-color: var(--danger, #d64545);
+  box-shadow: 0 0 0 3px var(--danger-bg, rgba(214, 69, 69, 0.14));
+}
+
 .onboarding-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

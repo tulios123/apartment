@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  trackMissingFields, loanMissingFields, termMonthsValid,
+  trackIssues, loanIssues, termMonthsValid, issueText,
   trackDraftHasData, loanDraftHasData, clampGraceMonths,
 } from '../validation'
 import { emptyTrack, emptyLoan } from '../types'
@@ -8,6 +8,7 @@ import type { TrackDraft, LoanDraft } from '../types'
 
 const track = (over: Partial<TrackDraft>): TrackDraft => ({ ...emptyTrack('2026-03-11'), ...over })
 const loan = (over: Partial<LoanDraft>): LoanDraft => ({ ...emptyLoan('2026-03-11'), ...over })
+const fields = (issues: { field: string }[]) => issues.map(i => i.field)
 
 describe('termMonthsValid', () => {
   it('rejects empty, "0" and negatives; accepts positive months', () => {
@@ -19,38 +20,67 @@ describe('termMonthsValid', () => {
   })
 })
 
-describe('trackMissingFields', () => {
+describe('trackIssues', () => {
   it('a complete track passes', () => {
-    expect(trackMissingFields(track({ principal: '600000', annual_rate: '4.5', term_months: '360' }))).toEqual([])
+    expect(trackIssues(track({ principal: '600000', annual_rate: '4.5', term_months: '360' }))).toEqual([])
   })
 
-  it('a term of "0" months is missing — never silently replaced by 360 at save', () => {
-    const m = trackMissingFields(track({ principal: '600000', annual_rate: '4.5', term_months: '0' }))
-    expect(m).toContain('תקופה')
+  it('a term of "0" months is invalid — with a message that says so, not "missing"', () => {
+    const issues = trackIssues(track({ principal: '600000', annual_rate: '4.5', term_months: '0' }))
+    expect(fields(issues)).toEqual(['term'])
+    expect(issues[0].message).toContain('חודש אחד')          // precise: must be ≥ 1 month
+    expect(issues[0].message).not.toContain('חסרה')          // it isn't empty — don't say "missing"
   })
 
-  it('a negative term is missing', () => {
-    expect(trackMissingFields(track({ principal: '600000', annual_rate: '4.5', term_months: '-6' }))).toContain('תקופה')
+  it('an EMPTY term reads as missing (different message than an invalid one)', () => {
+    const issues = trackIssues(track({ principal: '600000', annual_rate: '4.5' }))
+    expect(fields(issues)).toEqual(['term'])
+    expect(issues[0].message).toContain('חסרה תקופה')
   })
 
-  it('flags a missing principal', () => {
-    expect(trackMissingFields(track({ annual_rate: '4.5', term_months: '360' }))).toContain('סכום')
+  it('a negative term is invalid', () => {
+    expect(fields(trackIssues(track({ principal: '600000', annual_rate: '4.5', term_months: '-6' })))).toEqual(['term'])
+  })
+
+  it('flags a missing principal on the principal field', () => {
+    const issues = trackIssues(track({ annual_rate: '4.5', term_months: '360' }))
+    expect(fields(issues)).toEqual(['principal'])
+    expect(issues[0].message).toBe('חסר סכום')
+  })
+
+  it('a typed principal of "0" gets the greater-than-zero message', () => {
+    const issues = trackIssues(track({ principal: '0', annual_rate: '4.5', term_months: '360' }))
+    expect(issues[0].message).toContain('גדול מאפס')
   })
 })
 
-describe('loanMissingFields', () => {
-  it('a monthly loan with a "0" term is missing תקופה', () => {
-    const m = loanMissingFields(loan({ principal: '120000', annual_rate: '6', term_months: '0' }))
-    expect(m).toContain('תקופה')
+describe('loanIssues', () => {
+  it('a monthly loan with a "0" term is invalid on the term field', () => {
+    const issues = loanIssues(loan({ principal: '120000', annual_rate: '6', term_months: '0' }))
+    expect(fields(issues)).toEqual(['term'])
   })
 
   it('a monthly loan with rate+term passes', () => {
-    expect(loanMissingFields(loan({ principal: '120000', annual_rate: '6', term_months: '60' }))).toEqual([])
+    expect(loanIssues(loan({ principal: '120000', annual_rate: '6', term_months: '60' }))).toEqual([])
+  })
+
+  it('a monthly loan without a rate says the rate is missing', () => {
+    const issues = loanIssues(loan({ principal: '120000', term_months: '60' }))
+    expect(fields(issues)).toEqual(['rate'])
+    expect(issues[0].message).toContain('חסרה ריבית')
   })
 
   it('a balloon loan needs only a principal (no rate/term)', () => {
-    expect(loanMissingFields(loan({ repayment_type: 'balloon', principal: '80000' }))).toEqual([])
-    expect(loanMissingFields(loan({ repayment_type: 'balloon' }))).toEqual(['סכום'])
+    expect(loanIssues(loan({ repayment_type: 'balloon', principal: '80000' }))).toEqual([])
+    expect(fields(loanIssues(loan({ repayment_type: 'balloon' })))).toEqual(['principal'])
+  })
+})
+
+describe('issueText', () => {
+  it('joins messages for one-line chips/dialog rows', () => {
+    const issues = trackIssues(track({ term_months: '0' }))
+    expect(issueText(issues)).toContain('חסר סכום')
+    expect(issueText(issues)).toContain(' · ')
   })
 })
 
