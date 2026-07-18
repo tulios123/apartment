@@ -10,7 +10,7 @@
 
   /* Month/year navigator */
   .finv-monthnav { display: flex; align-items: center; gap: 8px; }
-  .finv-monthnav-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: var(--brand-navy); cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), border-color var(--t-fast), transform 0.1s var(--ease); }
+  .finv-monthnav-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: var(--brand-navy); cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), border-color var(--t-fast), transform 0.1s var(--ease); }
   .finv-monthnav-btn:hover { background: var(--accent-light); border-color: var(--accent-light); color: var(--accent); }
   .finv-monthnav-btn:active { transform: scale(0.9); }
   .finv-monthnav-label { font-size: 16px; font-weight: 700; color: var(--brand-navy); min-width: 120px; text-align: center; }

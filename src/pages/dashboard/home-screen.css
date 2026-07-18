@@ -74,7 +74,7 @@
   .hs-quick-spark { color: var(--accent); flex-shrink: 0; }
   .hs-quick-input input { flex: 1; border: none; background: transparent; font-family: inherit; font-size: 14.5px; color: var(--text); outline: none; min-width: 0; }
   .hs-quick-input input::placeholder { color: var(--text-muted); }
-  .hs-quick-go { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; flex-shrink: 0; transition: transform 0.1s var(--ease), background var(--t-base) var(--ease); }
+  .hs-quick-go { width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; flex-shrink: 0; transition: transform 0.1s var(--ease), background var(--t-base) var(--ease); }
   .hs-quick-go:hover { background: var(--accent-hover); }
   .hs-quick-go:active { transform: scale(0.92); }
   .hs-fabs { display: flex; gap: 10px; margin-top: 12px; }
@@ -84,7 +84,9 @@
   /* ── Calm cash flow ── */
   .hs-flow-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .hs-flow-head h2 { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
-  .hs-link { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; }
+  /* 44pt tap floor without inflating the row: the hit-box overflows into the
+     surrounding whitespace via negative block margins. */
+  .hs-link { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin-block: -12px; }
 
   .hs-flow-card { background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 16px 18px; animation: hsRise 0.35s var(--ease) both; }
   .hs-flow-headline { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }

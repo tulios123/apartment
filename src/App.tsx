@@ -28,6 +28,10 @@ function AppRoutes() {
   // falling through to Onboarding (which would create a duplicate property — C3).
   const [propertyError, setPropertyError] = useState(false)
   const [retryNonce, setRetryNonce] = useState(0)
+  // Manager-only test tool (הגדרות → פיתוח ובדיקה): re-enter onboarding on an account
+  // that already has a property. Safe to finish from here — handleFinish reuses the
+  // existing property (A3) and upserts the rest, so no duplicates are created.
+  const [forcedOnboarding, setForcedOnboarding] = useState(() => sessionStorage.getItem('reonboard') === '1')
   // Keep the splash up until the first screen's data has loaded (markReady), so the
   // user goes straight from splash to a fully-populated app — no skeleton flash.
   // Only the home route signals ready, so only hold the splash when we actually land
@@ -120,7 +124,13 @@ function AppRoutes() {
     </div>
   )
   if (hasProperty === null) return <Splash />
-  if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
+  if (!hasProperty || forcedOnboarding) return (
+    <Onboarding onComplete={() => {
+      sessionStorage.removeItem('reonboard')
+      setForcedOnboarding(false)
+      setHasProperty(true)
+    }} />
+  )
 
   return (
     <AppReadyContext.Provider value={readyValue}>

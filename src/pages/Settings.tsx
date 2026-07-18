@@ -277,9 +277,15 @@ export default function Settings() {
         <section className="settings-section">
           <h2>פיתוח ובדיקה</h2>
           <p className="settings-note">
-            מחיקת כל הנתונים ופתיחת מחדש של אשף הקליטה — שימושי לבדיקת הונבורדינג מחדש.
+            חזרה לאשף הקליטה בלי לגעת בנתונים, או מחיקת הכול ופתיחה מחדש — שימושי לבדיקת האונבורדינג.
           </p>
           <div className="settings-actions">
+            <button
+              className="btn-secondary"
+              onClick={() => { sessionStorage.setItem('reonboard', '1'); window.location.assign('/') }}
+            >
+              חזרה לאונבורדינג (בלי מחיקה)
+            </button>
             {!confirmReset ? (
               <button className="btn-secondary" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => setConfirmReset(true)}>
                 איפוס כל הנתונים

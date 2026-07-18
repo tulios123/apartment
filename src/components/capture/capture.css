@@ -40,7 +40,7 @@
 .cap-row-chips .cap-datechip { width: auto; flex: 1; margin-top: 0; }
 .cap-receipt-clear {
   flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
-  width: 38px; height: 38px; border-radius: var(--r-md); border: 1px solid var(--border);
+  width: 44px; height: 44px; border-radius: var(--r-md); border: 1px solid var(--border);
   background: var(--bg-alt); color: var(--text-muted); cursor: pointer;
 }
 .cap-receipt-clear:hover { border-color: var(--accent-coral); color: var(--accent-coral); }

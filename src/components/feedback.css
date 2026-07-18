@@ -5,8 +5,8 @@
   inset-inline-start: 14px;
   bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   z-index: 60;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   display: grid;
@@ -279,8 +279,8 @@
 .fb-composer textarea:focus { outline: none; border-color: var(--accent, #2a7de1); }
 .fb-composer-send {
   flex-shrink: 0;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   display: grid;
