@@ -3,6 +3,7 @@
 **Branch:** staging (direct commits). **Environment:** Claude cloud container — Chromium via Playwright (WebKit unavailable here; all cells ran Chromium 393×852 + 320×852, DPR2, touch). Network to Supabase relayed through Node fetch (egress proxy blocks Chromium TLS; see MORNING_REPORT §0).
 **Connected run:** YES — live login as dev@test.local, baseline verified (mortgage 5,019 · loan 2,320 · rent 4,300 · monthly 7,339 · equity 97,260 · debt 992,740 · forecast −3,113).
 **Stress leftovers from 17.07 cleaned:** cleanup-stress.ts run with safety flag — 433 [STRESS] rows removed (392 tx, 25 tasks, 15 docs, 1 contract); baseline numbers re-verified live after cleanup. Stress-state matrix cells were captured BEFORE cleanup (home/finances/wealth ×2 themes).
+**Owner decision wave (18.07 evening, post-landing):** all 7 decided in chat — R7 fixed+money-verified 6/6 (d869e7e) · task-category mapped (bfbd666) · renewal_alert_days deferred · SW-12 latest-wins guard in all 10 hooks (57c22a4) · SW-06 partial split 1.06MB→868K (b2631a0, owner phone smoke-test pending) · welcome copy fixed · boot-error ~10-15s (live-verified).
 **Counts this run:** live checks ~120 · found 2 new product bugs (AUD-010 double-tap double-insert · AUD-011 infinite splash on boot network failure) — both FIXED+verified · AUD-004 fixed (DevNotes) + Load-failed confirmed benign · 23 sub-44 touch targets fixed (invisible hit-floor) · SW-07/08/11/17/18/19/21 consolidated · 0 console errors across every surface/theme/width.
 
 ## Stages
@@ -49,7 +50,7 @@ Columns: light@393, dark@393, light@320.
 | Property: מסמכים | V | V | V | |
 | PropertyForm (binder edit) | V | V | V | modal-over-nav flags = overlay false positives |
 | Settings | V | V | V | |
-| FeedbackAdmin | V | V | V | as manager; non-admin gate C (isFeedbackAdmin) |
+| FeedbackAdmin | V* | V* | V* | *correction: this env's test account is NOT a feedback-admin (no VITE_FEEDBACK_ADMIN_EMAILS) — the cells exercised the admin GATE (redirect home, live-verified); the console itself is code-level here |
 | Legal ×3 | V | V | V | in-app frame |
 | Account menu popover | V | V | V | |
 | Error screens | V | — | — | property-retry live (route-abort) + root boot-error live (AUD-011); root React boundary C |
