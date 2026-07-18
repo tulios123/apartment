@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { User, CaretDown, Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut, ChatDots, ArrowsClockwise, Check } from '@phosphor-icons/react'
+import { User, CaretDown, Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut, ChatDots, ArrowsClockwise, ArrowCounterClockwise, Check } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
-import { isFeedbackAdmin } from '../../lib/admin'
+import { isFeedbackAdmin, isManager } from '../../lib/admin'
 import { useVersionCheck } from '../../hooks/useVersionCheck'
 import './user-menu.css'
 
@@ -57,6 +57,17 @@ export default function UserMenu() {
               <Link to="/admin/feedback" className="usermenu-item" role="menuitem" onClick={close}>
                 <ChatDots size={20} /><span>ניהול משוב</span>
               </Link>
+            )}
+            {/* Admin/manager test tool — re-enter onboarding WITHOUT deleting data.
+                Safe to finish twice: handleFinish reuses the existing property (A3). */}
+            {(isFeedbackAdmin(user?.email) || isManager(user?.email)) && (
+              <button
+                className="usermenu-item"
+                role="menuitem"
+                onClick={() => { sessionStorage.setItem('reonboard', '1'); window.location.assign('/') }}
+              >
+                <ArrowCounterClockwise size={20} /><span>חזרה לאונבורדינג</span>
+              </button>
             )}
             {/* language toggle would go here when English is added */}
             <div className="usermenu-sep" />
