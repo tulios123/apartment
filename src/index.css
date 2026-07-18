@@ -5677,3 +5677,29 @@ select {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── AUD-003 uniform 44pt tap floor (stage-2 sweep, 18.07) ─────────────────
+   Invisible hit-area extension only — the painted control is unchanged. The
+   overlay grows the hit-box toward 44px in whichever dimension falls short
+   (min() collapses to 0 once the control itself reaches the floor). Stacked
+   list rows are excluded: overlapping invisible hit-areas would make taps
+   ambiguous — .finv-bd-row below gets a partial, gap-bounded extension. */
+.finv-viewtoggle button, .finv-seg button, .finv-save, .datefield,
+.wlth-edit-btn, .wlth-edit-icon, .padm-binder-edit, .tav-quickadd-icon,
+.docv-coll, .settings-back, .toggle-btn, .btn-primary, .btn-secondary {
+  position: relative;
+}
+.finv-viewtoggle button::after, .finv-seg button::after, .finv-save::after, .datefield::after,
+.wlth-edit-btn::after, .wlth-edit-icon::after, .padm-binder-edit::after, .tav-quickadd-icon::after,
+.docv-coll::after, .settings-back::after, .toggle-btn::after, .btn-primary::after, .btn-secondary::after {
+  content: '';
+  position: absolute;
+  top: min(0px, calc((100% - 44px) / 2));
+  bottom: min(0px, calc((100% - 44px) / 2));
+  left: min(0px, calc((100% - 44px) / 2));
+  right: min(0px, calc((100% - 44px) / 2));
+}
+/* Category-breakdown rows sit 11px apart — extend the hit-box into the gap
+   only (27px → 37px), so neighbouring rows' hit-areas never overlap. */
+.finv-bd-row { position: relative; }
+.finv-bd-row::after { content: ''; position: absolute; inset: -5px 0; }

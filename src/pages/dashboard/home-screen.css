@@ -43,7 +43,9 @@
   .hs-recur { display: inline-flex; align-items: center; gap: 3px; margin-inline-start: 6px; font-size: 11px; font-weight: 600; color: var(--accent); vertical-align: middle; }
   .hs-card-cta { flex-shrink: 0; }
 
-  .hs-btn { display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 16px; border-radius: var(--r-pill); transition: transform 0.1s var(--ease), box-shadow var(--t-base) var(--ease), background var(--t-base) var(--ease); white-space: nowrap; }
+  .hs-btn { display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 16px; border-radius: var(--r-pill); transition: transform 0.1s var(--ease), box-shadow var(--t-base) var(--ease), background var(--t-base) var(--ease); white-space: nowrap; position: relative; }
+  /* 44pt tap floor — the visible 38px pill stays, the hit-box overflows into the card's whitespace. */
+  .hs-btn::after { content: ''; position: absolute; inset: -3px 0; border-radius: inherit; }
   .hs-btn:active { transform: scale(0.96); }
   .hs-btn:disabled { opacity: 0.7; cursor: default; }
   .hs-btn.primary { background: var(--success); color: #fff; box-shadow: var(--shadow-sm); }
