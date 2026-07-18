@@ -1,3 +1,7 @@
+> ⚠️ **Active branch is `staging`, not `main`.** In a fresh cloud session run
+> `git fetch origin staging && git checkout staging` before doing anything —
+> some environments only clone `main`, and all readiness work lives on `staging`.
+
 # ניהול דירה — דלת-הכניסה
 
 אפליקציית ווב מותקנת (PWA) בעברית, מימין-לשמאל, מותאמת-טלפון, לניהול השקעה בדירה מושכרת אחת.
