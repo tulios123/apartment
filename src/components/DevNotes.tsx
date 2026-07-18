@@ -22,11 +22,15 @@ export default function DevNotes() {
   // Track SPA route changes without needing react-router context
   useEffect(() => {
     const sync = () => setPathname(window.location.pathname)
+    // AUD-004: react-router calls pushState mid-render — a synchronous setState
+    // here trips "Cannot update DevNotes while rendering BrowserRouter". Defer
+    // the sync to the next tick so it lands after the router's own commit.
+    const deferredSync = () => setTimeout(sync, 0)
     window.addEventListener('popstate', sync)
     const origPush = history.pushState.bind(history)
     const origReplace = history.replaceState.bind(history)
-    history.pushState = (...a) => { origPush(...a); sync() }
-    history.replaceState = (...a) => { origReplace(...a); sync() }
+    history.pushState = (...a) => { origPush(...a); deferredSync() }
+    history.replaceState = (...a) => { origReplace(...a); deferredSync() }
     return () => {
       window.removeEventListener('popstate', sync)
       history.pushState = origPush
