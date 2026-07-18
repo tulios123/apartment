@@ -17,7 +17,7 @@
   .docv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
   .docv-card { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 14px; transition: box-shadow var(--t-base) var(--ease); }
   .docv-card:hover { box-shadow: var(--shadow-md); }
-  .docv-card:hover .docv-actions { opacity: 1; }
+  .docv-card:hover .docv-actions, .docv-card:focus-within .docv-actions { opacity: 1; }
   .docv-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
   .docv-icon.blue { background: var(--accent-light); color: var(--accent); }
   .docv-icon.teal { background: var(--teal-bg); color: var(--teal-text); }

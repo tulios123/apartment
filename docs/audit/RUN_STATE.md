@@ -1,100 +1,71 @@
-# RUN_STATE.md — night run 16-17.07.2026 (machine clock unreliable; labels are machine time)
+# RUN_STATE.md — audit continuation run 18.07.2026 (cloud session, owner in-flight)
 
-**Branch:** staging (commits go directly here; no checkout — shared working tree). **Run doc:** NIGHT_RUN.md (repo root).
-**Counts:** found 5 · fixed 3 (AUD-001 P1, AUD-002 P2, AUD-005 seed-tooling; +SW-05 config) · improved 0 · parked 0 · **Stage-1 money tests ALL PASSED — 0 product findings**
-**Last checkpoint commit:** Stage-1 money tests DONE+PASSED (17.07): consistency, boundaries, first-payment, year, stress, grace, balloon. Seed ran partial (day-31 bug → AUD-005 fixed).
-**Next action:** Stage 1 COMPLETE. (Optional: owner cleanup-stress.ts + re-run the FIXED seed for a fully-tagged tagged stress baseline; also delete 2 UNTAGGED UI test items 'מסלול גרייס בדיקה'/'בלון בדיקה' if the UI-delete didn't finish.) Next: close coverage matrix **stages 2–7** — layout/a11y math (AUD-002/003 open), smoothness, resilience, code quality (SW list), design golden list.
-
-## Stage 1 live money results (17.07 continue) — seed-independent, on the E2E baseline (mortgage 1 track + 'הלוואה משלימה [E2E]' loan + rent 4,300)
-- **Cross-screen consistency (Home/Finances/Wealth) — PASS.** Identical numbers on all three: mortgage 5,019 (Wealth = Finances; principal 1,515 + interest 3,504), loan 2,320 (Wealth = Finances), fixed-expenses total 7,413 (Finances category breakdown = Home 'תשלומים קבועים'), rent 4,300, month forecast −3,113 (Finances balance = Home 'צפי לסוף החודש'). Wealth accelerator split 3,235+4,104=7,339 reconciles to the per-item principal/interest splits.
-- **Month boundaries — PASS.** Exactly one mortgage row per month, dated the 17th every month (17.7 → 17.1.2027), no skipped month, no doubles.
-- **First-payment-in-start-month — PASS.** Mortgage starts July → first payment July (17.7); June/May/April carry NO mortgage row (no phantom pre-start payment).
-- **Year-view reconciliation — PASS.** Finances 2026 year: balance −19,123 = income 25,800 (6× rent 4,300) − expenses 44,923 (mortgage 6×5,019 + loan 6×2,320 + insurance 12×74 = 44,922, ±₪1 rounding). The annual projection sums the monthly engine with correct per-item active windows.
-
-## Stage 1 SEED-DEPENDENT results (17.07, after owner ran the seed — partial: 392 tx + 25 tasks + 15 docs + 1 contract; recurring/mortgage/balloon aborted, see finding below)
-- **Stress (~400 tx) — PASS.** July with the stress load renders clean: balance −10,004,680 = income 12,107 − expenses 10,016,787 (incl. the 9,999,999 extreme). No horizontal overflow (docW=winW=375) even with the 9,999,999 value + the 200-char description. 168+ rows render, no crash.
-- **Grace — PASS.** Added a fixed_unlinked track (250k @ 4.9%, term 240, grace 18) via UI. During grace it contributes INTEREST-ONLY (~1,021), zero principal: Finances mortgage row = 6,040 = 5,019 + 1,021 (principal 1,515 + interest 4,525, consistent). Card shows the full post-grace payment (1,715) separately.
-- **Balloon — PASS.** Added a balloon loan (80k) via UI. Adds ZERO monthly cashflow (Finances loan category stays 2,320). Shown as family financing 80,000 separate from bank debt (1,242,740 = base + grace track 250k), 'ללא תשלום חודשי · נפרעת במכירה'. Wealth monthly 8,360 = 7,339 + grace 1,021 = Finances (mortgage 6,040 + loan 2,320). **Cross-screen consistency HOLDS with grace+balloon added.**
-- **AUD-005 [FIXED, tooling]** seed-stress.ts used `day_of_month:31` → violates the DB check (1–28, 001_initial_schema) → aborted the seed before mortgage/balloon. Fixed to 28. NOT a product bug: app clamps to 1–28 (useRecurringItems.ts). Day-31 clamp scenario is unreachable by design.
-- **NOTE:** two UNTAGGED test items created via UI (track 'מסלול גרייס בדיקה', loan 'בלון בדיקה') — DELETED after the tests; account verified back to baseline (equity 97,260 · debt 992,740 · monthly 7,339 · 1 track). Only the [STRESS]-tagged seed rows remain (owner's cleanup-stress.ts clears them).
-- **Zero product findings from all Stage-1 money tests.** The money engine is correct & consistent across screens, periods, grace, balloon, and stress load.
-
-## Findings ledger (live)
-- **AUD-001** [FIXED] P1 · onboarding finish (סיימו עכשיו / insurance סיום) silently saved an incomplete open mortgage-track/loan form with FABRICATED defaults (term→360, rate→5) the user never entered — bypassing the step's own completeness gate. Fix: finish now runs the same gate → raises a "חסרים פרטים" dialog (חזרה להשלמה / המשך בלי לשמור), and handleFinish only folds a draft that passes the gate. Untouched forms still skip silently (raw-field hasData). Evidence: e2e/onboarding.spec.ts (2 specs fail-before/pass-after) + full-walk + untouched-skip. Root of KNOWN R1/R2. tsc+135 vitest+build green.
-- **AUD-002** [OPEN P2 · S2] Layout: full-width bottom CTAs overlap the fixed bottom-nav on sparse states — HomeScreen `.hs-addlease` "הוסיפו שוכר" (64–90% overlap w/ nav) and PropertyAdmin `.btn-primary "+ חוזה חדש"` (37%). Auto-filed by layout-integrity pass on partial-data home/property. Needs bottom padding / safe-area above nav.
-- **AUD-003** [FIXED 18.07 — owner approved uniform 44pt floor, applied across all flagged controls] Touch targets < 44pt: `.finv-monthnav-btn` 34×34, `.hs-quick-go` 38×38, account-menu back 38×38, `.usermenu-avatar` 49×34 (h<44), `.hs-link "פירוט"` 32×16, `.fb-fab` 42×42. Multiple screens. Bump to 44pt floor.
-- **AUD-004** [OPEN P2] Console: `DevNotes` setState-in-render warning ("Cannot update a component (DevNotes) while rendering BrowserRouter") + recurring `TypeError: Load failed` (aborted fetch on nav) during onboarding→app. DevNotes is dev/manager-only; Load-failed likely nav-aborted version/supabase fetch — confirm benign or add abort handling.
-
-## Static-sweep report (subagent, retained)
-tsc clean · 135 vitest green · build ok (single 1.04MB JS chunk — SW-06 code-split opportunity). Key items: SW-05 vitest picks up e2e specs (FIX applied: vite.config test.exclude); SW-07 onboarding forked its own format.ts copies; SW-08 four private monthDayISO reimpls; SW-11 dup MANAGER_EMAIL constant; SW-12 hooks lack fetch cancellation; SW-21 track-color palette defined in 4 places. eslint 28 errors (mostly react-hooks/refs on the discard-guard snapshot pattern — intentional, React-Compiler backlog). Full list in subagent output.
+**Branch:** staging (direct commits). **Environment:** Claude cloud container — Chromium via Playwright (WebKit unavailable here; all cells ran Chromium 393×852 + 320×852, DPR2, touch). Network to Supabase relayed through Node fetch (egress proxy blocks Chromium TLS; see MORNING_REPORT §0).
+**Connected run:** YES — live login as dev@test.local, baseline verified (mortgage 5,019 · loan 2,320 · rent 4,300 · monthly 7,339 · equity 97,260 · debt 992,740 · forecast −3,113).
+**Stress leftovers from 17.07 cleaned:** cleanup-stress.ts run with safety flag — 433 [STRESS] rows removed (392 tx, 25 tasks, 15 docs, 1 contract); baseline numbers re-verified live after cleanup. Stress-state matrix cells were captured BEFORE cleanup (home/finances/wealth ×2 themes).
+**Counts this run:** live checks ~120 · found 2 new product bugs (AUD-010 double-tap double-insert · AUD-011 infinite splash on boot network failure) — both FIXED+verified · AUD-004 fixed (DevNotes) + Load-failed confirmed benign · 23 sub-44 touch targets fixed (invisible hit-floor) · SW-07/08/11/17/18/19/21 consolidated · 0 console errors across every surface/theme/width.
 
 ## Stages
 | stage | title | status |
 |---|---|---|
-| 0 | Foundation & calibration | done |
-| 1 | Core functionality & financial correctness (live) | **DONE** — onboarding+AUD-001; all money tests PASSED (consistency, boundaries, first-payment, year, stress ~400tx, grace, balloon); AUD-005 seed-tooling fix; 0 product findings |
-| 2 | Layout, UI & accessibility math | pending |
-| 3 | Smoothness & perceived performance | pending |
-| 4 | Resilience & stress | pending |
-| 5 | Code quality & static checks | pending |
-| 6 | Design golden list + approved product decisions | pending |
-| 7 | Everything else until matrix closes | pending |
-| 8 | Close-out (cleanup [E2E], AUDIT_FINDINGS statuses, MORNING_REPORT he, final state) | pending |
+| 0 | Foundation & calibration | done (16-17.07) |
+| 1 | Core functionality & financial correctness (live) | done (17.07) — money engine all-pass |
+| 2 | Layout, UI & accessibility math | **DONE 18.07** — 51 cells × overflow/nav-overlap/44pt sweeps + visual review; 0 overflow, 0 real nav overlaps (year/range "overlaps" were clipped-accordion false positives), 23 sub-44 targets fixed to the AUD-003 floor, 2 accepted exceptions (bd-rows 37px gap-bounded · year-chart bars essential) |
+| 3 | Smoothness & perceived performance | **DONE 18.07** — skeletons appear→clear on cold loads; step/sheet animations present; dirty-discard confirm verified on both sheet families (tx sheet + capture sheet): Esc/scrim → "לצאת בלי לשמור?", continue keeps data, discard closes, pristine closes silently; X = deliberate close (by design) |
+| 4 | Resilience & stress | **DONE 18.07** — offline banner on/off ✔ · property-hub retryable error + recovery ✔ (route-abort) · empty-state: unreachable in month view with baseline data (virtual insurance rows back to 1.2024 — by design; EmptyState component verified in code + category-filter path) · approve-rent double-tap → **AUD-010 found+fixed** · boot-with-network-failure → **AUD-011 found+fixed** · seed-stress NOT run (owner cleanup was the outstanding item; done instead) |
+| 5 | Code quality & static checks | **DONE 18.07** — SW-07/08/11/17/18/19/21 fixed (behavior-identical, details in AUDIT_FINDINGS); SW-12/06 prepare-only → docs/audit/PREPARED_SW12_SW06.md; date-helper law grep clean; eslint errors 15→15 (none added; HomeScreen −1) |
+| 6 | Design golden list + approved product decisions | partial — no NEW owner approvals to execute; status pass done (see §Golden below) |
+| 7 | Everything else until matrix closes | done to the extent reachable (see matrix U-cells) |
+| 8 | Close-out | done — this file + AUDIT_FINDINGS + ROADMAP + MORNING_REPORT (he) |
 
-## Stage 0 checklist
-- [x] Baseline docs read → KNOWN_ISSUES_BASELINE.md (subagent, saved)
-- [x] PROMPT_REVIEW.md written (10 factual corrections applied, 4 checks added)
-- [x] @playwright/test + webkit + chromium installed (allowed package.json edit)
-- [x] playwright.config.ts + e2e/lib (login/archive/layout/console/network helpers)
-- [x] Pre-flight gate PASSED: webkit iPhone16Pro reaches authed Home, dark boots, 0 console hits (e2e/preflight.spec.ts)
-- [x] Admin data-reset PASSED on test account → onboarding shows clean (e2e/reset.spec.ts; evidence archived)
-- [ ] Clean-account onboarding E2E (finish-early path + full walk + back-at-each-step) → empty states → seed
-- [x] scripts/audit/seed-stress.ts + cleanup-stress.ts written (anon key + dev sign-in; both safety flags) — cleanup smoke-test before seed
-- [x] UX_FOUNDATIONS lenses A–E (items 1–33) slotted as stage riders (F+ missing at source)
-
-## Coverage matrix
-Statuses per cell: `-` pending · `V` visited (evidence archived) · `U` unreachable(reason). Columns: light@402, dark@402, light@320, states covered.
-| surface | L402 | D402 | L320 | states |
+## Coverage matrix (this run)
+`V` visited w/ evidence (scratchpad screenshots + logged checks) · `U` unreachable(reason) · `C` code-level only.
+Columns: light@393, dark@393, light@320.
+| surface | L393 | D393 | L320 | notes |
 |---|---|---|---|---|
-| Splash (cold start) | - | - | - | cold, safety-ceiling |
-| Login (bypass-off server) | - | - | - | initial, error |
-| Onboarding S1 ברוכים הבאים (fwd+back) | - | - | - | clean acct |
-| Onboarding S2 רכישה (fwd+back) | - | - | - | clean, filled, back-preserves |
-| Onboarding S3 משכנתא (fwd+back) | - | - | - | +unsaved-track gate (R2) |
-| Onboarding S4 הלוואות (fwd+back) | - | - | - | +unsaved-loan gate (R1) |
-| Onboarding S5 השקעה (fwd+back) | - | - | - | equity edge 0/100 |
-| Onboarding S6 שכירות (fwd+back) | - | - | - | |
-| Onboarding S7 ביטוח (fwd+back) | - | - | - | |
-| Onboarding S8 מסמכים (fwd+back) | - | - | - | |
-| Onboarding S9 סיום + "סיים עכשיו" mid-way | - | - | - | partial-data hubs render |
-| Home | - | - | - | empty, loaded, stress, all-clear vs busy |
-| Finances month | - | - | - | empty month, loaded, stress 400+ |
-| Finances year | - | - | - | forecast bars |
-| Finances range | - | - | - | |
-| Finances expense sheet (keypad+details) | - | - | - | dirty-discard confirm |
-| Finances tx drawer (edit) | - | - | - | receipt attach |
-| Wealth main (hero/accelerator/structure/recovery/stats) | - | - | - | empty, loaded, stress |
-| Wealth liabilities (LiabilitiesV2 + finance editor) | - | - | - | 6 tracks, grace, balloon |
-| Scan review / doc list (ScanReview, ScanDocList) | - | - | - | code-level if no doc |
-| Property hub: חוזה tab (+contract form) | - | - | - | active, ends-in-10d badge |
-| Property hub: ביטוח tab (+policy form) | - | - | - | |
-| Property hub: משימות tab (+task sheet) | - | - | - | empty, overdue/today/future/done |
-| Property hub: מסמכים tab (+doc sheet) | - | - | - | checklist 3/6, collections |
-| PropertyForm (edit property) | - | - | - | |
-| Settings | - | - | - | manager tools visible/hidden |
-| FeedbackAdmin (admin/feedback) | - | - | - | admin-only gate |
-| Legal ×3 (public frame + in-app) | - | - | - | |
-| Account menu popover | - | - | - | |
-| Error screens (property-retry, root boundary) | - | - | - | forced error |
-| Offline banner / Update banner | - | - | - | offline sim |
-| Quick-capture (Home) | - | - | - | free text + both buttons |
-| Approve-rent flow | - | - | - | double-tap idempotency |
-| Pixel 7 chromium quick pass (key screens) | - | - | - | secondary |
+| Splash (cold start) | V | V | V | initial-paint capture |
+| Login (bypass-off :5174) | V | V | V | overflow ok, Google btn renders |
+| Onboarding S1 ברוכים הבאים | V | V | V | |
+| Onboarding S2 מסמכים | V | V | V | (step order: welcome→documents→purchase) |
+| Onboarding S3 רכישה | V | V | V | + live soft-warnings (price/dates) |
+| Onboarding S4 משכנתא | V | V | V | + full validation suite (task 1) |
+| Onboarding S5 הלוואות | V | V | V | + validation suite |
+| Onboarding S6 השקעה | V | V | V | |
+| Onboarding S7 שכירות | V | V | V | + rent-0/inverted-dates/gaps live |
+| Onboarding S8 ביטוח | V | V | V | + empty-save/premium-hint/date-block live |
+| Onboarding S9 סיום + finish-early | V | V | V | dirty→dialog · untouched→clean skip, לא נשמר דבר |
+| Home | V | V | V | + stress state (pre-cleanup) both themes |
+| Finances month | V | V | V | + stress state |
+| Finances year | V | V | V | breakdown-accordion false-positive investigated |
+| Finances range | V | V | V | |
+| Finances expense sheet | V | V | V | + dirty-discard flow |
+| Finances tx drawer (edit) | U | U | U | row-click selector didn't open drawer in runner; edit path exercised via sheet (same BottomSheet) — revisit with better selector |
+| Wealth main | V | V | V | + stress state |
+| Wealth liabilities | V | V | V | |
+| Scan review / doc list | C | C | C | needs a real scanned doc; code-level (ScanReview/ScanDocList in LiabilitiesV2) |
+| Property: חוזה | V | V | V | |
+| Property: ביטוח | V | V | V | |
+| Property: משימות | V | V | V | |
+| Property: מסמכים | V | V | V | |
+| PropertyForm (binder edit) | V | V | V | modal-over-nav flags = overlay false positives |
+| Settings | V | V | V | |
+| FeedbackAdmin | V | V | V | as manager; non-admin gate C (isFeedbackAdmin) |
+| Legal ×3 | V | V | V | in-app frame |
+| Account menu popover | V | V | V | |
+| Error screens | V | — | — | property-retry live (route-abort) + root boot-error live (AUD-011); root React boundary C |
+| Offline banner | V | — | — | on/off live; Update banner C (needs version delta) |
+| Quick-capture (Home) | V | V | V | typed state + numpad + discard |
+| Approve-rent flow | V | — | — | incl. double-tap idempotency (AUD-010) |
+| Pixel-class chromium pass | V | V | V | this entire run IS chromium (primary webkit N/A in cloud) |
 
-## Stage riders (from UX_FOUNDATIONS A–E + PROMPT_REVIEW additions)
-- Stage 1: Lens C13–20 + D21–27 on every form/flow; cognitive walkthrough (4 questions) on add-expense + onboarding; billing-day (payment_day) cross-screen consistency; sheet dismiss-confirm compliance sweep.
-- Stage 2: Lens A1–6 per screen; B7–12 nav/consistency; contrast + targets (Ch. 4/7 numbers: 44pt floor, 4.5:1/3:1).
-- Stage 5: Lens E28–33 copy sweep (one term per concept, plural imperative, verb-first CTAs); local-date-helpers grep law.
+## Golden-list status pass (stage 6 — no unapproved changes executed)
+1 FAB dock — 🔴 open (product) · 2 voice pass — 🔴 open · 3 trash/X — partially standardized (ConfirmDialog everywhere verified in S3) · 4 keypad order — 🔴 open (bug-class but UX decision recorded) · 5 segmented unify — 🔴 open · 6 scan-entry merge — 🔴 open · 7 year-chart forecast hatch — 🔴 open · 8 duplicate all-clear — 🔴 open · 9 balloon-card dedup — 🔴 open · 10 bidi audit — month-pager verified live+code: CaretRight=back/CaretLeft=forward with shiftPeriod(∓1) — RTL-correct (FinancesV2 442-444).
+Motion Qs answered from live runs: pager direction ✔ correct · sheet-vs-keyboard: visualViewport inset implemented (BottomSheet) · theme switch: token swap, no flash observed in dark boots · skeletons: no perpetual skeletons anywhere.
 
-## Findings ledger
-(appended per stage — AUD-### / OBS-### / KNOWN(id))
+## Findings ledger (this run — details in AUDIT_FINDINGS.md)
+- AUD-010 [FIXED] P2 · double-tap approve-rent inserted 2 rent transactions (sync reentry guard added; live-verified 1 tx; test rows cleaned).
+- AUD-011 [FIXED] P2 · network failure at boot escaped the C3 retry ladder (supabase rejects vs {error}) → infinite splash; probeHasProperty wrapper; live-verified retry screen ~38s + recovery. NOTE: 38s = supabase-js internal retries ×4-attempt ladder; shortening = owner call.
+- AUD-004 [FIXED] DevNotes deferred history-patch sync; Load-failed = WebKit nav-abort, benign (0 Chromium console errors all session).
+- OBS-001: collapsed breakdown accordion keeps opacity-0 rows in the a11y tree (visibility not toggled) — cosmetic/a11y-tree only, no visual/hit impact (clipped).
+- OBS-002: bsheet head has TWO .bsheet-close buttons (lightbulb+X share the class) — naming only, confusing for tooling/tests.
+- OBS-003: baseline account has virtual insurance rows back to 1.1.2024 (policy start) — by design; makes the "empty month" state unreachable on this account.

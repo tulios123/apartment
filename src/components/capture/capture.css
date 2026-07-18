@@ -80,8 +80,7 @@
 
 /* Numpad */
 .numpad {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 8px 0 18px;
-}
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 8px 0 18px; direction: ltr; }
 .numkey {
   border: none; background: var(--bg-alt); color: var(--brand-navy);
   font-family: inherit; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums;

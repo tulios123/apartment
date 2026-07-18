@@ -91,7 +91,8 @@ export default function HomeScreen() {
   const rentCatSet = useMemo(() => new Set(RENT_CATEGORIES as readonly string[]), [])
   // Categories already represented in fixedExpenses — exclude them from the "extra"
   // (hand-recorded) actuals so they aren't counted twice (audit C8). Must mirror EVERY
-  // component of fixedExpenses: mortgage + insurance + loan ('הלוואה') + owner utilities.
+  // component of fixedExpenses: mortgage + insurance + loan ('הלוואה'). (R4: owner
+  // utilities are no longer part of any forecast total.)
   const fixedCatSet = useMemo(() => new Set([...MORTGAGE_CATEGORIES, 'ביטוח', 'הלוואה'] as string[]), [])
 
   // ── Fixed (expected) monthly expenses — calm, never red ──
