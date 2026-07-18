@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { monthlyPayment, combineSchedules, interestToDate, trackSchedule } from '../lib/mortgage'
@@ -6,6 +6,7 @@ import { readCache, writeCache } from '../lib/queryCache'
 import { todayISO } from '../lib/format'
 import type { Mortgage, MortgageTrack, TrackType } from '../types'
 import type { ScheduleRow } from '../lib/mortgage'
+import { latestOnly } from '../lib/latestOnly'
 
 export interface MortgageSummary {
   totalPrincipal: number
@@ -34,9 +35,12 @@ export function useMortgageData(): MortgageData {
   const [tracks, setTracks] = useState<MortgageTrack[]>(() => readCache<MortgageSnapshot>(cacheKey)?.tracks ?? [])
   const [loading, setLoading] = useState(() => readCache<MortgageSnapshot>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
+  // SW-12: only the LATEST fetch (effect or manual refetch) may commit state.
+  const guard = useRef(latestOnly())
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const fresh = guard.current.start()
     const cached = readCache<MortgageSnapshot>(cacheKey)
     if (cached) { setMortgage(cached.mortgage); setTracks(cached.tracks) }
     setLoading(cached == null)
@@ -53,17 +57,18 @@ export function useMortgageData(): MortgageData {
       // schedule math reads it without threading the value through every call site.
       const rawTracks = (tracksRes.data ?? []) as MortgageTrack[]
       const nextTracks = rawTracks.map(t => ({ ...t, payment_day: nextMortgage?.payment_day ?? null }))
+      if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
       setMortgage(nextMortgage)
       setTracks(nextTracks)
       writeCache<MortgageSnapshot>(cacheKey, { mortgage: nextMortgage, tracks: nextTracks })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
+      if (fresh()) setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
-      setLoading(false)
+      if (fresh()) setLoading(false)
     }
   }, [user?.id, cacheKey])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetch(); return () => guard.current.invalidate() }, [fetch])
 
   const combined = combineSchedules(tracks)
   const today = todayISO() // LOCAL date — not toISOString (UTC rolls back a day)

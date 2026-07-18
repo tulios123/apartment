@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { interestToDate } from '../lib/mortgage'
@@ -7,6 +7,7 @@ import { rentReceivedToDate } from '../lib/projections'
 import { readCache, writeCache } from '../lib/queryCache'
 import { INTEREST_CATEGORY, MAINTENANCE_CATEGORY } from '../lib/constants'
 import type { InvestmentCost, MortgageTrack, Contract, Loan } from '../types'
+import { latestOnly } from '../lib/latestOnly'
 
 type InvestmentSnapshot = { costs: InvestmentCost[]; rentReceived: number; interestPaid: number; maintenance: number }
 
@@ -30,9 +31,12 @@ export function useInvestmentData(): InvestmentData {
   const [maintenance, setMaintenance] = useState(() => readCache<InvestmentSnapshot>(cacheKey)?.maintenance ?? 0)
   const [loading, setLoading] = useState(() => readCache<InvestmentSnapshot>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
+  // SW-12: only the LATEST fetch (effect or manual refetch) may commit state.
+  const guard = useRef(latestOnly())
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const fresh = guard.current.start()
     const cached = readCache<InvestmentSnapshot>(cacheKey)
     if (cached) {
       setCosts(cached.costs); setRentReceived(cached.rentReceived)
@@ -76,19 +80,20 @@ export function useInvestmentData(): InvestmentData {
       const nextInterest = mortgageTracks.length > 0 || loans.length > 0 ? scheduleInterest : manualInterest
       const nextMaintenance = txs.filter(t => t.direction === 'expense' && t.category === MAINTENANCE_CATEGORY).reduce((s, t) => s + t.amount, 0)
 
+      if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
       setCosts(nextCosts)
       setRentReceived(nextRent)
       setInterestPaid(nextInterest)
       setMaintenance(nextMaintenance)
       writeCache<InvestmentSnapshot>(cacheKey, { costs: nextCosts, rentReceived: nextRent, interestPaid: nextInterest, maintenance: nextMaintenance })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
+      if (fresh()) setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
-      setLoading(false)
+      if (fresh()) setLoading(false)
     }
   }, [user?.id, cacheKey])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetch(); return () => guard.current.invalidate() }, [fetch])
 
   const totalInvested = costs.reduce((s, c) => s + (Number(c.amount) || 0), 0)  // guard stale string-amount cache too
 

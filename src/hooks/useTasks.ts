@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { createGoogleTask, updateGoogleTask, deleteGoogleTask, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
@@ -6,6 +6,7 @@ import { syncGoogleTasks } from './useGoogleTasksSync'
 import { readCache, writeCache } from '../lib/queryCache'
 import { nextDueDate } from '../lib/recurrence'
 import type { Task } from '../types'
+import { latestOnly } from '../lib/latestOnly'
 
 interface Filters {
   status?: 'open' | 'done' | 'all'
@@ -18,9 +19,12 @@ export function useTasks(filters: Filters = {}) {
   const [loading, setLoading] = useState(() => readCache<Task[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+  // SW-12: only the LATEST fetch (effect or manual refetch) may commit state.
+  const guard = useRef(latestOnly())
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const fresh = guard.current.start()
     const cached = readCache<Task[]>(cacheKey)
     if (cached) setTasks(cached)
     setLoading(cached == null)
@@ -40,6 +44,7 @@ export function useTasks(filters: Filters = {}) {
     }
 
     const { data, error } = await query
+    if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
     if (error) setError(error.message)
     else { setTasks(data ?? []); writeCache<Task[]>(cacheKey, data ?? []) }
     setLoading(false)
@@ -53,7 +58,7 @@ export function useTasks(filters: Filters = {}) {
     })
   }, [user?.id])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetch(); return () => guard.current.invalidate() }, [fetch])
 
   return { tasks, setTasks, loading, error, syncError, refetch: fetch }
 }

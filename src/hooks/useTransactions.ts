@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { readCache, writeCache } from '../lib/queryCache'
 import { monthEndISO } from '../lib/format'
 import type { Transaction } from '../types'
+import { latestOnly } from '../lib/latestOnly'
 
 interface Filters {
   year?: number
@@ -20,9 +21,12 @@ export function useTransactions(filters: Filters = {}) {
   const [transactions, setTransactions] = useState<Transaction[]>(() => readCache<Transaction[]>(cacheKey) ?? [])
   const [loading, setLoading] = useState(() => readCache<Transaction[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
+  // SW-12: only the LATEST fetch (effect or manual refetch) may commit state.
+  const guard = useRef(latestOnly())
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const fresh = guard.current.start()
     // Seed from cache for this exact filter key (instant on tab/month revisit);
     // only show a skeleton when this slice has never been loaded.
     const cached = readCache<Transaction[]>(cacheKey)
@@ -49,6 +53,7 @@ export function useTransactions(filters: Filters = {}) {
     }
 
     const { data, error } = await query
+    if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
     if (error) setError(error.message)
     else {
       // EDGE-23/14: coerce `amount` to a finite number at the boundary so a null/NaN
@@ -60,7 +65,7 @@ export function useTransactions(filters: Filters = {}) {
     setLoading(false)
   }, [user?.id, cacheKey, filters.year, filters.month, filters.from, filters.to])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetch(); return () => guard.current.invalidate() }, [fetch])
 
   return { transactions, setTransactions, loading, error, refetch: fetch }
 }

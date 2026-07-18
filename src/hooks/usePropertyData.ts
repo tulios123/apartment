@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { readCache, writeCache } from '../lib/queryCache'
 import type { Property, Contract, ContractUtility, UtilityPayer } from '../types'
+import { latestOnly } from '../lib/latestOnly'
 
 type PropertySnapshot = { property: Property | null; contracts: Contract[]; utilities: ContractUtility[] }
 
@@ -24,9 +25,12 @@ export function usePropertyData(): PropertyData {
   const [utilities, setUtilities] = useState<ContractUtility[]>(() => readCache<PropertySnapshot>(cacheKey)?.utilities ?? [])
   const [loading, setLoading] = useState(() => readCache<PropertySnapshot>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
+  // SW-12: only the LATEST fetch (effect or manual refetch) may commit state.
+  const guard = useRef(latestOnly())
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const fresh = guard.current.start()
     // Show cached data immediately and refresh silently; only block on a skeleton
     // when there's nothing cached yet for this account.
     const cached = readCache<PropertySnapshot>(cacheKey)
@@ -65,16 +69,17 @@ export function usePropertyData(): PropertyData {
           nextUtilities = utils ?? []
         }
       }
+      if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
       setProperty(prop); setContracts(nextContracts); setUtilities(nextUtilities)
       writeCache<PropertySnapshot>(cacheKey, { property: prop, contracts: nextContracts, utilities: nextUtilities })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
+      if (fresh()) setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
-      setLoading(false)
+      if (fresh()) setLoading(false)
     }
   }, [user?.id, cacheKey])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetch(); return () => guard.current.invalidate() }, [fetch])
 
   const patchUtility = useCallback((contractId: string, utility: string, patch: Partial<ContractUtility>) => {
     setUtilities(prev => {
