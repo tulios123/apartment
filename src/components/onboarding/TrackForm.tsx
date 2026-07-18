@@ -2,7 +2,7 @@ import { Check } from '@phosphor-icons/react'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType } from '../../types'
 import { formatNum, formatCurrency } from './types'
-import type { DraftIssue, IssueField } from './validation'
+import { trackWarnings, type DraftIssue, type IssueField } from './validation'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
@@ -115,6 +115,16 @@ export function TrackForm({ onSave, onCancel, alert }: { onSave: () => void; onC
           )}
         </div>
       )}
+      {/* Live plausibility hints — legal values that look like a slip (years typed
+          into the months field, an off-by-10 rate). Never block saving. */}
+      {(() => {
+        const warnings = trackWarnings(trackForm)
+        return warnings.length > 0 && (
+          <div className="onboarding-soft-warning">
+            {warnings.map((w, i) => <div key={i}>{w}</div>)}
+          </div>
+        )
+      })()}
       {alert && alert.length > 0 && (
         <div className="onboarding-loan-form-alert" role="alert">
           {alert.map((iss, i) => <div key={i}>{iss.message}</div>)}

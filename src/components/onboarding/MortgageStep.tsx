@@ -22,6 +22,7 @@ export function MortgageStep() {
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
+    effectiveTrackForm,
     fillTestMortgage,
   } = useOnboarding()
 
@@ -56,6 +57,15 @@ export function MortgageStep() {
   // Save + collapse the open track when ready, otherwise flag exactly what's missing.
   const finalizeTrack = (i: number) => {
     if (trackReady(trackForm)) { saveTrackEdit(i); setSaveAttempted(false) }
+    else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
+  }
+
+  // Saving a NEW track validates the EFFECTIVE draft (grey defaults count as real
+  // values here — they're saved as shown), so an untouched field is fine but a
+  // typed 0 principal/term raises the alert instead of silently doing nothing.
+  const newTrackIssues = trackIssues(effectiveTrackForm)
+  const finalizeNewTrack = () => {
+    if (newTrackIssues.length === 0) { addTrack(); setSaveAttempted(false) }
     else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
   }
 
@@ -211,7 +221,9 @@ export function MortgageStep() {
       )}
 
       {/* Inline track form for new track */}
-      {showTrackForm && <TrackForm onSave={addTrack} onCancel={() => setShowTrackForm(false)} />}
+      {showTrackForm && <TrackForm onSave={finalizeNewTrack}
+        onCancel={() => { setShowTrackForm(false); setSaveAttempted(false) }}
+        alert={saveAttempted && editingIdx === null ? newTrackIssues : null} />}
 
       {/* Add track button — always shown */}
       <button type="button" className="btn-onboard-skip onboarding-add-btn"

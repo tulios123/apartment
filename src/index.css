@@ -2683,6 +2683,16 @@ input[type="date"] {
   box-shadow: 0 0 0 3px var(--danger-bg, rgba(214, 69, 69, 0.14));
 }
 
+/* Quiet plausibility hint (e.g. "looks like years, not months") — informative
+   amber text, visually lighter than the blocking alert box. */
+.onboarding-soft-warning {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--warning-text, #8a5200);
+}
+.onboarding-soft-warning > div + div { margin-top: 3px; }
+
 .onboarding-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

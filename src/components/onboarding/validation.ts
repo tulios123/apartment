@@ -91,6 +91,32 @@ export function loanIssues(d: LoanDraft): DraftIssue[] {
 /** The issue messages joined for compact one-line display (cards, dialog rows). */
 export const issueText = (issues: DraftIssue[]) => issues.map(i => i.message).join(' · ')
 
+// ── Soft plausibility warnings (never block saving) ───────────────────────────
+// Legal-but-suspicious values get a quiet heads-up: the classic slip is typing
+// YEARS into the months field (a "30-month" million-shekel mortgage), or a rate
+// an order of magnitude off. The user stays free to save — the app just asks.
+
+export function trackWarnings(d: TrackDraft): string[] {
+  const w: string[] = []
+  const term = parseInt(d.term_months, 10) || 0
+  if (term >= 1 && term <= 40) {
+    w.push(`תקופה של ${term} חודשים נדירה למשכנתא — אם התכוונתם לשנים, הזינו ${term * 12} חודשים`)
+  }
+  const rate = trackEffectiveRate(d)
+  if (rate > 15) w.push(`ריבית של ${rate.toFixed(2)}% גבוהה מאוד למשכנתא — כדאי לוודא`)
+  if ((parseFloat(d.principal) || 0) > 10_000_000) w.push('הסכום גבוה במיוחד — כדאי לוודא שאין ספרה מיותרת')
+  return w
+}
+
+export function loanWarnings(d: LoanDraft): string[] {
+  const w: string[] = []
+  if (d.repayment_type !== 'monthly_fixed') return w
+  const rate = loanDraftRate(d)
+  if (rate > 20) w.push(`ריבית של ${rate.toFixed(2)}% גבוהה מאוד להלוואה — כדאי לוודא`)
+  if ((parseFloat(d.principal) || 0) > 10_000_000) w.push('הסכום גבוה במיוחד — כדאי לוודא שאין ספרה מיותרת')
+  return w
+}
+
 // "Has data" tests only RAW typed fields — never the grey-placeholder rate
 // defaults — so an untouched auto-open form is skipped silently, while a
 // half-filled one blocks (no fabrication).

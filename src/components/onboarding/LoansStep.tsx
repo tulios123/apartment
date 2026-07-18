@@ -53,6 +53,13 @@ export function LoansStep() {
     else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
   }
 
+  // Saving a NEW loan runs the same gate — a typed 0 amount/term raises the
+  // precise alert instead of the button silently doing nothing.
+  const finalizeNewLoan = () => {
+    if (loanReady(loanForm)) { addLoan(); setSaveAttempted(false) }
+    else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
+  }
+
   // On entering this step a loan is always opened for review (from the documents-step
   // flag if set, otherwise the first one) — a fresh upload never lands collapsed.
   useEffect(() => {
@@ -168,7 +175,9 @@ export function LoansStep() {
       )}
 
       {/* Inline form for new loan */}
-      {showLoanForm && <LoanForm onSave={addLoan} onCancel={() => setShowLoanForm(false)} />}
+      {showLoanForm && <LoanForm onSave={finalizeNewLoan}
+        onCancel={() => { setShowLoanForm(false); setSaveAttempted(false) }}
+        alert={saveAttempted && editingLoanIdx === null ? loanIssues(loanForm) : null} />}
 
       {/* Add loan button — always shown */}
       <button type="button" className="btn-onboard-skip onboarding-add-btn"

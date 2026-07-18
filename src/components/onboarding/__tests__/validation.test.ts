@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   trackIssues, loanIssues, termMonthsValid, issueText,
   trackDraftHasData, loanDraftHasData, clampGraceMonths,
+  trackWarnings, loanWarnings,
 } from '../validation'
 import { emptyTrack, emptyLoan } from '../types'
 import type { TrackDraft, LoanDraft } from '../types'
@@ -94,6 +95,29 @@ describe('draft has-data (untouched forms must skip silently)', () => {
     expect(trackDraftHasData(track({ term_months: '240' }))).toBe(true)
     expect(trackDraftHasData(track({ principal: '100000' }))).toBe(true)
     expect(loanDraftHasData(loan({ annual_rate: '3' }))).toBe(true)
+  })
+})
+
+describe('plausibility warnings (soft, never block)', () => {
+  it('a short mortgage term looks like years — suggests the months equivalent', () => {
+    const w = trackWarnings(track({ principal: '1000000', annual_rate: '4.5', term_months: '1' }))
+    expect(w.some(x => x.includes('12 חודשים'))).toBe(true)   // 1 → suggests 1×12
+    expect(trackWarnings(track({ term_months: '30' }))[0]).toContain('360')
+  })
+
+  it('normal terms and an empty field warn nothing', () => {
+    expect(trackWarnings(track({ principal: '600000', annual_rate: '4.5', term_months: '360' }))).toEqual([])
+    expect(trackWarnings(track({}))).toEqual([])
+  })
+
+  it('an implausible rate or amount warns', () => {
+    expect(trackWarnings(track({ annual_rate: '25', term_months: '360' })).some(x => x.includes('ריבית'))).toBe(true)
+    expect(trackWarnings(track({ principal: '99999999', term_months: '360' })).some(x => x.includes('גבוה במיוחד'))).toBe(true)
+    expect(loanWarnings(loan({ annual_rate: '30' })).some(x => x.includes('ריבית'))).toBe(true)
+  })
+
+  it('a balloon loan never warns about rate/term', () => {
+    expect(loanWarnings(loan({ repayment_type: 'balloon', principal: '80000' }))).toEqual([])
   })
 })
 

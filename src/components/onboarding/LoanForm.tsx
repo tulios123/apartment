@@ -2,7 +2,7 @@ import { Check } from '@phosphor-icons/react'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType } from '../../types'
 import { formatNum } from './types'
-import type { DraftIssue, IssueField } from './validation'
+import { loanWarnings, type DraftIssue, type IssueField } from './validation'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
@@ -120,6 +120,15 @@ export function LoanForm({ onSave, onCancel, alert }: { onSave: () => void; onCa
           הלוואת בלון ללא ריבית — נפרעת במכירה. תופיע בהיבט ההשקעה ומקטינה את ההון העצמי נטו.
         </p>
       )}
+      {/* Live plausibility hints (never block saving). */}
+      {(() => {
+        const warnings = loanWarnings(loanForm)
+        return warnings.length > 0 && (
+          <div className="onboarding-soft-warning">
+            {warnings.map((w, i) => <div key={i}>{w}</div>)}
+          </div>
+        )
+      })()}
       {alert && alert.length > 0 && (
         <div className="onboarding-loan-form-alert" role="alert">
           {alert.map((iss, i) => <div key={i}>{iss.message}</div>)}
