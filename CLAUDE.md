@@ -88,7 +88,7 @@ Requires **Node 22** (pinned in `.nvmrc`; CI uses 22). Lockfile is committed.
 npm ci                         # install exact locked deps (needs Node 22)
 cp .env.example .env.local     # then fill VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
 npm run dev                    # vite dev server on http://localhost:5173
-npm test                       # unit tests (Vitest, TZ=Asia/Jerusalem — 135 tests)
+npm test                       # unit tests (Vitest, TZ=Asia/Jerusalem — 140 tests)
 npm run build                  # tsc -b && vite build (bundles even without env; the
                                #   built app throws at LOAD if Supabase env is missing)
 npm run lint                   # eslint
@@ -120,7 +120,7 @@ authenticated. Backend from scratch (only if not reusing the hosted project):
 - **Works:** onboarding (9-step wizard), Home/Finances/Wealth/Property hubs, add/edit
   transactions, tasks (recurring, date+time), documents + checklist, mortgage/loan/
   insurance modeling with grace & balloon, dark mode, web push, a feedback→Claude
-  auto-fix pipeline. Unit suite green (135), build green, TypeScript clean.
+  auto-fix pipeline. Unit suite green (140), build green, TypeScript clean.
 - **Branches:** `staging` is the active line (build → owner verifies in a testing app
   → "פרסם לכולם" promotes to `main`/production). `main` is production. Feature branches
   `feat/extract-rate-limit`, `feat/feedback-autofix-pipeline`, `fix/onboarding-atomicity`

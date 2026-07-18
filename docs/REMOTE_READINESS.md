@@ -23,7 +23,7 @@ patterns across all tracked files.
 ## What a cold clone needs (and what breaks without it)
 | Need | Status | Notes |
 |---|---|---|
-| Node **22** | pinned this pass (`.nvmrc`) | was unpinned; CI already used 22. No `engines` field (adding one means editing the shared `package.json` — left for the owner). |
+| Node **22** | pinned this pass (`.nvmrc` + `engines: >=22`) | was unpinned; CI already used 22. `engines` field added to `package.json` later the same pass. |
 | Lockfile | ✅ tracked (`package-lock.json`, v3) | `npm ci` gives exact deps. |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | must be supplied | app throws at load without them (`src/lib/supabase.ts`). `cp .env.example .env.local` and fill. Pointing at the hosted project reuses its data. |
 | Other `VITE_*` | optional | full list + descriptions in `.env.example` (now complete — was missing 7 of 11). |
@@ -46,7 +46,7 @@ patterns across all tracked files.
 npm ci
 cp .env.example .env.local        # fill VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
 npm run dev                       # http://localhost:5173
-npm test                          # 135 unit tests, TZ=Asia/Jerusalem
+npm test                          # 140 unit tests, TZ=Asia/Jerusalem
 npm run build                     # bundles; app needs the Supabase env to run
 ```
 
