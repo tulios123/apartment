@@ -122,17 +122,25 @@ export function monthlyVirtualEntries(
     const monthStart = `${monthStr}-01`
     const monthEnd = monthEndISO(year, m)
 
+    // R7: ONE apartment ⇒ at most ONE projected rent row per calendar month.
+    // Overlapping contract rows (an old lease's tail under a new lease's start)
+    // used to project BOTH rents into the ledger and the month forecast. Mirror
+    // rentReceivedToDate's N6 rule: the LATER-STARTING (newer) lease wins.
+    let rentContract: Contract | null = null
     for (const c of contracts) {
       if (c.start_date <= monthEnd && c.end_date >= monthStart) {
-        entries.push({
-          id: `v-rent-${c.id}-${monthStr}`,
-          direction: 'income',
-          amount: Number(c.monthly_rent) || 0,   // numeric col → string at runtime; coerce before it reaches a + sum
-          date: monthStart,
-          category: RENT_CATEGORIES[0],
-          description: c.company_name,
-        })
+        if (!rentContract || c.start_date > rentContract.start_date) rentContract = c
       }
+    }
+    if (rentContract) {
+      entries.push({
+        id: `v-rent-${rentContract.id}-${monthStr}`,
+        direction: 'income',
+        amount: Number(rentContract.monthly_rent) || 0,   // numeric col → string at runtime; coerce before it reaches a + sum
+        date: monthStart,
+        category: RENT_CATEGORIES[0],
+        description: rentContract.company_name,
+      })
     }
 
     let mortgageTotal = 0
