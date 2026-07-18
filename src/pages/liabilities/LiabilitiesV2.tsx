@@ -9,7 +9,7 @@ import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { extractMortgageTracks, extractLoans } from '../../lib/extractFinancing'
 import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanInterestToDate, loanEndDate } from '../../lib/loans'
-import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
+import { MORTGAGE_TRACK_TYPES, TRACK_LABELS, TRACK_BADGES, MOCK_SCAN_DELAY_MS } from '../../lib/constants'
 import { formatCurrency, formatNum, monthDayISO } from '../../lib/format'
 import { monthlyVirtualEntries } from '../../lib/projections'
 import { useAuth } from '../../contexts/AuthContext'
@@ -24,8 +24,6 @@ import type { MortgageTrack, Loan, TrackType, LoanRepaymentType } from '../../ty
 import './liabilities-v2.css'
 import { DateField } from '../../components/ui/DateField'
 
-const TRACK_LABEL: Record<TrackType, string> = { prime: 'פריים', fixed_unlinked: 'קבועה לא צמודה', fixed_linked: 'קבועה צמודה', variable: 'משתנה' }
-const TRACK_COLOR: Record<TrackType, string> = { prime: 'blue', fixed_unlinked: 'teal', fixed_linked: 'purple', variable: 'amber' }
 const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => d ? new Date(d).getFullYear() : null
 
@@ -277,7 +275,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       persistScanFiles(files, 'mortgage_statement')
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let raw: Record<string, unknown>[]
-      if (useMock) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_MORTGAGE_TRACKS }
+      if (useMock) { await new Promise(r => setTimeout(r, MOCK_SCAN_DELAY_MS)); raw = MOCK_MORTGAGE_TRACKS }
       else raw = await extractMortgageTracks(files)
       const drafts = raw.map(mapTrack)
       if (drafts.length === 0) { setAiErr({ kind: 'mortgage', msg: 'לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
@@ -293,7 +291,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       persistScanFiles(files, 'loan_statement')
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let raw: Record<string, unknown>[]
-      if (useMock) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_LOANS }
+      if (useMock) { await new Promise(r => setTimeout(r, MOCK_SCAN_DELAY_MS)); raw = MOCK_LOANS }
       else raw = await extractLoans(files)
       const drafts = raw.map(mapLoan)
       if (drafts.length === 0) { setAiErr({ kind: 'loan', msg: 'לא זוהתה הלוואה במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
@@ -414,11 +412,11 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 <div className="liav-section-head"><Bank size={18} weight="duotone" color="var(--brand-navy)" /><h2>תמהיל המשכנתא</h2></div>
               )}
               {tracksOpen && tracks.map(t => {
-                const s = trackStats(t); const color = TRACK_COLOR[t.track_type]; const isOpen = open === t.id
+                const s = trackStats(t); const color = TRACK_BADGES[t.track_type]; const isOpen = open === t.id
                 return (
                   <div key={t.id} className={`liav-card${isOpen ? ' open' : ''}`}>
                     <button className="liav-card-head" onClick={() => setOpen(isOpen ? null : t.id)}>
-                      <span className={`liav-badge ${color}`}>{TRACK_LABEL[t.track_type]}</span>
+                      <span className={`liav-badge ${color}`}>{TRACK_LABELS[t.track_type]}</span>
                       {/* Product decision 15.07: linked tracks are computed NOMINALLY (no CPI
                           linkage yet) — disclose it wherever the track's numbers are read. */}
                       <div className="liav-card-main"><div className="liav-card-title">{fmt(s.pay)} לחודש</div><div className="liav-card-sub">ריבית {Number(t.annual_rate).toFixed(1)}%{t.track_type === 'fixed_linked' ? ' · ללא הצמדה למדד' : ''}{s.endYear ? ` · עד ${s.endYear}` : ''}{t.label ? ` · ${t.label}` : ''}</div></div>
@@ -494,7 +492,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 return (
                   <div key={l.id} className={`liav-card${isOpen ? ' open' : ''}`}>
                     <button className="liav-card-head" onClick={() => setOpen(isOpen ? null : l.id)}>
-                      <span className={`liav-badge ${l.track_type ? TRACK_COLOR[l.track_type] : 'teal'}`}>{l.track_type ? TRACK_LABEL[l.track_type] : 'שפיצר'}</span>
+                      <span className={`liav-badge ${l.track_type ? TRACK_BADGES[l.track_type] : 'teal'}`}>{l.track_type ? TRACK_LABELS[l.track_type] : 'שפיצר'}</span>
                       <div className="liav-card-main"><div className="liav-card-title">{l.label || 'הלוואה'}</div><div className="liav-card-sub">{[l.lender, `${fmt(loanMonthlyPayment(l))} לחודש`, Number.isFinite(Number(l.annual_rate)) ? `${Number(l.annual_rate).toFixed(1)}%` : null].filter(Boolean).join(' · ')}</div></div>
                       <div className="liav-card-balance"><b>{fmt(bal)}</b><span>יתרה</span></div>
                       <CaretDown className="liav-card-caret" size={16} weight="bold" />

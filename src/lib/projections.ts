@@ -1,6 +1,6 @@
 import { trackSchedule } from './mortgage'
 import { loanPaymentForMonth, loanSplitForMonth } from './loans'
-import { monthEndISO, todayISO, parseLocalISO } from './format'
+import { monthEndISO, todayISO, parseLocalISO, monthDayISO } from './format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
 import type { Contract, MortgageTrack, Loan } from '../types'
 
@@ -43,7 +43,7 @@ export function activeContract<T extends { start_date: string; end_date: string 
   // Compare as LOCAL date strings so start/end are inclusive whole days. Instant
   // comparison (new Date('YYYY-MM-DD') is UTC midnight) skews by the UTC offset at the
   // day boundary in Israel — a lease would read inactive on its own start/end date.
-  const d = `${asOf.getFullYear()}-${String(asOf.getMonth() + 1).padStart(2, '0')}-${String(asOf.getDate()).padStart(2, '0')}`
+  const d = monthDayISO(asOf)   // SW-08: shared local Y-M-D helper
   return contracts.find(c => c.start_date <= d && c.end_date >= d)
 }
 

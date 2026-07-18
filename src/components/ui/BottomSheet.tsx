@@ -1,3 +1,4 @@
+import { SHEET_CLOSE_MS } from '../../lib/constants'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Lightbulb } from '@phosphor-icons/react'
@@ -89,7 +90,7 @@ export default function BottomSheet({ open, onClose, onDismiss, title, children,
   useEffect(() => {
     if (open) { setMounted(true); setMinimized(false) }
     else {
-      const t = setTimeout(() => setMounted(false), 360)
+      const t = setTimeout(() => setMounted(false), SHEET_CLOSE_MS)
       return () => clearTimeout(t)
     }
   }, [open])

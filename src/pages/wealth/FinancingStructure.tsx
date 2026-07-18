@@ -1,16 +1,15 @@
+import { TRACK_LABELS, TRACK_COLORS } from '../../lib/constants'
 import { useState } from 'react'
 import { Bank, CreditCard, Handshake, CaretDown, PencilSimple } from '@phosphor-icons/react'
 import { trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanEndDate } from '../../lib/loans'
 import { formatCurrency, todayISO, parseLocalISO, monthDayISO } from '../../lib/format'
-import type { MortgageTrack, Loan, TrackType } from '../../types'
+import type { MortgageTrack, Loan } from '../../types'
 import type { MortgageSummary } from '../../hooks/useMortgageData'
 
 const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => (d ? parseLocalISO(d).getFullYear() : null)
 
-const TRACK_LABEL: Record<TrackType, string> = { prime: 'פריים', fixed_unlinked: 'קבועה לא צמודה', fixed_linked: 'קבועה צמודה', variable: 'משתנה' }
-const TRACK_COLOR: Record<TrackType, string> = { prime: '#5aa0ec', fixed_unlinked: 'var(--accent-teal)', fixed_linked: 'var(--accent-2)', variable: '#f0b24e' }
 
 interface Props {
   tracks: MortgageTrack[]
@@ -104,9 +103,9 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
             <div className="wlth-tracks">
               {tracks.map(t => (
                 <div key={t.id} className="wlth-track-row">
-                  <span className="wlth-track-dot" style={{ background: TRACK_COLOR[t.track_type] }} />
+                  <span className="wlth-track-dot" style={{ background: TRACK_COLORS[t.track_type] }} />
                   {/* Product decision 15.07: linked tracks are computed nominally — disclose. */}
-                  <span className="wlth-track-name">{TRACK_LABEL[t.track_type]}{t.track_type === 'fixed_linked' ? ' (ללא הצמדה למדד)' : ''}{t.label ? ` · ${t.label}` : ''}</span>
+                  <span className="wlth-track-name">{TRACK_LABELS[t.track_type]}{t.track_type === 'fixed_linked' ? ' (ללא הצמדה למדד)' : ''}{t.label ? ` · ${t.label}` : ''}</span>
                   <span className="wlth-track-rate">{Number(t.annual_rate).toFixed(1)}%</span>
                   <span className="wlth-track-bal">{fmt(trackBalance(t))}</span>
                 </div>

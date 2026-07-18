@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
 import { InstallGuide } from '../components/InstallGuide'
-import { isFeedbackAdmin } from '../lib/admin'
+import { isFeedbackAdmin, isManager } from '../lib/admin'
 import {
   pushSupported,
   pushConfigured,
@@ -18,12 +18,6 @@ import {
   sendTestNotification,
 } from '../lib/push'
 import { clearGenerationCache } from '../hooks/useMonthlyGeneration'
-
-// The dev/test account (reached via the ?manager login) is the manager console:
-// it keeps the reset tools on the live app AND reads everyone's feedback. Family
-// accounts (incl. the owner's personal email) never see these. Must stay in sync
-// with the feedback table's RLS admin email (see migration 031).
-const MANAGER_EMAIL = 'dev@test.local'
 
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
@@ -40,7 +34,9 @@ export default function Settings() {
     setTimeout(() => setStatus(null), 3500)
   }
 
-  const isAdmin = user?.email === MANAGER_EMAIL
+  // The dev/test account (reached via the ?manager login) is the manager console —
+  // one shared gate in lib/admin (SW-11: this file used to redeclare the email).
+  const isAdmin = isManager(user?.email)
   // The feedback inbox + auto-fix pipeline live on the owner's REAL account (not the
   // dev/test manager) — see admin.ts + migration 038.
   const feedbackAdmin = isFeedbackAdmin(user?.email)

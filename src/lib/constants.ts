@@ -1,3 +1,5 @@
+import type { TrackType } from '../types'
+
 // Canonical category sets — use these for filtering, never raw strings
 export const RENT_CATEGORIES = ['שכר דירה', 'שכירות'] as const   // accept legacy
 export const MORTGAGE_CATEGORIES = ['משכנתא', 'משכנתא – בנק', 'משכנתא – אב'] as const
@@ -46,6 +48,27 @@ export const MORTGAGE_TRACK_TYPES: { value: string; label: string }[] = [
   { value: 'fixed_linked',   label: 'קבועה צמודה' },
   { value: 'variable',       label: 'משתנה' },
 ]
+
+// SW-21: ONE canonical mortgage-track presentation set — label, chart color and
+// badge class per track type. These used to be re-declared (and drift) in
+// FinancingStructure, LiabilitiesV2 and ScanReview. The wizard's select keeps its
+// own long-form labels in MORTGAGE_TRACK_TYPES above (e.g. the קל"צ suffix).
+export const TRACK_LABELS: Record<TrackType, string> = {
+  prime: 'פריים', fixed_unlinked: 'קבועה לא צמודה', fixed_linked: 'קבועה צמודה', variable: 'משתנה',
+}
+export const TRACK_COLORS: Record<TrackType, string> = {
+  prime: '#5aa0ec', fixed_unlinked: 'var(--accent-teal)', fixed_linked: 'var(--accent-2)', variable: '#f0b24e',
+}
+export const TRACK_BADGES: Record<TrackType, string> = {
+  prime: 'blue', fixed_unlinked: 'teal', fixed_linked: 'purple', variable: 'amber',
+}
+
+// SW-17/18/19: shared UI timings — previously copy-pasted magic numbers.
+// SHEET_CLOSE_MS mirrors the 0.35s slide-out in bottom-sheet.css (+ a hair, so
+// unmount never races the transition); MOCK_SCAN_DELAY_MS is the simulated
+// document-scan latency used by the demo/mock paths.
+export const SHEET_CLOSE_MS = 360
+export const MOCK_SCAN_DELAY_MS = 600
 
 export const TASK_CATEGORIES = ['תיקונים ותחזוקה', 'ביקור ובדיקה', 'כללי'] as const
 

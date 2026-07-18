@@ -9,7 +9,7 @@ import { uploadDocument, MAX_UPLOAD_BYTES } from '../../lib/storage'
 import { supabase } from '../../lib/supabase'
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../../lib/constants'
 import { predictCategory } from '../../lib/quickParse'
-import { formatDate } from '../../lib/format'
+import { formatDate, monthDayISO } from '../../lib/format'
 import { tap } from '../../lib/haptics'
 import './capture.css'
 
@@ -42,9 +42,7 @@ function groupAmount(s: string): string {
 function isoOffset(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
-  // Local date components (NOT toISOString, which is UTC and would roll back a
-  // day during the post-midnight hours in timezones ahead of UTC, e.g. Israel).
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return monthDayISO(d)   // local Y-M-D (SW-08: one shared definition in lib/format)
 }
 
 export default function ExpenseSheet({ open, onClose, initialDesc = '', initialAmount, expandKey, onDone }: Props) {

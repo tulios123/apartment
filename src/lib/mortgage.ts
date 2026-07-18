@@ -1,3 +1,4 @@
+import { monthDayISO } from './format'
 import type { MortgageTrack } from '../types'
 
 export interface ScheduleRow {
@@ -137,9 +138,9 @@ export function gracePeriodPayment(tracks: MortgageTrack[]): number {
 
 /** Total interest accrued across all tracks up to and including asOf. */
 export function interestToDate(tracks: MortgageTrack[], asOf: Date = new Date()): number {
-  // LOCAL Y-M-D cutoff — NOT toISOString (UTC), which rolls back a day in timezones
-  // ahead of UTC (Israel) and would drop a payment row dated "today" from the total.
-  const cutoff = `${asOf.getFullYear()}-${String(asOf.getMonth() + 1).padStart(2, '0')}-${String(asOf.getDate()).padStart(2, '0')}`
+  // LOCAL Y-M-D cutoff (SW-08: shared monthDayISO — never toISOString, UTC rolls
+  // back a day in timezones ahead of UTC and would drop a payment dated "today").
+  const cutoff = monthDayISO(asOf)
   let sum = 0
   for (const t of tracks) {
     for (const row of trackSchedule(t)) {

@@ -13,7 +13,7 @@ import {
 import { syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/useRecurringItems'
 import { useAuth } from '../../contexts/AuthContext'
 import { isManager } from '../../lib/admin'
-import { UTILITIES } from '../../lib/constants'
+import { UTILITIES, MOCK_SCAN_DELAY_MS } from '../../lib/constants'
 import { formatDate, formatCurrency, monthDayISO, daysBetween, todayISO } from '../../lib/format'
 import type { Contract, UtilityPayer } from '../../types'
 import { SkeletonCard } from '../../components/ui/Skeleton'
@@ -157,7 +157,7 @@ function ContractForm({
       persistScanFiles(files)
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let d: Record<string, unknown> | null
-      if (useMock) { await new Promise(r => setTimeout(r, 600)); d = mockRental() }
+      if (useMock) { await new Promise(r => setTimeout(r, MOCK_SCAN_DELAY_MS)); d = mockRental() }
       else d = await extractRental(files)
       // extractRental returns null when nothing meaningful was read (all fields null).
       if (!d) { setAiErr('לא זוהו פרטים במסמך — נסו קובץ ברור יותר או מלאו ידנית.'); return }
