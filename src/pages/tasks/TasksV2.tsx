@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, X, Check, CheckCircle, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText, Paperclip, Eye } from '@phosphor-icons/react'
 import { useTasks, createTask, updateTask, deleteTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
-import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
+import { MAX_UPLOAD_BYTES, uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
@@ -48,6 +48,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const [actionErr, setActionErr] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [attaching, setAttaching] = useState(false)
+  const [attachErr, setAttachErr] = useState<string | null>(null)
   const [followup, setFollowup] = useState<TaskFollowup | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const openSnapshot = useRef('')
@@ -57,6 +58,11 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
   async function handleAttach(file: File) {
     if (!user || !editing) return
+    // Mirror the hardened sibling paths (ExpenseSheet EDGE-17 / removeDoc): reject
+    // oversized files up front and SURFACE failures — this catch used to be empty,
+    // so a failed upload returned to idle with the task silently unchanged.
+    if (file.size > MAX_UPLOAD_BYTES) { setAttachErr('הקובץ גדול מדי (עד 15MB)'); return }
+    setAttachErr(null)
     setAttaching(true)
     try {
       const id = crypto.randomUUID()
@@ -66,7 +72,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         type: 'other', name: file.name, storage_path: path, date: null,
       })
       await refetchDocs()
-    } catch { /* upload failed — leave the task untouched */ }
+    } catch { setAttachErr('הצירוף נכשל — נסו שוב') }
     finally { setAttaching(false) }
   }
 
@@ -121,7 +127,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     setEditErr(null)
     setActionErr(null)   // moving on clears any stale delete-failure banner
     setConfirmDiscard(false)
-    setEditing(t); setDrawerOpen(true)
+    setEditing(t); setAttachErr(null); setDrawerOpen(true)
   }
 
   // A dismiss shouldn't silently drop edits; ask only when the form changed from what it opened with.
@@ -327,6 +333,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           <button type="button" className="tav-attach" disabled={attaching} onClick={() => fileRef.current?.click()}>
             <Paperclip size={15} /> {attaching ? 'מעלה…' : 'צרף מסמך/תמונה'}
           </button>
+          {attachErr && <div className="form-error" role="alert">{attachErr}</div>}
         </div>
         {editErr && <div className="form-error" role="alert">{editErr}</div>}
         <button className="tav-save" disabled={saving} onClick={handleEditSave}>{saving ? 'שומר…' : 'שמירה'}</button>
