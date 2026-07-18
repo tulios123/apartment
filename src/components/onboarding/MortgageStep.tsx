@@ -16,6 +16,7 @@ export function MortgageStep() {
     mortgageAiBusy, mortgageDocRef, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     mortgageDocFiles, removeDocFile, renameDocFile,
     tracks, setTracks, trackForm, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
+    trackMissingFields, trackDraftHasData,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
@@ -38,21 +39,17 @@ export function MortgageStep() {
   const [scanBannerOff, setScanBannerOff] = useState(false)
 
   // A track is "ready" only with all required details: principal + rate + term (months).
-  const trackMissing = (d: (typeof tracks)[number]) => {
-    const m: string[] = []
-    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
-    if (trackEffectiveRate(d) <= 0) m.push('ריבית')
-    if (!d.term_months) m.push('תקופה')
-    return m
-  }
+  // The bar is the SHARED gate (./validation) — the same one the finish path enforces.
+  const trackMissing = trackMissingFields
   const trackReady = (d: (typeof tracks)[number]) => trackMissing(d).length === 0
   const effectiveTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
   const incompleteTracks = effectiveTracks.filter(t => !trackReady(t))
 
   // A brand-new track typed into the inline form but not yet saved to the list — it
   // isn't in `tracks`, so without this it would be silently dropped on "המשך".
-  const trackHasData = (d: typeof trackForm) => (parseFloat(d.principal) || 0) > 0 || trackEffectiveRate(d) > 0 || !!d.term_months
-  const pendingNew = showTrackForm && editingIdx === null && trackHasData(trackForm)
+  // RAW typed fields only: the previous check counted the grey-placeholder rate
+  // default, so an untouched empty form always "had data" and raised the dialog.
+  const pendingNew = showTrackForm && editingIdx === null && trackDraftHasData(trackForm)
   const pendingNewReady = pendingNew && trackReady(trackForm)
   const unsavedTracks = pendingNew && !trackReady(trackForm) ? [...incompleteTracks, trackForm] : incompleteTracks
 

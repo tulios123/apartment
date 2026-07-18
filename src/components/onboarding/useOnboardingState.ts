@@ -22,6 +22,10 @@ import {
 } from './types'
 import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } from './types'
 import { finishOutcome, emptySavedSections, type SavedSections } from './finish'
+import {
+  trackEffectiveRate, loanDraftRate, trackMissingFields, loanMissingFields,
+  trackDraftHasData, loanDraftHasData, clampGraceMonths,
+} from './validation'
 
 // Manager/dev demo extractions: in local dev or the dev@test.local manager account
 // the onboarding scans return these instead of calling the billed Claude edge
@@ -254,16 +258,8 @@ export function useOnboardingState(onComplete: () => void) {
     + extraCosts.reduce((s, ec) => s + (parseFloat(ec.amount) || 0), 0)
 
   // ── Derived: mortgage track live preview ─────────────────────────────────────
-  function trackEffectiveRate(d: TrackDraft): number {
-    if (d.track_type === 'prime') {
-      return (parseFloat(d.prime_rate) || 6.25) + (parseFloat(d.margin) || -0.5)
-    }
-    if (d.track_type === 'variable') {
-      return (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
-    }
-    return parseFloat(d.annual_rate) || 5.0
-  }
-
+  // (rate/completeness gates live in ./validation — one definition for the steps,
+  // the finish path and the tests, so the bars can never drift apart again.)
   function trackMonthlyPayment(d: TrackDraft): number {
     const p = parseFloat(d.principal) || 0
     const t = parseInt(d.term_months) || 360
@@ -273,45 +269,11 @@ export function useOnboardingState(onComplete: () => void) {
     return monthlyPayment(p, r, t, g)
   }
 
-  // Effective annual rate for a loan draft — anchor + margin for prime/variable
-  // ("prime minus" = negative margin), otherwise the plain fixed rate. No magic
-  // defaults: an empty anchored loan reads as 0, mirroring the liabilities editor.
-  function loanDraftRate(d: LoanDraft): number {
-    if (d.track_type === 'prime' || d.track_type === 'variable') {
-      return (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
-    }
-    return parseFloat(d.annual_rate) || 0
-  }
-
-  // ── Shared completeness gate (AUD-001) ───────────────────────────────────────
+  // ── Shared completeness gate (AUD-001, in ./validation) ──────────────────────
   // The SAME bar the mortgage/loans steps enforce on המשך, applied to every finish
   // entry point (סיימו עכשיו + the insurance step's סיום). Without it, finishing
   // with a half-filled track/loan form silently saved backfilled values (5%/360mo
   // for tracks, 0% for loans) the user never typed or confirmed.
-  const trackMissingFields = (d: TrackDraft): string[] => {
-    const m: string[] = []
-    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
-    if (trackEffectiveRate(d) <= 0) m.push('ריבית')
-    if (!d.term_months) m.push('תקופה')
-    return m
-  }
-  const loanMissingFields = (d: LoanDraft): string[] => {
-    const m: string[] = []
-    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
-    if (d.repayment_type === 'monthly_fixed') {
-      if (loanDraftRate(d) <= 0) m.push('ריבית')
-      if (!d.term_months) m.push('תקופה')
-    }
-    return m
-  }
-  // Items a finish right now would drop or mis-save: incomplete saved tracks/loans
-  // plus an open form the user actually typed into. "Has data" tests only RAW typed
-  // fields — never the grey-placeholder rate default — so an untouched auto-open form
-  // is skipped silently (as before), while a half-filled one blocks (no fabrication).
-  const trackDraftHasData = (d: TrackDraft) =>
-    (parseFloat(d.principal) || 0) > 0 || !!d.annual_rate || !!d.prime_rate || !!d.margin || !!d.term_months
-  const loanDraftHasData = (d: LoanDraft) =>
-    (parseFloat(d.principal) || 0) > 0 || !!d.annual_rate || !!d.prime_rate || !!d.margin || !!d.term_months
   const finishBlockers: { kind: 'track' | 'loan'; label: string; missing: string[] }[] = []
   {
     const effTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
@@ -718,7 +680,8 @@ export function useOnboardingState(onComplete: () => void) {
         else if (showLoanForm) allLoans.push(normalizeLoanDraft())
       }
 
-      const pendingPolicyValid = policyForm.company.trim() !== '' || policyForm.monthly_premium !== ''
+      // A premium of "0" is not data — without a company it would save a junk policy.
+      const pendingPolicyValid = policyForm.company.trim() !== '' || (parseFloat(policyForm.monthly_premium) || 0) > 0
       const allPolicies = [...policies]
       if (pendingPolicyValid) {
         if (editingPolicyIdx !== null) allPolicies[editingPolicyIdx] = policyForm
@@ -749,7 +712,7 @@ export function useOnboardingState(onComplete: () => void) {
                 prime_rate: isAnchored ? (parseFloat(d.prime_rate) || primeDefault) : null,
                 margin: isAnchored ? (parseFloat(d.margin) || marginDefault) : null,
                 term_months: parseInt(d.term_months) || 360,
-                grace_months: parseInt(d.grace_months) || 0,
+                grace_months: clampGraceMonths(d.grace_months, d.term_months),
                 start_date: d.start_date || paymentsAnchor,
               })
             }))
@@ -784,7 +747,7 @@ export function useOnboardingState(onComplete: () => void) {
                   prime_rate: anchored ? (parseFloat(d.prime_rate) || 0) : null,
                   margin: anchored ? (parseFloat(d.margin) || 0) : null,
                   term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
-                  grace_months: isMonthly ? (parseInt(d.grace_months) || null) : null,
+                  grace_months: isMonthly ? (clampGraceMonths(d.grace_months, d.term_months) || null) : null,
                   start_date: d.start_date || paymentsAnchor,
                 })
               })
@@ -848,7 +811,10 @@ export function useOnboardingState(onComplete: () => void) {
           // On retry, reuse the contract already created so the dependent rent reminder
           // can still run without inserting a second contract.
           if (savedRef.current.contract) { contract = savedRef.current.contract; return }
-          if (!companyName.trim() || !startDate || !endDate || !monthlyRent) {
+          // Rent must be a positive amount — a typed "0" is not a real contract and
+          // would seed 0-rent forecast rows.
+          const rentVal = parseFloat(monthlyRent) || 0
+          if (!companyName.trim() || !startDate || !endDate || rentVal <= 0) {
             // Don't silently drop a partly-filled rental — a contract needs all of
             // company + start + end + rent, so flag it instead of losing the input.
             if (companyName.trim() || monthlyRent || startDate || endDate) {
@@ -871,7 +837,7 @@ export function useOnboardingState(onComplete: () => void) {
               contact_phone: null,
               start_date: startDate,
               end_date: endDate,
-              monthly_rent: parseFloat(monthlyRent),
+              monthly_rent: rentVal,
               deposit: null,
               payment_method: rentPaymentMethod,
               requires_approval: addRentReminder,
@@ -888,7 +854,7 @@ export function useOnboardingState(onComplete: () => void) {
           if (savedRef.current.policies) return
           try {
             await Promise.all(allPolicies
-              .filter(p => p.company.trim() || p.monthly_premium)
+              .filter(p => p.company.trim() || (parseFloat(p.monthly_premium) || 0) > 0)
               .map(p => createInsurancePolicy({
                 owner_id: user.id,
                 property_id: property.id,
@@ -1208,8 +1174,12 @@ export function useOnboardingState(onComplete: () => void) {
     return { ...policyForm, start_date: policyForm.start_date || keyDeliveryDate }
   }
 
+  // A policy is worth saving only with a company name or a real (positive) premium —
+  // a typed "0" alone is not data (mirrors the finish-path filter).
+  const policyHasData = (p: PolicyDraft) => p.company.trim() !== '' || (parseFloat(p.monthly_premium) || 0) > 0
+
   function addPolicy() {
-    if (!policyForm.company.trim() && !policyForm.monthly_premium) return
+    if (!policyHasData(policyForm)) return
     setPolicies(prev => [...prev, normalizePolicyDraft()])
     setPolicyForm(emptyPolicy())
     setShowPolicyForm(false)
@@ -1221,7 +1191,7 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   function savePolicyAndOpenNew() {
-    if (policyForm.company.trim() || policyForm.monthly_premium) {
+    if (policyHasData(policyForm)) {
       if (editingPolicyIdx !== null) {
         setPolicies(prev => prev.map((p, i) => i === editingPolicyIdx ? normalizePolicyDraft() : p))
       } else {
@@ -1350,6 +1320,7 @@ export function useOnboardingState(onComplete: () => void) {
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
     trackEffectiveRate, trackMonthlyPayment, trackTypeLabel,
+    trackMissingFields, loanMissingFields, trackDraftHasData, loanDraftHasData,
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
     effectiveTrackForm, previewMonthly, previewGrace,
     // AI mortgage fill

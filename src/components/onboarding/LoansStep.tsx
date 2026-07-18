@@ -12,7 +12,7 @@ import { useOnboarding } from './context'
 export function LoansStep() {
   const {
     advance, keyDeliveryDate,
-    loans, setLoans, loanDraftRate, loanTypeLabel,
+    loans, setLoans, loanDraftRate, loanTypeLabel, loanMissingFields,
     editingLoanIdx, setEditingLoanIdx, setLoanForm, setLoanGraceOn, loanForm, showLoanForm, setShowLoanForm,
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
@@ -31,15 +31,8 @@ export function LoansStep() {
 
   // The only required loan details are amount + (for a monthly loan) rate + term.
   // Lender/description are optional (a placeholder default counts) and never block.
-  const loanMissing = (d: (typeof loans)[number]) => {
-    const m: string[] = []
-    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
-    if (d.repayment_type === 'monthly_fixed') {
-      if (loanDraftRate(d) <= 0) m.push('ריבית')
-      if (!d.term_months) m.push('תקופה')
-    }
-    return m
-  }
+  // The bar is the SHARED gate (./validation) — the same one the finish path enforces.
+  const loanMissing = loanMissingFields
   const loanReady = (d: (typeof loans)[number]) => loanMissing(d).length === 0
 
   // The open row's live truth is the working form, not its last-saved snapshot.
