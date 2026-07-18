@@ -1,4 +1,4 @@
-import type { TrackDraft, LoanDraft } from './types'
+import type { TrackDraft, LoanDraft, PolicyDraft } from './types'
 
 // ── Shared completeness gates for mortgage-track and loan drafts ──────────────
 // ONE definition of "complete enough to save", used by the mortgage/loans steps
@@ -114,6 +114,82 @@ export function loanWarnings(d: LoanDraft): string[] {
   const rate = loanDraftRate(d)
   if (rate > 20) w.push(`ריבית של ${rate.toFixed(2)}% גבוהה מאוד להלוואה — כדאי לוודא`)
   if ((parseFloat(d.principal) || 0) > 10_000_000) w.push('הסכום גבוה במיוחד — כדאי לוודא שאין ספרה מיותרת')
+  return w
+}
+
+// ── Insurance policy ──────────────────────────────────────────────────────────
+
+/** A policy is worth saving only with a company name or a real (positive)
+ *  premium — a typed "0" alone is not data (also enforced at finish). */
+export function policyHasData(p: PolicyDraft): boolean {
+  return p.company.trim() !== '' || (parseFloat(p.monthly_premium) || 0) > 0
+}
+
+export type PolicyIssue = { field: 'content' | 'dates'; message: string }
+
+export function policyIssues(p: PolicyDraft): PolicyIssue[] {
+  const issues: PolicyIssue[] = []
+  if (!policyHasData(p)) issues.push({ field: 'content', message: 'כדי לשמור פוליסה צריך שם חברה או פרמיה' })
+  // ISO strings — string compare is correct. An inverted coverage window is invalid.
+  if (p.start_date && p.end_date && p.end_date < p.start_date) {
+    issues.push({ field: 'dates', message: 'סיום הכיסוי לפני תחילת הכיסוי' })
+  }
+  return issues
+}
+
+/** Home/life premiums run tens of shekels a month — a "monthly" premium in the
+ *  hundreds usually means the YEARLY figure was typed into monthly mode. */
+export function premiumLooksYearly(monthlyPremium: number): boolean {
+  return monthlyPremium > 400
+}
+
+// ── Rental ────────────────────────────────────────────────────────────────────
+
+export type RentalIssue = { field: 'endDate' | 'rent'; message: string }
+type RentalDraft = { companyName: string; startDate: string; endDate: string; monthlyRent: string }
+
+export function rentalIssues(v: RentalDraft): RentalIssue[] {
+  const issues: RentalIssue[] = []
+  if (v.startDate && v.endDate && v.endDate < v.startDate) {
+    issues.push({ field: 'endDate', message: 'תאריך הסיום לפני תאריך ההתחלה' })
+  }
+  if (v.monthlyRent !== '' && (parseFloat(v.monthlyRent) || 0) <= 0) {
+    issues.push({ field: 'rent', message: 'שכר הדירה חייב להיות גדול מאפס' })
+  }
+  return issues
+}
+
+/** Which of the four contract essentials are still empty — shown as a quiet
+ *  heads-up once the user typed ANYTHING, so a half-filled rental never comes
+ *  as a surprise at finish. Empty when untouched or complete. */
+export function rentalGaps(v: RentalDraft): string[] {
+  const hasAny = !!(v.companyName.trim() || v.startDate || v.endDate || v.monthlyRent)
+  if (!hasAny) return []
+  const gaps: string[] = []
+  if (!v.companyName.trim()) gaps.push('שם השוכר')
+  if (!v.startDate) gaps.push('תאריך התחלה')
+  if (!v.endDate) gaps.push('תאריך סיום')
+  if ((parseFloat(v.monthlyRent) || 0) <= 0) gaps.push('שכר דירה')
+  return gaps.length === 4 ? [] : gaps   // one field typed then cleared → nothing to nag about
+}
+
+export function rentalWarnings(v: RentalDraft): string[] {
+  const rent = parseFloat(v.monthlyRent) || 0
+  return rent > 50_000 ? ['שכר דירה גבוה מאוד — כדאי לוודא שאין ספרה מיותרת'] : []
+}
+
+// ── Purchase ──────────────────────────────────────────────────────────────────
+
+type PurchaseDraft = { purchasePrice: string; signingDate: string; keyDeliveryDate: string }
+
+export function purchaseWarnings(v: PurchaseDraft): string[] {
+  const w: string[] = []
+  const price = parseFloat(v.purchasePrice) || 0
+  if (price > 0 && price < 100_000) w.push('מחיר הרכישה נמוך מאוד — ודאו שהוזן בשקלים מלאים (למשל 1,090,000 ולא 1,090)')
+  if (price > 20_000_000) w.push('מחיר הרכישה גבוה במיוחד — כדאי לוודא שאין ספרה מיותרת')
+  if (v.signingDate && v.keyDeliveryDate && v.keyDeliveryDate < v.signingDate) {
+    w.push('מסירת המפתח לפני תאריך חתימת החוזה — כדאי לוודא את התאריכים')
+  }
   return w
 }
 

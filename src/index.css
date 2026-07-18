@@ -2696,10 +2696,17 @@ input[type="date"] {
 /* Quiet plausibility hint (e.g. "looks like years, not months") — informative
    amber text, visually lighter than the blocking alert box. */
 .onboarding-soft-warning {
+  display: block;
   margin-top: 8px;
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--warning-text, #8a5200);
+}
+
+/* The DateField trigger is a button, not an input — mirror the invalid outline. */
+.datefield.input-invalid {
+  border-color: var(--danger, #d64545);
+  box-shadow: 0 0 0 3px var(--danger-bg, rgba(214, 69, 69, 0.14));
 }
 .onboarding-soft-warning > div + div { margin-top: 3px; }
 

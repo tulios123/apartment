@@ -3,8 +3,9 @@ import {
   trackIssues, loanIssues, termMonthsValid, issueText,
   trackDraftHasData, loanDraftHasData, clampGraceMonths,
   trackWarnings, loanWarnings,
+  policyIssues, premiumLooksYearly, rentalIssues, rentalGaps, purchaseWarnings,
 } from '../validation'
-import { emptyTrack, emptyLoan } from '../types'
+import { emptyTrack, emptyLoan, emptyPolicy } from '../types'
 import type { TrackDraft, LoanDraft } from '../types'
 
 const track = (over: Partial<TrackDraft>): TrackDraft => ({ ...emptyTrack('2026-03-11'), ...over })
@@ -118,6 +119,50 @@ describe('plausibility warnings (soft, never block)', () => {
 
   it('a balloon loan never warns about rate/term', () => {
     expect(loanWarnings(loan({ repayment_type: 'balloon', principal: '80000' }))).toEqual([])
+  })
+})
+
+describe('policy rules', () => {
+  it('an all-empty policy (or premium "0" alone) is blocked with a clear message', () => {
+    expect(policyIssues(emptyPolicy())[0].message).toContain('שם חברה או פרמיה')
+    expect(policyIssues({ ...emptyPolicy(), monthly_premium: '0' }).length).toBe(1)
+    expect(policyIssues({ ...emptyPolicy(), company: 'הראל' })).toEqual([])
+  })
+
+  it('an inverted coverage window is flagged on the dates', () => {
+    const p = { ...emptyPolicy(), company: 'הראל', start_date: '2026-05-01', end_date: '2026-04-01' }
+    expect(policyIssues(p).map(i => i.field)).toEqual(['dates'])
+  })
+
+  it('a monthly premium in the hundreds looks like a yearly figure', () => {
+    expect(premiumLooksYearly(74)).toBe(false)
+    expect(premiumLooksYearly(900)).toBe(true)
+  })
+})
+
+describe('rental rules', () => {
+  const base = { companyName: '', startDate: '', endDate: '', monthlyRent: '' }
+
+  it('an inverted range flags the end date; rent "0" flags the rent', () => {
+    expect(rentalIssues({ ...base, startDate: '2026-08-01', endDate: '2026-07-01' }).map(i => i.field)).toEqual(['endDate'])
+    expect(rentalIssues({ ...base, monthlyRent: '0' }).map(i => i.field)).toEqual(['rent'])
+    expect(rentalIssues({ ...base, startDate: '2026-08-01', endDate: '2027-07-31', monthlyRent: '4300' })).toEqual([])
+  })
+
+  it('gaps list what a half-filled contract still needs — silent when untouched or complete', () => {
+    expect(rentalGaps(base)).toEqual([])
+    expect(rentalGaps({ ...base, companyName: 'שוכר', startDate: '2026-08-01', endDate: '2027-07-31', monthlyRent: '4300' })).toEqual([])
+    const gaps = rentalGaps({ ...base, companyName: 'שוכר', startDate: '2026-08-01' })
+    expect(gaps).toContain('תאריך סיום')
+    expect(gaps).toContain('שכר דירה')
+  })
+})
+
+describe('purchase warnings', () => {
+  it('a thousands-slip price and an inverted signing/key pair warn; sane values stay quiet', () => {
+    expect(purchaseWarnings({ purchasePrice: '1090', signingDate: '', keyDeliveryDate: '' })[0]).toContain('נמוך מאוד')
+    expect(purchaseWarnings({ purchasePrice: '', signingDate: '2026-01-15', keyDeliveryDate: '2025-07-01' })[0]).toContain('מסירת המפתח')
+    expect(purchaseWarnings({ purchasePrice: '1090000', signingDate: '2025-11-25', keyDeliveryDate: '2026-03-11' })).toEqual([])
   })
 })
 

@@ -4,6 +4,7 @@ import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { DocFileList } from './DocFileList'
 import { emptyTrack, formatPrice } from './types'
+import { purchaseWarnings } from './validation'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
@@ -20,6 +21,10 @@ export function PurchaseStep() {
   } = useOnboarding()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
   const [showDocs, setShowDocs] = useState(false)
+
+  // Live plausibility hints — everything here is optional, so nothing blocks;
+  // a thousands-slip price or an inverted signing/key-delivery pair just asks.
+  const warnings = purchaseWarnings({ purchasePrice, signingDate, keyDeliveryDate })
 
   return (
     <form onSubmit={e => {
@@ -101,6 +106,11 @@ export function PurchaseStep() {
           </div>
         </div>
       </div>
+      {warnings.length > 0 && (
+        <div className="onboarding-soft-warning" style={{ marginBottom: 10 }}>
+          {warnings.map((w, i) => <div key={i}>{w}</div>)}
+        </div>
+      )}
       <button type="submit" className="btn-onboard-primary onboarding-cta-full">המשך</button>
     </form>
   )

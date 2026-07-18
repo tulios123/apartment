@@ -1,13 +1,24 @@
 import { useState } from 'react'
 import { Check } from '@phosphor-icons/react'
 import { INS_TYPES, formatNum, formatCurrency } from './types'
+import { policyIssues, premiumLooksYearly } from './validation'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 import { toMonthly, displayAmount } from '../../lib/premium'
 
-// Inline editor for a single insurance policy.
+// Inline editor for a single insurance policy. Saving is gated on the shared
+// policy rules — an empty policy or an inverted coverage window shows a precise
+// note instead of the button silently doing nothing.
 export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
   const { policyForm, setPF, keyDeliveryDate } = useOnboarding()
+  const [attempted, setAttempted] = useState(false)
+  const issues = policyIssues(policyForm)
+  const trySave = () => {
+    if (issues.length > 0) setAttempted(true)
+    else onSave()
+  }
+  const noteFor = (f: 'content' | 'dates') =>
+    attempted ? issues.find(i => i.field === f)?.message : undefined
 
   // The premium is stored monthly (the app is monthly-centric), but the user can
   // enter it as a yearly figure — common for insurance — and it's converted. `amount`
@@ -63,6 +74,9 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
         {freq === 'yearly' && monthlyPremium > 0 && (
           <span className="onboarding-field-hint">≈ {formatCurrency(monthlyPremium)} לחודש</span>
         )}
+        {freq === 'monthly' && premiumLooksYearly(monthlyPremium) && (
+          <span className="onboarding-soft-warning">פרמיה חודשית גבוהה מהרגיל — אם זה הסכום השנתי, עברו למצב "שנתי"</span>
+        )}
       </div>
       <div className="onboarding-row">
         <div className="onboarding-field">
@@ -73,15 +87,20 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
         <div className="onboarding-field">
           <label>סיום כיסוי</label>
           <DateField value={policyForm.end_date}
-            onChange={v => setPF('end_date', v)} ariaLabel="סיום כיסוי" />
+            onChange={v => setPF('end_date', v)} ariaLabel="סיום כיסוי"
+            className={noteFor('dates') ? 'input-invalid' : ''} />
+          {noteFor('dates') && <span className="onboarding-field-error" role="alert">{noteFor('dates')}</span>}
         </div>
       </div>
       <p className="onboarding-running-total" style={{ opacity: 0.65 }}>
         הבנק דורש בדרך כלל ביטוח מבנה + ביטוח חיים
       </p>
+      {noteFor('content') && (
+        <div className="onboarding-loan-form-alert" role="alert">{noteFor('content')}</div>
+      )}
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
-        <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור פוליסה <Check size={14} weight="bold" /></button>
+        <button type="button" className="btn-onboard-primary" onClick={trySave}>שמור פוליסה <Check size={14} weight="bold" /></button>
       </div>
     </div>
   )

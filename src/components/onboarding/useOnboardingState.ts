@@ -24,7 +24,7 @@ import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } 
 import { finishOutcome, emptySavedSections, type SavedSections } from './finish'
 import {
   trackEffectiveRate, loanDraftRate, trackIssues, loanIssues,
-  trackDraftHasData, loanDraftHasData, clampGraceMonths, type DraftIssue,
+  trackDraftHasData, loanDraftHasData, policyHasData, clampGraceMonths, type DraftIssue,
 } from './validation'
 
 // Manager/dev demo extractions: in local dev or the dev@test.local manager account
@@ -681,7 +681,7 @@ export function useOnboardingState(onComplete: () => void) {
       }
 
       // A premium of "0" is not data — without a company it would save a junk policy.
-      const pendingPolicyValid = policyForm.company.trim() !== '' || (parseFloat(policyForm.monthly_premium) || 0) > 0
+      const pendingPolicyValid = policyHasData(policyForm)
       const allPolicies = [...policies]
       if (pendingPolicyValid) {
         if (editingPolicyIdx !== null) allPolicies[editingPolicyIdx] = policyForm
@@ -860,7 +860,7 @@ export function useOnboardingState(onComplete: () => void) {
           if (savedRef.current.policies) return
           try {
             await Promise.all(allPolicies
-              .filter(p => p.company.trim() || (parseFloat(p.monthly_premium) || 0) > 0)
+              .filter(policyHasData)
               .map(p => createInsurancePolicy({
                 owner_id: user.id,
                 property_id: property.id,
@@ -1179,10 +1179,6 @@ export function useOnboardingState(onComplete: () => void) {
   function normalizePolicyDraft(): PolicyDraft {
     return { ...policyForm, start_date: policyForm.start_date || keyDeliveryDate }
   }
-
-  // A policy is worth saving only with a company name or a real (positive) premium —
-  // a typed "0" alone is not data (mirrors the finish-path filter).
-  const policyHasData = (p: PolicyDraft) => p.company.trim() !== '' || (parseFloat(p.monthly_premium) || 0) > 0
 
   function addPolicy() {
     if (!policyHasData(policyForm)) return
