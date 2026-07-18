@@ -63,7 +63,9 @@ function AppRoutes() {
         // failures surface a manual retry rather than routing to Onboarding.
         attempt++
         if (attempt >= 4) { setPropertyError(true); return }
-        timer = setTimeout(check, Math.min(1000 * 2 ** (attempt - 1), 8000))
+        // Short backoff (0.5s/1s/2s): with the probe capped at ~2s the whole
+        // ladder reaches the manual-retry screen in ~10s (owner decision 18.07).
+        timer = setTimeout(check, Math.min(500 * 2 ** (attempt - 1), 4000))
         return
       }
       setPropertyError(false)

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { monthEndISO, todayISO, daysBetween } from '../lib/format'
-import { RENEWAL_WINDOW_DAYS, RENT_CATEGORIES } from '../lib/constants'
+import { RENEWAL_WINDOW_DAYS, RENT_CATEGORIES, MAINTENANCE_CATEGORY } from '../lib/constants'
 
 const GENERATION_KEY = 'monthly_generation'
 const RENT_SET = new Set(RENT_CATEGORIES as readonly string[])
@@ -152,7 +152,10 @@ async function runGeneration(ownerId: string) {
           recurring_item_id: item.id,
           title,
           due_date: txDate,
-          category: 'כללי',
+          // A repair item's approval task must keep the repair TASK category —
+          // the completion money-follow-up keys on 'תיקונים ותחזוקה' (taskFollowup),
+          // and a hardcoded 'כללי' silently degraded it to 'אחר' (owner approved 18.07).
+          category: item.category === MAINTENANCE_CATEGORY ? 'תיקונים ותחזוקה' : 'כללי',
           status: 'open',
           source: 'recurring_item',
           is_recurring: true,

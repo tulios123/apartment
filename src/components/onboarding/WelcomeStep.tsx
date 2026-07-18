@@ -28,7 +28,7 @@ export function WelcomeStep() {
         <div className="onboarding-welcome-brand">ניהול דירה</div>
         <div className="onboarding-welcome-brandsub">ניהול ההשקעה בדירה שלך</div>
         <div className="onboarding-welcome-time">
-          <Clock size={14} weight="bold" /> כ‑3 דקות · אפשר לדלג בכל שלב
+          <Clock size={14} weight="bold" /> כ‑3 דקות · את רוב השלבים אפשר להשלים גם אחר‑כך
         </div>
       </div>
 

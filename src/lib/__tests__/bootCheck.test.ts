@@ -22,3 +22,14 @@ describe('probeHasProperty', () => {
     expect(await probeHasProperty(() => Promise.reject(new TypeError('Failed to fetch')))).toBe('error')
   })
 })
+
+describe('probeHasProperty timeout (owner decision 18.07 — ~10s to the retry screen)', () => {
+  it("a probe that hangs past the cap resolves 'error' instead of stalling the ladder", async () => {
+    const hang = () => new Promise<{ data: null; error: null }>(() => { /* never settles */ })
+    expect(await probeHasProperty(hang, 30)).toBe('error')
+  })
+
+  it('a fast success is unaffected by the cap', async () => {
+    expect(await probeHasProperty(async () => ({ data: [{ id: 'p1' }], error: null }), 30)).toBe(true)
+  })
+})
