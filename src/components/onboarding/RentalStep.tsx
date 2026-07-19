@@ -6,7 +6,7 @@ import { FinishEarly } from './FinishEarly'
 import { DocFileList } from './DocFileList'
 import { formatNum } from './types'
 import { rentalIssues, rentalGaps, rentalWarnings } from './validation'
-import { monthDayISO, parseLocalISO } from '../../lib/format'
+import { monthDayISO, parseLocalISO, sanitizeAmountInt } from '../../lib/format'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
@@ -88,7 +88,7 @@ export function RentalStep() {
             className={issueFor('rent') ? 'input-invalid' : ''}
             aria-invalid={!!issueFor('rent')}
             value={formatNum(monthlyRent)}
-            onChange={e => setMonthlyRent(e.target.value.replace(/[^\d]/g, ''))} />
+            onChange={e => setMonthlyRent(sanitizeAmountInt(e.target.value))} />
           {issueFor('rent') && <span className="onboarding-field-error" role="alert">{issueFor('rent')}</span>}
           {warnings.map((w, i) => <span key={i} className="onboarding-soft-warning">{w}</span>)}
         </div>

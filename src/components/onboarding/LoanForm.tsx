@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { sanitizeAmountInt } from '../../lib/format'
 import { Check } from '@phosphor-icons/react'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType } from '../../types'
@@ -52,7 +53,7 @@ export function LoanForm({ onSave, onCancel, alert, pulse }: { onSave: () => voi
         <label>סכום ההלוואה (₪)</label>
         <input type="text" inputMode="numeric" placeholder="0" {...err('principal')}
           value={formatNum(loanForm.principal)}
-          onChange={e => change('principal', e.target.value.replace(/[^\d]/g, ''))} />
+          onChange={e => change('principal', sanitizeAmountInt(e.target.value))} />
         {fieldNote('principal')}
       </div>
       {isMonthly ? (

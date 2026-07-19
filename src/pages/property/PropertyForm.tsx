@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { Property } from '../../types'
 import { DateField } from '../../components/ui/DateField'
-import { caretIndexAfterDigits } from '../../lib/format'
+import { caretIndexAfterDigits, sanitizeAmountInt } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { uploadDocument } from '../../lib/storage'
@@ -50,7 +50,7 @@ function handleMoneyChange(e: React.ChangeEvent<HTMLInputElement>, setter: (v: s
   const input = e.target
   const caret = input.selectionStart ?? input.value.length
   const digitsBeforeCaret = (input.value.slice(0, caret).match(/\d/g) || []).length
-  const digits = input.value.replace(/[^\d]/g, '')
+  const digits = sanitizeAmountInt(input.value)
   const formatted = digits ? formatPrice(digits) : ''
   input.value = formatted
   const pos = caretIndexAfterDigits(formatted, digitsBeforeCaret)

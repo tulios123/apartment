@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { sanitizeAmountInt } from '../../lib/format'
 import { Tag, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -92,7 +93,7 @@ export function PurchaseStep() {
             <label>מחיר רכישה (₪)</label>
             <input type="text" inputMode="numeric" placeholder="0"
               value={formatPrice(purchasePrice)}
-              onChange={e => setPurchasePrice(e.target.value.replace(/\D/g, ''))} />
+              onChange={e => setPurchasePrice(sanitizeAmountInt(e.target.value))} />
           </div>
         </div>
         <div className="onboarding-row">

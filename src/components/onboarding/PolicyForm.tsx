@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { sanitizeAmountInt } from '../../lib/format'
 import { Check } from '@phosphor-icons/react'
 import { INS_TYPES, formatNum, formatCurrency } from './types'
 import { policyIssues, premiumLooksYearly } from './validation'
@@ -36,7 +37,7 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
     setFreq(next)
   }
   function onAmount(raw: string) {
-    const v = raw.replace(/[^\d]/g, '')
+    const v = sanitizeAmountInt(raw)
     setAmount(v)
     // An empty field must store '' (not '0'), or the policy reads as "has a premium"
     // and a blank policy gets saved.

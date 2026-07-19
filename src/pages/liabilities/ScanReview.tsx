@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, WarningCircle, CaretDown, CaretUp, LockSimple, CircleNotch, X, CheckCircle } from '@phosphor-icons/react'
 import { MORTGAGE_TRACK_TYPES, TRACK_LABELS } from '../../lib/constants'
-import { formatCurrency, formatNum } from '../../lib/format'
+import { formatCurrency, formatNum, sanitizeAmountInt } from '../../lib/format'
 import type { TrackType, LoanRepaymentType } from '../../types'
 import { DateField } from '../../components/ui/DateField'
 
@@ -130,7 +130,7 @@ export function ScanReview({ kind, initial, saving, demo, onConfirm, onCancel }:
 
                   <div className="liav-row2">
                     <label className={`liav-field${warn('principal') ? ' liav-field-warn' : ''}`}><span>קרן ₪</span>
-                      <input type="text" inputMode="numeric" value={formatNum(d.principal)} onChange={e => set(i, 'principal', e.target.value.replace(/[^\d]/g, ''))} />
+                      <input type="text" inputMode="numeric" value={formatNum(d.principal)} onChange={e => set(i, 'principal', sanitizeAmountInt(e.target.value))} />
                     </label>
                     {kind === 'loan'
                       ? <label className="liav-field"><span>מלווה</span><input type="text" value={(d as LoanDraft).lender} onChange={e => set(i, 'lender', e.target.value)} /></label>

@@ -10,7 +10,7 @@ import { extractMortgageTracks, extractLoans } from '../../lib/extractFinancing'
 import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanInterestToDate, loanEndDate } from '../../lib/loans'
 import { MORTGAGE_TRACK_TYPES, TRACK_LABELS, TRACK_BADGES, MOCK_SCAN_DELAY_MS } from '../../lib/constants'
-import { formatCurrency, formatNum, monthDayISO } from '../../lib/format'
+import { formatCurrency, formatNum, monthDayISO, sanitizeAmountInt } from '../../lib/format'
 import { monthlyVirtualEntries } from '../../lib/projections'
 import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
@@ -568,7 +568,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           <>
             <label className="liav-field"><span>סוג מסלול</span><select value={tForm.track_type} onChange={e => setTForm(f => ({ ...f, track_type: e.target.value as TrackType }))}>{MORTGAGE_TRACK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
             <div className="liav-row2">
-              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(tForm.principal)} onChange={e => setTForm(f => ({ ...f, principal: e.target.value.replace(/[^\d]/g, '') }))} autoFocus={drawerOpen} /></label>
+              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(tForm.principal)} onChange={e => setTForm(f => ({ ...f, principal: sanitizeAmountInt(e.target.value) }))} autoFocus={drawerOpen} /></label>
               {isAnchoredType(tForm.track_type)
                 ? <div className="liav-field" />
                 : <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={tForm.annual_rate} onChange={e => setTForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>}
@@ -600,7 +600,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
               <label className="liav-field"><span>סוג מסלול</span><select value={lForm.track_type} onChange={e => setLForm(f => ({ ...f, track_type: e.target.value as TrackType }))}>{MORTGAGE_TRACK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
             )}
             <div className="liav-row2">
-              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(lForm.principal)} onChange={e => setLForm(f => ({ ...f, principal: e.target.value.replace(/[^\d]/g, '') }))} autoFocus={drawerOpen} /></label>
+              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(lForm.principal)} onChange={e => setLForm(f => ({ ...f, principal: sanitizeAmountInt(e.target.value) }))} autoFocus={drawerOpen} /></label>
               <label className="liav-field"><span>מלווה</span><input type="text" value={lForm.lender} onChange={e => setLForm(f => ({ ...f, lender: e.target.value }))} /></label>
             </div>
             {lForm.repayment_type === 'monthly_fixed' && (

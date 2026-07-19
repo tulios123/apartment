@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { isManager } from '../../lib/admin'
 import { useInsurance, createInsurancePolicy, updateInsurancePolicy, deleteInsurancePolicy } from '../../hooks/useInsurance'
 import { usePropertyData } from '../../hooks/usePropertyData'
-import { formatCurrency, formatDate, monthDayISO, daysBetween, todayISO } from '../../lib/format'
+import { formatCurrency, formatDate, monthDayISO, daysBetween, todayISO, sanitizeAmountInt } from '../../lib/format'
 import { toMonthly, displayAmount } from '../../lib/premium'
 import type { InsurancePolicy } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
@@ -78,7 +78,7 @@ function InsuranceForm({
   }
 
   function onAmount(raw: string) {
-    const v = raw.replace(/[^\d]/g, '')
+    const v = sanitizeAmountInt(raw)
     setAmount(v)
     // An empty field must store '' (not '0'), or the policy reads as "has a premium".
     if (v === '') { setExactMonthly(0); set('monthly_premium', ''); return }

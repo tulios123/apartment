@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useInvestmentData, upsertInvestmentCost, deleteInvestmentCost } from '../../hooks/useInvestmentData'
 import { useLoansData } from '../../hooks/useLoansData'
 import { INVESTMENT_COST_CATEGORIES } from '../../lib/constants'
-import { formatCurrency } from '../../lib/format'
+import { formatCurrency, sanitizeAmountInt } from '../../lib/format'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
 
@@ -57,7 +57,7 @@ export default function InvestmentCosts() {
   }, [costs])
 
   function setAmount(idx: number, val: string) {
-    setRows(r => r.map((row, i) => i === idx ? { ...row, amount: val.replace(/[^\d]/g, '') } : row))
+    setRows(r => r.map((row, i) => i === idx ? { ...row, amount: sanitizeAmountInt(val) } : row))
   }
 
   function removeRow(idx: number) {

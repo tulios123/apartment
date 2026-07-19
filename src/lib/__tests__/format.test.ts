@@ -8,6 +8,7 @@ import {
   monthEndISO,
   formatNum,
   caretIndexAfterDigits,
+  sanitizeAmountInt,
 } from '../format'
 
 // Strip the bidi control marks (RLM/LRM) + nbsp that Intl injects, so we can assert
@@ -118,5 +119,23 @@ describe('formatNum', () => {
   it('passes through empty and non-numeric', () => {
     expect(formatNum('')).toBe('')
     expect(formatNum('abc')).toBe('abc')
+  })
+})
+
+describe('sanitizeAmountInt', () => {
+  // C18: pasting a decimal bank figure must NOT inflate ×100 by deleting the dot.
+  it('truncates a pasted decimal at the point instead of concatenating it', () => {
+    expect(sanitizeAmountInt('217,500.25')).toBe('217500')
+    expect(sanitizeAmountInt('2,320.50')).toBe('2320')
+  })
+  it('keeps a plain integer and strips grouping/letters', () => {
+    expect(sanitizeAmountInt('1234')).toBe('1234')
+    expect(sanitizeAmountInt('1,234,567')).toBe('1234567')
+    expect(sanitizeAmountInt('abc123')).toBe('123')
+  })
+  it('returns empty for empty / lone separators', () => {
+    expect(sanitizeAmountInt('')).toBe('')
+    expect(sanitizeAmountInt('.')).toBe('')
+    expect(sanitizeAmountInt('₪')).toBe('')
   })
 })

@@ -14,7 +14,7 @@ import { syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/use
 import { useAuth } from '../../contexts/AuthContext'
 import { isManager } from '../../lib/admin'
 import { UTILITIES, MOCK_SCAN_DELAY_MS } from '../../lib/constants'
-import { formatDate, formatCurrency, monthDayISO, daysBetween, todayISO } from '../../lib/format'
+import { formatDate, formatCurrency, monthDayISO, daysBetween, todayISO, sanitizeAmountInt } from '../../lib/format'
 import type { Contract, UtilityPayer } from '../../types'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -99,7 +99,7 @@ function ContractForm({
     setUtils(us => us.map(u => u.utility === utility ? { ...u, payer, amount: payer === 'owner' ? u.amount : null } : u))
   }
   function setUtilAmt(utility: string, raw: string) {
-    const val = raw.replace(/[^\d]/g, '')
+    const val = sanitizeAmountInt(raw)
     setUtils(us => us.map(u => u.utility === utility ? { ...u, amount: val ? Number(val) : null } : u))
   }
 
@@ -260,11 +260,11 @@ function ContractForm({
       </div>
       <div className="form-row">
         <label>שכר דירה חודשי</label>
-        <input type="text" inputMode="numeric" value={form.monthly_rent ? Number(form.monthly_rent).toLocaleString('he-IL') : ''} onChange={e => set('monthly_rent', e.target.value.replace(/[^\d]/g, ''))} required />
+        <input type="text" inputMode="numeric" value={form.monthly_rent ? Number(form.monthly_rent).toLocaleString('he-IL') : ''} onChange={e => set('monthly_rent', sanitizeAmountInt(e.target.value))} required />
       </div>
       <div className="form-row">
         <label>פיקדון</label>
-        <input type="text" inputMode="numeric" value={form.deposit ? Number(form.deposit).toLocaleString('he-IL') : ''} onChange={e => set('deposit', e.target.value.replace(/[^\d]/g, ''))} />
+        <input type="text" inputMode="numeric" value={form.deposit ? Number(form.deposit).toLocaleString('he-IL') : ''} onChange={e => set('deposit', sanitizeAmountInt(e.target.value))} />
       </div>
       <div className="form-row">
         <label>אמצעי תשלום</label>

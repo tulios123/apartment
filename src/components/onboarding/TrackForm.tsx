@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { sanitizeAmountInt } from '../../lib/format'
 import { Check } from '@phosphor-icons/react'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
 import type { TrackType } from '../../types'
@@ -62,7 +63,7 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
           value={focusedInput === 'tf.principal'
             ? formatNum(trackForm.principal)
             : formatNum(trackForm.principal || principalDefault)}
-          onChange={e => change('principal', e.target.value.replace(/\D/g, ''))} />
+          onChange={e => change('principal', sanitizeAmountInt(e.target.value))} />
         {fieldNote('principal')}
       </div>
       {(trackForm.track_type === 'prime' || trackForm.track_type === 'variable') ? (
