@@ -312,8 +312,6 @@ export function PropertyForm({
           <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} ariaLabel="מסירת מפתח" />
         </div>
       </div>
-
-      <div className="form-section-label">הערות</div>
       <div className="form-row">
         <label>הערות</label>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)} />

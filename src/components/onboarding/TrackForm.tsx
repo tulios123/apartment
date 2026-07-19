@@ -75,7 +75,7 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
           </div>
           <div className="onboarding-field">
             <label>מרווח (%)</label>
-            <input type="number" step="0.01"
+            <input type="number" step="0.01" dir="ltr"
               {...ph('tf.margin', trackForm.margin, marginDefault, 'rate')}
               onChange={e => change('margin', e.target.value)} />
             {fieldNote('rate')}
@@ -148,7 +148,7 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
       )}
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
-        <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור מסלול <Check size={14} weight="bold" /></button>
+        <button type="button" className="btn-onboard-secondary" onClick={onSave}>שמור מסלול <Check size={14} weight="bold" /></button>
       </div>
     </div>
   )

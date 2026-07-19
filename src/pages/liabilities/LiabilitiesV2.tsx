@@ -404,7 +404,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 <h2 className="liav-group-h">
                   <button type="button" className="liav-group-toggle" onClick={() => setTracksOpen(o => !o)} aria-expanded={tracksOpen}>
                     <Bank size={18} weight="duotone" color="var(--brand-navy)" />
-                    <span className="liav-group-title">תמהיל המשכנתא · {tracks.length} מסלולים</span>
+                    <span className="liav-group-title">תמהיל המשכנתא · {tracks.length === 1 ? 'מסלול אחד' : `${tracks.length} מסלולים`}</span>
                     <CaretDown className={`liav-group-caret${tracksOpen ? ' open' : ''}`} size={16} weight="bold" />
                   </button>
                 </h2>
@@ -577,13 +577,13 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
             {isAnchoredType(tForm.track_type) && (
               <div className="liav-row2">
                 <label className="liav-field"><span>עוגן (פריים/בסיס) %</span><input type="number" step="0.01" value={tForm.prime_rate} onChange={e => setTForm(f => ({ ...f, prime_rate: e.target.value }))} placeholder="6.00" /></label>
-                <label className="liav-field"><span>מרווח % (פריים מינוס = שלילי)</span><input type="number" step="0.01" value={tForm.margin} onChange={e => setTForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
+                <label className="liav-field"><span>מרווח מעל הפריים % (שלילי = מתחת)</span><input type="number" step="0.01" dir="ltr" value={tForm.margin} onChange={e => setTForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
               </div>
             )}
             <div className="liav-row2">
-              <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={tForm.term_months} onChange={e => setTForm(f => ({ ...f, term_months: e.target.value }))} /></label>
+              <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" min="1" value={tForm.term_months} onChange={e => setTForm(f => ({ ...f, term_months: e.target.value }))} /></label>
               {graceOn
-                ? <label className="liav-field"><span>גרייס (חודשים)</span><input type="number" min="0" value={tForm.grace_months} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
+                ? <label className="liav-field"><span>גרייס — חודשי ריבית בלבד (חודשים)</span><input type="number" min="0" value={tForm.grace_months} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
                 : <div className="liav-field" />}
             </div>
             <label className="liav-grace-toggle">
@@ -608,18 +608,18 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 {isAnchoredType(lForm.track_type) ? (
                   <div className="liav-row2">
                     <label className="liav-field"><span>עוגן (פריים/בסיס) %</span><input type="number" step="0.01" value={lForm.prime_rate} onChange={e => setLForm(f => ({ ...f, prime_rate: e.target.value }))} placeholder="6.00" /></label>
-                    <label className="liav-field"><span>מרווח % (פריים מינוס = שלילי)</span><input type="number" step="0.01" value={lForm.margin} onChange={e => setLForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
+                    <label className="liav-field"><span>מרווח מעל הפריים % (שלילי = מתחת)</span><input type="number" step="0.01" dir="ltr" value={lForm.margin} onChange={e => setLForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
                   </div>
                 ) : (
                   <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={lForm.annual_rate} onChange={e => setLForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>
                 )}
                 <div className="liav-row2">
-                  <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={lForm.term_months} onChange={e => setLForm(f => ({ ...f, term_months: e.target.value }))} /></label>
+                  <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" min="1" value={lForm.term_months} onChange={e => setLForm(f => ({ ...f, term_months: e.target.value }))} /></label>
                   <div className="liav-field" />
                 </div>
                 <div className="liav-row2">
                   {graceOn
-                    ? <label className="liav-field"><span>גרייס (חודשים)</span><input type="number" min="0" value={lForm.grace_months} onChange={e => setLForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
+                    ? <label className="liav-field"><span>גרייס — חודשי ריבית בלבד (חודשים)</span><input type="number" min="0" value={lForm.grace_months} onChange={e => setLForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
                     : <div className="liav-field" />}
                   <div className="liav-field" />
                 </div>

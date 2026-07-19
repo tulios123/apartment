@@ -237,14 +237,17 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
             <button className="cap-back" onClick={() => setStep(1)}>
               <ArrowRight size={16} weight="bold" /> {`₪${numeric.toLocaleString()}`}
             </button>
+            <span className="cap-fieldlabel">תיאור</span>
             <input
               ref={descRef}
+              aria-label="תיאור ההוצאה"
               className="cap-desc"
               value={desc}
               onChange={e => { if (err) setErr(null); setDesc(e.target.value) }}
               onKeyDown={e => { if (e.key === 'Enter') save() }}
               placeholder="על מה? (למשל: תיקון ברז)"
             />
+            <span className="cap-fieldlabel">קטגוריה</span>
             <div className="cap-chips">
               {EXPENSE_CATEGORIES.map(c => (
                 <button
@@ -255,7 +258,8 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
               ))}
             </div>
 
-            <span className="cap-fieldlabel">אופן תשלום</span>
+            <span className="cap-fieldlabel">אמצעי תשלום</span>
+            <span className="cap-fieldlabel">קטגוריה</span>
             <div className="cap-chips">
               {PAYMENT_METHODS.filter(p => p.value).map(p => (
                 <button
@@ -267,6 +271,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
             </div>
 
             <span className="cap-fieldlabel">תאריך</span>
+            <span className="cap-fieldlabel">קטגוריה</span>
             <div className="cap-chips">
               <button type="button" className={`cap-chip${date === today ? ' on' : ''}`} onClick={() => { tap(); setDate(today) }}>היום</button>
               <button type="button" className={`cap-chip${date === yesterday ? ' on' : ''}`} onClick={() => { tap(); setDate(yesterday) }}>אתמול</button>

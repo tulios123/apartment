@@ -87,8 +87,8 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
           <button className="wlth-vehicle-head" onClick={() => setOpen(o => !o)}>
             <span className="wlth-vehicle-icon"><Bank size={20} weight="duotone" /></span>
             <div className="wlth-vehicle-main">
-              <div className="wlth-vehicle-title">משכנתא ראשית <span className="wlth-vehicle-meta">· {tracks.length} מסלולים</span></div>
-              <div className="wlth-vehicle-sub">בלנדד {blendedRate.toFixed(1)}% · {fmt(currentMonthlyPayment)}/חודש · נפרעו {Math.round(mortgagePaidPct)}%{mortgageEndYear > 0 ? ` · עד ${mortgageEndYear}` : ''}</div>
+              <div className="wlth-vehicle-title">משכנתא ראשית <span className="wlth-vehicle-meta">· {tracks.length === 1 ? 'מסלול אחד' : `${tracks.length} מסלולים`}</span></div>
+              <div className="wlth-vehicle-sub">ריבית משוקללת {blendedRate.toFixed(1)}% · {fmt(currentMonthlyPayment)}/חודש · נפרעו {Math.round(mortgagePaidPct)}%{mortgageEndYear > 0 ? ` · עד ${mortgageEndYear}` : ''}</div>
               {inGrace && <div className="wlth-vehicle-grace">גרייס עד {graceUntil} · תשלום מלא {fmt(summary.monthlyPayment)}</div>}
             </div>
             <div className="wlth-vehicle-bal"><b>{fmt(mortgageBalance)}</b><span>יתרה</span></div>

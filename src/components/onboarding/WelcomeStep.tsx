@@ -1,6 +1,7 @@
 import { Fragment } from 'react'
-import { FileText, Bank, Coins, Key, Clock, CaretDown } from '@phosphor-icons/react'
+import { FileText, Bank, Coins, Key, Clock, CaretDown, SignOut } from '@phosphor-icons/react'
 import { useOnboarding } from './context'
+import { useAuth } from '../../contexts/AuthContext'
 
 // First bookend after login — a full-screen intro (no card "bubble"). A navy brand
 // band reaches the top of the screen, then a minimal, airy stepper previews the four
@@ -13,6 +14,7 @@ const ITEMS = [
 ]
 
 export function WelcomeStep() {
+  const { user, signOut } = useAuth()
   const { advance } = useOnboarding()
   return (
     <div className="onboarding-welcome">
@@ -33,7 +35,7 @@ export function WelcomeStep() {
       </div>
 
       <div className="onboarding-welcome-content">
-        <div className="onboarding-welcome-lead">נגדיר את הדירה שלך בארבעה נושאים קצרים</div>
+        <div className="onboarding-welcome-lead">נגדיר את הדירה שלך בכמה שלבים קצרים</div>
 
         <div className="onboarding-welcome-steps">
           {ITEMS.map(({ Icon, label, sub }, i) => (
@@ -59,6 +61,14 @@ export function WelcomeStep() {
         <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => advance('documents')}>
           מתחילים
         </button>
+        {/* B8: the welcome bookend had no way out at all — mirror the documents
+            step's escape so a wrong-account login can leave from the first screen. */}
+        <div className="onboarding-signout-row">
+          {user?.email && <span>מחובר כ-{user.email}</span>}
+          <button type="button" className="onboarding-signout-link" onClick={signOut}>
+            <SignOut size={14} /> התנתקות וחזרה לכניסה
+          </button>
+        </div>
       </div>
     </div>
   )

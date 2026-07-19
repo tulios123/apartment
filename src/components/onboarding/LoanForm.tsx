@@ -150,7 +150,7 @@ export function LoanForm({ onSave, onCancel, alert, pulse }: { onSave: () => voi
       )}
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
-        <button type="button" className="btn-onboard-primary" onClick={onSave}>שמור הלוואה <Check size={14} weight="bold" /></button>
+        <button type="button" className="btn-onboard-secondary" onClick={onSave}>שמור הלוואה <Check size={14} weight="bold" /></button>
       </div>
     </div>
   )

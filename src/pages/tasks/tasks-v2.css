@@ -118,3 +118,8 @@
   .tav-attach:hover { border-color: var(--accent); color: var(--accent); }
   .tav-attach:disabled { opacity: 0.6; cursor: default; }
 }
+
+/* Touch devices have no hover — keep task actions visible/tappable (mirrors finv). */
+@media (hover: none) {
+  .tav .tav-task-actions { opacity: 1; }
+}

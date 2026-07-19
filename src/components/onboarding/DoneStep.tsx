@@ -17,7 +17,7 @@ export function DoneStep() {
   const metrics = [
     price > 0 && { label: 'שווי נכס', value: formatCurrency(price), income: false },
     totalPrincipal > 0 && { label: 'משכנתא', value: formatCurrency(totalPrincipal), income: false },
-    rent > 0 && { label: 'שכ״ד חודשי', value: formatCurrency(rent), income: true },
+    rent > 0 && { label: 'שכר דירה חודשי', value: formatCurrency(rent), income: true },
     equity > 0 && { label: 'הון עצמי', value: formatCurrency(equity), income: false },
   ].filter(Boolean) as { label: string; value: string; income: boolean }[]
 

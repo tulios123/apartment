@@ -18,6 +18,7 @@ import {
   sendTestNotification,
 } from '../lib/push'
 import { clearGenerationCache } from '../hooks/useMonthlyGeneration'
+import { userErrorMessage } from '../lib/errorHe'
 
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
@@ -89,7 +90,7 @@ export default function Settings() {
       await disablePush(user?.id)
       setPushState('default')
     } catch (e) {
-      showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
+      showStatus(userErrorMessage(e, 'הפעולה נכשלה — נסו שוב'))
     } finally {
       setPushBusy(false)
     }
@@ -99,7 +100,7 @@ export default function Settings() {
     try {
       await sendTestNotification()
     } catch (e) {
-      showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
+      showStatus(userErrorMessage(e, 'הפעולה נכשלה — נסו שוב'))
     }
   }
 
@@ -148,7 +149,7 @@ export default function Settings() {
       clearGenerationCache(user.id)
       window.location.reload()
     } catch (e) {
-      showStatus('שגיאה: ' + (e instanceof Error ? e.message : String(e)))
+      showStatus(userErrorMessage(e, 'הפעולה נכשלה — נסו שוב'))
       setResetting(false)
       setConfirmReset(false)
     }

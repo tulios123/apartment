@@ -148,7 +148,7 @@ export default function HomeScreen() {
         title: activeContract?.payment_method === 'check'
           ? 'האם הופקד צ׳ק שכר הדירה?'
           : 'האם התקבל שכר הדירה החודש?',
-        sub: `${activeContract?.company_name ?? 'הדייר'} · ${fmt(monthlyRent)}`,
+        sub: `${activeContract?.company_name ?? 'השוכר'} · ${fmt(monthlyRent)}`,
         amount: monthlyRent - rentReceived,
       })
     }

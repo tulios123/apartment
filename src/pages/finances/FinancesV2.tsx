@@ -27,6 +27,7 @@ import { shouldConfirmDiscard } from '../../lib/discardGuard'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import './finances-v2.css'
 import { DateField } from '../../components/ui/DateField'
+import { userErrorMessage } from '../../lib/errorHe'
 
 const MONTH_NAMES = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
 const MONTH_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ']
@@ -89,6 +90,9 @@ export default function FinancesV2() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  // D26: deleting a money row asked nothing — a swipe slip erased it instantly.
+  // Route every delete (swipe or drawer button) through one confirm dialog.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const openSnapshot = useRef('')
   const [txDocs, setTxDocs] = useState<{ id: string; name: string; storage_path: string }[]>([])
   const [receiptBusy, setReceiptBusy] = useState(false)
@@ -337,7 +341,7 @@ export default function FinancesV2() {
   function setDir(dir: Dir) { setForm(f => ({ ...f, direction: dir, category: dir === 'income' ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0] })) }
 
   async function submitForm() {
-    if (!form.amount || Number(form.amount) <= 0) { setFormError('יש להזין סכום תקין'); return }
+    if (!form.amount || Number(form.amount) <= 0) { setFormError('הזינו סכום גדול מאפס'); return }
     // Only the user-editable fields. contract_id / recurring_item_id are deliberately
     // excluded here: on EDIT they must be preserved — overwriting a generated
     // transaction's recurring_item_id/contract_id to null orphans it from its source,
@@ -371,7 +375,7 @@ export default function FinancesV2() {
       if (error) throw new Error(error.message)
       setDrawerOpen(false); refetch()
       showFlash('התנועה נוספה')
-    } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
+    } catch (e) { setFormError(userErrorMessage(e, 'השמירה נכשלה — נסו שוב')) }
     setSaving(false)
   }
 
@@ -395,7 +399,7 @@ export default function FinancesV2() {
   function txRow(t: Transaction) {
     const meta = [t.description, t.payment_method ? PAYMENT_LABEL[t.payment_method] : null].filter(Boolean).join(' · ')
     return (
-      <SwipeRow key={t.id} onEdit={() => openEdit(t)} onDelete={() => handleDelete(t.id)}>
+      <SwipeRow key={t.id} onEdit={() => openEdit(t)} onDelete={() => setConfirmDeleteId(t.id)}>
         <div className="finv-tx">
           <span className="finv-cat-icon" style={{ background: t.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{t.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
           <div className="finv-tx-body"><div className="finv-tx-top"><span className="finv-tx-cat">{t.category}</span>{FIXED_CATS.has(t.category) && <span className="finv-tx-tag fixed">קבוע</span>}</div><span className="finv-tx-meta">{formatDate(t.date)}{meta ? ` · ${meta}` : ''}</span></div>
@@ -498,7 +502,7 @@ export default function FinancesV2() {
                 const isCurrent = year === today.getFullYear() && r.month === today.getMonth() + 1
                 return (
                   <button key={r.month} className={`finv-yearbar-col${isCurrent ? ' current' : ''}`} onClick={() => drillToMonth(r.month)}
-                    title={`${MONTH_NAMES[r.month - 1]} · הכנסות ${fmt(r.income)} · הוצאות ${fmt(r.expense)} · מאזן ${r.net >= 0 ? '+' : '−'}${fmt(Math.abs(r.net))}`}>
+                    title={`${MONTH_NAMES[r.month - 1]} · הכנסות ${fmt(r.income)} · הוצאות ${fmt(r.expense)} · מאזן ${r.net >= 0 ? '+' : '-'}${fmt(Math.abs(r.net))}`}>
                     <div className="finv-yearbar-stack">
                       <div className="finv-yearbar in" style={{ height: `${(r.income / maxBar) * 100}%` }} />
                       <div className="finv-yearbar out" style={{ height: `${(r.expense / maxBar) * 100}%` }} />
@@ -510,7 +514,7 @@ export default function FinancesV2() {
             </div>
             {bestMonth && (bestMonth.income > 0 || bestMonth.expense > 0) && (
               <div className="finv-yearchart-foot">
-                <span>החודש החזק: <strong>{MONTH_NAMES[bestMonth.month - 1]}</strong> ({bestMonth.net >= 0 ? '+' : '−'}{fmt(Math.abs(bestMonth.net))})</span>
+                <span>{bestMonth.net >= 0 ? 'החודש החזק' : 'החודש הקרוב ביותר לאיזון'}: <strong>{MONTH_NAMES[bestMonth.month - 1]}</strong> ({bestMonth.net >= 0 ? '+' : '-'}{fmt(Math.abs(bestMonth.net))})</span>
                 <span className="finv-yearchart-hint">לחצו על חודש לפירוט</span>
               </div>
             )}
@@ -534,7 +538,7 @@ export default function FinancesV2() {
             <div className="finv-yearbars">
               {rangeBuckets.map(b => (
                 <button key={b.key} className="finv-yearbar-col" onClick={() => drillToBucket(b)}
-                  title={`${b.label} · הכנסות ${fmt(b.income)} · הוצאות ${fmt(b.expense)} · מאזן ${b.net >= 0 ? '+' : '−'}${fmt(Math.abs(b.net))}`}>
+                  title={`${b.label} · הכנסות ${fmt(b.income)} · הוצאות ${fmt(b.expense)} · מאזן ${b.net >= 0 ? '+' : '-'}${fmt(Math.abs(b.net))}`}>
                   <div className="finv-yearbar-stack">
                     <div className="finv-yearbar in" style={{ height: `${(b.income / rangeMaxBar) * 100}%` }} />
                     <div className="finv-yearbar out" style={{ height: `${(b.expense / rangeMaxBar) * 100}%` }} />
@@ -544,7 +548,7 @@ export default function FinancesV2() {
               ))}
             </div>
             <div className="finv-yearchart-foot">
-              <span>סך התקופה: <strong>{rangeTotals.net >= 0 ? '+' : '−'}{fmt(Math.abs(rangeTotals.net))}</strong> על פני {rangeMonthly.length} חודשים</span>
+              <span>סך התקופה: <strong>{rangeTotals.net >= 0 ? '+' : '-'}{fmt(Math.abs(rangeTotals.net))}</strong> על פני {rangeMonthly.length} חודשים</span>
               <span className="finv-yearchart-hint">לחצו על עמודה לפירוט</span>
             </div>
           </div>
@@ -628,7 +632,7 @@ export default function FinancesV2() {
           <button className={form.direction === 'expense' ? 'on' : ''} onClick={() => setDir('expense')}>הוצאה</button>
           <button className={form.direction === 'income' ? 'on' : ''} onClick={() => setDir('income')}>הכנסה</button>
         </div>
-        <label className="finv-field"><span>סכום ₪</span><input type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} autoFocus={drawerOpen} /></label>
+        <label className="finv-field"><span>סכום ₪</span><input type="text" inputMode="decimal" placeholder="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1') }))} autoFocus={drawerOpen} /></label>
         <label className="finv-field"><span>תאריך</span><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} ariaLabel="תאריך" /></label>
         <label className="finv-field"><span>קטגוריה</span><select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
         <label className="finv-field"><span>אמצעי תשלום</span><select value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>{PAYMENT_METHODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</select></label>
@@ -648,6 +652,13 @@ export default function FinancesV2() {
         )}
         {formError && <div className="finv-form-err" role="alert">{formError}</div>}
         <button className="finv-save" disabled={saving} onClick={submitForm}>{saving ? 'שומר…' : 'שמירת תנועה'}</button>
+        {/* D26: delete was reachable only by discovering the swipe gesture — give the
+            edit drawer a visible, confirmed delete like tasks/loans/contracts have. */}
+        {editingId && (
+          <button type="button" className="finv-delete-link" onClick={() => setConfirmDeleteId(editingId)}>
+            מחיקת התנועה
+          </button>
+        )}
         </div></div>
         <ConfirmDialog
           open={confirmDiscard}
@@ -658,6 +669,19 @@ export default function FinancesV2() {
           onCancel={() => setConfirmDiscard(false)}
         />
       </BottomSheet>
+      <ConfirmDialog
+        open={confirmDeleteId != null}
+        title="למחוק את התנועה?"
+        message="התנועה תוסר מהרשימה ומהחישובים."
+        confirmLabel="מחיקה" cancelLabel="ביטול" tone="danger"
+        onConfirm={() => {
+          const id = confirmDeleteId!
+          setConfirmDeleteId(null)
+          if (editingId === id) forceClose()
+          handleDelete(id)
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   )
 }

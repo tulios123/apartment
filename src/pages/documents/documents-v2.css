@@ -43,7 +43,7 @@
   .docv-empty-btn:hover { background: var(--accent-hover); }
 
   /* FAB + drawer */
-  .docv-fab { position: fixed; bottom: 28px; left: 28px; width: 58px; height: 58px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; display: grid; place-items: center; box-shadow: var(--shadow-lg); transition: transform 0.18s var(--ease), background var(--t-base) var(--ease); z-index: 80; }
+  .docv-fab { position: fixed; bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 16px); left: 28px; width: 58px; height: 58px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; display: grid; place-items: center; box-shadow: var(--shadow-lg); transition: transform 0.18s var(--ease), background var(--t-base) var(--ease); z-index: 80; }
   .docv-fab:hover { transform: translateY(-2px) scale(1.05); background: var(--accent-hover); }
   .docv-fab:active { transform: scale(0.92); }
   .docv-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
@@ -109,4 +109,9 @@
 
   /* ── Browse-a-type back link ── */
   .docv-back { background: none; border: none; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
+}
+
+/* Touch devices have no hover — keep document actions visible/tappable (mirrors finv). */
+@media (hover: none) {
+  .docv .docv-actions { opacity: 1; }
 }

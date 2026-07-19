@@ -25,7 +25,7 @@ const navItems: NavItem[] = [
   { to: '/', label: 'ראשי', icon: House, end: true },
   { to: '/finances', label: 'תזרים', icon: Wallet },
   { to: '/wealth', label: 'הון', icon: TrendUp },
-  { to: '/property', label: 'ניהול', icon: Buildings },
+  { to: '/property', label: 'הנכס', icon: Buildings },
 ]
 
 export default function Layout() {

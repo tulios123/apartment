@@ -100,7 +100,7 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
       )}
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button type="button" className="btn-onboard-skip" onClick={onCancel}>ביטול</button>
-        <button type="button" className="btn-onboard-primary" onClick={trySave}>שמור פוליסה <Check size={14} weight="bold" /></button>
+        <button type="button" className="btn-onboard-secondary" onClick={trySave}>שמור פוליסה <Check size={14} weight="bold" /></button>
       </div>
     </div>
   )

@@ -48,7 +48,7 @@ export default function Login() {
     e.preventDefault()
     // B10: the CTA stays solid/active at all times; tapping it without an email
     // focuses the field and shows a short reason instead of sitting greyed-out.
-    if (!email.trim()) { setLinkError('הזינו כתובת מייל'); emailRef.current?.focus(); return }
+    if (!email.trim()) { setLinkError('הזינו כתובת אימייל'); emailRef.current?.focus(); return }
     setLinkBusy(true)
     setLinkError('')
     const { error } = await supabase.auth.signInWithOtp({
@@ -56,7 +56,7 @@ export default function Login() {
       options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
     })
     setLinkBusy(false)
-    if (error) { setLinkError('לא הצלחנו לשלוח קישור — בדקו את כתובת המייל ונסו שוב'); return }
+    if (error) { setLinkError('לא הצלחנו לשלוח קישור — בדקו את כתובת האימייל ונסו שוב'); return }
     setLinkSent(true)
   }
 
@@ -89,7 +89,7 @@ export default function Login() {
                 <input
                   ref={emailRef}
                   type="email" inputMode="email" autoComplete="email" dir="ltr"
-                  placeholder="כתובת מייל"
+                  placeholder="כתובת אימייל"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setLinkError('') }}
                 />
@@ -99,7 +99,7 @@ export default function Login() {
               </form>
             ) : (
               <div className="login-email-form2">
-                <p className="login-info">שלחנו קישור ל-{email.trim()} — פתחו את המייל ולחצו עליו כדי להיכנס.</p>
+                <p className="login-info">שלחנו קישור ל-{email.trim()} — פתחו את האימייל ולחצו עליו כדי להיכנס.</p>
                 <button type="button" className="login-manager-link" onClick={() => { setLinkSent(false); setLinkError('') }}>
                   שנה מייל או שלח שוב
                 </button>

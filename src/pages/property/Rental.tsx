@@ -271,7 +271,7 @@ function ContractForm({
         <div className="toggle-group">
           <button type="button"
             className={`toggle-btn${form.payment_method === 'check' ? ' active' : ''}`}
-            onClick={() => setForm(f => ({ ...f, payment_method: 'check' as const }))}>צ'ק</button>
+            onClick={() => setForm(f => ({ ...f, payment_method: 'check' as const }))}>צ׳ק</button>
           <button type="button"
             className={`toggle-btn${form.payment_method === 'bank_transfer' ? ' active' : ''}`}
             onClick={() => setForm(f => ({ ...f, payment_method: 'bank_transfer' as const }))}>העברה בנקאית</button>
@@ -532,7 +532,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                 {c.payment_method && (
                   <div className="prop-field-row">
                     <span className="prop-field-label">אמצעי תשלום</span>
-                    <span>{c.payment_method === 'check' ? "צ'ק" : 'העברה בנקאית'}</span>
+                    <span>{c.payment_method === 'check' ? 'צ׳ק' : 'העברה בנקאית'}</span>
                   </div>
                 )}
                 <div className="prop-field-row">

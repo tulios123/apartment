@@ -66,7 +66,7 @@ export default function UserMenu() {
                 role="menuitem"
                 onClick={() => { sessionStorage.setItem('reonboard', '1'); window.location.assign('/') }}
               >
-                <ArrowCounterClockwise size={20} /><span>חזרה לאונבורדינג</span>
+                <ArrowCounterClockwise size={20} /><span>חזרה לאשף־הקליטה</span>
               </button>
             )}
             {/* language toggle would go here when English is added */}

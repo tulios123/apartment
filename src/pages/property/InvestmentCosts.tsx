@@ -150,6 +150,7 @@ export default function InvestmentCosts() {
       <div className="inv-add-row">
         <input
           type="text"
+          aria-label="שם עלות נוספת"
           value={newLabel}
           onChange={e => setNewLabel(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addCustomRow()}
