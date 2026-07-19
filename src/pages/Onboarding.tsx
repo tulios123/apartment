@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { CaretRight } from '@phosphor-icons/react'
 import { OnboardingContext } from '../components/onboarding/context'
 import { useOnboardingState } from '../components/onboarding/useOnboardingState'
@@ -17,6 +18,15 @@ interface Props { onComplete: () => void }
 // brain); each step is its own component reading it through OnboardingContext.
 export default function Onboarding({ onComplete }: Props) {
   const state = useOnboardingState(onComplete)
+  // Field report (Galaxy A34, 19.07): "scrolling doesn't work in onboarding".
+  // The only mechanism that produces exactly that symptom is a stray body scroll-lock
+  // (login-locked / app-locked → position:fixed body) surviving into the wizard —
+  // e.g. if the Login→Onboarding handoff ever skips Login's unmount cleanup on some
+  // device/browser. The wizard's long forms MUST scroll, so clear any leaked lock on
+  // mount and keep classList untouched otherwise (no-op in the healthy path).
+  useEffect(() => {
+    document.body.classList.remove('login-locked', 'app-locked')
+  }, [])
   const { step, back, navDir } = state
   // Back lives as a top-right chevron (native RTL: "back" goes toward the start = right).
   // Hidden on the bookends — welcome has nowhere to go back to, done is terminal.
