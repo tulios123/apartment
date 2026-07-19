@@ -3622,15 +3622,22 @@ input[type="date"] {
 
 /* ── Comprehensive mobile layout fixes (≤ 480px) ── */
 @media (max-width: 480px) {
-  /* Prevent viewport inflation */
+  /* Prevent viewport inflation. Use `clip`, NOT `hidden`: `overflow-x: hidden`
+     coerces `overflow-y: visible` → `auto` (CSS Overflow 3), turning html/body into
+     a scroll container. On Android Chrome (esp. the installed PWA) that nested
+     root-scroller breaks the natural document scroll onboarding relies on — the
+     wizard's long steps (e.g. Documents) become completely unscrollable, stranding
+     the "המשך" CTA off-screen (field report: Galaxy A34, Chrome). `clip` still clips
+     horizontal overflow but leaves overflow-y visible, so the document scrolls
+     normally — the same reason `.main-content` already uses clip, not hidden. */
   html, body {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   #root, .app-layout {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* Inputs: prevent iOS zoom-on-focus and ensure they fit */
