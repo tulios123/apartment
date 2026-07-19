@@ -7,10 +7,10 @@
 | phase | what | status |
 |---|---|---|
 | 1 | Inventory + evidence pack | **DONE** — 16 screens + 43 flow captures (tx add/edit/delete/error, quick-capture, numpad, approve-rent, task CRUD+follow-up, contract/policy/document/property forms, liabilities editor+track/loan forms, settings theme, onboarding 9 steps) + form/CTA metadata per surface + feedback-timing & error probes + 653-line Hebrew strings inventory. All test rows tagged and cleaned; baseline verified. |
-| 2 | Independent lens evaluations (workflow: 7 evaluators — A,B,C,D,E + motion/ergonomics + finance/RTL) | running |
-| 3 | Consolidate + dedup vs known ledgers + severity-score | pending |
-| 4 | Green fix wave w/ live verification | pending |
-| 5 | UX_VS_FOUNDATIONS.md report + landing report | pending |
+| 2 | Independent lens evaluations (7 evaluators) | **DONE** — 96 raw → 92 deduped findings; verify-panel hit the monthly agent quota mid-run (31 verified by panel) |
+| 3 | Consolidate + score | **DONE** — remaining 61 verified inline against current code; final: 43 fixed / 16 owner / 18 known-dup / 15 rejected |
+| 4 | Green fix wave | **DONE** — 43 fixes in 0303d2f (+15 live checks green; touch-visibility & delete-confirm E2E) |
+| 5 | Reports | **DONE** — docs/audit/UX_VS_FOUNDATIONS.md (full scored table) + landing report updated |
 
 ## Early probe results (phase 1)
 - D24 ✔ values preserved on save-fail · **D25 ✘ raw "TypeError: Failed to fetch" shown to the user** (known ROADMAP item "עברית מלאה", now with evidence)
