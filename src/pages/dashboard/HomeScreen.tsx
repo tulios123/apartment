@@ -297,29 +297,29 @@ export default function HomeScreen() {
 
   return (
     <div className="page hs">
-      {/* ── Humanized status header ── */}
-      <header className="hs-header">
+      {/* ── Humanized status header ──
+          The big headline is reserved for a real PROMPT — a pending action, or first-run
+          setup — the one moment large "do this" text earns its size and pulls the eye to
+          the cards below. When everything's calm there's no status worth shouting, so the
+          greeting itself leads (enlarged via .hs-header--calm) and no status line renders:
+          the "אין משימות להיום" card below already carries the calm detail, so a giant
+          "nothing to do" banner here was just a big, redundant restatement of it. */}
+      <header className={`hs-header${property && !loadingProperty && !loadingActions && actions.length === 0 ? ' hs-header--calm' : ''}`}>
         <div className="hs-greet">
           <span className="hs-greet-icon"><HelloIcon size={15} weight="fill" /></span>
           <span className="hs-greet-text">{hello}</span>
         </div>
-        {/* The action status — "do I need to do anything?" — is the most useful
-            at-a-glance signal on a money app's home, so it's the headline; the
-            greeting is a small eyebrow above it. The month's net figure keeps its
-            own prominence in the cash-flow card below (no duplication). */}
         {loadingActions ? (
           <Skeleton width="70%" height={26} />
         ) : (!property && !loadingProperty) ? (
           <h1 className="hs-status">הגדירו נכס כדי להתחיל.</h1>
-        ) : (
+        ) : actions.length > 0 ? (
           <h1 className="hs-status">
-            {actions.length === 0
-              ? 'הכול רגוע היום — אין מה לעשות עכשיו.'
-              : actions.length === 1
-                ? 'יש פעולה אחת שמחכה לך.'
-                : `יש ${actions.length} פעולות שמחכות לך.`}
+            {actions.length === 1
+              ? 'יש פעולה אחת שמחכה לך.'
+              : `יש ${actions.length} פעולות שמחכות לך.`}
           </h1>
-        )}
+        ) : null}
       </header>
 
       {flash && <div className="hs-flash" role="status">{flash}</div>}
