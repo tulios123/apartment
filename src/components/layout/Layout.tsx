@@ -16,6 +16,8 @@ import FeedbackButton from '../FeedbackButton'
 import UserMenu from './UserMenu'
 import PreviewBanner from '../PreviewBanner'
 import { ErrorBoundary } from '../ErrorBoundary'
+import { isStaging } from '../../lib/env'
+import { APP_VERSION } from '../../lib/version'
 import './topbar.css'
 
 type NavItem = { to: string; label: string; icon: Icon; end?: boolean }
@@ -71,9 +73,12 @@ export default function Layout() {
   return (
     <div className="app-layout">
       <PreviewBanner />
-      {/* Mobile top bar — app title (start/right) + account & legal menu (end/left) */}
+      {/* Mobile top bar — app title (start/right) + account & legal menu (end/left).
+          On staging the version sits dead-centre (absolutely positioned, so the two
+          side items don't shift it) — so the owner can confirm which build is live. */}
       <header className="app-topbar">
         <span className="app-topbar-title">ניהול דירה</span>
+        {isStaging && <span className="app-topbar-version" aria-label={`גרסה ${APP_VERSION}`}>גרסה {APP_VERSION}</span>}
         <UserMenu />
       </header>
 
