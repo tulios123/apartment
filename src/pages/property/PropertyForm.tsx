@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { invokeErrorMessage } from '../../lib/invokeError'
 import { userErrorMessage } from '../../lib/errorHe'
 import type { Property } from '../../types'
 import { DateField } from '../../components/ui/DateField'
@@ -166,8 +167,9 @@ export function PropertyForm({
       if (d.floor != null) setFloor(String(d.floor))
       if (d.rooms != null) setRooms(String(d.rooms))
       setAiDone(true)
-    } catch {
-      setAiErr(prev => prev ?? 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } catch (e) {
+      const msg = await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+      setAiErr(prev => prev ?? msg)
     } finally {
       await saved            // keep "busy" until the auto-save settles too
       setAiBusy(false)

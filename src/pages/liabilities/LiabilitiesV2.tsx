@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { invokeErrorMessage } from '../../lib/invokeError'
 import { userErrorMessage } from '../../lib/errorHe'
 import { Bank, HandCoins, Scales, Plus, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
 import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack, setMortgagePaymentDay } from '../../hooks/useMortgageData'
@@ -281,8 +282,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       const drafts = raw.map(mapTrack)
       if (drafts.length === 0) { setAiErr({ kind: 'mortgage', msg: 'לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
       setScanResult({ kind: 'mortgage', drafts })
-    } catch {
-      setAiErr({ kind: 'mortgage', msg: 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.' })
+    } catch (e) {
+      setAiErr({ kind: 'mortgage', msg: await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.') })
     } finally { setAiBusy(null) }
   }
   async function scanLoanDoc(files: File[]) {
@@ -297,8 +298,8 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       const drafts = raw.map(mapLoan)
       if (drafts.length === 0) { setAiErr({ kind: 'loan', msg: 'לא זוהתה הלוואה במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
       setScanResult({ kind: 'loan', drafts })
-    } catch {
-      setAiErr({ kind: 'loan', msg: 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.' })
+    } catch (e) {
+      setAiErr({ kind: 'loan', msg: await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.') })
     } finally { setAiBusy(null) }
   }
 

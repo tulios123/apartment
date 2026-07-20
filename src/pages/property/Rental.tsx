@@ -1,4 +1,5 @@
 import { Modal } from '../../components/ui/Modal'
+import { invokeErrorMessage } from '../../lib/invokeError'
 import { userErrorMessage } from '../../lib/errorHe'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useRef, useState } from 'react'
@@ -164,8 +165,8 @@ function ContractForm({
       if (!d) { setAiErr('לא זוהו פרטים במסמך — נסו קובץ ברור יותר או מלאו ידנית.'); return }
       applyRental(d)
       setScanned(true)
-    } catch {
-      setAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או מלאו ידנית.')
+    } catch (e) {
+      setAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או מלאו ידנית.'))
     } finally { setAiBusy(false) }
   }
 

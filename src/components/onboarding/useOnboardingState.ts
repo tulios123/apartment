@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { invokeErrorMessage } from '../../lib/invokeError'
 import { userErrorMessage } from '../../lib/errorHe'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadDocument } from '../../lib/storage'
@@ -374,8 +375,8 @@ export function useOnboardingState(onComplete: () => void) {
       setShowTrackForm(false)
       setEditingIdx(null)
       setMortgageAiDone(true)
-    } catch {
-      setMortgageAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
+    } catch (e) {
+      setMortgageAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.'))
     } finally {
       setMortgageAiBusy(false)
     }
@@ -454,8 +455,8 @@ export function useOnboardingState(onComplete: () => void) {
         setEditingLoanIdx(null)
       }
       setLoanAiDone(true)
-    } catch {
-      setLoanAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
+    } catch (e) {
+      setLoanAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.'))
     } finally {
       setLoanAiBusy(false)
     }
@@ -511,8 +512,8 @@ export function useOnboardingState(onComplete: () => void) {
       if (d.floor != null) setFloorNumber(String(d.floor))
       if (d.rooms != null) setRooms(String(d.rooms))
       setPurchaseAiDone(true)
-    } catch {
-      setPurchaseAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } catch (e) {
+      setPurchaseAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.'))
     } finally {
       setPurchaseAiBusy(false)
     }
@@ -557,8 +558,8 @@ export function useOnboardingState(onComplete: () => void) {
       else if (d.paymentMethod === 'bank_transfer') setRentPaymentMethod('bank_transfer')
       if (d.paymentDay != null) setRentPaymentDay(String(d.paymentDay))
       setRentalAiDone(true)
-    } catch {
-      setRentalAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } catch (e) {
+      setRentalAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.'))
     } finally {
       setRentalAiBusy(false)
     }
