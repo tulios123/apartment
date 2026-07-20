@@ -281,6 +281,12 @@ export default function FinancesV2() {
   // A future month's balance is entirely forecast (rent/mortgage not yet booked),
   // so it must not read like a settled past month — badge the header with "צפי".
   const monthIsForecast = view === 'month' && isForecastMonth(year, month, today)
+  // A projected rent/mortgage row is a genuine FORECAST only in a future/current month.
+  // In a PAST month the scheduled auto-payment already came and went — it just wasn't
+  // recorded by hand — so calling it "תחזית" reads as if we're guessing about the past.
+  // Label those "לפי לוח" (per the contract/mortgage schedule) instead (owner report).
+  const monthIsPast = year < today.getFullYear() || (year === today.getFullYear() && month < today.getMonth() + 1)
+  const virtualTag = monthIsPast ? 'לפי לוח' : 'תחזית'
   const breakdown = view === 'month' ? monthBreakdown : view === 'year' ? yearBreakdown : rangeBreakdown
 
   function openNew() { setForm(emptyForm); openSnapshot.current = JSON.stringify(emptyForm); setEditingId(null); setTxDocs([]); setFormError(null); setConfirmDiscard(false); setDrawerOpen(true) }
@@ -581,7 +587,7 @@ export default function FinancesV2() {
           <>
             <div className="finv-section-head">
               <h2>תנועות</h2>
-              {monthVirtual.length > 0 && <span className="finv-legend">מקווקו = תחזית מהחוזה/משכנתא</span>}
+              {monthVirtual.length > 0 && <span className="finv-legend">מקווקו = {virtualTag} מהחוזה/משכנתא</span>}
             </div>
 
             {loading ? (
@@ -594,7 +600,7 @@ export default function FinancesV2() {
                   <div key={e.id} className="finv-tx projected">
                     <span className="finv-cat-icon" style={{ background: e.direction === 'income' ? 'var(--success)' : 'var(--accent-coral)' }}>{e.direction === 'income' ? <ArrowDownLeft size={20} weight="bold" /> : <ArrowUpRight size={20} weight="bold" />}</span>
                     <div className="finv-tx-body">
-                      <div className="finv-tx-top"><span className="finv-tx-cat">{e.category}</span><span className="finv-tx-tag">תחזית</span></div>
+                      <div className="finv-tx-top"><span className="finv-tx-cat">{e.category}</span><span className="finv-tx-tag">{virtualTag}</span></div>
                       <span className="finv-tx-meta">{formatDate(e.date)}{e.description ? ` · ${e.description}` : ''}</span>
                       {e.principal != null && e.interest != null && (
                         <span className="finv-tx-split">קרן {fmt(e.principal)} · ריבית {fmt(e.interest)}</span>
