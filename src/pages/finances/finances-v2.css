@@ -56,8 +56,12 @@
   .finv-yearchart-legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
   .finv-yearchart-legend i.in { background: var(--success); }
   .finv-yearchart-legend i.out { background: var(--danger); }
-  .finv-yearbars { display: flex; align-items: flex-end; gap: 4px; height: 150px; }
-  .finv-yearbar-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; border: none; background: none; cursor: pointer; padding: 0; border-radius: var(--r-sm); transition: background var(--t-fast) var(--ease); }
+  /* No inter-column gap: each month button spans its full 1/12 cell edge-to-edge, so
+     the whole chart width is tappable with no dead zones between the thin bars — the
+     caption invites tapping a month, so the hit area must actually be reachable
+     (owner, 20.07). Internal padding keeps the bars visually separated. */
+  .finv-yearbars { display: flex; align-items: flex-end; gap: 0; height: 150px; }
+  .finv-yearbar-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; border: none; background: none; cursor: pointer; padding: 0 2px; border-radius: var(--r-sm); transition: background var(--t-fast) var(--ease); }
   .finv-yearbar-col:hover { background: var(--bg-alt); }
   .finv-yearbar-stack { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
   .finv-yearbar { width: 7px; min-height: 2px; border-radius: 3px 3px 0 0; transition: height var(--t-slow) var(--ease); }

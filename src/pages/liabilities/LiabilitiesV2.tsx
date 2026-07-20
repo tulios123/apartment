@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { userErrorMessage } from '../../lib/errorHe'
 import { Bank, HandCoins, Scales, Plus, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
 import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack, setMortgagePaymentDay } from '../../hooks/useMortgageData'
 import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
@@ -350,7 +351,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         if (lForm.repayment_type === 'balloon') setBalloonOpen(true); else setRegularLoansOpen(true)
       }
       forceClose()
-    } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
+    } catch (e) { setFormError(userErrorMessage(e, 'שגיאה בשמירה — נסו שוב')) }
     setSaving(false)
   }
 

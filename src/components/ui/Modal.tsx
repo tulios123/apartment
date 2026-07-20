@@ -53,12 +53,13 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div ref={modalRef} className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} onKeyDown={trapTab}>
+        {/* Feedback lives in the LEADING corner and close in the TRAILING corner —
+            opposite ends, so a reach for one can't slip onto the other (they used to
+            sit 2px apart in the same corner). */}
         <div className="modal-header">
+          <button className="btn-icon modal-feedback-btn" onClick={openFeedback} aria-label="דיווח על תקלה או רעיון" title="דיווח"><Lightbulb size={17} weight="fill" /></button>
           <h2>{title}</h2>
-          <div className="modal-header-actions">
-            <button className="btn-icon" onClick={openFeedback} aria-label="דיווח על תקלה או רעיון" title="דיווח"><Lightbulb size={17} weight="fill" /></button>
-            <button className="btn-icon" onClick={onClose} aria-label="סגור" title="סגור"><X size={18} /></button>
-          </div>
+          <button className="btn-icon" onClick={onClose} aria-label="סגור" title="סגור"><X size={18} /></button>
         </div>
         {children}
       </div>

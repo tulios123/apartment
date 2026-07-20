@@ -44,8 +44,9 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 4px 20px 12px; flex-shrink: 0;
 }
-.bsheet-head h2 { font-size: 17px; font-weight: 700; color: var(--brand-navy); }
-.bsheet-head-actions { display: flex; align-items: center; gap: 2px; }
+.bsheet-head h2 { font-size: 17px; font-weight: 700; color: var(--brand-navy); flex: 1; }
+/* Feedback sits in the leading corner; a little breathing room from the title. */
+.bsheet-feedback-btn { margin-inline-end: 4px; }
 .bsheet-close {
   background: none; border: none; color: var(--text-muted); cursor: pointer;
   width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center;

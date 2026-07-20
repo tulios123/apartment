@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { userErrorMessage } from '../../lib/errorHe'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadDocument } from '../../lib/storage'
 import { createProperty, createContract } from '../../hooks/usePropertyData'
@@ -926,7 +927,7 @@ export function useOnboardingState(onComplete: () => void) {
       setStep('done')
     } catch (e) {
       // Only createProperty throws here — stay on step so the user can retry
-      setError(e instanceof Error ? e.message : 'שגיאה בשמירה')
+      setError(userErrorMessage(e, 'שגיאה בשמירה — נסו שוב'))
     } finally {
       setSaving(false)
       finishingRef.current = false

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { userErrorMessage } from '../../lib/errorHe'
 import { X } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useInvestmentData, upsertInvestmentCost, deleteInvestmentCost } from '../../hooks/useInvestmentData'
@@ -98,7 +99,7 @@ export default function InvestmentCosts() {
       }
       await refetch()
     } catch (e) {
-      setSaveErr(e instanceof Error ? e.message : 'שגיאה')
+      setSaveErr(userErrorMessage(e, 'לא הצלחנו לשמור — נסו שוב'))
     } finally {
       setSaving(false)
     }

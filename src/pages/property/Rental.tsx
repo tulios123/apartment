@@ -1,4 +1,5 @@
 import { Modal } from '../../components/ui/Modal'
+import { userErrorMessage } from '../../lib/errorHe'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -199,7 +200,7 @@ function ContractForm({
     try {
       await onSave(form, utils, sessionDocIds)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'שגיאה')
+      setErr(userErrorMessage(e, 'לא הצלחנו לשמור — נסו שוב'))
     } finally {
       setSaving(false)
     }
@@ -425,7 +426,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
       refetch()
       onContractsChange?.()
     } catch (e) {
-      setDeleteErr(e instanceof Error ? e.message : 'מחיקת החוזה נכשלה — נסו שוב')
+      setDeleteErr(userErrorMessage(e, 'מחיקת החוזה נכשלה — נסו שוב'))
       refetch()
     }
   }

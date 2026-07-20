@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { userErrorMessage } from '../../lib/errorHe'
 import type { Property } from '../../types'
 import { DateField } from '../../components/ui/DateField'
 import { caretIndexAfterDigits, sanitizeAmountInt } from '../../lib/format'
@@ -200,7 +201,7 @@ export function PropertyForm({
         property_size_sqm: sizeSqm ? Number(sizeSqm) : null,
       })
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'שגיאה')
+      setErr(userErrorMessage(e, 'לא הצלחנו לשמור — נסו שוב'))
     } finally {
       setSaving(false)
     }

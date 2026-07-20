@@ -1,4 +1,5 @@
 import { Modal } from '../../components/ui/Modal'
+import { userErrorMessage } from '../../lib/errorHe'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -104,7 +105,7 @@ function InsuranceForm({
     try {
       await onSave(form)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'שגיאה')
+      setErr(userErrorMessage(e, 'לא הצלחנו לשמור — נסו שוב'))
     } finally {
       setSaving(false)
     }
