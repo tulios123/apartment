@@ -74,3 +74,17 @@ export function principalNext12Months(tracks: MortgageTrack[], monthlyLoans: Loa
   }
   return sum
 }
+
+/**
+ * Total interest paid over the coming 12 months — the real annual cost of the
+ * financing (grace-aware: interest-only months are summed exactly from the
+ * schedules). Used for the return-on-equity calc so it reflects the actual next
+ * year, not this month × 12 (which would over/under-state during grace).
+ */
+export function interestNext12Months(tracks: MortgageTrack[], monthlyLoans: Loan[], asOf: Date = new Date()): number {
+  let sum = 0
+  for (let i = 0; i < 12; i++) {
+    sum += splitForMonth(tracks, monthlyLoans, ym(shift(asOf, i))).interest
+  }
+  return sum
+}

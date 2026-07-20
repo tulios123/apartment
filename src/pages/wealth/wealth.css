@@ -72,6 +72,9 @@
   .wlth-vehicle-bal span { font-size: 11px; color: var(--text-muted); }
   .wlth-vehicle-caret { color: var(--text-muted); transition: transform var(--t-base) var(--ease); flex-shrink: 0; }
   .wlth-vehicle.open .wlth-vehicle-caret { transform: rotate(180deg); }
+  /* Folded detail: everything below the head reveals only when open. */
+  .wlth-vehicle-detail { border-top: 1px solid var(--border); padding-top: 10px; }
+  .wlth-vehicle-detail .wlth-vehicle-grace { padding-inline: 14px; margin-top: 0; margin-bottom: 10px; }
 
   /* Payoff progress line (mortgage + loans) */
   .wlth-progress { padding: 0 14px 12px; }
@@ -111,6 +114,21 @@
   .wlth-cf-net strong { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .wlth-cf-net strong.in { color: var(--success-text); }
   .wlth-cf-net strong.out { color: var(--brand-navy); }
+
+  /* ── Real monthly result (rent − interest; principal is savings) ── */
+  .wlth-result-rows { display: flex; flex-direction: column; gap: 10px; }
+  .wlth-result-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+  .wlth-result-row span { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); }
+  .wlth-result-row strong { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+  .wlth-result-row strong.in { color: var(--success-text); }
+  .wlth-result-row strong.out { color: var(--accent-coral); }
+  .wlth-result-net { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .wlth-result-net span { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .wlth-result-net strong { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .wlth-result-net strong.in { color: var(--success-text); }
+  .wlth-result-net strong.out { color: var(--accent-coral); }
+  .wlth-result-note { margin-top: 12px; font-size: 12.5px; line-height: 1.6; color: var(--text-muted); background: var(--bg-alt); border-radius: var(--r-sm); padding: 10px 12px; }
+  .wlth-result-note b { color: var(--text-secondary); font-weight: 700; }
 
   /* ── Edit overlay (reuses existing form components) ────────── */
   /* Above the fixed app top-bar (z-index 95) — otherwise the header (with its back
