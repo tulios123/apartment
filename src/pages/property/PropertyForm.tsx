@@ -240,13 +240,14 @@ export function PropertyForm({
       </div>
 
       <div className="form-section-label">פרטי הנכס</div>
+      <p className="form-req-note">שדות עם <span className="req-star">*</span> הם חובה — כל השאר אפשר להשלים אחר כך.</p>
       <div className="form-2col">
         <div className="form-row">
-          <label>רחוב</label>
+          <label>רחוב<span className="req-star">*</span></label>
           <input type="text" value={street} onChange={e => setStreet(e.target.value)} required autoFocus placeholder="רחוב ומספר" />
         </div>
         <div className="form-row">
-          <label>עיר</label>
+          <label>עיר<span className="req-star">*</span></label>
           <input type="text" value={city} onChange={e => setCity(e.target.value)} required />
         </div>
       </div>
