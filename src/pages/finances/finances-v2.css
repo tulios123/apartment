@@ -125,9 +125,11 @@
   .finv-tx.projected { background: transparent; box-shadow: none; border: 1.5px dashed var(--border-strong); }
   .finv-cat-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; color: #fff; }
   .finv-tx-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .finv-tx-top { display: flex; align-items: center; gap: 8px; }
-  .finv-tx-cat { font-size: 14px; font-weight: 600; }
-  .finv-tx-tag { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: var(--r-pill); background: var(--bg-alt); color: var(--text-muted); }
+  .finv-tx-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  /* One line, ellipsis if truly out of room — never wrap "שכר דירה" onto two lines when
+     the row's action icons squeeze the body (owner report: rent row broke, mortgage didn't). */
+  .finv-tx-cat { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .finv-tx-tag { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: var(--r-pill); background: var(--bg-alt); color: var(--text-muted); flex-shrink: 0; }
   /* Recurring/fixed item (rent, mortgage…) — accent tint, distinct from the grey "תחזית". */
   .finv-tx-tag.fixed { background: var(--accent-light); color: var(--accent); }
   .finv-tx-meta { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

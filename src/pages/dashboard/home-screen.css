@@ -71,11 +71,14 @@
   .hs-clear-title { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
   .hs-clear-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
 
-  /* ── Quick capture ── */
+  /* ── Quick capture ── Bigger, solid cards (were thin dashed pills) so the two main
+     entry points feel substantial and are easy to hit. */
   .hs-quick { margin-bottom: 16px; }
-  .hs-fabs { display: flex; gap: 10px; }
-  .hs-fabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px dashed var(--border-strong); background: transparent; color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 11px; border-radius: var(--r-md); cursor: pointer; transition: background var(--t-base) var(--ease), border-color var(--t-base) var(--ease); }
-  .hs-fabs button:hover { background: var(--bg-alt); border-color: var(--accent); color: var(--accent); }
+  .hs-fabs { display: flex; gap: 12px; }
+  .hs-fabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-family: inherit; font-size: 15px; font-weight: 700; padding: 17px; border-radius: var(--r-md); box-shadow: var(--shadow-sm); cursor: pointer; transition: background var(--t-base) var(--ease), border-color var(--t-base) var(--ease), transform 0.1s var(--ease); }
+  .hs-fabs button svg { color: var(--accent); }
+  .hs-fabs button:hover { border-color: var(--accent); color: var(--accent); }
+  .hs-fabs button:active { transform: scale(0.98); }
 
   /* ── Calm cash flow ── */
   .hs-flow-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
