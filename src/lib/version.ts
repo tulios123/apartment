@@ -2,7 +2,7 @@
 // at a glance WHICH build the testing app is running (past any stale PWA cache).
 // BUMP THIS with every fix/change that gets pushed — the number is meaningless unless
 // it moves. Format: MAJOR.MINOR.PATCH; bump PATCH per fix, MINOR per feature batch.
-export const APP_VERSION = '1.0.4'
+export const APP_VERSION = '1.0.5'
 
 // The build id/timestamp baked into THIS bundle at build time (see vite.config.ts).
 // `typeof` guard so a stray non-defined environment can't throw a ReferenceError.

@@ -259,7 +259,6 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
             </div>
 
             <span className="cap-fieldlabel">אמצעי תשלום</span>
-            <span className="cap-fieldlabel">קטגוריה</span>
             <div className="cap-chips">
               {PAYMENT_METHODS.filter(p => p.value).map(p => (
                 <button
@@ -271,7 +270,6 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
             </div>
 
             <span className="cap-fieldlabel">תאריך</span>
-            <span className="cap-fieldlabel">קטגוריה</span>
             <div className="cap-chips">
               <button type="button" className={`cap-chip${date === today ? ' on' : ''}`} onClick={() => { tap(); setDate(today) }}>היום</button>
               <button type="button" className={`cap-chip${date === yesterday ? ' on' : ''}`} onClick={() => { tap(); setDate(yesterday) }}>אתמול</button>
