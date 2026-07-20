@@ -8,19 +8,9 @@
 
   .tav-sync-warn { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--warning-text); background: var(--warning-bg); padding: 10px 14px; border-radius: var(--r-md); margin-bottom: 14px; }
 
-  /* Quick-add */
-  .tav-quickadd { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 12px 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .tav-quickadd-icon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; border: none; background: var(--accent); color: #fff; cursor: pointer; transition: background var(--t-fast); }
-  .tav-quickadd-icon:hover { background: var(--accent-hover); }
-  .tav-quickadd-icon:disabled { opacity: 0.45; cursor: default; }
-  .tav-quickadd-input { flex: 1; min-width: 160px; border: none; background: transparent; outline: none; font-family: inherit; font-size: 15px; color: var(--text); }
-  .tav-quickadd-input::placeholder { color: var(--text-muted); }
-  .tav-quickadd-extra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; padding-top: 10px; margin-top: 2px; border-top: 1px dashed var(--border); }
-  .tav-quickadd-extra input, .tav-quickadd-extra select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: var(--r-sm); outline: none; }
-  .tav-quickadd-extra input:focus, .tav-quickadd-extra select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
-  .tav-quickadd-go { margin-inline-start: auto; background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 18px; border-radius: var(--r-sm); transition: background var(--t-fast); }
-  .tav-quickadd-go:hover { background: var(--accent-hover); }
-  .tav-quickadd-go:disabled { opacity: 0.5; cursor: default; }
+  /* Add-affordance: the shared app-wide `.add-card`, with a little breathing room
+     before the "open tasks" heading. */
+  .tav-section > .add-card { margin-bottom: 18px; }
 
   /* Backlog / logbook sections */
   .tav-section { margin-bottom: 22px; }

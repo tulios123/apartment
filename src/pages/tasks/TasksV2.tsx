@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X, Check, CheckCircle, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText, Paperclip, Eye } from '@phosphor-icons/react'
-import { useTasks, createTask, updateTask, deleteTask, spawnNextOccurrence } from '../../hooks/useTasks'
+import { useTasks, updateTask, deleteTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
 import { MAX_UPLOAD_BYTES, uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
@@ -12,6 +12,7 @@ import { recurrenceLabel } from '../../lib/recurrence'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
+import TaskSheet from '../../components/capture/TaskSheet'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { shouldConfirmDiscard } from '../../lib/discardGuard'
 import './tasks-v2.css'
@@ -41,10 +42,9 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const [editing, setEditing] = useState<Task | null>(null)
   const [editForm, setEditForm] = useState(emptyEdit)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editErr, setEditErr] = useState<string | null>(null)
-  const [addingTitle, setAddingTitle] = useState('')
-  const [addErr, setAddErr] = useState<string | null>(null)
   const [actionErr, setActionErr] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [attaching, setAttaching] = useState(false)
@@ -98,28 +98,6 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       .sort((a, b) => (b.completed_at ?? b.created_at).localeCompare(a.completed_at ?? a.created_at))
     return { backlog, logbook }
   }, [tasks])
-
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault()
-    const title = addingTitle.trim()
-    if (!title || saving) return   // guard re-entry: double-Enter must not double-create
-    setSaving(true)
-    setAddErr(null)
-    try {
-      const { error } = await createTask({
-        title, category: 'כללי', due_date: null, due_time: null,
-        status: 'open', source: 'manual', is_recurring: false, recurrence_days: null,
-        property_id: null, recurring_item_id: null, transaction_id: null,
-      })
-      if (error) { setAddErr('לא הצלחנו להוסיף את המשימה — נסו שוב'); return }
-      setAddingTitle('')   // clear only on success — never lose the typed text on failure
-      refetch()
-    } catch {
-      setAddErr('לא הצלחנו להוסיף את המשימה — נסו שוב')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   function openEdit(t: Task) {
     const f = { title: t.title, category: t.category, due_date: t.due_date ?? '', due_time: t.due_time?.slice(0, 5) ?? '', status: t.status }
@@ -213,19 +191,12 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         <>
           {/* ── Open backlog ─────────────────────────────────────── */}
           <section className="tav-section">
-            <form className="tav-quickadd" onSubmit={handleAdd}>
-              <input
-                className="tav-quickadd-input"
-                aria-label="הוספת משימה"
-                placeholder="הקלידו משימה ואשרו"
-                value={addingTitle}
-                onChange={e => { setAddingTitle(e.target.value); if (addErr) setAddErr(null) }}
-              />
-              <button type="submit" className="tav-quickadd-icon" aria-label="הוספת משימה" disabled={saving}>
-                <Plus size={18} weight="bold" />
-              </button>
-            </form>
-            {addErr && <div className="form-error" role="alert">{addErr}</div>}
+            {/* One add-affordance for the whole app: a primary card that opens the
+                same task sheet the Home screen uses (title + date + time + repeat),
+                instead of the old inline text row. */}
+            <button type="button" className="add-card" onClick={() => setAddOpen(true)}>
+              <Plus size={18} weight="bold" /> הוספת משימה
+            </button>
 
             <div className="tav-section-head">
               <span className="tav-bucket-dot accent" />
@@ -294,6 +265,9 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           </section>
         </>
       )}
+
+      {/* Add sheet — the shared, app-wide task sheet (same one the Home screen uses). */}
+      <TaskSheet open={addOpen} onClose={() => setAddOpen(false)} onDone={() => refetch()} />
 
       {/* Edit sheet */}
       <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={requestClose} minimizable={false} title="עריכת משימה">

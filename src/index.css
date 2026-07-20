@@ -286,6 +286,33 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* ── One add-affordance for the whole app ──────────────────────────
+   The single, consistent way to add anything (task, document, …): a
+   full-width primary card — bordered, white, accent "+" — that opens a
+   bottom sheet. Mirrors the Home screen's expense/task cards exactly, so
+   "add" looks identical everywhere. No inline text rows, no floating FABs. */
+.add-card {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 16px;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background var(--t-base) var(--ease), border-color var(--t-base) var(--ease), transform 0.1s var(--ease);
+}
+.add-card svg { color: var(--accent); }
+.add-card:hover { border-color: var(--accent); color: var(--accent); }
+.add-card:active { transform: scale(0.98); }
+
 /* Buttons */
 .btn-primary {
   background: var(--accent);

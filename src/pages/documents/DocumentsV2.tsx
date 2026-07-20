@@ -168,6 +168,15 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       {error && <div className="form-error" role="alert">{error}</div>}
       {actionErr && <div className="form-error" role="alert">{actionErr}</div>}
 
+      {/* One add-affordance for the whole app: a primary card that opens the document
+          sheet — instead of a floating "+" that covered the content. In a filtered
+          view it pre-selects that type. */}
+      {!loading && (
+        <button type="button" className="add-card docv-add" onClick={() => openNew(filter === 'all' ? undefined : filter)}>
+          <Plus size={18} weight="bold" /> {filter === 'all' ? 'הוספת מסמך' : `הוספת ${DOC_TYPE_LABELS[filter]}`}
+        </button>
+      )}
+
       {!loading && filter === 'all' && (
         <>
           {/* ── Key document slots — the file every owner should complete ── */}
@@ -266,8 +275,6 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
           )}
         </section>
       )}
-
-      <button className="docv-fab" onClick={() => openNew()} aria-label="מסמך חדש"><Plus size={26} weight="bold" /></button>
 
       <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={requestClose} minimizable={false} title={editingId ? 'עריכת מסמך' : 'מסמך חדש'}>
         {/* The sheet portals to <body>, outside the scoped `.docv` — re-wrap so the field CSS applies. */}
