@@ -4,23 +4,12 @@
 .hs {
   --hs-gap: 18px;
 
-  /* ── Humanized header ── */
-  .hs-header { position: relative; margin-bottom: 14px; animation: hsFade 0.4s var(--ease) both; }
-  .hs-gear {
-    position: absolute; top: 0; inset-inline-end: 0;
-    width: 38px; height: 38px; border-radius: 11px;
-    display: grid; place-items: center;
-    color: var(--text-muted); text-decoration: none;
-    transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
-    -webkit-tap-highlight-color: transparent;
-  }
-  .hs-gear:hover { color: var(--accent); background: var(--hover-bg); }
-  /* Balanced header: a comfortable greeting leads, the status sits beneath it a size
-     smaller — neither element jarring (unlike the tiny-then-giant swings before). */
-  .hs-greet { display: flex; align-items: center; gap: 8px; padding-inline-end: 44px; }
-  .hs-greet-icon { width: 26px; height: 26px; border-radius: 8px; background: var(--accent-light); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
-  .hs-greet-title { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-navy); }
-  .hs-status { font-size: 14px; font-weight: 500; color: var(--text-muted); margin-top: 5px; line-height: 1.4; }
+  /* ── Greeting strip ── one slim row: warm greeting (start) + today's date (end). */
+  .hs-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; animation: hsFade 0.4s var(--ease) both; }
+  .hs-greet { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .hs-greet-icon { width: 30px; height: 30px; border-radius: 9px; background: var(--accent-light); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+  .hs-greet-title { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-navy); white-space: nowrap; }
+  .hs-greet-date { font-size: 12.5px; font-weight: 600; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
 
   .hs-flash { background: var(--success-bg); color: var(--success-text); font-size: 13.5px; font-weight: 600; padding: 11px 16px; border-radius: var(--r-md); margin-bottom: 14px; animation: hsFlash 0.3s var(--ease) both; }
 
@@ -29,7 +18,9 @@
      churn (and the return to the Zen state) causes ZERO layout shift — the cash-flow
      card below stays anchored. Rent/renewal alerts are allowed to grow past this:
      they're rare, critical, money-bearing events that deserve the extra space. */
-  .hs-actions { display: flex; flex-direction: column; justify-content: center; gap: 10px; margin-bottom: 16px; min-height: 164px; }
+  /* No min-height: a single small action shouldn't float in a tall, half-empty box —
+     that was a big source of the "scattered / loose" feel. Blocks sit naturally now. */
+  .hs-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 
   .hs-card { display: flex; align-items: center; gap: 13px; background: var(--bg-card); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 16px; animation: hsRise 0.35s var(--ease) both; transition: opacity 0.35s var(--ease), transform 0.35s var(--ease), max-height 0.35s var(--ease); }
   .hs-card.resolved { opacity: 0; transform: translateX(-24px); max-height: 0; padding-top: 0; padding-bottom: 0; pointer-events: none; }

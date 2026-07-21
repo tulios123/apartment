@@ -45,6 +45,8 @@ function greeting(name: string): { text: string; Icon: typeof Sun } {
   return { text: `ערב טוב${who}`, Icon: MoonStars }
 }
 
+const WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
 export default function HomeScreen() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -81,6 +83,7 @@ export default function HomeScreen() {
   // B8: real display name only — no email prefix / technical username fallback.
   const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] || ''
   const { text: hello, Icon: HelloIcon } = greeting(firstName)
+  const todayLabel = `יום ${WEEKDAYS[new Date().getDay()]} · ${formatDate(todayISO())}`
 
   const todayStr = todayISO()
   const rentCatSet = useMemo(() => new Set(RENT_CATEGORIES as readonly string[]), [])
@@ -297,29 +300,16 @@ export default function HomeScreen() {
 
   return (
     <div className="page hs">
-      {/* ── Humanized status header ── A warm, comfortably-sized greeting leads, with a
-          smaller status line beneath it — a balanced pair, neither element jarring. (The
-          earlier swings — tiny greeting under a giant status, then a giant greeting when
-          calm — threw the page's proportions off.) The status stays a calm one-liner; the
-          month's net figure keeps its own prominence in the cash-flow card below. */}
+      {/* ── Greeting strip ── One slim line: a warm greeting and today's date, nothing
+          more. The old "יש פעולה אחת שמחכה לך" status was dropped — it merely counted the
+          action cards that sit right below, so it duplicated them and padded the header.
+          The narrative now flows: who/when → what needs you → how the month looks. */}
       <header className="hs-header">
         <div className="hs-greet">
-          <span className="hs-greet-icon"><HelloIcon size={16} weight="fill" /></span>
+          <span className="hs-greet-icon"><HelloIcon size={18} weight="fill" /></span>
           <h1 className="hs-greet-title">{hello}</h1>
         </div>
-        {loadingActions ? (
-          <div className="hs-status"><Skeleton width="55%" height={14} /></div>
-        ) : (!property && !loadingProperty) ? (
-          <p className="hs-status">הגדירו נכס כדי להתחיל.</p>
-        ) : actions.length > 0 ? (
-          <p className="hs-status">
-            {actions.length === 1
-              ? 'יש פעולה אחת שמחכה לך.'
-              : `יש ${actions.length} פעולות שמחכות לך.`}
-          </p>
-        ) : (
-          <p className="hs-status">הכול רגוע — אין משימה שדורשת אותך עכשיו.</p>
-        )}
+        <span className="hs-greet-date">{todayLabel}</span>
       </header>
 
       {flash && <div className="hs-flash" role="status">{flash}</div>}
@@ -426,24 +416,6 @@ export default function HomeScreen() {
                 הצג פחות <CaretUp size={13} weight="bold" />
               </button>
             ) : null}
-          </section>
-
-          {/* ── Quick capture ── two clear, structured entries. The free-text NL bar
-              was removed (owner, 20.07): its parser was only lightly reliable in Hebrew
-              and it stacked a third, overlapping capture path over these two. */}
-          <section className="hs-quick">
-            <div className="hs-fabs">
-              <button onClick={() => {
-                // Docked sheet + another tap = restore it (V3), preserving typed data.
-                if (sheet === 'expense') { setExpenseExpandKey(k => k + 1); return }
-                setSheetSeed(''); setSheet('expense')
-              }}>
-                <Plus size={16} weight="bold" /> הוצאה
-              </button>
-              <button onClick={() => setSheet('task')}>
-                <ListPlus size={16} weight="bold" /> משימה
-              </button>
-            </div>
           </section>
 
           {/* ── Calm cash flow ── */}
@@ -564,6 +536,24 @@ export default function HomeScreen() {
                 </p>
               </div>
             )}
+          </section>
+
+          {/* ── Quick capture ── two clear entries, parked at the bottom in the thumb
+              zone (below the month view) so they no longer split the status narrative.
+              The free-text NL bar was removed (owner, 20.07). */}
+          <section className="hs-quick">
+            <div className="hs-fabs">
+              <button onClick={() => {
+                // Docked sheet + another tap = restore it (V3), preserving typed data.
+                if (sheet === 'expense') { setExpenseExpandKey(k => k + 1); return }
+                setSheetSeed(''); setSheet('expense')
+              }}>
+                <Plus size={16} weight="bold" /> הוצאה
+              </button>
+              <button onClick={() => setSheet('task')}>
+                <ListPlus size={16} weight="bold" /> משימה
+              </button>
+            </div>
           </section>
         </>
       )}
