@@ -58,7 +58,7 @@
   .wlth-vehicle { border: 1px solid var(--border); border-radius: var(--r-sm); margin-bottom: 10px; overflow: hidden; }
   .wlth-vehicle:last-child { margin-bottom: 0; }
   .wlth-vehicle.balloon { border-style: dashed; background: var(--bg-alt); }
-  .wlth-vehicle-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; border: none; background: none; font-family: inherit; text-align: start; cursor: default; }
+  .wlth-vehicle-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: none; background: none; font-family: inherit; text-align: start; cursor: default; }
   button.wlth-vehicle-head { cursor: pointer; }
   .wlth-vehicle-icon { display: inline-flex; color: var(--brand-navy); flex-shrink: 0; }
   .wlth-vehicle.balloon .wlth-vehicle-icon { color: var(--warning); }
@@ -75,6 +75,9 @@
   /* Folded detail: everything below the head reveals only when open. */
   .wlth-vehicle-detail { border-top: 1px solid var(--border); padding-top: 10px; }
   .wlth-vehicle-detail .wlth-vehicle-grace { padding-inline: 14px; margin-top: 0; margin-bottom: 10px; }
+  .wlth-vehicle-facts { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 0 14px 10px; }
+  .wlth-vehicle-facts span { font-size: 12px; color: var(--text-muted); }
+  .wlth-vehicle-facts b { color: var(--brand-navy); font-weight: 700; font-variant-numeric: tabular-nums; }
 
   /* Payoff progress line (mortgage + loans) */
   .wlth-progress { padding: 0 14px 12px; }
@@ -93,6 +96,7 @@
   .wlth-secondary { display: flex; gap: 28px; flex-wrap: wrap; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 16px 18px; }
   .wlth-secondary div span { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 3px; }
   .wlth-secondary div strong { font-size: 17px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+  .wlth-yield-note { flex-basis: 100%; margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--text-muted); }
 
   /* ── Cashflow: income vs expenses (incl. equity) ───────────── */
   .wlth-cf-rows { display: flex; flex-direction: column; gap: 10px; }

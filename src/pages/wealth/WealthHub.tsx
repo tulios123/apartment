@@ -58,11 +58,14 @@ export default function WealthHub() {
   const annualMaintenance = yearsHeld > 0 ? maintenance / yearsHeld : 0
   const monthlyMaintenance = annualMaintenance / 12
   const netCashAnnual = annualRent - annualInterest - annualMaintenance
-  const canRoe = totalInvested > 0 && monthlyRent > 0
-  // "תזרים" — cash-on-cash (principal excluded). "כולל בניית-הון" — adds the principal
-  // repaid this year (the equity you build). Owner (20.07): show both side by side.
-  const roeCash = canRoe ? (netCashAnnual / totalInvested) * 100 : null
-  const roeTotal = canRoe ? ((netCashAnnual + annualPrincipal) / totalInvested) * 100 : null
+  // Owner (20.07): return on the NET equity — property value minus all debt
+  // (mortgage + loans + balloon), i.e. the "הון עצמי נטו" shown at the top — not the
+  // cash originally invested. "תזרים" is cash-on-cash (principal excluded); "כולל
+  // בניית-הון" adds the principal repaid this year (the equity you build).
+  const netEquity = propertyValue - bankDebt - balloon
+  const canRoe = netEquity > 0 && monthlyRent > 0
+  const roeCash = canRoe ? (netCashAnnual / netEquity) * 100 : null
+  const roeTotal = canRoe ? ((netCashAnnual + annualPrincipal) / netEquity) * 100 : null
 
   // Cumulative cash view: everything that went out (equity + costs + interest +
   // maintenance) vs. rent collected so far. Net is pure cash, ignoring property value.
@@ -134,14 +137,6 @@ export default function WealthHub() {
             />
           )}
 
-          <FinancingStructure
-            tracks={tracks}
-            summary={summary}
-            monthlyLoans={monthlyLoans}
-            balloonLoans={balloonLoans}
-            onEdit={() => setEditing(true)}
-          />
-
           {hasCashflow && (
             <section className="wlth-card wlth-cashflow">
               <div className="wlth-card-head">
@@ -186,12 +181,21 @@ export default function WealthHub() {
               (owner, 20.07). Gross yield + monthly rent aren't shown elsewhere. */}
           {(grossYield != null || monthlyRent > 0 || roeCash != null) && (
             <section className="wlth-secondary">
-              {roeCash != null && <div><span>תשואה על ההון · תזרים</span><strong>{roeCash.toFixed(1)}%</strong></div>}
-              {roeTotal != null && <div><span>תשואה על ההון · כולל קרן</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
+              {roeCash != null && <div><span>תשואה על ההון העצמי · תזרים</span><strong>{roeCash.toFixed(1)}%</strong></div>}
+              {roeTotal != null && <div><span>תשואה על ההון העצמי · כולל קרן</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
               {grossYield != null && <div><span>תשואה ברוטו (על שווי)</span><strong>{grossYield.toFixed(1)}%</strong></div>}
               {monthlyRent > 0 && <div><span>שכר דירה חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
+              {roeCash != null && <p className="wlth-yield-note">ההון העצמי = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון).</p>}
             </section>
           )}
+
+          <FinancingStructure
+            tracks={tracks}
+            summary={summary}
+            monthlyLoans={monthlyLoans}
+            balloonLoans={balloonLoans}
+            onEdit={() => setEditing(true)}
+          />
         </>
       )}
 

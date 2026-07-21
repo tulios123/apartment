@@ -90,14 +90,20 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
             <span className="wlth-vehicle-icon"><Bank size={20} weight="duotone" /></span>
             <div className="wlth-vehicle-main">
               <div className="wlth-vehicle-title">משכנתא ראשית <span className="wlth-vehicle-meta">· {tracks.length === 1 ? 'מסלול אחד' : `${tracks.length} מסלולים`}</span></div>
-              <div className="wlth-vehicle-sub">{blendedRate.toFixed(1)}% · {fmt(currentMonthlyPayment)}/חודש · נפרעו {Math.round(mortgagePaidPct)}%{inGrace ? ' · בגרייס' : ''}</div>
+              <div className="wlth-vehicle-sub">{blendedRate.toFixed(1)}% · {fmt(currentMonthlyPayment)}/חודש{inGrace ? ' · בגרייס' : ''}</div>
             </div>
             <div className="wlth-vehicle-bal"><b>{fmt(mortgageBalance)}</b><span>יתרה</span></div>
             <CaretDown className="wlth-vehicle-caret" size={16} weight="bold" />
           </button>
           {open && (
             <div className="wlth-vehicle-detail">
-              {inGrace && <div className="wlth-vehicle-grace">גרייס עד {graceUntil} · תשלום מלא {fmt(summary.monthlyPayment)}{mortgageEndYear > 0 ? ` · עד ${mortgageEndYear}` : ''}</div>}
+              {inGrace && <div className="wlth-vehicle-grace">גרייס עד {graceUntil} · תשלום מלא {fmt(summary.monthlyPayment)}</div>}
+              {/* Key facts revealed on open (owner: show the important info when expanded) */}
+              <div className="wlth-vehicle-facts">
+                <span><b>{Math.round(mortgagePaidPct)}%</b> נפרעו</span>
+                {mortgageEndYear > 0 && <span><b>{mortgageEndYear}</b> סיום</span>}
+                <span><b>{fmt(summary.monthlyPayment)}</b> תשלום מלא</span>
+              </div>
               {/* Payoff progress */}
               <div className="wlth-progress">
                 <div className="wlth-progress-track"><div className="wlth-progress-fill" style={{ width: `${Math.min(100, Math.max(0, mortgagePaidPct))}%` }} /></div>
