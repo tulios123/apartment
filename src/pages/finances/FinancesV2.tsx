@@ -606,10 +606,9 @@ export default function FinancesV2() {
                         <span className="finv-tx-split">קרן {fmt(e.principal)} · ריבית {fmt(e.interest)}</span>
                       )}
                     </div>
-                    {/* Empty action slot mirrors the real rows' edit/receipt buttons, so a
-                        projected row's amount lines up in the same column as the booked rows'
-                        amounts (owner: the forecast row wasn't aligned with the mortgage). */}
-                    <div className="finv-tx-side"><span className={`finv-tx-amount ${e.direction}`}>{formatSignedCurrency(e.direction === 'income' ? e.amount : -e.amount)}</span><div className="finv-tx-actions" aria-hidden="true" /></div>
+                    {/* Amount pins to the left edge; projected rows have no actions, so it
+                        lines up with the booked rows' amounts (which also edge-anchor). */}
+                    <div className="finv-tx-side"><span className={`finv-tx-amount ${e.direction}`}>{formatSignedCurrency(e.direction === 'income' ? e.amount : -e.amount)}</span></div>
                   </div>
                 ))}
                 {monthTx.map(t => txRow(t))}
