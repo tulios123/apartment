@@ -17,7 +17,6 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
 import { nextDueDate } from '../../lib/recurrence'
-import { reentryGuard } from '../../lib/reentryGuard'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
@@ -45,8 +44,6 @@ function greeting(name: string): { text: string; Icon: typeof Sun } {
   return { text: `ערב טוב${who}`, Icon: MoonStars }
 }
 
-const WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
-
 export default function HomeScreen() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -63,7 +60,6 @@ export default function HomeScreen() {
   const { transactions, loading: loadingTx, error: txError, refetch: refetchTx } = useTransactions({ year, month })
 
   const [busy, setBusy] = useState<string | null>(null)
-  const rentGuard = useRef(reentryGuard())
   const [done, setDone] = useState<Set<string>>(new Set())
   const [flash, setFlash] = useState<string | null>(null)
   const [sheet, setSheet] = useState<null | 'expense' | 'task'>(null)
@@ -83,14 +79,12 @@ export default function HomeScreen() {
   // B8: real display name only — no email prefix / technical username fallback.
   const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] || ''
   const { text: hello, Icon: HelloIcon } = greeting(firstName)
-  const todayLabel = `יום ${WEEKDAYS[new Date().getDay()]} · ${formatDate(todayISO())}`
 
   const todayStr = todayISO()
   const rentCatSet = useMemo(() => new Set(RENT_CATEGORIES as readonly string[]), [])
   // Categories already represented in fixedExpenses — exclude them from the "extra"
   // (hand-recorded) actuals so they aren't counted twice (audit C8). Must mirror EVERY
-  // component of fixedExpenses: mortgage + insurance + loan ('הלוואה'). (R4: owner
-  // utilities are no longer part of any forecast total.)
+  // component of fixedExpenses: mortgage + insurance + loan ('הלוואה') + owner utilities.
   const fixedCatSet = useMemo(() => new Set([...MORTGAGE_CATEGORIES, 'ביטוח', 'הלוואה'] as string[]), [])
 
   // ── Fixed (expected) monthly expenses — calm, never red ──
@@ -146,7 +140,7 @@ export default function HomeScreen() {
         title: activeContract?.payment_method === 'check'
           ? 'האם הופקד צ׳ק שכר הדירה?'
           : 'האם התקבל שכר הדירה החודש?',
-        sub: `${activeContract?.company_name ?? 'השוכר'} · ${fmt(monthlyRent)}`,
+        sub: `${activeContract?.company_name ?? 'הדייר'} · ${fmt(monthlyRent)}`,
         amount: monthlyRent - rentReceived,
       })
     }
@@ -201,10 +195,6 @@ export default function HomeScreen() {
   useEffect(() => { if (homeLoaded) markReady() }, [homeLoaded, markReady])
 
   async function approveRent(amount: number) {
-    // disabled={isBusy} closes only after a re-render — a ghost double-tap fires the
-    // handler twice in one tick and used to insert two rent transactions. The guard
-    // blocks synchronously (same hole the onboarding finish plugs with finishingRef).
-    if (!rentGuard.current.enter()) return
     setBusy('rent')
     try {
       // V2: link the approval to the rent recurring-item, so the daily reminder's
@@ -240,7 +230,6 @@ export default function HomeScreen() {
     } catch {
       showFlash('לא הצלחנו לרשום, נסו שוב')
     } finally {
-      rentGuard.current.exit()
       setBusy(null)
     }
   }
@@ -300,25 +289,24 @@ export default function HomeScreen() {
 
   return (
     <div className="page hs">
-      {/* ── Hero ── The greeting, the date and the month's bottom line in one dark card,
-          in the same visual language as the Wealth net-equity hero (owner liked that one).
-          Replaces the thin greeting strip AND the duplicate headline that used to sit
-          inside the cash-flow card, so the page opens on a number that matters. */}
-      <header className="hs-hero">
-        <div className="hs-hero-top">
-          <div className="hs-greet">
-            <span className="hs-greet-icon"><HelloIcon size={15} weight="fill" /></span>
-            <h1 className="hs-greet-title">{hello}</h1>
-          </div>
-          <span className="hs-greet-date">{todayLabel}</span>
+      {/* ── Humanized status header ── */}
+      <header className="hs-header">
+        <div className="hs-greet">
+          <span className="hs-greet-icon"><HelloIcon size={20} weight="fill" /></span>
+          <h1>{hello}</h1>
         </div>
-        {property && (
-          <div className="hs-hero-money">
-            <span className="hs-hero-label">צפי לסוף החודש</span>
-            {loadingFlow
-              ? <Skeleton width="52%" height={38} radius={10} />
-              : <span className="hs-hero-value">{formatSignedCurrency(expectedNet)}</span>}
-          </div>
+        {loadingActions ? (
+          <Skeleton width="55%" height={15} />
+        ) : (!property && !loadingProperty) ? (
+          <p className="hs-status">הגדירו נכס כדי להתחיל.</p>
+        ) : (
+          <p className="hs-status">
+            {actions.length === 0
+              ? 'הכול רגוע היום — אין מה לעשות עכשיו.'
+              : actions.length === 1
+                ? 'יש פעולה אחת שמחכה לך.'
+                : `יש ${actions.length} פעולות שמחכות לך.`}
+          </p>
         )}
       </header>
 
@@ -428,9 +416,9 @@ export default function HomeScreen() {
             ) : null}
           </section>
 
-          {/* ── Quick capture ── back up here, right after the actions: adding an expense
-              or a task is the most frequent thing done on this screen, so it shouldn't sit
-              below a long breakdown card. */}
+          {/* ── Quick capture ── Two clear, structured entries. The free-text bar was
+              removed (owner, 25.07): its Hebrew parser was only lightly reliable and it
+              stacked a third, overlapping capture path on top of these two. */}
           <section className="hs-quick">
             <div className="hs-fabs">
               <button onClick={() => {
@@ -438,10 +426,10 @@ export default function HomeScreen() {
                 if (sheet === 'expense') { setExpenseExpandKey(k => k + 1); return }
                 setSheetSeed(''); setSheet('expense')
               }}>
-                <Plus size={16} weight="bold" /> הוצאה
+                <span className="hs-fab-icon"><Plus size={17} weight="bold" /></span> הוצאה
               </button>
               <button onClick={() => setSheet('task')}>
-                <ListPlus size={16} weight="bold" /> משימה
+                <span className="hs-fab-icon"><ListPlus size={17} weight="bold" /></span> משימה
               </button>
             </div>
           </section>
@@ -456,8 +444,12 @@ export default function HomeScreen() {
               <Skeleton width="100%" height={120} radius={18} />
             ) : (
               <div className="hs-flow-card">
-                {/* The month's headline now leads the hero card above — showing it here
-                    too just repeated the same number a screen apart. */}
+                <div className="hs-flow-headline">
+                  <span className="hs-flow-headline-label">צפי לסוף החודש</span>
+                  <span className={`hs-flow-headline-value${expectedNet >= 0 ? '' : ' soft-neg'}`}>
+                    {formatSignedCurrency(expectedNet)}
+                  </span>
+                </div>
 
                 {/* Rent — actual progress when leased; an invitation to add a
                     lease when not (no tenant = no income, the thing to fix). */}
@@ -588,6 +580,7 @@ export default function HomeScreen() {
         }}
         onCancel={() => setFollowup(null)}
       />
+
     </div>
   )
 }
