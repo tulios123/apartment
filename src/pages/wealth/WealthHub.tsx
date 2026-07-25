@@ -12,7 +12,7 @@ import { usePropertyData } from '../../hooks/usePropertyData'
 import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useLoansData } from '../../hooks/useLoansData'
-import { currentSplit, futureSplit, principalNext12Months, interestNext12Months } from '../../lib/equity'
+import { currentSplit, futureSplit, principalNext12Months, interestNext12Months, currentSplitMonth, splitForMonth } from '../../lib/equity'
 import { formatCurrency, todayISO, daysBetween } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { MAINTENANCE_CATEGORY } from '../../lib/constants'
@@ -41,6 +41,11 @@ export default function WealthHub() {
   const balloon = loansSummary.balloonOutstanding || 0
 
   const split = currentSplit(tracks, monthlyLoans)
+  // Owner (21.07): the monthly card lumped mortgage interest and loan interest into one
+  // line labelled "ריבית המשכנתא". Break the SAME month down per vehicle so each is named.
+  const splitMonth = currentSplitMonth(tracks, monthlyLoans)
+  const mortgageSplit = splitForMonth(tracks, [], splitMonth)
+  const loansSplit = splitForMonth([], monthlyLoans, splitMonth)
   const future5y = futureSplit(tracks, monthlyLoans, 60)
   const annualPrincipal = principalNext12Months(tracks, monthlyLoans)
 
@@ -131,7 +136,8 @@ export default function WealthHub() {
           {monthlyRent > 0 && (
             <MonthlyResult
               monthlyRent={monthlyRent}
-              monthlyInterest={split.interest}
+              mortgageInterest={mortgageSplit.interest}
+              loansInterest={loansSplit.interest}
               monthlyPrincipal={split.principal}
               monthlyMaintenance={monthlyMaintenance}
             />
@@ -180,11 +186,14 @@ export default function WealthHub() {
               it already appears in the cash-flow card above as "הון עצמי ועלויות רכישה"
               (owner, 20.07). Gross yield + monthly rent aren't shown elsewhere. */}
           {(grossYield != null || monthlyRent > 0 || roeCash != null) && (
-            <section className="wlth-secondary">
-              {roeCash != null && <div><span>תשואה על ההון העצמי · תזרים</span><strong>{roeCash.toFixed(1)}%</strong></div>}
-              {roeTotal != null && <div><span>תשואה על ההון העצמי · כולל קרן</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
-              {grossYield != null && <div><span>תשואה ברוטו (על שווי)</span><strong>{grossYield.toFixed(1)}%</strong></div>}
-              {monthlyRent > 0 && <div><span>שכר דירה חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
+            <section className="wlth-card">
+              <div className="wlth-card-head"><h2>תשואות</h2></div>
+              <div className="wlth-yields">
+                {roeCash != null && <div><span>על ההון העצמי<br />תזרים בלבד</span><strong>{roeCash.toFixed(1)}%</strong></div>}
+                {roeTotal != null && <div><span>על ההון העצמי<br />כולל בניית הון</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
+                {grossYield != null && <div><span>ברוטו<br />על שווי הנכס</span><strong>{grossYield.toFixed(1)}%</strong></div>}
+                {monthlyRent > 0 && <div><span>שכר דירה<br />חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
+              </div>
               {roeCash != null && <p className="wlth-yield-note">ההון העצמי = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון).</p>}
             </section>
           )}

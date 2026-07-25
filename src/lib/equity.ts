@@ -61,6 +61,21 @@ export function currentSplit(tracks: MortgageTrack[], monthlyLoans: Loan[], asOf
   return now
 }
 
+/**
+ * The `YYYY-MM` that `currentSplit` resolves to — same fallback walk. Lets a caller
+ * break the SAME month down per vehicle (mortgage vs loans) without the two lookups
+ * drifting onto different months.
+ */
+export function currentSplitMonth(tracks: MortgageTrack[], monthlyLoans: Loan[], asOf: Date = new Date()): string {
+  const now = ym(asOf)
+  if (splitForMonth(tracks, monthlyLoans, now).total > 0) return now
+  for (let i = 1; i <= 12; i++) {
+    const m = ym(shift(asOf, i))
+    if (splitForMonth(tracks, monthlyLoans, m).total > 0) return m
+  }
+  return now
+}
+
 /** The split `monthsAhead` from now — for the Spitzer trajectory line. */
 export function futureSplit(tracks: MortgageTrack[], monthlyLoans: Loan[], monthsAhead: number, asOf: Date = new Date()): PaymentSplit {
   return splitForMonth(tracks, monthlyLoans, ym(shift(asOf, monthsAhead)))

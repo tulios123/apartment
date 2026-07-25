@@ -6,8 +6,10 @@ const fmt = (v: number) => formatCurrency(v)
 interface Props {
   /** This month's rent (active contract). */
   monthlyRent: number
-  /** Interest portion of this month's financing payment — the only true cost. */
-  monthlyInterest: number
+  /** Interest portion of the mortgage payment this month — a true cost. */
+  mortgageInterest: number
+  /** Interest portion of any supplementary loans this month — also a true cost. */
+  loansInterest: number
   /** Principal portion — money that returns to you as equity, not a loss. */
   monthlyPrincipal: number
   /** Estimated average monthly maintenance (trailing), 0 if unknown. */
@@ -20,7 +22,8 @@ interface Props {
  * builds equity. So the honest monthly result is rent − interest − upkeep, and
  * the principal is surfaced separately as money that came back to you.
  */
-export default function MonthlyResult({ monthlyRent, monthlyInterest, monthlyPrincipal, monthlyMaintenance }: Props) {
+export default function MonthlyResult({ monthlyRent, mortgageInterest, loansInterest, monthlyPrincipal, monthlyMaintenance }: Props) {
+  const monthlyInterest = mortgageInterest + loansInterest
   if (monthlyRent <= 0 && monthlyInterest <= 0) return null
 
   const realProfit = monthlyRent - monthlyInterest - monthlyMaintenance
@@ -39,10 +42,18 @@ export default function MonthlyResult({ monthlyRent, monthlyInterest, monthlyPri
           <span><i className="wlth-cf-dot in" /> שכר דירה</span>
           <strong className="in">+{fmt(monthlyRent)}</strong>
         </div>
-        <div className="wlth-result-row">
-          <span><i className="wlth-cf-dot out" /> ריבית המשכנתא (עלות אמיתית)</span>
-          <strong className="out">−{fmt(monthlyInterest)}</strong>
-        </div>
+        {mortgageInterest > 0 && (
+          <div className="wlth-result-row">
+            <span><i className="wlth-cf-dot out" /> ריבית המשכנתא</span>
+            <strong className="out">−{fmt(mortgageInterest)}</strong>
+          </div>
+        )}
+        {loansInterest > 0 && (
+          <div className="wlth-result-row">
+            <span><i className="wlth-cf-dot out" /> ריבית ההלוואות</span>
+            <strong className="out">−{fmt(loansInterest)}</strong>
+          </div>
+        )}
         {monthlyMaintenance > 0 && (
           <div className="wlth-result-row">
             <span><i className="wlth-cf-dot out" /> אחזקה (ממוצע חודשי)</span>

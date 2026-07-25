@@ -93,10 +93,14 @@
   .wlth-track-bal { font-weight: 600; color: var(--brand-navy); font-variant-numeric: tabular-nums; min-width: 90px; text-align: end; }
 
   /* ── Secondary metrics strip ───────────────────────────────── */
-  .wlth-secondary { display: flex; gap: 28px; flex-wrap: wrap; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 16px 18px; }
-  .wlth-secondary div span { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 3px; }
-  .wlth-secondary div strong { font-size: 17px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
-  .wlth-yield-note { flex-basis: 100%; margin: 2px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--text-muted); }
+  /* Yields — an even 2×2 grid of tiles. The old flex+wrap left a ragged, headingless
+     block (owner 21.07: "לא מסודר יפה ולא מספיק ברור"): items fell 1-then-2-then-1
+     depending on label width. Equal tiles keep the square tidy at any label length. */
+  .wlth-yields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .wlth-yields > div { background: var(--bg-alt); border-radius: var(--r-sm); padding: 12px 13px; min-width: 0; }
+  .wlth-yields div span { font-size: 11.5px; line-height: 1.35; color: var(--text-muted); display: block; margin-bottom: 5px; }
+  .wlth-yields div strong { font-size: 21px; font-weight: 800; color: var(--brand-navy); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .wlth-yield-note { margin: 12px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--text-muted); }
 
   /* ── Cashflow: income vs expenses (incl. equity) ───────────── */
   .wlth-cf-rows { display: flex; flex-direction: column; gap: 10px; }
