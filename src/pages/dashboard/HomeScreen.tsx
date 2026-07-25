@@ -300,16 +300,26 @@ export default function HomeScreen() {
 
   return (
     <div className="page hs">
-      {/* ── Greeting strip ── One slim line: a warm greeting and today's date, nothing
-          more. The old "יש פעולה אחת שמחכה לך" status was dropped — it merely counted the
-          action cards that sit right below, so it duplicated them and padded the header.
-          The narrative now flows: who/when → what needs you → how the month looks. */}
-      <header className="hs-header">
-        <div className="hs-greet">
-          <span className="hs-greet-icon"><HelloIcon size={18} weight="fill" /></span>
-          <h1 className="hs-greet-title">{hello}</h1>
+      {/* ── Hero ── The greeting, the date and the month's bottom line in one dark card,
+          in the same visual language as the Wealth net-equity hero (owner liked that one).
+          Replaces the thin greeting strip AND the duplicate headline that used to sit
+          inside the cash-flow card, so the page opens on a number that matters. */}
+      <header className="hs-hero">
+        <div className="hs-hero-top">
+          <div className="hs-greet">
+            <span className="hs-greet-icon"><HelloIcon size={15} weight="fill" /></span>
+            <h1 className="hs-greet-title">{hello}</h1>
+          </div>
+          <span className="hs-greet-date">{todayLabel}</span>
         </div>
-        <span className="hs-greet-date">{todayLabel}</span>
+        {property && (
+          <div className="hs-hero-money">
+            <span className="hs-hero-label">צפי לסוף החודש</span>
+            {loadingFlow
+              ? <Skeleton width="52%" height={38} radius={10} />
+              : <span className="hs-hero-value">{formatSignedCurrency(expectedNet)}</span>}
+          </div>
+        )}
       </header>
 
       {flash && <div className="hs-flash" role="status">{flash}</div>}
@@ -418,6 +428,24 @@ export default function HomeScreen() {
             ) : null}
           </section>
 
+          {/* ── Quick capture ── back up here, right after the actions: adding an expense
+              or a task is the most frequent thing done on this screen, so it shouldn't sit
+              below a long breakdown card. */}
+          <section className="hs-quick">
+            <div className="hs-fabs">
+              <button onClick={() => {
+                // Docked sheet + another tap = restore it (V3), preserving typed data.
+                if (sheet === 'expense') { setExpenseExpandKey(k => k + 1); return }
+                setSheetSeed(''); setSheet('expense')
+              }}>
+                <Plus size={16} weight="bold" /> הוצאה
+              </button>
+              <button onClick={() => setSheet('task')}>
+                <ListPlus size={16} weight="bold" /> משימה
+              </button>
+            </div>
+          </section>
+
           {/* ── Calm cash flow ── */}
           <section className="hs-flow">
             <div className="hs-flow-head">
@@ -428,12 +456,8 @@ export default function HomeScreen() {
               <Skeleton width="100%" height={120} radius={18} />
             ) : (
               <div className="hs-flow-card">
-                <div className="hs-flow-headline">
-                  <span className="hs-flow-headline-label">צפי לסוף החודש</span>
-                  <span className={`hs-flow-headline-value${expectedNet >= 0 ? '' : ' soft-neg'}`}>
-                    {formatSignedCurrency(expectedNet)}
-                  </span>
-                </div>
+                {/* The month's headline now leads the hero card above — showing it here
+                    too just repeated the same number a screen apart. */}
 
                 {/* Rent — actual progress when leased; an invitation to add a
                     lease when not (no tenant = no income, the thing to fix). */}
@@ -536,24 +560,6 @@ export default function HomeScreen() {
                 </p>
               </div>
             )}
-          </section>
-
-          {/* ── Quick capture ── two clear entries, parked at the bottom in the thumb
-              zone (below the month view) so they no longer split the status narrative.
-              The free-text NL bar was removed (owner, 20.07). */}
-          <section className="hs-quick">
-            <div className="hs-fabs">
-              <button onClick={() => {
-                // Docked sheet + another tap = restore it (V3), preserving typed data.
-                if (sheet === 'expense') { setExpenseExpandKey(k => k + 1); return }
-                setSheetSeed(''); setSheet('expense')
-              }}>
-                <Plus size={16} weight="bold" /> הוצאה
-              </button>
-              <button onClick={() => setSheet('task')}>
-                <ListPlus size={16} weight="bold" /> משימה
-              </button>
-            </div>
           </section>
         </>
       )}
