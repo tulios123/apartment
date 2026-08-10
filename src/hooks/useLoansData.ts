@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { loanBalance, loanInterestToDate, loanMonthlyPayment } from '../lib/loans'
 import { readCache, writeCache } from '../lib/queryCache'
 import type { Loan, LoanRepaymentType, TrackType } from '../types'
+import { latestOnly } from '../lib/latestOnly'
 
 export interface LoansSummary {
   /** Outstanding balance across monthly_fixed loans (Shpitzer). */
@@ -32,9 +33,12 @@ export function useLoansData(): LoansData {
   const [loans, setLoans] = useState<Loan[]>(() => readCache<Loan[]>(cacheKey) ?? [])
   const [loading, setLoading] = useState(() => readCache<Loan[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
+  // SW-12: only the LATEST fetch (effect or manual refetch) may commit state.
+  const guard = useRef(latestOnly())
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const fresh = guard.current.start()
     const cached = readCache<Loan[]>(cacheKey)
     if (cached) setLoans(cached)
     setLoading(cached == null)
@@ -45,18 +49,19 @@ export function useLoansData(): LoansData {
         .select('*')
         .eq('owner_id', user.id)
         .order('created_at')
+      if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
       if (err) throw err
       const next = (data ?? []) as Loan[]
       setLoans(next)
       writeCache<Loan[]>(cacheKey, next)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
+      if (fresh()) setError(e instanceof Error ? e.message : 'שגיאה בטעינה')
     } finally {
-      setLoading(false)
+      if (fresh()) setLoading(false)
     }
   }, [user?.id, cacheKey])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetch(); return () => guard.current.invalidate() }, [fetch])
 
   const monthlyLoans = loans.filter(l => l.repayment_type === 'monthly_fixed')
   const balloonLoans = loans.filter(l => l.repayment_type === 'balloon')

@@ -1,3 +1,4 @@
+import { SHEET_CLOSE_MS } from '../../lib/constants'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Lightbulb } from '@phosphor-icons/react'
@@ -89,7 +90,7 @@ export default function BottomSheet({ open, onClose, onDismiss, title, children,
   useEffect(() => {
     if (open) { setMounted(true); setMinimized(false) }
     else {
-      const t = setTimeout(() => setMounted(false), 360)
+      const t = setTimeout(() => setMounted(false), SHEET_CLOSE_MS)
       return () => clearTimeout(t)
     }
   }, [open])
@@ -187,15 +188,16 @@ export default function BottomSheet({ open, onClose, onDismiss, title, children,
         >
           <span className="bsheet-handle" />
         </div>
+        {/* Feedback in the LEADING corner, close in the TRAILING corner — opposite
+            ends so a reach for one can't slip onto the other (they used to sit 2px
+            apart in the same cluster). */}
         {title && (
           <div className="bsheet-head" onClick={() => minimized && setMinimized(false)}>
+            {track !== false && (
+              <button className="bsheet-close bsheet-feedback-btn" onClick={e => { e.stopPropagation(); openFeedback() }} aria-label="דיווח על תקלה או רעיון" title="דיווח"><Lightbulb size={18} weight="fill" /></button>
+            )}
             <h2>{title}</h2>
-            <div className="bsheet-head-actions">
-              {track !== false && (
-                <button className="bsheet-close" onClick={e => { e.stopPropagation(); openFeedback() }} aria-label="דיווח על תקלה או רעיון" title="דיווח"><Lightbulb size={18} weight="fill" /></button>
-              )}
-              <button className="bsheet-close" onClick={e => { e.stopPropagation(); onClose() }} aria-label="סגור"><X size={20} /></button>
-            </div>
+            <button className="bsheet-close" onClick={e => { e.stopPropagation(); onClose() }} aria-label="סגור"><X size={20} /></button>
           </div>
         )}
         <div className="bsheet-body">{children}</div>

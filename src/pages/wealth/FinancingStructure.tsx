@@ -1,16 +1,15 @@
+import { TRACK_LABELS, TRACK_COLORS } from '../../lib/constants'
 import { useState } from 'react'
 import { Bank, CreditCard, Handshake, CaretDown, PencilSimple } from '@phosphor-icons/react'
 import { trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanEndDate } from '../../lib/loans'
 import { formatCurrency, todayISO, parseLocalISO, monthDayISO } from '../../lib/format'
-import type { MortgageTrack, Loan, TrackType } from '../../types'
+import type { MortgageTrack, Loan } from '../../types'
 import type { MortgageSummary } from '../../hooks/useMortgageData'
 
 const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => (d ? parseLocalISO(d).getFullYear() : null)
 
-const TRACK_LABEL: Record<TrackType, string> = { prime: 'פריים', fixed_unlinked: 'קבועה לא צמודה', fixed_linked: 'קבועה צמודה', variable: 'משתנה' }
-const TRACK_COLOR: Record<TrackType, string> = { prime: '#5aa0ec', fixed_unlinked: 'var(--accent-teal)', fixed_linked: 'var(--accent-2)', variable: '#f0b24e' }
 
 interface Props {
   tracks: MortgageTrack[]
@@ -82,41 +81,51 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
         <button className="wlth-edit-icon" onClick={onEdit} aria-label="ערוך מימון" title="ערוך מימון"><PencilSimple size={16} /></button>
       </div>
 
-      {/* 1 — Main mortgage (aggregated parent) */}
+      {/* 1 — Main mortgage (aggregated parent). Folded by default (owner 20.07): the
+          head shows only rate · payment · balance (+ a grace flag); the payoff bar,
+          the grace detail and the per-track breakdown live behind the caret. */}
       {tracks.length > 0 && (
         <div className={`wlth-vehicle${open ? ' open' : ''}`}>
           <button className="wlth-vehicle-head" onClick={() => setOpen(o => !o)}>
             <span className="wlth-vehicle-icon"><Bank size={20} weight="duotone" /></span>
             <div className="wlth-vehicle-main">
-              <div className="wlth-vehicle-title">משכנתא ראשית <span className="wlth-vehicle-meta">· {tracks.length} מסלולים</span></div>
-              <div className="wlth-vehicle-sub">בלנדד {blendedRate.toFixed(1)}% · {fmt(currentMonthlyPayment)}/חודש · נפרעו {Math.round(mortgagePaidPct)}%{mortgageEndYear > 0 ? ` · עד ${mortgageEndYear}` : ''}</div>
-              {inGrace && <div className="wlth-vehicle-grace">גרייס עד {graceUntil} · תשלום מלא {fmt(summary.monthlyPayment)}</div>}
+              <div className="wlth-vehicle-title">משכנתא ראשית <span className="wlth-vehicle-meta">· {tracks.length === 1 ? 'מסלול אחד' : `${tracks.length} מסלולים`}</span></div>
+              <div className="wlth-vehicle-sub">{blendedRate.toFixed(1)}% · {fmt(currentMonthlyPayment)}/חודש{inGrace ? ' · בגרייס' : ''}</div>
             </div>
             <div className="wlth-vehicle-bal"><b>{fmt(mortgageBalance)}</b><span>יתרה</span></div>
             <CaretDown className="wlth-vehicle-caret" size={16} weight="bold" />
           </button>
-          {/* Payoff progress */}
-          <div className="wlth-progress">
-            <div className="wlth-progress-track"><div className="wlth-progress-fill" style={{ width: `${Math.min(100, Math.max(0, mortgagePaidPct))}%` }} /></div>
-            <span className="wlth-progress-label">נפרעו {Math.round(mortgagePaidPct)}% · נותרו {fmt(mortgageBalance)}</span>
-          </div>
           {open && (
-            <div className="wlth-tracks">
-              {tracks.map(t => (
-                <div key={t.id} className="wlth-track-row">
-                  <span className="wlth-track-dot" style={{ background: TRACK_COLOR[t.track_type] }} />
-                  {/* Product decision 15.07: linked tracks are computed nominally — disclose. */}
-                  <span className="wlth-track-name">{TRACK_LABEL[t.track_type]}{t.track_type === 'fixed_linked' ? ' (ללא הצמדה למדד)' : ''}{t.label ? ` · ${t.label}` : ''}</span>
-                  <span className="wlth-track-rate">{Number(t.annual_rate).toFixed(1)}%</span>
-                  <span className="wlth-track-bal">{fmt(trackBalance(t))}</span>
-                </div>
-              ))}
+            <div className="wlth-vehicle-detail">
+              {inGrace && <div className="wlth-vehicle-grace">גרייס עד {graceUntil} · תשלום מלא {fmt(summary.monthlyPayment)}</div>}
+              {/* Key facts revealed on open (owner: show the important info when expanded) */}
+              <div className="wlth-vehicle-facts">
+                <span><b>{Math.round(mortgagePaidPct)}%</b> נפרעו</span>
+                {mortgageEndYear > 0 && <span><b>{mortgageEndYear}</b> סיום</span>}
+                <span><b>{fmt(summary.monthlyPayment)}</b> תשלום מלא</span>
+              </div>
+              {/* Payoff progress */}
+              <div className="wlth-progress">
+                <div className="wlth-progress-track"><div className="wlth-progress-fill" style={{ width: `${Math.min(100, Math.max(0, mortgagePaidPct))}%` }} /></div>
+                <span className="wlth-progress-label">נפרעו {Math.round(mortgagePaidPct)}% · נותרו {fmt(mortgageBalance)}</span>
+              </div>
+              <div className="wlth-tracks">
+                {tracks.map(t => (
+                  <div key={t.id} className="wlth-track-row">
+                    <span className="wlth-track-dot" style={{ background: TRACK_COLORS[t.track_type] }} />
+                    {/* Product decision 15.07: linked tracks are computed nominally — disclose. */}
+                    <span className="wlth-track-name">{TRACK_LABELS[t.track_type]}{t.track_type === 'fixed_linked' ? ' (ללא הצמדה למדד)' : ''}{t.label ? ` · ${t.label}` : ''}</span>
+                    <span className="wlth-track-rate">{Number(t.annual_rate).toFixed(1)}%</span>
+                    <span className="wlth-track-bal">{fmt(trackBalance(t))}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* 2 — Supplementary bank loans */}
+      {/* 2 — Supplementary bank loans (folded to one compact row, like the mortgage). */}
       {monthlyLoans.map(l => {
         const paidPct = l.principal > 0 ? Math.max(0, Math.min(100, (1 - loanBalance(l) / l.principal) * 100)) : 0
         return (
@@ -125,13 +134,9 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
               <span className="wlth-vehicle-icon"><CreditCard size={20} weight="duotone" /></span>
               <div className="wlth-vehicle-main">
                 <div className="wlth-vehicle-title">{l.label || 'הלוואה משלימה'}{l.lender ? <span className="wlth-vehicle-meta"> · {l.lender}</span> : null}</div>
-                <div className="wlth-vehicle-sub">{[Number.isFinite(Number(l.annual_rate)) ? `${Number(l.annual_rate).toFixed(1)}%` : null, `${fmt(loanMonthlyPayment(l))}/חודש`, loanEndDate(l) ? `סיום ${yearOf(loanEndDate(l))}` : null].filter(Boolean).join(' · ')}</div>
+                <div className="wlth-vehicle-sub">{[Number.isFinite(Number(l.annual_rate)) ? `${Number(l.annual_rate).toFixed(1)}%` : null, `${fmt(loanMonthlyPayment(l))}/חודש`, `נפרעו ${Math.round(paidPct)}%`, loanEndDate(l) ? `סיום ${yearOf(loanEndDate(l))}` : null].filter(Boolean).join(' · ')}</div>
               </div>
               <div className="wlth-vehicle-bal"><b>{fmt(loanBalance(l))}</b><span>יתרה</span></div>
-            </div>
-            <div className="wlth-progress">
-              <div className="wlth-progress-track"><div className="wlth-progress-fill" style={{ width: `${paidPct}%` }} /></div>
-              <span className="wlth-progress-label">נפרעו {Math.round(paidPct)}% · נותרו {fmt(loanBalance(l))}</span>
             </div>
           </div>
         )
@@ -144,7 +149,7 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
             <span className="wlth-vehicle-icon"><Handshake size={20} weight="duotone" /></span>
             <div className="wlth-vehicle-main">
               <div className="wlth-vehicle-title">{l.label || 'הלוואת בלון'}{l.lender && l.lender !== (l.label || 'הלוואת בלון') ? <span className="wlth-vehicle-meta"> · {l.lender}</span> : null}</div>
-              <div className="wlth-vehicle-sub">ללא ריבית · ללא תשלום חודשי · נפרעת במכירה</div>
+              <div className="wlth-vehicle-sub">ללא ריבית · ללא תשלום חודשי</div>
             </div>
             <div className="wlth-vehicle-bal"><b>{fmt(l.principal)}</b><span>נפרעת במכירה</span></div>
           </div>

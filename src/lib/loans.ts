@@ -1,3 +1,4 @@
+import { monthDayISO } from './format'
 import type { Loan } from '../types'
 import { monthlyPayment, paymentDate } from './mortgage'
 
@@ -11,11 +12,9 @@ export function monthsElapsed(startDate: string | null, asOf: Date = new Date())
   return Math.max(0, months)
 }
 
-/** LOCAL Y-M-D — never toISOString (UTC rolls back a day in timezones ahead of UTC,
- * which would drop a payment dated "today" from balance/interest totals). */
-function localISO(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+// LOCAL Y-M-D — SW-08: one shared definition (lib/format.monthDayISO); never
+// toISOString (UTC rolls back a day ahead-of-UTC and would drop today's payment).
+const localISO = monthDayISO
 
 interface LoanRow {
   date: string

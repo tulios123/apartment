@@ -1,6 +1,6 @@
 import { trackSchedule } from './mortgage'
 import { loanPaymentForMonth, loanSplitForMonth } from './loans'
-import { monthEndISO, todayISO, parseLocalISO } from './format'
+import { monthEndISO, todayISO, parseLocalISO, monthDayISO } from './format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from './constants'
 import type { Contract, MortgageTrack, Loan } from '../types'
 
@@ -43,7 +43,7 @@ export function activeContract<T extends { start_date: string; end_date: string 
   // Compare as LOCAL date strings so start/end are inclusive whole days. Instant
   // comparison (new Date('YYYY-MM-DD') is UTC midnight) skews by the UTC offset at the
   // day boundary in Israel — a lease would read inactive on its own start/end date.
-  const d = `${asOf.getFullYear()}-${String(asOf.getMonth() + 1).padStart(2, '0')}-${String(asOf.getDate()).padStart(2, '0')}`
+  const d = monthDayISO(asOf)   // SW-08: shared local Y-M-D helper
   return contracts.find(c => c.start_date <= d && c.end_date >= d)
 }
 
@@ -122,17 +122,25 @@ export function monthlyVirtualEntries(
     const monthStart = `${monthStr}-01`
     const monthEnd = monthEndISO(year, m)
 
+    // R7: ONE apartment ⇒ at most ONE projected rent row per calendar month.
+    // Overlapping contract rows (an old lease's tail under a new lease's start)
+    // used to project BOTH rents into the ledger and the month forecast. Mirror
+    // rentReceivedToDate's N6 rule: the LATER-STARTING (newer) lease wins.
+    let rentContract: Contract | null = null
     for (const c of contracts) {
       if (c.start_date <= monthEnd && c.end_date >= monthStart) {
-        entries.push({
-          id: `v-rent-${c.id}-${monthStr}`,
-          direction: 'income',
-          amount: Number(c.monthly_rent) || 0,   // numeric col → string at runtime; coerce before it reaches a + sum
-          date: monthStart,
-          category: RENT_CATEGORIES[0],
-          description: c.company_name,
-        })
+        if (!rentContract || c.start_date > rentContract.start_date) rentContract = c
       }
+    }
+    if (rentContract) {
+      entries.push({
+        id: `v-rent-${rentContract.id}-${monthStr}`,
+        direction: 'income',
+        amount: Number(rentContract.monthly_rent) || 0,   // numeric col → string at runtime; coerce before it reaches a + sum
+        date: monthStart,
+        category: RENT_CATEGORIES[0],
+        description: rentContract.company_name,
+      })
     }
 
     let mortgageTotal = 0

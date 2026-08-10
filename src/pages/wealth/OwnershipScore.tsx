@@ -47,8 +47,12 @@ export default function OwnershipScore({ propertyValue, bankDebt, balloon, month
         {bankDebt > 0 && <div className="seg banks" style={{ width: `${pct(bankDebt)}%` }} />}
       </div>
 
+      {/* The "yours" legend is a label-only key for the green segment — its amount is
+          the hero headline just above, so repeating the number here was pure duplication
+          (owner, 20.07: declutter the hero, drop the repeated equity figure). Family/banks
+          keep their amounts (the breakdown isn't stated in the headline). */}
       <div className="wlth-ladder-legend">
-        <span><i className="dot yours" /> בבעלותך <b>{fmt(Math.max(0, netEquity))}</b></span>
+        <span><i className="dot yours" /> בבעלותך</span>
         {balloon > 0 && <span><i className="dot family" /> מימון משפחה <b>{fmt(balloon)}</b></span>}
         {bankDebt > 0 && <span><i className="dot banks" /> נותר לבעלות · בנקים <b>{fmt(bankDebt)}</b></span>}
       </div>

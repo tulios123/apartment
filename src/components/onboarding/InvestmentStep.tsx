@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
+import { sanitizeAmountInt } from '../../lib/format'
 import { Coins, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -56,7 +57,7 @@ export function InvestmentStep() {
                     value={displayVal}
                     onFocus={() => setFocusedInput('equity')}
                     onBlur={() => setFocusedInput(null)}
-                    onChange={e => setEquityValue(e.target.value.replace(/\D/g, ''))}
+                    onChange={e => setEquityValue(sanitizeAmountInt(e.target.value))}
                     style={{ flex: 1 }}
                   />
                 )
@@ -121,7 +122,7 @@ export function InvestmentStep() {
                 <div className="onboarding-field">
                   <input type="text" inputMode="numeric" placeholder="סכום" autoFocus={editBalloon === i}
                     value={formatNum(b.amount)}
-                    onChange={e => setBalloonLoans(prev => prev.map((r, j) => j === i ? { ...r, amount: e.target.value.replace(/[^\d]/g, '') } : r))} />
+                    onChange={e => setBalloonLoans(prev => prev.map((r, j) => j === i ? { ...r, amount: sanitizeAmountInt(e.target.value) } : r))} />
                 </div>
                 <div className="onboarding-field">
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -159,7 +160,7 @@ export function InvestmentStep() {
             value: focusedInput === id ? formatNum(val) : formatNum(val || def),
             onFocus: () => setFocusedInput(id),
             onBlur: () => setFocusedInput(null),
-            onChange: (e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value.replace(/[^\d]/g, '')),
+            onChange: (e: ChangeEvent<HTMLInputElement>) => onChange(sanitizeAmountInt(e.target.value)),
           })
           return (
             <>
@@ -180,13 +181,13 @@ export function InvestmentStep() {
                   <label>יועץ משכנתאות (₪)</label>
                   <input type="text" inputMode="numeric" placeholder="0"
                     value={formatNum(costs.mortgage_advisor)}
-                    onChange={e => setCosts(c => ({ ...c, mortgage_advisor: e.target.value.replace(/[^\d]/g, '') }))} />
+                    onChange={e => setCosts(c => ({ ...c, mortgage_advisor: sanitizeAmountInt(e.target.value) }))} />
                 </div>
                 <div className="onboarding-field">
                   <label>חברת ליווי השקעה (₪)</label>
                   <input type="text" inputMode="numeric" placeholder="0"
                     value={formatNum(costs.investment_company)}
-                    onChange={e => setCosts(c => ({ ...c, investment_company: e.target.value.replace(/[^\d]/g, '') }))} />
+                    onChange={e => setCosts(c => ({ ...c, investment_company: sanitizeAmountInt(e.target.value) }))} />
                 </div>
               </div>
               <div className="onboarding-row">
@@ -194,7 +195,7 @@ export function InvestmentStep() {
                   <label>שמאי (₪)</label>
                   <input type="text" inputMode="numeric" placeholder="0"
                     value={formatNum(costs.appraiser ?? '')}
-                    onChange={e => setCosts(c => ({ ...c, appraiser: e.target.value.replace(/[^\d]/g, '') }))} />
+                    onChange={e => setCosts(c => ({ ...c, appraiser: sanitizeAmountInt(e.target.value) }))} />
                 </div>
                 <div className="onboarding-field" />
               </div>
@@ -211,7 +212,7 @@ export function InvestmentStep() {
                     <div style={{ display: 'flex', gap: 6 }}>
                       <input type="text" inputMode="numeric" placeholder="0"
                         value={formatNum(ec.amount)}
-                        onChange={e => setExtraCosts(prev => prev.map((c, j) => j === i ? { ...c, amount: e.target.value.replace(/[^\d]/g, '') } : c))} />
+                        onChange={e => setExtraCosts(prev => prev.map((c, j) => j === i ? { ...c, amount: sanitizeAmountInt(e.target.value) } : c))} />
                       <button type="button" aria-label="מחיקת עלות" onClick={() => setExtraCosts(prev => prev.filter((_, j) => j !== i))}
                         style={{ flexShrink: 0, padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', cursor: 'pointer' }}>
                         <X size={14} />

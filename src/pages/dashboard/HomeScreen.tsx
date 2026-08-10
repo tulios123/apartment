@@ -2,8 +2,8 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppReady } from '../../contexts/AppReadyContext'
 import {
-  CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, ArrowLeft, Sun, CloudSun, MoonStars,
-  Sparkle, Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretUp, CaretLeft, ArrowsClockwise,
+  CheckCircle, Coins, CalendarCheck, FileText, ArrowRight, Sun, CloudSun, MoonStars,
+  Plus, ListPlus, CircleNotch, HandCoins, Check, CaretDown, CaretUp, CaretLeft, ArrowsClockwise,
 } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
@@ -19,7 +19,6 @@ import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../l
 import { nextDueDate } from '../../lib/recurrence'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
-import { parseQuick, predictCategory } from '../../lib/quickParse'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
@@ -63,7 +62,6 @@ export default function HomeScreen() {
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<Set<string>>(new Set())
   const [flash, setFlash] = useState<string | null>(null)
-  const [quick, setQuick] = useState('')
   const [sheet, setSheet] = useState<null | 'expense' | 'task'>(null)
   const [sheetSeed, setSheetSeed] = useState('')
   // V3: when the expense sheet is docked (minimized) and its launcher is tapped again,
@@ -77,9 +75,6 @@ export default function HomeScreen() {
   // Money follow-up after completing a money-implying task — shown as an in-app
   // dialog (not a native confirm), and only after the completion actually persisted.
   const [followup, setFollowup] = useState<TaskFollowup | null>(null)
-  // Quick-capture asks to confirm before writing — a fast inline entry can hide a typo
-  // (an extra zero turning ₪50 into ₪500) and there was no confirm/undo (audit).
-  const [quickPending, setQuickPending] = useState<{ income: boolean; amount: number; desc: string; text: string } | null>(null)
 
   // B8: real display name only — no email prefix / technical username fallback.
   const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] || ''
@@ -280,45 +275,6 @@ export default function HomeScreen() {
     flashTimer.current = setTimeout(() => setFlash(null), 2600)
   }
 
-  async function submitQuick(e: React.FormEvent) {
-    e.preventDefault()
-    const parsed = parseQuick(quick)
-    // No amount detected → open the expense sheet pre-filled with the typed text.
-    if (!parsed) {
-      setSheetSeed(quick.trim())
-      setSheet('expense')
-      // Already open-but-docked → restore it (V3); the docked data is preserved.
-      if (sheet === 'expense') setExpenseExpandKey(k => k + 1)
-      return
-    }
-    // AI "magic" path: classify inline, but confirm the parsed amount before writing so
-    // a typo (an extra zero turning ₪50 into ₪500) can't silently record a giant expense
-    // (audit — quick-capture had no confirm/undo).
-    setQuickPending({ income: parsed.income, amount: parsed.amount, desc: parsed.desc, text: quick })
-  }
-
-  async function confirmQuickWrite() {
-    const p = quickPending
-    if (!p) return
-    setQuickPending(null)
-    setQuick('')
-    // Quick-typed income is always treated as one-off "extra income" — rent has its
-    // own dedicated flow (the "שכר הדירה התקבל" action), so it never touches the rent line.
-    const { error } = await createTransaction({
-      contract_id: null,
-      recurring_item_id: null, document_id: null,
-      direction: p.income ? 'income' : 'expense',
-      amount: p.amount, date: todayStr,
-      // EDGE-19: classify expenses like the full sheet does instead of always 'אחר'
-      // (e.g. "תיקון ברז 350" → תיקונים). One-off income stays 'אחר' (rent has its own flow).
-      category: p.income ? 'אחר' : predictCategory(p.desc),
-      description: p.desc, payment_method: null,
-    })
-    if (error) { setQuick(p.text); showFlash('לא הצלחנו לרשום, נסו שוב'); return }
-    showFlash(`נרשם ✓ ${fmt(p.amount)} · ${p.desc}`)
-    await refetchTx()
-  }
-
   // Distinguish a failed FIRST load (no cache → empty) from a genuine empty state, so we
   // never render a false "שכ״ד לא התקבל" (→ a duplicate rent entry when the user approves)
   // or a false "לא הוגדר נכס" (→ a second property). A transient refetch keeps the cached
@@ -460,30 +416,20 @@ export default function HomeScreen() {
             ) : null}
           </section>
 
-          {/* ── Quick capture ── */}
+          {/* ── Quick capture ── Two clear, structured entries. The free-text bar was
+              removed (owner, 25.07): its Hebrew parser was only lightly reliable and it
+              stacked a third, overlapping capture path on top of these two. */}
           <section className="hs-quick">
-            <form className="hs-quick-input" onSubmit={submitQuick}>
-              <Sparkle size={18} weight="fill" className="hs-quick-spark" />
-              <input
-                value={quick}
-                onChange={e => setQuick(e.target.value)}
-                placeholder="למשל: שילמתי 350 ₪ על תיקון ברז…"
-                aria-label="הוספה מהירה בשפה חופשית"
-              />
-              <button type="submit" className="hs-quick-go" aria-label="הוסף">
-                <ArrowLeft size={18} weight="bold" />
-              </button>
-            </form>
             <div className="hs-fabs">
               <button onClick={() => {
                 // Docked sheet + another tap = restore it (V3), preserving typed data.
                 if (sheet === 'expense') { setExpenseExpandKey(k => k + 1); return }
                 setSheetSeed(''); setSheet('expense')
               }}>
-                <Plus size={16} weight="bold" /> הוצאה
+                <span className="hs-fab-icon"><Plus size={17} weight="bold" /></span> הוצאה
               </button>
               <button onClick={() => setSheet('task')}>
-                <ListPlus size={16} weight="bold" /> משימה
+                <span className="hs-fab-icon"><ListPlus size={17} weight="bold" /></span> משימה
               </button>
             </div>
           </section>
@@ -635,15 +581,6 @@ export default function HomeScreen() {
         onCancel={() => setFollowup(null)}
       />
 
-      <ConfirmDialog
-        open={!!quickPending}
-        title="לרשום את התנועה?"
-        message={quickPending ? `${quickPending.income ? 'הכנסה' : 'הוצאה'} · ${fmt(quickPending.amount)} · ${quickPending.desc}` : ''}
-        confirmLabel="רישום"
-        cancelLabel="ביטול"
-        onConfirm={confirmQuickWrite}
-        onCancel={() => setQuickPending(null)}
-      />
     </div>
   )
 }

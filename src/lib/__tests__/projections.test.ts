@@ -154,3 +154,36 @@ describe('paid-to-date helpers', () => {
     expect(elapsedMonths(null, '2026-06-01')).toBe(0)
   })
 })
+
+describe('monthlyVirtualEntries — R7: overlapping contracts project ONE rent row per month', () => {
+  const oldLease = contract({ id: 'c-old', start_date: '2025-08-01', end_date: '2026-07-31', monthly_rent: 4300, company_name: 'שוכר יוצא' })
+  const newLease = contract({ id: 'c-new', start_date: '2026-07-01', end_date: '2027-06-30', monthly_rent: 4600, company_name: 'שוכר נכנס' })
+
+  it('in the overlap month, only the NEWER lease projects rent (N6 rule, mirrored to the ledger)', () => {
+    const rents = monthlyVirtualEntries([oldLease, newLease], [], 2026, 7).filter(e => e.direction === 'income')
+    expect(rents).toHaveLength(1)
+    expect(rents[0].id).toBe('v-rent-c-new-2026-07')
+    expect(rents[0].amount).toBe(4600)
+  })
+
+  it('order of the contracts array does not matter', () => {
+    const rents = monthlyVirtualEntries([newLease, oldLease], [], 2026, 7).filter(e => e.direction === 'income')
+    expect(rents).toHaveLength(1)
+    expect(rents[0].amount).toBe(4600)
+  })
+
+  it('outside the overlap each lease still projects its own months', () => {
+    const june = monthlyVirtualEntries([oldLease, newLease], [], 2026, 6).filter(e => e.direction === 'income')
+    expect(june).toHaveLength(1)
+    expect(june[0].amount).toBe(4300)
+    const august = monthlyVirtualEntries([oldLease, newLease], [], 2026, 8).filter(e => e.direction === 'income')
+    expect(august).toHaveLength(1)
+    expect(august[0].amount).toBe(4600)
+  })
+
+  it('a single contract is unaffected', () => {
+    const rents = monthlyVirtualEntries([contract({})], [], 2026, 6).filter(e => e.direction === 'income')
+    expect(rents).toHaveLength(1)
+    expect(rents[0].amount).toBe(5000)
+  })
+})

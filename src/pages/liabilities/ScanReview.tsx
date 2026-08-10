@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, WarningCircle, CaretDown, CaretUp, LockSimple, CircleNotch, X, CheckCircle } from '@phosphor-icons/react'
-import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
-import { formatCurrency, formatNum } from '../../lib/format'
+import { MORTGAGE_TRACK_TYPES, TRACK_LABELS } from '../../lib/constants'
+import { formatCurrency, formatNum, sanitizeAmountInt } from '../../lib/format'
 import type { TrackType, LoanRepaymentType } from '../../types'
 import { DateField } from '../../components/ui/DateField'
 
@@ -9,7 +9,6 @@ export type TrackDraft = { track_type: TrackType; label: string; principal: stri
 export type LoanDraft = { repayment_type: LoanRepaymentType; track_type: TrackType; label: string; lender: string; principal: string; annual_rate: string; prime_rate: string; margin: string; term_months: string; grace_months: string; start_date: string }
 export type ScanDraft = TrackDraft | LoanDraft
 
-const TRACK_LABEL: Record<TrackType, string> = { prime: 'פריים', fixed_unlinked: 'קבועה לא צמודה', fixed_linked: 'קבועה צמודה', variable: 'משתנה' }
 
 const num = (s: string) => Number(s) || 0
 
@@ -30,7 +29,7 @@ function issues(kind: 'mortgage' | 'loan', d: ScanDraft): string[] {
 }
 
 function rowTitle(kind: 'mortgage' | 'loan', d: ScanDraft): string {
-  if (kind === 'mortgage') return TRACK_LABEL[(d as TrackDraft).track_type]
+  if (kind === 'mortgage') return TRACK_LABELS[(d as TrackDraft).track_type]
   const l = d as LoanDraft
   return l.label || l.lender || 'הלוואה'
 }
@@ -131,7 +130,7 @@ export function ScanReview({ kind, initial, saving, demo, onConfirm, onCancel }:
 
                   <div className="liav-row2">
                     <label className={`liav-field${warn('principal') ? ' liav-field-warn' : ''}`}><span>קרן ₪</span>
-                      <input type="text" inputMode="numeric" value={formatNum(d.principal)} onChange={e => set(i, 'principal', e.target.value.replace(/[^\d]/g, ''))} />
+                      <input type="text" inputMode="numeric" value={formatNum(d.principal)} onChange={e => set(i, 'principal', sanitizeAmountInt(e.target.value))} />
                     </label>
                     {kind === 'loan'
                       ? <label className="liav-field"><span>מלווה</span><input type="text" value={(d as LoanDraft).lender} onChange={e => set(i, 'lender', e.target.value)} /></label>

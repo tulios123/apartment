@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { rentReceivedToDate, mortgagePaidToDate } from '../lib/projections'
@@ -6,6 +6,7 @@ import { readCache, writeCache } from '../lib/queryCache'
 import { todayISO, monthDayISO, daysBetween } from '../lib/format'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../lib/constants'
 import type { Transaction, Task, Contract, MortgageTrack } from '../types'
+import { latestOnly } from '../lib/latestOnly'
 
 type StatsSnapshot = {
   totalIncome: number
@@ -45,11 +46,14 @@ export function useDashboardStats(): DashboardStats {
   const [loading, setLoading] = useState(cached0 == null)
   const [error, setError] = useState<string | null>(null)
   const [partial, setPartial] = useState(false)
+  // SW-12: only the LATEST load may commit state (fast nav / unmount race).
+  const guard = useRef(latestOnly())
 
   useEffect(() => {
     if (!user) return
 
     async function load() {
+      const fresh = guard.current.start()
       // Already showing cached numbers? Refresh silently. First-ever load shows the skeleton.
       setLoading(readCache<StatsSnapshot>(cacheKey) == null)
       setError(null)
@@ -98,6 +102,7 @@ export function useDashboardStats(): DashboardStats {
           .map(t => ({ ...t, payment_day: mortPayDay }))
         // C7-B: surface (don't silently swallow) a secondary-query failure — rather
         // than computing rent/mortgage totals on empty arrays and showing ₪0 as if real.
+        if (!fresh()) return   // superseded by a newer load (or unmounted) — don't overwrite
         if (allContractsRes.error || tracksRes.error) setPartial(true)
 
         const rentCatSet = new Set(RENT_CATEGORIES as readonly string[])
@@ -126,13 +131,14 @@ export function useDashboardStats(): DashboardStats {
           recentTransactions: nextRecent, openTasks: nextTasks, upcomingRenewals: nextRenewals,
         })
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'שגיאה בטעינת נתונים')
+        if (fresh()) setError(e instanceof Error ? e.message : 'שגיאה בטעינת נתונים')
       } finally {
-        setLoading(false)
+        if (fresh()) setLoading(false)
       }
     }
 
     load()
+    return () => guard.current.invalidate()
   }, [user, cacheKey])
 
   return { totalIncome, totalExpense, balance: totalIncome - totalExpense, recentTransactions, openTasks, upcomingRenewals, loading, error, partial }

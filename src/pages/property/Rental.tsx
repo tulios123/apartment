@@ -1,4 +1,6 @@
 import { Modal } from '../../components/ui/Modal'
+import { invokeErrorMessage } from '../../lib/invokeError'
+import { userErrorMessage } from '../../lib/errorHe'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -13,8 +15,8 @@ import {
 import { syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/useRecurringItems'
 import { useAuth } from '../../contexts/AuthContext'
 import { isManager } from '../../lib/admin'
-import { UTILITIES } from '../../lib/constants'
-import { formatDate, formatCurrency, monthDayISO, daysBetween, todayISO } from '../../lib/format'
+import { UTILITIES, MOCK_SCAN_DELAY_MS } from '../../lib/constants'
+import { formatDate, formatCurrency, monthDayISO, daysBetween, todayISO, sanitizeAmountInt } from '../../lib/format'
 import type { Contract, UtilityPayer } from '../../types'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -99,7 +101,7 @@ function ContractForm({
     setUtils(us => us.map(u => u.utility === utility ? { ...u, payer, amount: payer === 'owner' ? u.amount : null } : u))
   }
   function setUtilAmt(utility: string, raw: string) {
-    const val = raw.replace(/[^\d]/g, '')
+    const val = sanitizeAmountInt(raw)
     setUtils(us => us.map(u => u.utility === utility ? { ...u, amount: val ? Number(val) : null } : u))
   }
 
@@ -157,14 +159,14 @@ function ContractForm({
       persistScanFiles(files)
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let d: Record<string, unknown> | null
-      if (useMock) { await new Promise(r => setTimeout(r, 600)); d = mockRental() }
+      if (useMock) { await new Promise(r => setTimeout(r, MOCK_SCAN_DELAY_MS)); d = mockRental() }
       else d = await extractRental(files)
       // extractRental returns null when nothing meaningful was read (all fields null).
       if (!d) { setAiErr('לא זוהו פרטים במסמך — נסו קובץ ברור יותר או מלאו ידנית.'); return }
       applyRental(d)
       setScanned(true)
-    } catch {
-      setAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או מלאו ידנית.')
+    } catch (e) {
+      setAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או מלאו ידנית.'))
     } finally { setAiBusy(false) }
   }
 
@@ -199,7 +201,7 @@ function ContractForm({
     try {
       await onSave(form, utils, sessionDocIds)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'שגיאה')
+      setErr(userErrorMessage(e, 'לא הצלחנו לשמור — נסו שוב'))
     } finally {
       setSaving(false)
     }
@@ -260,18 +262,18 @@ function ContractForm({
       </div>
       <div className="form-row">
         <label>שכר דירה חודשי</label>
-        <input type="text" inputMode="numeric" value={form.monthly_rent ? Number(form.monthly_rent).toLocaleString('he-IL') : ''} onChange={e => set('monthly_rent', e.target.value.replace(/[^\d]/g, ''))} required />
+        <input type="text" inputMode="numeric" value={form.monthly_rent ? Number(form.monthly_rent).toLocaleString('he-IL') : ''} onChange={e => set('monthly_rent', sanitizeAmountInt(e.target.value))} required />
       </div>
       <div className="form-row">
         <label>פיקדון</label>
-        <input type="text" inputMode="numeric" value={form.deposit ? Number(form.deposit).toLocaleString('he-IL') : ''} onChange={e => set('deposit', e.target.value.replace(/[^\d]/g, ''))} />
+        <input type="text" inputMode="numeric" value={form.deposit ? Number(form.deposit).toLocaleString('he-IL') : ''} onChange={e => set('deposit', sanitizeAmountInt(e.target.value))} />
       </div>
       <div className="form-row">
         <label>אמצעי תשלום</label>
         <div className="toggle-group">
           <button type="button"
             className={`toggle-btn${form.payment_method === 'check' ? ' active' : ''}`}
-            onClick={() => setForm(f => ({ ...f, payment_method: 'check' as const }))}>צ'ק</button>
+            onClick={() => setForm(f => ({ ...f, payment_method: 'check' as const }))}>צ׳ק</button>
           <button type="button"
             className={`toggle-btn${form.payment_method === 'bank_transfer' ? ' active' : ''}`}
             onClick={() => setForm(f => ({ ...f, payment_method: 'bank_transfer' as const }))}>העברה בנקאית</button>
@@ -425,7 +427,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
       refetch()
       onContractsChange?.()
     } catch (e) {
-      setDeleteErr(e instanceof Error ? e.message : 'מחיקת החוזה נכשלה — נסו שוב')
+      setDeleteErr(userErrorMessage(e, 'מחיקת החוזה נכשלה — נסו שוב'))
       refetch()
     }
   }
@@ -532,7 +534,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                 {c.payment_method && (
                   <div className="prop-field-row">
                     <span className="prop-field-label">אמצעי תשלום</span>
-                    <span>{c.payment_method === 'check' ? "צ'ק" : 'העברה בנקאית'}</span>
+                    <span>{c.payment_method === 'check' ? 'צ׳ק' : 'העברה בנקאית'}</span>
                   </div>
                 )}
                 <div className="prop-field-row">

@@ -43,6 +43,21 @@
     letter-spacing: -0.01em;
   }
 
+  /* Staging-only version marker, centred in the bar regardless of the side items'
+     widths (absolute + full-width text-align:center). pointer-events:none so it never
+     eats a tap meant for the title or the account menu. */
+  .app-topbar-version {
+    position: absolute;
+    inset-inline: 0;
+    text-align: center;
+    pointer-events: none;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
   /* Clear the fixed bar. Higher specificity than index.css's `.main-content`, and
      loaded after it, so this wins on both the Android and iOS (app-locked) paths. */
   .app-layout .main-content { padding-top: calc(52px + env(safe-area-inset-top, 0px) + 12px); }

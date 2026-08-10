@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react'
+import { invokeErrorMessage } from '../../lib/invokeError'
+import { userErrorMessage } from '../../lib/errorHe'
 import { Bank, HandCoins, Scales, Plus, CaretDown, PencilSimple, Trash, Sparkle, CircleNotch } from '@phosphor-icons/react'
 import { useMortgageData, ensureMortgage, upsertMortgageTrack, deleteMortgageTrack, setMortgagePaymentDay } from '../../hooks/useMortgageData'
 import { useLoansData, upsertLoan, deleteLoan } from '../../hooks/useLoansData'
@@ -9,8 +11,8 @@ import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { extractMortgageTracks, extractLoans } from '../../lib/extractFinancing'
 import { monthlyPayment, trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanInterestToDate, loanEndDate } from '../../lib/loans'
-import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
-import { formatCurrency, formatNum, monthDayISO } from '../../lib/format'
+import { MORTGAGE_TRACK_TYPES, TRACK_LABELS, TRACK_BADGES, MOCK_SCAN_DELAY_MS } from '../../lib/constants'
+import { formatCurrency, formatNum, monthDayISO, sanitizeAmountInt } from '../../lib/format'
 import { monthlyVirtualEntries } from '../../lib/projections'
 import { useAuth } from '../../contexts/AuthContext'
 import { SkeletonList } from '../../components/ui/Skeleton'
@@ -24,8 +26,6 @@ import type { MortgageTrack, Loan, TrackType, LoanRepaymentType } from '../../ty
 import './liabilities-v2.css'
 import { DateField } from '../../components/ui/DateField'
 
-const TRACK_LABEL: Record<TrackType, string> = { prime: 'פריים', fixed_unlinked: 'קבועה לא צמודה', fixed_linked: 'קבועה צמודה', variable: 'משתנה' }
-const TRACK_COLOR: Record<TrackType, string> = { prime: 'blue', fixed_unlinked: 'teal', fixed_linked: 'purple', variable: 'amber' }
 const fmt = (v: number) => formatCurrency(v)
 const yearOf = (d: string | null) => d ? new Date(d).getFullYear() : null
 
@@ -54,6 +54,11 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   const loanDocs = documents.filter(d => d.type === 'loan_statement')
 
   const [open, setOpen] = useState<string | null>(null)
+  // Collapse the long lists by default (owner request): mortgage tracks, and the loan
+  // groups. Regular loans only get a toggle when there's more than one.
+  const [tracksOpen, setTracksOpen] = useState(false)
+  const [regularLoansOpen, setRegularLoansOpen] = useState(false)
+  const [balloonOpen, setBalloonOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [kind, setKind] = useState<'mortgage' | 'loan'>('mortgage')
   const [editId, setEditId] = useState<string | null>(null)
@@ -217,6 +222,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           })
         }))
         refetchM()
+        setTracksOpen(true)   // show the scanned tracks, not hidden behind a collapsed header
       } else {
         await Promise.all(drafts.map(d => {
           const l = d as LoanDraft
@@ -233,6 +239,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           })
         }))
         refetchL()
+        setRegularLoansOpen(true); setBalloonOpen(true)   // show the scanned loans in their groups
       }
       setScanResult(null)
     } catch {
@@ -270,13 +277,13 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       persistScanFiles(files, 'mortgage_statement')
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let raw: Record<string, unknown>[]
-      if (useMock) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_MORTGAGE_TRACKS }
+      if (useMock) { await new Promise(r => setTimeout(r, MOCK_SCAN_DELAY_MS)); raw = MOCK_MORTGAGE_TRACKS }
       else raw = await extractMortgageTracks(files)
       const drafts = raw.map(mapTrack)
       if (drafts.length === 0) { setAiErr({ kind: 'mortgage', msg: 'לא זוהו מסלולים במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
       setScanResult({ kind: 'mortgage', drafts })
-    } catch {
-      setAiErr({ kind: 'mortgage', msg: 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.' })
+    } catch (e) {
+      setAiErr({ kind: 'mortgage', msg: await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.') })
     } finally { setAiBusy(null) }
   }
   async function scanLoanDoc(files: File[]) {
@@ -286,13 +293,13 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
       persistScanFiles(files, 'loan_statement')
       // Manager/dev: skip the billed extraction entirely and use demo data.
       let raw: Record<string, unknown>[]
-      if (useMock) { await new Promise(r => setTimeout(r, 600)); raw = MOCK_LOANS }
+      if (useMock) { await new Promise(r => setTimeout(r, MOCK_SCAN_DELAY_MS)); raw = MOCK_LOANS }
       else raw = await extractLoans(files)
       const drafts = raw.map(mapLoan)
       if (drafts.length === 0) { setAiErr({ kind: 'loan', msg: 'לא זוהתה הלוואה במסמך — נסו קובץ ברור יותר או הוסיפו ידנית.' }); return }
       setScanResult({ kind: 'loan', drafts })
-    } catch {
-      setAiErr({ kind: 'loan', msg: 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.' })
+    } catch (e) {
+      setAiErr({ kind: 'loan', msg: await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או הוסיפו ידנית.') })
     } finally { setAiBusy(null) }
   }
 
@@ -318,6 +325,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           term_months: Number(tForm.term_months || 0), grace_months: graceOn ? Number(tForm.grace_months || 0) : 0, start_date: tForm.start_date,
         })
         refetchM()
+        setTracksOpen(true)   // reveal the section so the just-saved track isn't hidden behind a collapsed header
       } else {
         if (!lForm.principal || Number(lForm.principal) <= 0) throw new Error('יש להזין קרן (סכום ההלוואה)')
         const isMonthly = lForm.repayment_type === 'monthly_fixed'
@@ -340,9 +348,11 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           payment_day: isMonthly && lForm.payment_day ? Number(lForm.payment_day) : null,
         })
         refetchL()
+        // reveal the right loan group so the just-saved loan isn't hidden behind a collapsed header
+        if (lForm.repayment_type === 'balloon') setBalloonOpen(true); else setRegularLoansOpen(true)
       }
       forceClose()
-    } catch (e) { setFormError(e instanceof Error ? e.message : 'שגיאה בשמירה') }
+    } catch (e) { setFormError(userErrorMessage(e, 'שגיאה בשמירה — נסו שוב')) }
     setSaving(false)
   }
 
@@ -392,13 +402,23 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           </div>
 
           <section className="liav-section">
-              <div className="liav-section-head"><Bank size={18} weight="duotone" color="var(--brand-navy)" /><h2>תמהיל המשכנתא</h2>{tracks.length > 0 && <span className="count">· {tracks.length} מסלולים</span>}</div>
-              {tracks.map(t => {
-                const s = trackStats(t); const color = TRACK_COLOR[t.track_type]; const isOpen = open === t.id
+              {tracks.length > 0 ? (
+                <h2 className="liav-group-h">
+                  <button type="button" className="liav-group-toggle" onClick={() => setTracksOpen(o => !o)} aria-expanded={tracksOpen}>
+                    <Bank size={18} weight="duotone" color="var(--brand-navy)" />
+                    <span className="liav-group-title">תמהיל המשכנתא · {tracks.length === 1 ? 'מסלול אחד' : `${tracks.length} מסלולים`}</span>
+                    <CaretDown className={`liav-group-caret${tracksOpen ? ' open' : ''}`} size={16} weight="bold" />
+                  </button>
+                </h2>
+              ) : (
+                <div className="liav-section-head"><Bank size={18} weight="duotone" color="var(--brand-navy)" /><h2>תמהיל המשכנתא</h2></div>
+              )}
+              {tracksOpen && tracks.map(t => {
+                const s = trackStats(t); const color = TRACK_BADGES[t.track_type]; const isOpen = open === t.id
                 return (
                   <div key={t.id} className={`liav-card${isOpen ? ' open' : ''}`}>
                     <button className="liav-card-head" onClick={() => setOpen(isOpen ? null : t.id)}>
-                      <span className={`liav-badge ${color}`}>{TRACK_LABEL[t.track_type]}</span>
+                      <span className={`liav-badge ${color}`}>{TRACK_LABELS[t.track_type]}</span>
                       {/* Product decision 15.07: linked tracks are computed NOMINALLY (no CPI
                           linkage yet) — disclose it wherever the track's numbers are read. */}
                       <div className="liav-card-main"><div className="liav-card-title">{fmt(s.pay)} לחודש</div><div className="liav-card-sub">ריבית {Number(t.annual_rate).toFixed(1)}%{t.track_type === 'fixed_linked' ? ' · ללא הצמדה למדד' : ''}{s.endYear ? ` · עד ${s.endYear}` : ''}{t.label ? ` · ${t.label}` : ''}</div></div>
@@ -422,7 +442,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   </div>
                 )
               })}
-              {tracks.length > 0 && mortgage && (
+              {tracksOpen && mortgage && (
                 <label className="liav-payday">
                   <span>יום חיוב חודשי</span>
                   <select
@@ -459,13 +479,22 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
 
           <section className="liav-section">
               <div className="liav-section-head"><HandCoins size={18} weight="duotone" color="var(--brand-navy)" /><h2>הלוואות</h2></div>
-              {monthlyLoans.map(l => {
+              {monthlyLoans.length > 1 && (
+                <h3 className="liav-group-h">
+                  <button type="button" className="liav-group-toggle sub" onClick={() => setRegularLoansOpen(o => !o)} aria-expanded={regularLoansOpen}>
+                    <span className="liav-group-title">הלוואות רגילות · {monthlyLoans.length}</span>
+                    <span className="liav-group-sum">{fmt(loansSummary.monthlyPayment)}/חודש</span>
+                    <CaretDown className={`liav-group-caret${regularLoansOpen ? ' open' : ''}`} size={16} weight="bold" />
+                  </button>
+                </h3>
+              )}
+              {(monthlyLoans.length <= 1 || regularLoansOpen) && monthlyLoans.map(l => {
                 const bal = loanBalance(l); const isOpen = open === l.id
                 const paidPct = l.principal > 0 ? ((l.principal - bal) / l.principal) * 100 : 0
                 return (
                   <div key={l.id} className={`liav-card${isOpen ? ' open' : ''}`}>
                     <button className="liav-card-head" onClick={() => setOpen(isOpen ? null : l.id)}>
-                      <span className={`liav-badge ${l.track_type ? TRACK_COLOR[l.track_type] : 'teal'}`}>{l.track_type ? TRACK_LABEL[l.track_type] : 'שפיצר'}</span>
+                      <span className={`liav-badge ${l.track_type ? TRACK_BADGES[l.track_type] : 'teal'}`}>{l.track_type ? TRACK_LABELS[l.track_type] : 'שפיצר'}</span>
                       <div className="liav-card-main"><div className="liav-card-title">{l.label || 'הלוואה'}</div><div className="liav-card-sub">{[l.lender, `${fmt(loanMonthlyPayment(l))} לחודש`, Number.isFinite(Number(l.annual_rate)) ? `${Number(l.annual_rate).toFixed(1)}%` : null].filter(Boolean).join(' · ')}</div></div>
                       <div className="liav-card-balance"><b>{fmt(bal)}</b><span>יתרה</span></div>
                       <CaretDown className="liav-card-caret" size={16} weight="bold" />
@@ -485,7 +514,17 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                   </div>
                 )
               })}
-              {balloonLoans.map(l => (
+              {balloonLoans.length > 0 && (
+                <h3 className="liav-group-h">
+                  <button type="button" className="liav-group-toggle sub" onClick={() => setBalloonOpen(o => !o)} aria-expanded={balloonOpen}>
+                    <Scales size={16} weight="duotone" color="var(--warning-text)" />
+                    <span className="liav-group-title">הלוואות בלון · {balloonLoans.length}</span>
+                    <span className="liav-group-sum">{fmt(balloonBal)}</span>
+                    <CaretDown className={`liav-group-caret${balloonOpen ? ' open' : ''}`} size={16} weight="bold" />
+                  </button>
+                </h3>
+              )}
+              {balloonOpen && balloonLoans.map(l => (
                 <div key={l.id} className="liav-balloon">
                   <div className="liav-balloon-top">
                     <div className="liav-balloon-icon"><Scales size={20} weight="duotone" /></div>
@@ -531,7 +570,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           <>
             <label className="liav-field"><span>סוג מסלול</span><select value={tForm.track_type} onChange={e => setTForm(f => ({ ...f, track_type: e.target.value as TrackType }))}>{MORTGAGE_TRACK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
             <div className="liav-row2">
-              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(tForm.principal)} onChange={e => setTForm(f => ({ ...f, principal: e.target.value.replace(/[^\d]/g, '') }))} autoFocus={drawerOpen} /></label>
+              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(tForm.principal)} onChange={e => setTForm(f => ({ ...f, principal: sanitizeAmountInt(e.target.value) }))} autoFocus={drawerOpen} /></label>
               {isAnchoredType(tForm.track_type)
                 ? <div className="liav-field" />
                 : <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={tForm.annual_rate} onChange={e => setTForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>}
@@ -540,13 +579,13 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
             {isAnchoredType(tForm.track_type) && (
               <div className="liav-row2">
                 <label className="liav-field"><span>עוגן (פריים/בסיס) %</span><input type="number" step="0.01" value={tForm.prime_rate} onChange={e => setTForm(f => ({ ...f, prime_rate: e.target.value }))} placeholder="6.00" /></label>
-                <label className="liav-field"><span>מרווח % (פריים מינוס = שלילי)</span><input type="number" step="0.01" value={tForm.margin} onChange={e => setTForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
+                <label className="liav-field"><span>מרווח מעל הפריים % (שלילי = מתחת)</span><input type="number" step="0.01" dir="ltr" value={tForm.margin} onChange={e => setTForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
               </div>
             )}
             <div className="liav-row2">
-              <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={tForm.term_months} onChange={e => setTForm(f => ({ ...f, term_months: e.target.value }))} /></label>
+              <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" min="1" value={tForm.term_months} onChange={e => setTForm(f => ({ ...f, term_months: e.target.value }))} /></label>
               {graceOn
-                ? <label className="liav-field"><span>גרייס (חודשים)</span><input type="number" min="0" value={tForm.grace_months} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
+                ? <label className="liav-field"><span>גרייס — חודשי ריבית בלבד (חודשים)</span><input type="number" min="0" value={tForm.grace_months} onChange={e => setTForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
                 : <div className="liav-field" />}
             </div>
             <label className="liav-grace-toggle">
@@ -563,7 +602,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
               <label className="liav-field"><span>סוג מסלול</span><select value={lForm.track_type} onChange={e => setLForm(f => ({ ...f, track_type: e.target.value as TrackType }))}>{MORTGAGE_TRACK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
             )}
             <div className="liav-row2">
-              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(lForm.principal)} onChange={e => setLForm(f => ({ ...f, principal: e.target.value.replace(/[^\d]/g, '') }))} autoFocus={drawerOpen} /></label>
+              <label className="liav-field"><span>קרן ₪</span><input type="text" inputMode="numeric" value={formatNum(lForm.principal)} onChange={e => setLForm(f => ({ ...f, principal: sanitizeAmountInt(e.target.value) }))} autoFocus={drawerOpen} /></label>
               <label className="liav-field"><span>מלווה</span><input type="text" value={lForm.lender} onChange={e => setLForm(f => ({ ...f, lender: e.target.value }))} /></label>
             </div>
             {lForm.repayment_type === 'monthly_fixed' && (
@@ -571,18 +610,18 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
                 {isAnchoredType(lForm.track_type) ? (
                   <div className="liav-row2">
                     <label className="liav-field"><span>עוגן (פריים/בסיס) %</span><input type="number" step="0.01" value={lForm.prime_rate} onChange={e => setLForm(f => ({ ...f, prime_rate: e.target.value }))} placeholder="6.00" /></label>
-                    <label className="liav-field"><span>מרווח % (פריים מינוס = שלילי)</span><input type="number" step="0.01" value={lForm.margin} onChange={e => setLForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
+                    <label className="liav-field"><span>מרווח מעל הפריים % (שלילי = מתחת)</span><input type="number" step="0.01" dir="ltr" value={lForm.margin} onChange={e => setLForm(f => ({ ...f, margin: e.target.value }))} placeholder="-0.50" /></label>
                   </div>
                 ) : (
                   <label className="liav-field"><span>ריבית %</span><input type="number" step="0.01" value={lForm.annual_rate} onChange={e => setLForm(f => ({ ...f, annual_rate: e.target.value }))} /></label>
                 )}
                 <div className="liav-row2">
-                  <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" value={lForm.term_months} onChange={e => setLForm(f => ({ ...f, term_months: e.target.value }))} /></label>
+                  <label className="liav-field"><span>תקופה (חודשים)</span><input type="number" min="1" value={lForm.term_months} onChange={e => setLForm(f => ({ ...f, term_months: e.target.value }))} /></label>
                   <div className="liav-field" />
                 </div>
                 <div className="liav-row2">
                   {graceOn
-                    ? <label className="liav-field"><span>גרייס (חודשים)</span><input type="number" min="0" value={lForm.grace_months} onChange={e => setLForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
+                    ? <label className="liav-field"><span>גרייס — חודשי ריבית בלבד (חודשים)</span><input type="number" min="0" value={lForm.grace_months} onChange={e => setLForm(f => ({ ...f, grace_months: e.target.value }))} /></label>
                     : <div className="liav-field" />}
                   <div className="liav-field" />
                 </div>
@@ -594,7 +633,12 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
             )}
             <label className="liav-field"><span>תאריך התחלה</span><DateField value={lForm.start_date} onChange={v => setLForm(f => ({ ...f, start_date: v }))} ariaLabel="תאריך התחלה" /></label>
             {lForm.repayment_type === 'monthly_fixed' && (
-              <label className="liav-field"><span>יום חיוב בחודש (1–28, ברירת־מחדל: יום ההתחלה)</span><input type="number" min="1" max="28" inputMode="numeric" placeholder="למשל 10" value={lForm.payment_day} onChange={e => setLForm(f => ({ ...f, payment_day: e.target.value.replace(/[^\d]/g, '') }))} /></label>
+              <label className="liav-field"><span>יום חיוב</span>
+                <select value={lForm.payment_day} onChange={e => setLForm(f => ({ ...f, payment_day: e.target.value }))}>
+                  <option value="">כמו יום ההתחלה</option>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={String(d)}>{d} בחודש</option>)}
+                </select>
+              </label>
             )}
             <label className="liav-field"><span>תווית (אופציונלי)</span><input type="text" value={lForm.label} onChange={e => setLForm(f => ({ ...f, label: e.target.value }))} /></label>
           </>

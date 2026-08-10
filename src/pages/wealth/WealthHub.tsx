@@ -6,13 +6,14 @@ import InvestmentCosts from '../property/InvestmentCosts'
 import LiabilitiesV2 from '../liabilities/LiabilitiesV2'
 import OwnershipScore from './OwnershipScore'
 import WealthAccelerator from './WealthAccelerator'
+import MonthlyResult from './MonthlyResult'
 import FinancingStructure from './FinancingStructure'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useLoansData } from '../../hooks/useLoansData'
-import { currentSplit, futureSplit, principalNext12Months } from '../../lib/equity'
-import { formatCurrency } from '../../lib/format'
+import { currentSplit, futureSplit, principalNext12Months, interestNext12Months, currentSplitMonth, splitForMonth } from '../../lib/equity'
+import { formatCurrency, todayISO, daysBetween } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { MAINTENANCE_CATEGORY } from '../../lib/constants'
 import { SkeletonList } from '../../components/ui/Skeleton'
@@ -40,12 +41,36 @@ export default function WealthHub() {
   const balloon = loansSummary.balloonOutstanding || 0
 
   const split = currentSplit(tracks, monthlyLoans)
+  // Owner (21.07): the monthly card lumped mortgage interest and loan interest into one
+  // line labelled "ריבית המשכנתא". Break the SAME month down per vehicle so each is named.
+  const splitMonth = currentSplitMonth(tracks, monthlyLoans)
+  const mortgageSplit = splitForMonth(tracks, [], splitMonth)
+  const loansSplit = splitForMonth([], monthlyLoans, splitMonth)
   const future5y = futureSplit(tracks, monthlyLoans, 60)
   const annualPrincipal = principalNext12Months(tracks, monthlyLoans)
 
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
   const grossYield = propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
+
+  // ── Return on the equity you actually put in (cash-on-cash + total) ──────────
+  // The "real" annual result treats principal as savings, not cost: rent − interest
+  // − upkeep. Interest is summed exactly over the next 12 months (grace-aware);
+  // maintenance is a trailing average (cumulative ÷ years held) since it's lumpy.
+  const annualRent = monthlyRent * 12
+  const annualInterest = interestNext12Months(tracks, monthlyLoans)
+  const yearsHeld = property?.purchase_date ? Math.max(1, daysBetween(property.purchase_date, todayISO()) / 365) : 0
+  const annualMaintenance = yearsHeld > 0 ? maintenance / yearsHeld : 0
+  const monthlyMaintenance = annualMaintenance / 12
+  const netCashAnnual = annualRent - annualInterest - annualMaintenance
+  // Owner (20.07): return on the NET equity — property value minus all debt
+  // (mortgage + loans + balloon), i.e. the "הון עצמי נטו" shown at the top — not the
+  // cash originally invested. "תזרים" is cash-on-cash (principal excluded); "כולל
+  // בניית-הון" adds the principal repaid this year (the equity you build).
+  const netEquity = propertyValue - bankDebt - balloon
+  const canRoe = netEquity > 0 && monthlyRent > 0
+  const roeCash = canRoe ? (netCashAnnual / netEquity) * 100 : null
+  const roeTotal = canRoe ? ((netCashAnnual + annualPrincipal) / netEquity) * 100 : null
 
   // Cumulative cash view: everything that went out (equity + costs + interest +
   // maintenance) vs. rent collected so far. Net is pure cash, ignoring property value.
@@ -108,13 +133,15 @@ export default function WealthHub() {
             annualPrincipal={annualPrincipal}
           />
 
-          <FinancingStructure
-            tracks={tracks}
-            summary={summary}
-            monthlyLoans={monthlyLoans}
-            balloonLoans={balloonLoans}
-            onEdit={() => setEditing(true)}
-          />
+          {monthlyRent > 0 && (
+            <MonthlyResult
+              monthlyRent={monthlyRent}
+              mortgageInterest={mortgageSplit.interest}
+              loansInterest={loansSplit.interest}
+              monthlyPrincipal={split.principal}
+              monthlyMaintenance={monthlyMaintenance}
+            />
+          )}
 
           {hasCashflow && (
             <section className="wlth-card wlth-cashflow">
@@ -155,13 +182,29 @@ export default function WealthHub() {
             </section>
           )}
 
-          {(grossYield != null || monthlyRent > 0 || totalInvested > 0) && (
-            <section className="wlth-secondary">
-              {grossYield != null && <div><span>תשואה ברוטו</span><strong>{grossYield.toFixed(1)}%</strong></div>}
-              {monthlyRent > 0 && <div><span>שכר דירה חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
-              {totalInvested > 0 && <div><span>הון שהושקע</span><strong>{fmt(totalInvested)}</strong></div>}
+          {/* Unique figures only — "הון שהושקע" (totalInvested) was dropped here because
+              it already appears in the cash-flow card above as "הון עצמי ועלויות רכישה"
+              (owner, 20.07). Gross yield + monthly rent aren't shown elsewhere. */}
+          {(grossYield != null || monthlyRent > 0 || roeCash != null) && (
+            <section className="wlth-card">
+              <div className="wlth-card-head"><h2>תשואות</h2></div>
+              <div className="wlth-yields">
+                {roeCash != null && <div><span>על ההון העצמי<br />תזרים בלבד</span><strong>{roeCash.toFixed(1)}%</strong></div>}
+                {roeTotal != null && <div><span>על ההון העצמי<br />כולל בניית הון</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
+                {grossYield != null && <div><span>ברוטו<br />על שווי הנכס</span><strong>{grossYield.toFixed(1)}%</strong></div>}
+                {monthlyRent > 0 && <div><span>שכר דירה<br />חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
+              </div>
+              {roeCash != null && <p className="wlth-yield-note">ההון העצמי = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון).</p>}
             </section>
           )}
+
+          <FinancingStructure
+            tracks={tracks}
+            summary={summary}
+            monthlyLoans={monthlyLoans}
+            balloonLoans={balloonLoans}
+            onEdit={() => setEditing(true)}
+          />
         </>
       )}
 

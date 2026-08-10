@@ -1,10 +1,14 @@
 .usermenu-avatar {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 3px;
   border: none;
   background: none;
   padding: 0;
+  /* 44pt tap floor — the visible circle stays 34px, the button box grows. */
+  min-width: 44px;
+  min-height: 44px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }

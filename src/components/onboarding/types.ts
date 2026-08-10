@@ -1,5 +1,5 @@
 import type { TrackType, LoanRepaymentType } from '../../types'
-import { todayISO } from '../../lib/format'
+import { todayISO, formatNum } from '../../lib/format'
 
 // ── Step types ────────────────────────────────────────────────────────────────
 export type Step = 'welcome' | 'documents' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
@@ -83,9 +83,11 @@ export const INS_TYPES = ['מבנה', 'חיים', 'משכנתא', 'תכולה', 
 export const TRACK_TYPES: TrackType[] = ['prime', 'fixed_unlinked', 'fixed_linked', 'variable']
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+// SW-07: thin delegates to the app-wide helpers in lib/format (this file used to
+// fork its own copies). formatCurrency stays LOCAL on purpose — the wizard renders
+// the compact "₪1,234" form, not lib/format's Intl "1,234 ₪" (a visual choice).
 export function formatPrice(raw: string) {
-  if (!raw) return ''
-  return Number(raw).toLocaleString('he-IL')
+  return formatNum(raw)
 }
 
 export function formatCurrency(n: number) {
@@ -95,12 +97,7 @@ export function formatCurrency(n: number) {
   return (r < 0 ? '-' : '') + '₪' + Math.abs(r).toLocaleString('he-IL')
 }
 
-export function formatNum(raw: string | number): string {
-  const str = String(raw)
-  if (str === '') return ''
-  const n = Number(str)
-  return isNaN(n) ? str : n.toLocaleString('he-IL')
-}
+export { formatNum }
 
 export function defaultLawyerCost(price: number): string {
   return price > 0 ? String(Math.round((price * 0.005 + 1000) * 1.18)) : ''

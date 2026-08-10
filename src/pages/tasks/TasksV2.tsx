@@ -1,9 +1,9 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X, Check, CheckCircle, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText, Paperclip, Eye } from '@phosphor-icons/react'
-import { useTasks, createTask, updateTask, deleteTask, spawnNextOccurrence } from '../../hooks/useTasks'
+import { useTasks, updateTask, deleteTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useDocuments, createDocument, deleteDocument } from '../../hooks/useDocuments'
-import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
+import { MAX_UPLOAD_BYTES, uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
@@ -12,6 +12,7 @@ import { recurrenceLabel } from '../../lib/recurrence'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
+import TaskSheet from '../../components/capture/TaskSheet'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { shouldConfirmDiscard } from '../../lib/discardGuard'
 import './tasks-v2.css'
@@ -41,13 +42,13 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const [editing, setEditing] = useState<Task | null>(null)
   const [editForm, setEditForm] = useState(emptyEdit)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editErr, setEditErr] = useState<string | null>(null)
-  const [addingTitle, setAddingTitle] = useState('')
-  const [addErr, setAddErr] = useState<string | null>(null)
   const [actionErr, setActionErr] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [attaching, setAttaching] = useState(false)
+  const [attachErr, setAttachErr] = useState<string | null>(null)
   const [followup, setFollowup] = useState<TaskFollowup | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const openSnapshot = useRef('')
@@ -57,6 +58,11 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
   async function handleAttach(file: File) {
     if (!user || !editing) return
+    // Mirror the hardened sibling paths (ExpenseSheet EDGE-17 / removeDoc): reject
+    // oversized files up front and SURFACE failures — this catch used to be empty,
+    // so a failed upload returned to idle with the task silently unchanged.
+    if (file.size > MAX_UPLOAD_BYTES) { setAttachErr('הקובץ גדול מדי (עד 15MB)'); return }
+    setAttachErr(null)
     setAttaching(true)
     try {
       const id = crypto.randomUUID()
@@ -66,7 +72,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         type: 'other', name: file.name, storage_path: path, date: null,
       })
       await refetchDocs()
-    } catch { /* upload failed — leave the task untouched */ }
+    } catch { setAttachErr('הצירוף נכשל — נסו שוב') }
     finally { setAttaching(false) }
   }
 
@@ -93,35 +99,13 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     return { backlog, logbook }
   }, [tasks])
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault()
-    const title = addingTitle.trim()
-    if (!title || saving) return   // guard re-entry: double-Enter must not double-create
-    setSaving(true)
-    setAddErr(null)
-    try {
-      const { error } = await createTask({
-        title, category: 'כללי', due_date: null, due_time: null,
-        status: 'open', source: 'manual', is_recurring: false, recurrence_days: null,
-        property_id: null, recurring_item_id: null, transaction_id: null,
-      })
-      if (error) { setAddErr('לא הצלחנו להוסיף את המשימה — נסו שוב'); return }
-      setAddingTitle('')   // clear only on success — never lose the typed text on failure
-      refetch()
-    } catch {
-      setAddErr('לא הצלחנו להוסיף את המשימה — נסו שוב')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   function openEdit(t: Task) {
     const f = { title: t.title, category: t.category, due_date: t.due_date ?? '', due_time: t.due_time?.slice(0, 5) ?? '', status: t.status }
     setEditForm(f); openSnapshot.current = JSON.stringify(f)
     setEditErr(null)
     setActionErr(null)   // moving on clears any stale delete-failure banner
     setConfirmDiscard(false)
-    setEditing(t); setDrawerOpen(true)
+    setEditing(t); setAttachErr(null); setDrawerOpen(true)
   }
 
   // A dismiss shouldn't silently drop edits; ask only when the form changed from what it opened with.
@@ -207,19 +191,12 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         <>
           {/* ── Open backlog ─────────────────────────────────────── */}
           <section className="tav-section">
-            <form className="tav-quickadd" onSubmit={handleAdd}>
-              <input
-                className="tav-quickadd-input"
-                aria-label="הוספת משימה"
-                placeholder="הקלידו משימה ואשרו"
-                value={addingTitle}
-                onChange={e => { setAddingTitle(e.target.value); if (addErr) setAddErr(null) }}
-              />
-              <button type="submit" className="tav-quickadd-icon" aria-label="הוספת משימה" disabled={saving}>
-                <Plus size={18} weight="bold" />
-              </button>
-            </form>
-            {addErr && <div className="form-error" role="alert">{addErr}</div>}
+            {/* One add-affordance for the whole app: a primary card that opens the
+                same task sheet the Home screen uses (title + date + time + repeat),
+                instead of the old inline text row. */}
+            <button type="button" className="add-card" onClick={() => setAddOpen(true)}>
+              <Plus size={18} weight="bold" /> הוספת משימה
+            </button>
 
             <div className="tav-section-head">
               <span className="tav-bucket-dot accent" />
@@ -289,6 +266,9 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
         </>
       )}
 
+      {/* Add sheet — the shared, app-wide task sheet (same one the Home screen uses). */}
+      <TaskSheet open={addOpen} onClose={() => setAddOpen(false)} onDone={() => refetch()} />
+
       {/* Edit sheet */}
       <BottomSheet open={drawerOpen} onClose={forceClose} onDismiss={requestClose} minimizable={false} title="עריכת משימה">
         {/* The sheet portals to <body>, outside the scoped `.tav` — re-wrap so the field CSS applies. */}
@@ -327,6 +307,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           <button type="button" className="tav-attach" disabled={attaching} onClick={() => fileRef.current?.click()}>
             <Paperclip size={15} /> {attaching ? 'מעלה…' : 'צרף מסמך/תמונה'}
           </button>
+          {attachErr && <div className="form-error" role="alert">{attachErr}</div>}
         </div>
         {editErr && <div className="form-error" role="alert">{editErr}</div>}
         <button className="tav-save" disabled={saving} onClick={handleEditSave}>{saving ? 'שומר…' : 'שמירה'}</button>

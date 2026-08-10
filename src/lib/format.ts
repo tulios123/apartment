@@ -72,6 +72,16 @@ export function formatNum(raw: string | number): string {
   return n.toLocaleString('he-IL')
 }
 
+// Amount inputs store a bare digit string and render it comma-grouped (formatNum).
+// A naive `replace(/[^\d]/g,'')` sanitizer DELETES the decimal point, so pasting a
+// bank figure like "217,500.25" concatenates the fraction onto the integer →
+// "21750025", a ×100 inflation (C18). Policy (owner, 19.07): whole shekels only — so
+// drop the fraction by truncating at the decimal point, keeping the integer digits.
+// "217,500.25" → "217500"; "2,320.50" → "2320"; "1234" → "1234"; "abc"/""/"." → "".
+export function sanitizeAmountInt(raw: string): string {
+  return raw.replace(/[^\d.]/g, '').split('.')[0]
+}
+
 // Editing a big comma-grouped number (e.g. fixing a digit in the middle of
 // "2,500,000") is uncomfortable if the caret always jumps to the end after
 // each keystroke — the default when a controlled input is reformatted on

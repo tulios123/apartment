@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { invokeErrorMessage } from '../../lib/invokeError'
+import { userErrorMessage } from '../../lib/errorHe'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadDocument } from '../../lib/storage'
 import { createProperty, createContract } from '../../hooks/usePropertyData'
@@ -22,6 +24,10 @@ import {
 } from './types'
 import type { Step, TrackDraft, PolicyDraft, LoanDraft, ExtraCost, BalloonRow } from './types'
 import { finishOutcome, emptySavedSections, type SavedSections } from './finish'
+import {
+  trackEffectiveRate, loanDraftRate, trackIssues, loanIssues,
+  trackDraftHasData, loanDraftHasData, policyHasData, clampGraceMonths, type DraftIssue,
+} from './validation'
 
 // Manager/dev demo extractions: in local dev or the dev@test.local manager account
 // the onboarding scans return these instead of calling the billed Claude edge
@@ -100,6 +106,8 @@ export function useOnboardingState(onComplete: () => void) {
   // running — finishing is deferred until the read completes so the extracted
   // data isn't silently dropped (see requestFinish + the effect below handleFinish).
   const [pendingFinish, setPendingFinish] = useState(false)
+  // AUD-001: the finish-path completeness dialog (same gate as the steps' המשך).
+  const [finishPrompt, setFinishPrompt] = useState(false)
   const [notifOn, setNotifOn] = useState(false)
   const [notifBusy, setNotifBusy] = useState(false)
 
@@ -252,16 +260,8 @@ export function useOnboardingState(onComplete: () => void) {
     + extraCosts.reduce((s, ec) => s + (parseFloat(ec.amount) || 0), 0)
 
   // ── Derived: mortgage track live preview ─────────────────────────────────────
-  function trackEffectiveRate(d: TrackDraft): number {
-    if (d.track_type === 'prime') {
-      return (parseFloat(d.prime_rate) || 6.25) + (parseFloat(d.margin) || -0.5)
-    }
-    if (d.track_type === 'variable') {
-      return (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
-    }
-    return parseFloat(d.annual_rate) || 5.0
-  }
-
+  // (rate/completeness gates live in ./validation — one definition for the steps,
+  // the finish path and the tests, so the bars can never drift apart again.)
   function trackMonthlyPayment(d: TrackDraft): number {
     const p = parseFloat(d.principal) || 0
     const t = parseInt(d.term_months) || 360
@@ -271,14 +271,25 @@ export function useOnboardingState(onComplete: () => void) {
     return monthlyPayment(p, r, t, g)
   }
 
-  // Effective annual rate for a loan draft — anchor + margin for prime/variable
-  // ("prime minus" = negative margin), otherwise the plain fixed rate. No magic
-  // defaults: an empty anchored loan reads as 0, mirroring the liabilities editor.
-  function loanDraftRate(d: LoanDraft): number {
-    if (d.track_type === 'prime' || d.track_type === 'variable') {
-      return (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
+  // ── Shared completeness gate (AUD-001, in ./validation) ──────────────────────
+  // The SAME bar the mortgage/loans steps enforce on המשך, applied to every finish
+  // entry point (סיימו עכשיו + the insurance step's סיום). Without it, finishing
+  // with a half-filled track/loan form silently saved backfilled values (5%/360mo
+  // for tracks, 0% for loans) the user never typed or confirmed.
+  const finishBlockers: { kind: 'track' | 'loan'; label: string; issues: DraftIssue[] }[] = []
+  {
+    const effTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
+    if (showTrackForm && editingIdx === null && trackDraftHasData(trackForm)) effTracks.push(trackForm)
+    for (const t of effTracks) {
+      const issues = trackIssues(t)
+      if (issues.length) finishBlockers.push({ kind: 'track', label: MORTGAGE_TRACK_TYPES.find(x => x.value === t.track_type)?.label ?? 'מסלול', issues })
     }
-    return parseFloat(d.annual_rate) || 0
+    const effLoans = loans.map((l, i) => (i === editingLoanIdx ? loanForm : l))
+    if (showLoanForm && editingLoanIdx === null && loanDraftHasData(loanForm)) effLoans.push(loanForm)
+    for (const l of effLoans) {
+      const issues = loanIssues(l)
+      if (issues.length) finishBlockers.push({ kind: 'loan', label: l.label || l.lender || 'הלוואה', issues })
+    }
   }
 
   // ── AI mortgage fill ─────────────────────────────────────────────────────────
@@ -364,8 +375,8 @@ export function useOnboardingState(onComplete: () => void) {
       setShowTrackForm(false)
       setEditingIdx(null)
       setMortgageAiDone(true)
-    } catch {
-      setMortgageAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
+    } catch (e) {
+      setMortgageAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.'))
     } finally {
       setMortgageAiBusy(false)
     }
@@ -444,8 +455,8 @@ export function useOnboardingState(onComplete: () => void) {
         setEditingLoanIdx(null)
       }
       setLoanAiDone(true)
-    } catch {
-      setLoanAiErr('לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.')
+    } catch (e) {
+      setLoanAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את המסמך — נסו שוב או הזינו ידנית.'))
     } finally {
       setLoanAiBusy(false)
     }
@@ -501,8 +512,8 @@ export function useOnboardingState(onComplete: () => void) {
       if (d.floor != null) setFloorNumber(String(d.floor))
       if (d.rooms != null) setRooms(String(d.rooms))
       setPurchaseAiDone(true)
-    } catch {
-      setPurchaseAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } catch (e) {
+      setPurchaseAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.'))
     } finally {
       setPurchaseAiBusy(false)
     }
@@ -547,8 +558,8 @@ export function useOnboardingState(onComplete: () => void) {
       else if (d.paymentMethod === 'bank_transfer') setRentPaymentMethod('bank_transfer')
       if (d.paymentDay != null) setRentPaymentDay(String(d.paymentDay))
       setRentalAiDone(true)
-    } catch {
-      setRentalAiErr('לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } catch (e) {
+      setRentalAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.'))
     } finally {
       setRentalAiBusy(false)
     }
@@ -654,7 +665,9 @@ export function useOnboardingState(onComplete: () => void) {
         margin: d.margin || '-0.500',
         term_months: d.term_months || '360',
       })
-      const pendingTrackValid = (parseFloat(trackForm.principal) || 0) > 0
+      // AUD-001: fold an open form draft into the save ONLY when it passes the same
+      // completeness bar as the step gate — never backfill a half-filled draft.
+      const pendingTrackValid = trackIssues(trackForm).length === 0
       const allTracks = [...tracks]
       if (pendingTrackValid) {
         if (editingIdx !== null) allTracks[editingIdx] = normTrack(trackForm)
@@ -662,14 +675,15 @@ export function useOnboardingState(onComplete: () => void) {
       }
       const validTracks = allTracks.filter(d => (parseFloat(d.principal) || 0) > 0)
 
-      const pendingLoanValid = (parseFloat(loanForm.principal) || 0) > 0
+      const pendingLoanValid = loanIssues(loanForm).length === 0
       const allLoans = [...loans]
       if (pendingLoanValid) {
         if (editingLoanIdx !== null) allLoans[editingLoanIdx] = normalizeLoanDraft()
         else if (showLoanForm) allLoans.push(normalizeLoanDraft())
       }
 
-      const pendingPolicyValid = policyForm.company.trim() !== '' || policyForm.monthly_premium !== ''
+      // A premium of "0" is not data — without a company it would save a junk policy.
+      const pendingPolicyValid = policyHasData(policyForm)
       const allPolicies = [...policies]
       if (pendingPolicyValid) {
         if (editingPolicyIdx !== null) allPolicies[editingPolicyIdx] = policyForm
@@ -700,7 +714,7 @@ export function useOnboardingState(onComplete: () => void) {
                 prime_rate: isAnchored ? (parseFloat(d.prime_rate) || primeDefault) : null,
                 margin: isAnchored ? (parseFloat(d.margin) || marginDefault) : null,
                 term_months: parseInt(d.term_months) || 360,
-                grace_months: parseInt(d.grace_months) || 0,
+                grace_months: clampGraceMonths(d.grace_months, d.term_months),
                 start_date: d.start_date || paymentsAnchor,
               })
             }))
@@ -735,7 +749,7 @@ export function useOnboardingState(onComplete: () => void) {
                   prime_rate: anchored ? (parseFloat(d.prime_rate) || 0) : null,
                   margin: anchored ? (parseFloat(d.margin) || 0) : null,
                   term_months: isMonthly ? (parseInt(d.term_months) || null) : null,
-                  grace_months: isMonthly ? (parseInt(d.grace_months) || null) : null,
+                  grace_months: isMonthly ? (clampGraceMonths(d.grace_months, d.term_months) || null) : null,
                   start_date: d.start_date || paymentsAnchor,
                 })
               })
@@ -799,11 +813,20 @@ export function useOnboardingState(onComplete: () => void) {
           // On retry, reuse the contract already created so the dependent rent reminder
           // can still run without inserting a second contract.
           if (savedRef.current.contract) { contract = savedRef.current.contract; return }
-          if (!companyName.trim() || !startDate || !endDate || !monthlyRent) {
+          // Rent must be a positive amount — a typed "0" is not a real contract and
+          // would seed 0-rent forecast rows.
+          const rentVal = parseFloat(monthlyRent) || 0
+          if (!companyName.trim() || !startDate || !endDate || rentVal <= 0) {
             // Don't silently drop a partly-filled rental — a contract needs all of
-            // company + start + end + rent, so flag it instead of losing the input.
+            // company + start + end + rent, so name exactly what's missing instead
+            // of losing the input behind a generic message.
             if (companyName.trim() || monthlyRent || startDate || endDate) {
-              failures.push('שכירות (חסרים שם/תאריכים/סכום)')
+              const gaps: string[] = []
+              if (!companyName.trim()) gaps.push('שם השוכר')
+              if (!startDate) gaps.push('תאריך התחלה')
+              if (!endDate) gaps.push('תאריך סיום')
+              if (rentVal <= 0) gaps.push(monthlyRent ? 'שכר דירה גדול מאפס' : 'שכר הדירה')
+              failures.push(`שכירות (חסר: ${gaps.join(', ')})`)
             }
             return
           }
@@ -822,7 +845,7 @@ export function useOnboardingState(onComplete: () => void) {
               contact_phone: null,
               start_date: startDate,
               end_date: endDate,
-              monthly_rent: parseFloat(monthlyRent),
+              monthly_rent: rentVal,
               deposit: null,
               payment_method: rentPaymentMethod,
               requires_approval: addRentReminder,
@@ -839,7 +862,7 @@ export function useOnboardingState(onComplete: () => void) {
           if (savedRef.current.policies) return
           try {
             await Promise.all(allPolicies
-              .filter(p => p.company.trim() || p.monthly_premium)
+              .filter(policyHasData)
               .map(p => createInsurancePolicy({
                 owner_id: user.id,
                 property_id: property.id,
@@ -905,7 +928,7 @@ export function useOnboardingState(onComplete: () => void) {
       setStep('done')
     } catch (e) {
       // Only createProperty throws here — stay on step so the user can retry
-      setError(e instanceof Error ? e.message : 'שגיאה בשמירה')
+      setError(userErrorMessage(e, 'שגיאה בשמירה — נסו שוב'))
     } finally {
       setSaving(false)
       finishingRef.current = false
@@ -920,8 +943,55 @@ export function useOnboardingState(onComplete: () => void) {
   // defer the actual save until it resolves (the effect below fires it) so the
   // extracted property/mortgage/rental data makes it into the save.
   function requestFinish() {
+    // AUD-001: the finish path enforces the steps' own completeness gate — an
+    // incomplete track/loan (saved, or open in a form) raises the dialog instead
+    // of being silently dropped or saved with backfilled defaults.
+    if (finishBlockers.length > 0) { setFinishPrompt(true); return }
     if (anyAiBusy) { setPendingFinish(true); return }
     handleFinish()
+  }
+
+  function dismissFinishPrompt() { setFinishPrompt(false) }
+
+  // "חזרה להשלמה" — land on the step owning the first incomplete item, in edit mode.
+  function finishPromptBackToComplete() {
+    setFinishPrompt(false)
+    const trackIdx = tracks.findIndex(t => trackIssues(t).length > 0)
+    const trackOpenIncomplete = (showTrackForm || editingIdx !== null) && trackIssues(trackForm).length > 0
+    if (trackIdx >= 0 || trackOpenIncomplete) {
+      if (!trackOpenIncomplete && trackIdx >= 0) {
+        setEditingIdx(trackIdx)
+        setTrackForm({ ...tracks[trackIdx] })
+        setGraceOn((parseInt(tracks[trackIdx].grace_months) || 0) > 0)
+        setShowTrackForm(false)
+      }
+      setStep('mortgage')
+      return
+    }
+    const loanIdx = loans.findIndex(l => loanIssues(l).length > 0)
+    const loanOpenIncomplete = (showLoanForm || editingLoanIdx !== null) && loanIssues(loanForm).length > 0
+    if (loanIdx >= 0 || loanOpenIncomplete) {
+      if (!loanOpenIncomplete && loanIdx >= 0) {
+        setEditingLoanIdx(loanIdx)
+        setLoanForm({ ...loans[loanIdx] })
+        setLoanGraceOn((parseInt(loans[loanIdx].grace_months) || 0) > 0)
+        setShowLoanForm(false)
+      }
+      setStep('loans')
+    }
+  }
+
+  // "המשך בלי לשמור" — drop the incomplete items (exactly what the steps' dialogs do),
+  // then finish. Deferred via pendingFinish so handleFinish reads the cleared state.
+  function finishPromptContinueWithout() {
+    setFinishPrompt(false)
+    setTracks(prev => prev.filter(t => trackIssues(t).length === 0))
+    setLoans(prev => prev.filter(l => loanIssues(l).length === 0))
+    setShowTrackForm(false)
+    setEditingIdx(null)
+    setShowLoanForm(false)
+    setEditingLoanIdx(null)
+    setPendingFinish(true)
   }
 
   useEffect(() => {
@@ -1113,7 +1183,7 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   function addPolicy() {
-    if (!policyForm.company.trim() && !policyForm.monthly_premium) return
+    if (!policyHasData(policyForm)) return
     setPolicies(prev => [...prev, normalizePolicyDraft()])
     setPolicyForm(emptyPolicy())
     setShowPolicyForm(false)
@@ -1125,7 +1195,7 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   function savePolicyAndOpenNew() {
-    if (policyForm.company.trim() || policyForm.monthly_premium) {
+    if (policyHasData(policyForm)) {
       if (editingPolicyIdx !== null) {
         setPolicies(prev => prev.map((p, i) => i === editingPolicyIdx ? normalizePolicyDraft() : p))
       } else {
@@ -1254,6 +1324,7 @@ export function useOnboardingState(onComplete: () => void) {
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
     trackEffectiveRate, trackMonthlyPayment, trackTypeLabel,
+    trackIssues, loanIssues, trackDraftHasData, loanDraftHasData,
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
     effectiveTrackForm, previewMonthly, previewGrace,
     // AI mortgage fill
@@ -1290,6 +1361,7 @@ export function useOnboardingState(onComplete: () => void) {
     loansMonthlyPrincipal, loansBalloonTotal,
     // submit
     handleFinish, requestFinish, anyAiBusy, pendingFinish,
+    finishPrompt, finishBlockers, dismissFinishPrompt, finishPromptBackToComplete, finishPromptContinueWithout,
     // dev fill
     fillTestPurchase, fillTestMortgage, fillTestInvestment,
     fillTestRental, fillTestInsurance, fillTestLoans,

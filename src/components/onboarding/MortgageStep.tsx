@@ -7,6 +7,7 @@ import { TrackForm } from './TrackForm'
 import { FinishEarly } from './FinishEarly'
 import { DocFileList } from './DocFileList'
 import { emptyTrack, emptyLoan, formatCurrency } from './types'
+import { issueText } from './validation'
 import { formatDate } from '../../lib/format'
 import { useOnboarding } from './context'
 
@@ -16,10 +17,12 @@ export function MortgageStep() {
     mortgageAiBusy, mortgageDocRef, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     mortgageDocFiles, removeDocFile, renameDocFile,
     tracks, setTracks, trackForm, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
+    trackIssues, trackDraftHasData,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
     addTrack, saveTrackEdit, saveCurrentAndOpenNew, removeTrack,
     setTrackGraceMonths, applyGraceToAllTracks, setGraceMonthsForActive,
     totalPrincipal, totalMonthly, hasAnyGrace, totalGraceMonthly,
+    effectiveTrackForm,
     fillTestMortgage,
   } = useOnboarding()
 
@@ -38,27 +41,31 @@ export function MortgageStep() {
   const [scanBannerOff, setScanBannerOff] = useState(false)
 
   // A track is "ready" only with all required details: principal + rate + term (months).
-  const trackMissing = (d: (typeof tracks)[number]) => {
-    const m: string[] = []
-    if ((parseFloat(d.principal) || 0) <= 0) m.push('סכום')
-    if (trackEffectiveRate(d) <= 0) m.push('ריבית')
-    if (!d.term_months) m.push('תקופה')
-    return m
-  }
-  const trackReady = (d: (typeof tracks)[number]) => trackMissing(d).length === 0
+  // The bar is the SHARED gate (./validation) — the same one the finish path enforces.
+  const trackReady = (d: (typeof tracks)[number]) => trackIssues(d).length === 0
   const effectiveTracks = tracks.map((t, i) => (i === editingIdx ? trackForm : t))
   const incompleteTracks = effectiveTracks.filter(t => !trackReady(t))
 
   // A brand-new track typed into the inline form but not yet saved to the list — it
   // isn't in `tracks`, so without this it would be silently dropped on "המשך".
-  const trackHasData = (d: typeof trackForm) => (parseFloat(d.principal) || 0) > 0 || trackEffectiveRate(d) > 0 || !!d.term_months
-  const pendingNew = showTrackForm && editingIdx === null && trackHasData(trackForm)
+  // RAW typed fields only: the previous check counted the grey-placeholder rate
+  // default, so an untouched empty form always "had data" and raised the dialog.
+  const pendingNew = showTrackForm && editingIdx === null && trackDraftHasData(trackForm)
   const pendingNewReady = pendingNew && trackReady(trackForm)
   const unsavedTracks = pendingNew && !trackReady(trackForm) ? [...incompleteTracks, trackForm] : incompleteTracks
 
   // Save + collapse the open track when ready, otherwise flag exactly what's missing.
   const finalizeTrack = (i: number) => {
     if (trackReady(trackForm)) { saveTrackEdit(i); setSaveAttempted(false) }
+    else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
+  }
+
+  // Saving a NEW track validates the EFFECTIVE draft (grey defaults count as real
+  // values here — they're saved as shown), so an untouched field is fine but a
+  // typed 0 principal/term raises the alert instead of silently doing nothing.
+  const newTrackIssues = trackIssues(effectiveTrackForm)
+  const finalizeNewTrack = () => {
+    if (newTrackIssues.length === 0) { addTrack(); setSaveAttempted(false) }
     else { setSaveAttempted(true); setAlertPulse(p => p + 1) }
   }
 
@@ -147,7 +154,7 @@ export function MortgageStep() {
               : 0
             const isEditing = editingIdx === i
             const view = isEditing ? trackForm : d
-            const missing = trackMissing(view)
+            const issues = trackIssues(view)
             return (
               <div key={i} className="onboarding-list-row onboarding-list-row--expandable">
                 <div className="onboarding-list-row-header"
@@ -185,10 +192,10 @@ export function MortgageStep() {
                         ? <span>החל {formatDate(d.start_date)}</span>
                         : <span className="text-muted">תאריך התחלה אוטומטי</span>}
                     </div>
-                    {missing.length > 0 && (
+                    {issues.length > 0 && (
                       <div className="onboarding-track-missing onboarding-track-missing--flash"
                         key={isEditing ? `m-${i}-${alertPulse}` : `m-${i}`}>
-                        חסר {missing.join(' · ')}
+                        {issueText(issues)}
                       </div>
                     )}
                   </div>
@@ -206,7 +213,7 @@ export function MortgageStep() {
                 {isEditing && <TrackForm
                   onSave={() => finalizeTrack(i)}
                   onCancel={() => { setEditingIdx(null); setSaveAttempted(false) }}
-                  alert={saveAttempted ? trackMissing(trackForm) : null} />}
+                  alert={saveAttempted ? trackIssues(trackForm) : null} pulse={alertPulse} />}
               </div>
             )
           })}
@@ -214,7 +221,9 @@ export function MortgageStep() {
       )}
 
       {/* Inline track form for new track */}
-      {showTrackForm && <TrackForm onSave={addTrack} onCancel={() => setShowTrackForm(false)} />}
+      {showTrackForm && <TrackForm onSave={finalizeNewTrack}
+        onCancel={() => { setShowTrackForm(false); setSaveAttempted(false) }}
+        alert={saveAttempted && editingIdx === null ? newTrackIssues : null} pulse={alertPulse} />}
 
       {/* Add track button — always shown */}
       <button type="button" className="btn-onboard-skip onboarding-add-btn"
@@ -266,7 +275,7 @@ export function MortgageStep() {
             <ul className="onboarding-dialog-list">
               {unsavedTracks.map((t, idx) => (
                 <li key={idx}>
-                  <strong>{trackTypeLabel(t.track_type)}</strong> — חסר {trackMissing(t).join(', ')}
+                  <strong>{trackTypeLabel(t.track_type)}</strong> — {issueText(trackIssues(t))}
                 </li>
               ))}
             </ul>

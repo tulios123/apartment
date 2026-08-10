@@ -9,7 +9,7 @@ import { uploadDocument, MAX_UPLOAD_BYTES } from '../../lib/storage'
 import { supabase } from '../../lib/supabase'
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../../lib/constants'
 import { predictCategory } from '../../lib/quickParse'
-import { formatDate } from '../../lib/format'
+import { formatDate, monthDayISO } from '../../lib/format'
 import { tap } from '../../lib/haptics'
 import './capture.css'
 
@@ -23,8 +23,10 @@ type Props = {
   onDone: (label: string) => void
 }
 
-// RTL grid → bottom row reads: [⌫ right] [0 mid] [. left]
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0', '.'] as const
+// Universal phone-keypad order (golden #4): the grid is forced LTR in CSS so
+// "1" sits top-LEFT like every dialer/calculator; bottom row [. 0 ⌫] keeps
+// the backspace at the bottom-right thumb corner.
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'] as const
 
 // Up to 8 integer digits — matches the DB column amount numeric(10,2) (max
 // 99,999,999.99). A 9th digit overflowed the column so the insert always failed with a
@@ -42,9 +44,7 @@ function groupAmount(s: string): string {
 function isoOffset(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
-  // Local date components (NOT toISOString, which is UTC and would roll back a
-  // day during the post-midnight hours in timezones ahead of UTC, e.g. Israel).
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return monthDayISO(d)   // local Y-M-D (SW-08: one shared definition in lib/format)
 }
 
 export default function ExpenseSheet({ open, onClose, initialDesc = '', initialAmount, expandKey, onDone }: Props) {
@@ -237,14 +237,17 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
             <button className="cap-back" onClick={() => setStep(1)}>
               <ArrowRight size={16} weight="bold" /> {`₪${numeric.toLocaleString()}`}
             </button>
+            <span className="cap-fieldlabel">תיאור</span>
             <input
               ref={descRef}
+              aria-label="תיאור ההוצאה"
               className="cap-desc"
               value={desc}
               onChange={e => { if (err) setErr(null); setDesc(e.target.value) }}
               onKeyDown={e => { if (e.key === 'Enter') save() }}
               placeholder="על מה? (למשל: תיקון ברז)"
             />
+            <span className="cap-fieldlabel">קטגוריה</span>
             <div className="cap-chips">
               {EXPENSE_CATEGORIES.map(c => (
                 <button
@@ -255,7 +258,7 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
               ))}
             </div>
 
-            <span className="cap-fieldlabel">אופן תשלום</span>
+            <span className="cap-fieldlabel">אמצעי תשלום</span>
             <div className="cap-chips">
               {PAYMENT_METHODS.filter(p => p.value).map(p => (
                 <button

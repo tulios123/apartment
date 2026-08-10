@@ -45,7 +45,7 @@ export default function WealthAccelerator({ current, future5yPrincipal, annualPr
         <div className="wlth-split-col interest">
           <div className="amt">{fmt(current.interest)}</div>
           <div className="lbl">ריבית <b>({interestPct.toFixed(0)}%)</b></div>
-          <div className="hint">עמלה לבנק</div>
+          <div className="hint">ריבית לבנק</div>
         </div>
       </div>
 

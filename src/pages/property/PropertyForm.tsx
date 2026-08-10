@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
+import { invokeErrorMessage } from '../../lib/invokeError'
+import { userErrorMessage } from '../../lib/errorHe'
 import type { Property } from '../../types'
 import { DateField } from '../../components/ui/DateField'
-import { caretIndexAfterDigits } from '../../lib/format'
+import { caretIndexAfterDigits, sanitizeAmountInt } from '../../lib/format'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { uploadDocument } from '../../lib/storage'
@@ -50,7 +52,7 @@ function handleMoneyChange(e: React.ChangeEvent<HTMLInputElement>, setter: (v: s
   const input = e.target
   const caret = input.selectionStart ?? input.value.length
   const digitsBeforeCaret = (input.value.slice(0, caret).match(/\d/g) || []).length
-  const digits = input.value.replace(/[^\d]/g, '')
+  const digits = sanitizeAmountInt(input.value)
   const formatted = digits ? formatPrice(digits) : ''
   input.value = formatted
   const pos = caretIndexAfterDigits(formatted, digitsBeforeCaret)
@@ -165,8 +167,9 @@ export function PropertyForm({
       if (d.floor != null) setFloor(String(d.floor))
       if (d.rooms != null) setRooms(String(d.rooms))
       setAiDone(true)
-    } catch {
-      setAiErr(prev => prev ?? 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+    } catch (e) {
+      const msg = await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.')
+      setAiErr(prev => prev ?? msg)
     } finally {
       await saved            // keep "busy" until the auto-save settles too
       setAiBusy(false)
@@ -200,7 +203,7 @@ export function PropertyForm({
         property_size_sqm: sizeSqm ? Number(sizeSqm) : null,
       })
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'שגיאה')
+      setErr(userErrorMessage(e, 'לא הצלחנו לשמור — נסו שוב'))
     } finally {
       setSaving(false)
     }
@@ -239,13 +242,14 @@ export function PropertyForm({
       </div>
 
       <div className="form-section-label">פרטי הנכס</div>
+      <p className="form-req-note">שדות עם <span className="req-star">*</span> הם חובה — כל השאר אפשר להשלים אחר כך.</p>
       <div className="form-2col">
         <div className="form-row">
-          <label>רחוב</label>
+          <label>רחוב<span className="req-star">*</span></label>
           <input type="text" value={street} onChange={e => setStreet(e.target.value)} required autoFocus placeholder="רחוב ומספר" />
         </div>
         <div className="form-row">
-          <label>עיר</label>
+          <label>עיר<span className="req-star">*</span></label>
           <input type="text" value={city} onChange={e => setCity(e.target.value)} required />
         </div>
       </div>
@@ -312,8 +316,6 @@ export function PropertyForm({
           <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} ariaLabel="מסירת מפתח" />
         </div>
       </div>
-
-      <div className="form-section-label">הערות</div>
       <div className="form-row">
         <label>הערות</label>
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)} />

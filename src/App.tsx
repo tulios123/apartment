@@ -1,25 +1,47 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { AppReadyContext } from './contexts/AppReadyContext'
 import { supabase } from './lib/supabase'
+import { probeHasProperty } from './lib/bootCheck'
 import Layout from './components/layout/Layout'
 import { Splash } from './components/ui/Splash'
 import Login from './pages/Login'
-import Onboarding from './pages/Onboarding'
 import HomeScreen from './pages/dashboard/HomeScreen'
 import FinancesV2 from './pages/finances/FinancesV2'
 import WealthHub from './pages/wealth/WealthHub'
 import PropertyAdminHub from './pages/property/PropertyAdminHub'
 import FinancesHub from './pages/finances/FinancesHub'
 import Settings from './pages/Settings'
-import FeedbackAdmin from './pages/admin/FeedbackAdmin'
-import { PrivacyPolicy, TermsOfService, Accessibility } from './pages/legal/LegalPages'
 import DevNotes from './components/DevNotes'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { OfflineBanner } from './components/OfflineBanner'
 import UpdateBanner from './components/UpdateBanner'
 import { pushNotifTarget } from './lib/notifNav'
+
+// SW-06 (owner approved 18.07): split the safe, rarely-loaded screens out of the
+// main chunk — the manager-only feedback console, the one-time onboarding wizard
+// and the legal pages. If a chunk 404s right after a new deploy (old session,
+// re-hashed assets), reload once to pick up the fresh index instead of erroring.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors React.lazy's own constraint
+function lazyRoute<T extends React.ComponentType<any>>(load: () => Promise<{ default: T }>) {
+  return lazy(() =>
+    load().catch((e: unknown) => {
+      const key = 'chunk-reload-once'
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1')
+        window.location.reload()
+        return new Promise<{ default: T }>(() => {})   // reload takes over
+      }
+      throw e
+    }),
+  )
+}
+const Onboarding = lazyRoute(() => import('./pages/Onboarding'))
+const FeedbackAdmin = lazyRoute(() => import('./pages/admin/FeedbackAdmin'))
+const PrivacyPolicy = lazyRoute(() => import('./pages/legal/LegalPages').then(m => ({ default: m.PrivacyPolicy })))
+const TermsOfService = lazyRoute(() => import('./pages/legal/LegalPages').then(m => ({ default: m.TermsOfService })))
+const Accessibility = lazyRoute(() => import('./pages/legal/LegalPages').then(m => ({ default: m.Accessibility })))
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -28,6 +50,10 @@ function AppRoutes() {
   // falling through to Onboarding (which would create a duplicate property — C3).
   const [propertyError, setPropertyError] = useState(false)
   const [retryNonce, setRetryNonce] = useState(0)
+  // Manager-only test tool (הגדרות → פיתוח ובדיקה): re-enter onboarding on an account
+  // that already has a property. Safe to finish from here — handleFinish reuses the
+  // existing property (A3) and upserts the rest, so no duplicates are created.
+  const [forcedOnboarding, setForcedOnboarding] = useState(() => sessionStorage.getItem('reonboard') === '1')
   // Keep the splash up until the first screen's data has loaded (markReady), so the
   // user goes straight from splash to a fully-populated app — no skeleton flash.
   // Only the home route signals ready, so only hold the splash when we actually land
@@ -44,23 +70,27 @@ function AppRoutes() {
     let timer: ReturnType<typeof setTimeout>
 
     async function check() {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('id')
-        .eq('owner_id', user!.id)
-        .limit(1)
+      // probeHasProperty folds BOTH failure shapes — supabase `{ error }` and a
+      // rejected fetch (offline / reset connection) — into 'error'. A raw await
+      // here used to let network rejections escape the retry ladder entirely,
+      // trapping the user on an infinite splash (AUD-011).
+      const result = await probeHasProperty(() =>
+        supabase.from('properties').select('id').eq('owner_id', user!.id).limit(1),
+      )
       if (cancelled) return
-      if (error) {
+      if (result === 'error') {
         // C3: an errored check is UNKNOWN, never "no property". Keep hasProperty
         // null (stay on Splash) and retry with capped backoff; after a few
         // failures surface a manual retry rather than routing to Onboarding.
         attempt++
         if (attempt >= 4) { setPropertyError(true); return }
-        timer = setTimeout(check, Math.min(1000 * 2 ** (attempt - 1), 8000))
+        // Short backoff (0.5s/1s/2s): with the probe capped at ~2s the whole
+        // ladder reaches the manual-retry screen in ~10s (owner decision 18.07).
+        timer = setTimeout(check, Math.min(500 * 2 ** (attempt - 1), 4000))
         return
       }
       setPropertyError(false)
-      setHasProperty((data?.length ?? 0) > 0)
+      setHasProperty(result)
     }
 
     check()
@@ -93,12 +123,14 @@ function AppRoutes() {
   if (window.location.pathname.startsWith('/legal/')) {
     return (
       <BrowserRouter>
-        <Routes>
-          <Route path="/legal/privacy" element={<PrivacyPolicy />} />
-          <Route path="/legal/terms" element={<TermsOfService />} />
-          <Route path="/legal/accessibility" element={<Accessibility />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<Splash />}>
+          <Routes>
+            <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+            <Route path="/legal/terms" element={<TermsOfService />} />
+            <Route path="/legal/accessibility" element={<Accessibility />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     )
   }
@@ -120,7 +152,15 @@ function AppRoutes() {
     </div>
   )
   if (hasProperty === null) return <Splash />
-  if (!hasProperty) return <Onboarding onComplete={() => setHasProperty(true)} />
+  if (!hasProperty || forcedOnboarding) return (
+    <Suspense fallback={<Splash />}>
+      <Onboarding onComplete={() => {
+        sessionStorage.removeItem('reonboard')
+        setForcedOnboarding(false)
+        setHasProperty(true)
+      }} />
+    </Suspense>
+  )
 
   return (
     <AppReadyContext.Provider value={readyValue}>
@@ -154,11 +194,11 @@ function AppRoutes() {
           <Route path="documents" element={<Navigate to="/property/documents" replace />} />
 
           <Route path="settings" element={<Settings />} />
-          <Route path="admin/feedback" element={<FeedbackAdmin />} />
+          <Route path="admin/feedback" element={<Suspense fallback={null}><FeedbackAdmin /></Suspense>} />
 
-          <Route path="legal/privacy" element={<PrivacyPolicy />} />
-          <Route path="legal/terms" element={<TermsOfService />} />
-          <Route path="legal/accessibility" element={<Accessibility />} />
+          <Route path="legal/privacy" element={<Suspense fallback={null}><PrivacyPolicy /></Suspense>} />
+          <Route path="legal/terms" element={<Suspense fallback={null}><TermsOfService /></Suspense>} />
+          <Route path="legal/accessibility" element={<Suspense fallback={null}><Accessibility /></Suspense>} />
 
           {/* Catch-all: any unmatched or stale deep-link lands on Home, not a blank screen */}
           <Route path="*" element={<Navigate to="/" replace />} />

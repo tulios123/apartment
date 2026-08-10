@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { readCache, writeCache } from '../lib/queryCache'
 import type { Document } from '../types'
+import { latestOnly } from '../lib/latestOnly'
 
 export function useDocuments() {
   const { user } = useAuth()
@@ -10,9 +11,12 @@ export function useDocuments() {
   const [documents, setDocuments] = useState<Document[]>(() => readCache<Document[]>(cacheKey) ?? [])
   const [loading, setLoading] = useState(() => readCache<Document[]>(cacheKey) == null)
   const [error, setError] = useState<string | null>(null)
+  // SW-12: only the LATEST fetch (effect or manual refetch) may commit state.
+  const guard = useRef(latestOnly())
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const fresh = guard.current.start()
     const cached = readCache<Document[]>(cacheKey)
     if (cached) setDocuments(cached)
     setLoading(cached == null)
@@ -22,12 +26,13 @@ export function useDocuments() {
       .select('*')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false })
+    if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
     if (error) setError(error.message)
     else { setDocuments(data ?? []); writeCache<Document[]>(cacheKey, data ?? []) }
     setLoading(false)
   }, [user?.id, cacheKey])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetch(); return () => guard.current.invalidate() }, [fetch])
 
   return { documents, loading, error, refetch: fetch }
 }
