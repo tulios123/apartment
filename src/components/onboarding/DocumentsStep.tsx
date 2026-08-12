@@ -1,9 +1,17 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown, Plus, Paperclip, X, PencilSimple, Check } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown, Plus, Paperclip, X, PencilSimple, Check, Eye } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import { useAuth } from '../../contexts/AuthContext'
+
+// Preview a still-in-memory upload. Revoke a minute later so the blob isn't leaked
+// for the whole session (the opened tab has already loaded it by then).
+function viewFile(f: File) {
+  const url = URL.createObjectURL(f)
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
 
 // One upload topic. Empty → tapping picks file(s) and kicks off extraction in the
 // background. Once files exist, tapping expands a manage panel: see each file,
@@ -21,9 +29,16 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
   const startEdit = (i: number, name: string) => { setEditIdx(i); setDraft(name) }
   const commitEdit = () => { if (editIdx !== null) onRename(editIdx, draft); setEditIdx(null) }
   const hasFiles = files.length > 0
-  const state = busy ? 'reading' : err ? 'error' : doneText ? 'done' : 'empty'
+  // The wizard draft is persisted to localStorage, but File objects can't be
+  // serialized — so after a reload (or a manual remove) the extracted DATA comes back
+  // while the file itself is gone. The card used to keep its green ✓, so the user
+  // believed the document was safely attached; it wasn't, and it would never reach
+  // storage on finish. Name that state honestly and invite a re-attach.
+  const detached = !hasFiles && !!doneText
+  const state = busy ? 'reading' : err ? 'error' : detached ? 'detached' : doneText ? 'done' : 'empty'
   const status = busy ? 'קורא את המסמך…'
     : err ? 'לא נקרא — אפשר למלא ידנית'
+    : detached ? `${doneText} · הקובץ עצמו לא מצורף — הקישו לצירוף`
     : doneText ? doneText
     : hasFiles ? `${files.length} ${files.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'}`
     : hint
@@ -77,6 +92,12 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
                 </button>
               ) : (
                 <>
+                  {/* Actually SEE the uploaded file. It only lives in memory until finish,
+                      so preview it straight from the File via an object URL — opened
+                      synchronously in the click handler so no popup blocker trips. */}
+                  <button type="button" className="onboarding-doc-file-del" onClick={() => viewFile(f)} aria-label={`צפייה ב${f.name}`}>
+                    <Eye size={14} weight="bold" />
+                  </button>
                   <button type="button" className="onboarding-doc-file-del" onClick={() => startEdit(i, f.name)} aria-label={`שינוי שם ${f.name}`}>
                     <PencilSimple size={14} weight="bold" />
                   </button>

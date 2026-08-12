@@ -3018,6 +3018,11 @@ input[type="date"] {
 .onboarding-doc-card.is-done { border-color: var(--success, #1a7f37); background: var(--success-soft, rgba(26, 127, 55, .05)); }
 .onboarding-doc-card.is-done .onboarding-doc-card-mark { background: var(--success); color: #fff; }
 .onboarding-doc-card.is-done .onboarding-doc-card-status { color: var(--success-text, #1a7f37); }
+/* Data extracted, file no longer attached (draft reloaded / file removed). Reads as
+   "needs your attention", never as the green "all done" it used to show. */
+.onboarding-doc-card.is-detached { border-color: var(--warning, #b45309); }
+.onboarding-doc-card.is-detached .onboarding-doc-card-mark { background: var(--warning, #b45309); color: #fff; }
+.onboarding-doc-card.is-detached .onboarding-doc-card-status { color: var(--warning-text, #b45309); }
 .onboarding-doc-card.is-error { border-color: var(--danger); }
 .onboarding-doc-card.is-error .onboarding-doc-card-status { color: var(--danger); }
 .onboarding-doc-card.is-reading { border-color: var(--accent); }
