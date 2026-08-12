@@ -18,13 +18,18 @@ export function LoansStep() {
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
-    loanDocFiles, docAttachments, removeDocFile, renameDocFile,
+    docAttachments, removeDocFile, renameDocFile,
     fillTestLoans,
   } = useOnboarding()
 
   const [continuePrompt, setContinuePrompt] = useState(false)
   // Toggles the uploaded-files panel — files show only when the button is tapped.
   const [showDocs, setShowDocs] = useState(false)
+  // Drive the banner/toggle from the SAME source as the list below: files already in
+  // storage count too, otherwise after a reload the list knew about the document while
+  // this header still said "upload one" (owner: uploaded a rental contract up front,
+  // then the rental step showed nothing).
+  const docs = docAttachments('loan')
   // Bumped on every blocked collapse/save attempt to re-flash the "missing" line.
   const [alertPulse, setAlertPulse] = useState(0)
   // True after a blocked save on the open loan — shows the orange note by its button.
@@ -103,17 +108,17 @@ export function LoansStep() {
 
       <div className="onboarding-ai-fill">
         <button type="button" className={`btn-onboard-ai${loanAiDone && !loanAiBusy ? ' is-done' : ''}`} disabled={loanAiBusy}
-          onClick={() => { if (loanAiBusy) return; loanDocFiles.length ? setShowDocs(o => !o) : loanDocRef.current?.click() }}
-          aria-expanded={loanDocFiles.length ? showDocs : undefined}>
+          onClick={() => { if (loanAiBusy) return; docs.length ? setShowDocs(o => !o) : loanDocRef.current?.click() }}
+          aria-expanded={docs.length ? showDocs : undefined}>
           {loanAiBusy
             ? 'קורא את המסמך…'
-            : loanDocFiles.length
-              ? <>📎 {loanDocFiles.length} {loanDocFiles.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
+            : docs.length
+              ? <>📎 {docs.length} {docs.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
               : '📄 העלו מסמך הלוואה או צילום מסך — מילוי אוטומטי'}
         </button>
         <input ref={loanDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillLoans(fs); e.target.value = '' }} />
-        {showDocs && <DocFileList files={docAttachments('loan')} onFiles={aiFillLoans} onRemove={name => removeDocFile('loan', name)} onRename={(oldName, name) => renameDocFile('loan', oldName, name)} />}
+        {showDocs && <DocFileList files={docs} onFiles={aiFillLoans} onRemove={name => removeDocFile('loan', name)} onRename={(oldName, name) => renameDocFile('loan', oldName, name)} />}
         {loanAiErr && <p className="onboarding-error" role="alert">{loanAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>

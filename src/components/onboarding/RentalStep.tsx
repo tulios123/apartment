@@ -17,11 +17,16 @@ export function RentalStep() {
     monthlyRent, setMonthlyRent, rentPaymentMethod, setRentPaymentMethod,
     rentPaymentDay, setRentPaymentDay, addRentReminder, setAddRentReminder,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
-    rentalDocFiles, docAttachments, removeDocFile, renameDocFile,
+    docAttachments, removeDocFile, renameDocFile,
     fillTestRental,
   } = useOnboarding()
   const rentalDocRef = useRef<HTMLInputElement>(null)
   const [showDocs, setShowDocs] = useState(false)
+  // Drive the banner/toggle from the SAME source as the list below: files already in
+  // storage count too, otherwise after a reload the list knew about the document while
+  // this header still said "upload one" (owner: uploaded a rental contract up front,
+  // then the rental step showed nothing).
+  const docs = docAttachments('rental')
 
   // Live rules — this step has no save button, so problems show as the user
   // types: an inverted date range / a 0 rent outline their own field, and a
@@ -40,17 +45,17 @@ export function RentalStep() {
 
       <div className="onboarding-ai-fill">
         <button type="button" className={`btn-onboard-ai${rentalAiDone && !rentalAiBusy ? ' is-done' : ''}`} disabled={rentalAiBusy}
-          onClick={() => { if (rentalAiBusy) return; rentalDocFiles.length ? setShowDocs(o => !o) : rentalDocRef.current?.click() }}
-          aria-expanded={rentalDocFiles.length ? showDocs : undefined}>
+          onClick={() => { if (rentalAiBusy) return; docs.length ? setShowDocs(o => !o) : rentalDocRef.current?.click() }}
+          aria-expanded={docs.length ? showDocs : undefined}>
           {rentalAiBusy
             ? 'קורא את החוזה…'
-            : rentalDocFiles.length
-              ? <>📎 {rentalDocFiles.length} {rentalDocFiles.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
+            : docs.length
+              ? <>📎 {docs.length} {docs.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
               : '📄 העלו חוזה שכירות — מילוי אוטומטי'}
         </button>
         <input ref={rentalDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillRental(fs); e.target.value = '' }} />
-        {showDocs && <DocFileList files={docAttachments('rental')} onFiles={aiFillRental} onRemove={name => removeDocFile('rental', name)} onRename={(oldName, name) => renameDocFile('rental', oldName, name)} />}
+        {showDocs && <DocFileList files={docs} onFiles={aiFillRental} onRemove={name => removeDocFile('rental', name)} onRename={(oldName, name) => renameDocFile('rental', oldName, name)} />}
         {rentalAiErr && <p className="onboarding-error" role="alert">{rentalAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>

@@ -15,7 +15,7 @@ export function MortgageStep() {
   const {
     advance, keyDeliveryDate, setLoanForm,
     mortgageAiBusy, mortgageDocRef, mortgageAiErr, mortgageAiDone, aiFillMortgage,
-    mortgageDocFiles, docAttachments, removeDocFile, renameDocFile,
+    docAttachments, removeDocFile, renameDocFile,
     tracks, setTracks, trackForm, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
     trackIssues, trackDraftHasData,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
@@ -33,6 +33,11 @@ export function MortgageStep() {
   })
   const anyGrace = tracks.some(t => (parseInt(t.grace_months) || 0) > 0)
   const [showDocs, setShowDocs] = useState(false)
+  // Drive the banner/toggle from the SAME source as the list below: files already in
+  // storage count too, otherwise after a reload the list knew about the document while
+  // this header still said "upload one" (owner: uploaded a rental contract up front,
+  // then the rental step showed nothing).
+  const docs = docAttachments('mortgage')
   const [continuePrompt, setContinuePrompt] = useState(false)
   const [alertPulse, setAlertPulse] = useState(0)
   const [saveAttempted, setSaveAttempted] = useState(false)
@@ -101,17 +106,17 @@ export function MortgageStep() {
 
       <div className="onboarding-ai-fill">
         <button type="button" className={`btn-onboard-ai${mortgageAiDone && !mortgageAiBusy ? ' is-done' : ''}`} disabled={mortgageAiBusy}
-          onClick={() => { if (mortgageAiBusy) return; mortgageDocFiles.length ? setShowDocs(o => !o) : mortgageDocRef.current?.click() }}
-          aria-expanded={mortgageDocFiles.length ? showDocs : undefined}>
+          onClick={() => { if (mortgageAiBusy) return; docs.length ? setShowDocs(o => !o) : mortgageDocRef.current?.click() }}
+          aria-expanded={docs.length ? showDocs : undefined}>
           {mortgageAiBusy
             ? 'קורא את המסמך…'
-            : mortgageDocFiles.length
-              ? <>📎 {mortgageDocFiles.length} {mortgageDocFiles.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
+            : docs.length
+              ? <>📎 {docs.length} {docs.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
               : '📄 העלו אישור מהבנק או צילומי מסך — מילוי אוטומטי'}
         </button>
         <input ref={mortgageDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillMortgage(fs); e.target.value = '' }} />
-        {showDocs && <DocFileList files={docAttachments('mortgage')} onFiles={aiFillMortgage} onRemove={name => removeDocFile('mortgage', name)} onRename={(oldName, name) => renameDocFile('mortgage', oldName, name)} />}
+        {showDocs && <DocFileList files={docs} onFiles={aiFillMortgage} onRemove={name => removeDocFile('mortgage', name)} onRename={(oldName, name) => renameDocFile('mortgage', oldName, name)} />}
         {mortgageAiErr && <p className="onboarding-error" role="alert">{mortgageAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר לבחור כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>

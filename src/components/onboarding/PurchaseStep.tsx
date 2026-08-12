@@ -17,11 +17,16 @@ export function PurchaseStep() {
     signingDate, setSigningDate, setKeyDeliveryDate,
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
-    purchaseDocFiles, docAttachments, removeDocFile, renameDocFile,
+    docAttachments, removeDocFile, renameDocFile,
     fillTestPurchase,
   } = useOnboarding()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
   const [showDocs, setShowDocs] = useState(false)
+  // Drive the banner/toggle from the SAME source as the list below: files already in
+  // storage count too, otherwise after a reload the list knew about the document while
+  // this header still said "upload one" (owner: uploaded a rental contract up front,
+  // then the rental step showed nothing).
+  const docs = docAttachments('purchase')
 
   // Live plausibility hints — everything here is optional, so nothing blocks;
   // a thousands-slip price or an inverted signing/key-delivery pair just asks.
@@ -38,17 +43,17 @@ export function PurchaseStep() {
 
       <div className="onboarding-ai-fill">
         <button type="button" className={`btn-onboard-ai${purchaseAiDone && !purchaseAiBusy ? ' is-done' : ''}`} disabled={purchaseAiBusy}
-          onClick={() => { if (purchaseAiBusy) return; purchaseDocFiles.length ? setShowDocs(o => !o) : purchaseDocRef.current?.click() }}
-          aria-expanded={purchaseDocFiles.length ? showDocs : undefined}>
+          onClick={() => { if (purchaseAiBusy) return; docs.length ? setShowDocs(o => !o) : purchaseDocRef.current?.click() }}
+          aria-expanded={docs.length ? showDocs : undefined}>
           {purchaseAiBusy
             ? 'קורא את החוזה…'
-            : purchaseDocFiles.length
-              ? <>📎 {purchaseDocFiles.length} {purchaseDocFiles.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
+            : docs.length
+              ? <>📎 {docs.length} {docs.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'} — הקישו לצפייה <CaretDown size={15} weight="bold" className={`onboarding-ai-caret${showDocs ? ' is-open' : ''}`} /></>
               : '📄 העלו חוזה רכישה — מילוי אוטומטי'}
         </button>
         <input ref={purchaseDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillPurchase(fs); e.target.value = '' }} />
-        {showDocs && <DocFileList files={docAttachments('purchase')} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />}
+        {showDocs && <DocFileList files={docs} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />}
         {purchaseAiErr && <p className="onboarding-error" role="alert">{purchaseAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>
