@@ -35,11 +35,41 @@ type MyItem = {
   created_at: string
 }
 
+// The ?fb= deep link is the ONLY part that needs the router, so it lives in its own
+// child. Keeping it out of FeedbackButton lets the button render outside a <Router>
+// (the onboarding wizard does), instead of crashing on useSearchParams.
+function FeedbackDeepLink({ user, openThread }: { user: { id: string } | null; openThread: (item: MyItem) => void }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Deep-link: a push tap on an admin reply / "handled" lands on /?fb=<id>. Open that
+  // thread and strip the param so it doesn't re-fire. Falls back to the always-present
+  // columns during the pre-deploy window (status/archived_at not live) so the link resolves.
+  useEffect(() => {
+    const fb = searchParams.get('fb')
+    if (!fb || !user) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('fb')
+    setSearchParams(next, { replace: true })
+    let alive = true
+    ;(async () => {
+      const full = await supabase.from('feedback')
+        .select('id, note, category, status, archived_at, created_at').eq('id', fb).maybeSingle()
+      let item = full.data as MyItem | null
+      if (full.error && /archived_at|status|column|schema|PGRST204/i.test(full.error.message ?? '')) {
+        const min = await supabase.from('feedback').select('id, note, category, created_at').eq('id', fb).maybeSingle()
+        const d = min.data as Record<string, unknown> | null
+        item = d ? { id: String(d.id), note: String(d.note ?? ''), category: (d.category as string | null) ?? null, status: 'new', archived_at: null, created_at: String(d.created_at ?? '') } : null
+      }
+      if (alive && item) openThread(item)
+    })()
+    return () => { alive = false }
+  }, [searchParams, user, openThread, setSearchParams])
+  return null
+}
+
 type View = 'send' | 'list' | 'thread'
 
-export default function FeedbackButton({ screen }: { screen?: string } = {}) {
+export default function FeedbackButton({ screen, routed = true }: { screen?: string; routed?: boolean } = {}) {
   const { user } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<View>('send')
 
@@ -148,29 +178,6 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
     setOpen(true)
   }, [])
 
-  // Deep-link: a push tap on an admin reply / "handled" lands on /?fb=<id>. Open that
-  // thread and strip the param so it doesn't re-fire. Falls back to the always-present
-  // columns during the pre-deploy window (status/archived_at not live) so the link resolves.
-  useEffect(() => {
-    const fb = searchParams.get('fb')
-    if (!fb || !user) return
-    const next = new URLSearchParams(searchParams)
-    next.delete('fb')
-    setSearchParams(next, { replace: true })
-    let alive = true
-    ;(async () => {
-      const full = await supabase.from('feedback')
-        .select('id, note, category, status, archived_at, created_at').eq('id', fb).maybeSingle()
-      let item = full.data as MyItem | null
-      if (full.error && /archived_at|status|column|schema|PGRST204/i.test(full.error.message ?? '')) {
-        const min = await supabase.from('feedback').select('id, note, category, created_at').eq('id', fb).maybeSingle()
-        const d = min.data as Record<string, unknown> | null
-        item = d ? { id: String(d.id), note: String(d.note ?? ''), category: (d.category as string | null) ?? null, status: 'new', archived_at: null, created_at: String(d.created_at ?? '') } : null
-      }
-      if (alive && item) openThread(item)
-    })()
-    return () => { alive = false }
-  }, [searchParams, user, openThread, setSearchParams])
 
   // Load + live-subscribe the open thread.
   useEffect(() => {
@@ -266,6 +273,7 @@ export default function FeedbackButton({ screen }: { screen?: string } = {}) {
 
   return (
     <>
+      {routed && <FeedbackDeepLink user={user ? { id: user.id } : null} openThread={openThread} />}
       <button className="fb-fab" aria-label="שליחת משוב" onClick={openForm}>
         <Lightbulb size={18} weight="fill" />
       </button>

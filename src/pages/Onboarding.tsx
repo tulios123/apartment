@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { CaretRight } from '@phosphor-icons/react'
+import FeedbackButton from '../components/FeedbackButton'
 import { OnboardingContext } from '../components/onboarding/context'
 import { issueText } from '../components/onboarding/validation'
 import { useOnboardingState } from '../components/onboarding/useOnboardingState'
@@ -91,10 +92,12 @@ export default function Onboarding({ onComplete }: Props) {
         </div>,
         document.body,
       )}
-      {/* No feedback FAB here: Onboarding renders OUTSIDE the <BrowserRouter> (App.tsx),
-          and FeedbackButton uses router hooks (the /?fb= deep link) which throw
-          "useLocation() may be used only in the context of a <Router>" — crashing every
-          NEW account on first run. Restore only if onboarding moves inside the router. */}
+      {/* Feedback FAB. Onboarding renders OUTSIDE the <BrowserRouter> (App.tsx), so it
+          runs with routed={false}: the only router-dependent piece (the /?fb= deep link)
+          is skipped, and useSearchParams is never called — which is what used to crash
+          every NEW account on first run. A first-run user is exactly who most needs to
+          report a problem, so the lamp belongs here. */}
+      <FeedbackButton routed={false} screen="onboarding" />
     </OnboardingContext.Provider>
   )
 }
