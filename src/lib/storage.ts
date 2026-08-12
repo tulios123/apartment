@@ -36,6 +36,16 @@ export async function uploadDocument(file: File, docId: string, userId?: string)
 // Feedback screenshots live in their own private `feedback` bucket at
 // {user_id}/{feedbackId}.{ext} — separate from financial documents so the owner's
 // admin-read policy can't reach into the documents bucket. See migration 034.
+/**
+ * Delete just the stored blob (no `documents` row yet). Used by the onboarding wizard,
+ * which uploads a picked file immediately — removing it there must not leave the blob
+ * behind, and there is no row to cascade from.
+ */
+export async function removeDocumentFile(path: string): Promise<void> {
+  const { error } = await supabase.storage.from('documents').remove([path])
+  if (error) throw error
+}
+
 export async function uploadFeedbackScreenshot(file: File, feedbackId: string, userId: string): Promise<string> {
   assertSize(file)
   // A unique name under {uid}/{feedbackId}/ so several screenshots on one item never collide

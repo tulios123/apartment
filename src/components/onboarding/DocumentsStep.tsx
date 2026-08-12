@@ -4,13 +4,23 @@ import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimp
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import { useAuth } from '../../contexts/AuthContext'
+import { redirectToSignedUrl } from '../../lib/storage'
 
-// Preview a still-in-memory upload. Revoke a minute later so the blob isn't leaked
-// for the whole session (the opened tab has already loaded it by then).
-function viewFile(f: File) {
-  const url = URL.createObjectURL(f)
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+// One attachment as the card shows it: still in memory (just picked) and/or already
+// in storage (uploaded on pick, so it survives a reload).
+type Attachment = { name: string; file?: File; path?: string }
+
+// Preview an attachment. An in-memory File opens straight from an object URL; a stored
+// one goes through a signed URL. Both open the tab synchronously inside the click so no
+// popup blocker trips — the stored path fills it in once the URL resolves.
+function viewAttachment(a: Attachment) {
+  if (a.file) {
+    const url = URL.createObjectURL(a.file)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    return
+  }
+  if (a.path) redirectToSignedUrl(window.open('', '_blank'), a.path)
 }
 
 // One upload topic. Empty → tapping picks file(s) and kicks off extraction in the
@@ -19,7 +29,7 @@ function viewFile(f: File) {
 function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRemove, onRename }: {
   icon: ReactNode; title: string; hint: string
   busy: boolean; err: string | null; doneText: string
-  files: File[]; onFiles: (files: File[]) => void; onRemove: (index: number) => void
+  files: Attachment[]; onFiles: (files: File[]) => void; onRemove: (index: number) => void
   onRename: (index: number, name: string) => void
 }) {
   const ref = useRef<HTMLInputElement>(null)
@@ -95,7 +105,7 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
                   {/* Actually SEE the uploaded file. It only lives in memory until finish,
                       so preview it straight from the File via an object URL — opened
                       synchronously in the click handler so no popup blocker trips. */}
-                  <button type="button" className="onboarding-doc-file-del" onClick={() => viewFile(f)} aria-label={`צפייה ב${f.name}`}>
+                  <button type="button" className="onboarding-doc-file-del" onClick={() => viewAttachment(f)} aria-label={`צפייה ב${f.name}`}>
                     <Eye size={14} weight="bold" />
                   </button>
                   <button type="button" className="onboarding-doc-file-del" onClick={() => startEdit(i, f.name)} aria-label={`שינוי שם ${f.name}`}>
@@ -128,8 +138,19 @@ export function DocumentsStep() {
     aiFillLoans, loanAiBusy, loanAiErr, loans,
     aiFillRental, rentalAiBusy, rentalAiErr, companyName, monthlyRent,
     purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile,
-    insuranceDocFiles, addInsuranceDocs,
+    insuranceDocFiles, addInsuranceDocs, docRefs,
   } = useOnboarding()
+
+  // What the card lists = everything already in storage (survives a reload) plus any
+  // file still only in memory because its immediate upload hasn't landed/failed.
+  const attach = (cat: 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance', files: File[]): Attachment[] => {
+    const refs = docRefs[cat]
+    const stored = new Set(refs.map(r => r.name))
+    return [
+      ...refs.map(r => ({ name: r.name, path: r.path, file: files.find(f => f.name === r.name) })),
+      ...files.filter(f => !stored.has(f.name)).map(f => ({ name: f.name, file: f })),
+    ]
+  }
   const { user, signOut } = useAuth()
 
   const purchaseDone = (street || city || purchasePrice)
@@ -161,27 +182,27 @@ export function DocumentsStep() {
           icon={<Tag size={26} weight="duotone" color="var(--accent)" />}
           title="חוזה רכישה" hint="קובץ או צילומי מסך"
           busy={purchaseAiBusy} err={purchaseAiErr} doneText={purchaseDone}
-          files={purchaseDocFiles} onFiles={aiFillPurchase} onRemove={i => removeDocFile('purchase', i)} onRename={(i, name) => renameDocFile('purchase', i, name)} />
+          files={attach('purchase', purchaseDocFiles)} onFiles={aiFillPurchase} onRemove={i => removeDocFile('purchase', i)} onRename={(i, name) => renameDocFile('purchase', i, name)} />
         <DocCard
           icon={<Bank size={26} weight="duotone" color="var(--accent)" />}
           title="אישור משכנתא" hint="קובץ או צילומי מסך מהבנק"
           busy={mortgageAiBusy} err={mortgageAiErr} doneText={mortgageDone}
-          files={mortgageDocFiles} onFiles={aiFillMortgage} onRemove={i => removeDocFile('mortgage', i)} onRename={(i, name) => renameDocFile('mortgage', i, name)} />
+          files={attach('mortgage', mortgageDocFiles)} onFiles={aiFillMortgage} onRemove={i => removeDocFile('mortgage', i)} onRename={(i, name) => renameDocFile('mortgage', i, name)} />
         <DocCard
           icon={<HandCoins size={26} weight="duotone" color="var(--accent)" />}
           title="הלוואה" hint="מסמך או צילום מסך"
           busy={loanAiBusy} err={loanAiErr} doneText={loansDone}
-          files={loanDocFiles} onFiles={aiFillLoans} onRemove={i => removeDocFile('loan', i)} onRename={(i, name) => renameDocFile('loan', i, name)} />
+          files={attach('loan', loanDocFiles)} onFiles={aiFillLoans} onRemove={i => removeDocFile('loan', i)} onRename={(i, name) => renameDocFile('loan', i, name)} />
         <DocCard
           icon={<FileText size={26} weight="duotone" color="var(--accent)" />}
           title="חוזה שכירות" hint="קובץ או צילומי מסך"
           busy={rentalAiBusy} err={rentalAiErr} doneText={rentalDone}
-          files={rentalDocFiles} onFiles={aiFillRental} onRemove={i => removeDocFile('rental', i)} onRename={(i, name) => renameDocFile('rental', i, name)} />
+          files={attach('rental', rentalDocFiles)} onFiles={aiFillRental} onRemove={i => removeDocFile('rental', i)} onRename={(i, name) => renameDocFile('rental', i, name)} />
         <DocCard
           icon={<ShieldCheck size={26} weight="duotone" color="var(--accent)" />}
           title="פוליסת ביטוח" hint="קובץ או צילומי מסך"
           busy={false} err={null} doneText=""
-          files={insuranceDocFiles} onFiles={addInsuranceDocs} onRemove={i => removeDocFile('insurance', i)} onRename={(i, name) => renameDocFile('insurance', i, name)} />
+          files={attach('insurance', insuranceDocFiles)} onFiles={addInsuranceDocs} onRemove={i => removeDocFile('insurance', i)} onRename={(i, name) => renameDocFile('insurance', i, name)} />
       </div>
 
       <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => advance('purchase')}>
