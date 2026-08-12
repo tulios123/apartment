@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { invokeErrorMessage } from '../../lib/invokeError'
 import { userErrorMessage } from '../../lib/errorHe'
 import { useAuth } from '../../contexts/AuthContext'
-import { uploadDocument } from '../../lib/storage'
+import { uploadDocument, removeDocumentFile } from '../../lib/storage'
 import { createProperty, createContract } from '../../hooks/usePropertyData'
 import { syncRentRecurringItem } from '../../hooks/useRecurringItems'
 import { ensureMortgage, upsertMortgageTrack } from '../../hooks/useMortgageData'
@@ -45,11 +45,17 @@ const DEV_MOCK = {
   rental: { tenantName: 'שוכר לדוגמה (דמו)', startDate: '2025-08-01', endDate: '2026-07-31', monthlyRent: 6500, paymentMethod: 'check' as const, paymentDay: 1 },
 }
 
+// A document already uploaded to storage during the wizard: serializable, so it
+// survives the draft round-trip that File objects cannot.
+export type DocCat = 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance'
+export type DocRef = { docId: string; name: string; path: string }
+
 // Serializable snapshot of the wizard for crash-safe persistence (C2). Mirrors the
 // data-bearing state below; transient UI state (refs, AI-busy flags, error/saving)
 // and File objects are intentionally excluded.
 type OnboardingDraft = {
   step: Step
+  docRefs: Record<DocCat, DocRef[]>
   buyerName: string; street: string; city: string; rooms: string
   purchasePrice: string; signingDate: string; keyDeliveryDate: string
   propertySizeSqm: string; floorNumber: string
@@ -211,7 +217,13 @@ export function useOnboardingState(onComplete: () => void) {
   // Insurance has no AI extraction — the card just stores the policy document(s),
   // saved as insurance_policy documents on finish.
   const [insuranceDocFiles, setInsuranceDocFiles] = useState<File[]>([])
-  const addInsuranceDocs = (files: File[]) => setInsuranceDocFiles(prev => [...prev, ...files])
+  // Picked files used to live ONLY in memory until finish, so a reload lost them
+  // silently — the card kept its ✓ while the document never reached storage. Each
+  // pick now uploads immediately and we keep this serializable pointer in the draft,
+  // so the file survives a reload, can be previewed, and finish just links it.
+  const [docRefs, setDocRefs] = useState<Record<DocCat, DocRef[]>>(
+    () => d0?.docRefs ?? { purchase: [], mortgage: [], loan: [], rental: [], insurance: [] })
+  const addInsuranceDocs = (files: File[]) => { setInsuranceDocFiles(prev => [...prev, ...files]); void stashDocs('insurance', files) }
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function dismissKeyboardAndScrollTop() {
@@ -322,6 +334,7 @@ export function useOnboardingState(onComplete: () => void) {
     // Append the uploaded file(s) to the list (the documents step shows/manages them);
     // they're saved as documents on finish. A fresh extraction still replaces the tracks.
     setMortgageDocFiles(prev => [...prev, ...fileList])
+    void stashDocs('mortgage', fileList)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       // Version the key so improving the extraction (model/prompt) invalidates stale cached
@@ -390,6 +403,7 @@ export function useOnboardingState(onComplete: () => void) {
     // Keep the uploaded file(s) so they're saved as documents on finish (loans append,
     // so the doc files append too).
     setLoanDocFiles(prev => [...prev, ...fileList])
+    void stashDocs('loan', fileList)
     try {
       const files = await Promise.all(fileList.map(async f => ({ fileBase64: await fileToBase64(f), mediaType: f.type })))
       const cacheKey = `apt_extract_loan_v2_${hashString(files.map(f => f.fileBase64).join(''))}`
@@ -465,6 +479,7 @@ export function useOnboardingState(onComplete: () => void) {
   // ── AI fill: purchase contract → property fields ─────────────────────────────
   async function aiFillPurchase(fileList: File[]) {
     setPurchaseDocFiles(prev => [...prev, ...fileList])
+    void stashDocs('purchase', fileList)
     setPurchaseAiBusy(true)
     setPurchaseAiErr(null)
     setPurchaseAiDone(false)
@@ -522,6 +537,7 @@ export function useOnboardingState(onComplete: () => void) {
   // ── AI fill: rental agreement → rental fields ────────────────────────────────
   async function aiFillRental(fileList: File[]) {
     setRentalDocFiles(prev => [...prev, ...fileList])
+    void stashDocs('rental', fileList)
     setRentalAiBusy(true)
     setRentalAiErr(null)
     setRentalAiDone(false)
@@ -565,6 +581,20 @@ export function useOnboardingState(onComplete: () => void) {
     }
   }
 
+  // Upload a just-picked file to storage right away, so it can't be lost by a reload
+  // (and so finish only has to link it). Fire-and-forget: on failure the in-memory
+  // File remains and finish uploads it the old way, so nothing is lost either path.
+  async function stashDocs(cat: DocCat, files: File[]) {
+    if (!user) return
+    for (const f of files) {
+      try {
+        const docId = crypto.randomUUID()
+        const path = await uploadDocument(f, docId, user.id)
+        setDocRefs(prev => ({ ...prev, [cat]: [...prev[cat], { docId, name: f.name, path }] }))
+      } catch { /* keep the in-memory File — handleFinish still uploads it */ }
+    }
+  }
+
   // Remove one already-picked file from a category's list (documents step manage view).
   // Only drops the file from what gets saved; any data already auto-filled is kept.
   function removeDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance', index: number) {
@@ -573,6 +603,13 @@ export function useOnboardingState(onComplete: () => void) {
       loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
     setters[category](prev => prev.filter((_, i) => i !== index))
+    // Drop the stored copy too, otherwise a "removed" document would still be linked
+    // on finish (and keep occupying storage).
+    setDocRefs(prev => {
+      const ref = prev[category][index]
+      if (ref) removeDocumentFile(ref.path).catch(() => { /* orphan blob, not user-facing */ })
+      return { ...prev, [category]: prev[category].filter((_, i) => i !== index) }
+    })
   }
 
   // Rename a chosen file in place. A File's name is immutable, so we rebuild it from
@@ -587,6 +624,7 @@ export function useOnboardingState(onComplete: () => void) {
     } as const
     setters[category](prev => prev.map((f, i) =>
       i === index ? new File([f], name, { type: f.type, lastModified: f.lastModified }) : f))
+    setDocRefs(prev => ({ ...prev, [category]: prev[category].map((r, i) => i === index ? { ...r, name } : r) }))
   }
 
   // Background upload of the supplementary document files (purchase / mortgage / loan /
@@ -605,12 +643,34 @@ export function useOnboardingState(onComplete: () => void) {
         })
       } catch { /* non-critical — re-uploadable from Documents */ }
     }
+    // Files picked during the wizard were already uploaded by stashDocs — here we only
+    // LINK them (no re-upload, so nothing is stored twice). Anything whose immediate
+    // upload failed is still in memory and takes the original upload path below.
+    const link = async (ref: DocRef, type: DocumentType, date: string | null, contract_id: string | null) => {
+      try {
+        await supabase.from('documents').insert({
+          id: ref.docId, owner_id: userId, property_id: propertyId,
+          contract_id, transaction_id: null,
+          type, name: ref.name, storage_path: ref.path, date,
+        })
+      } catch { /* non-critical — re-uploadable from Documents */ }
+    }
+    const spec: [DocCat, File[], DocumentType, string | null, string | null][] = [
+      ['purchase', purchaseDocFiles, 'purchase_contract', signingDate || null, null],
+      ['mortgage', mortgageDocFiles, 'mortgage_statement', null, null],
+      ['loan', loanDocFiles, 'loan_statement', null, null],
+      ['insurance', insuranceDocFiles, 'insurance_policy', null, null],
+      ['rental', rentalDocFiles, 'rental_contract', startDate || null, contractId],
+    ]
     const jobs: Promise<void>[] = []
-    for (const f of purchaseDocFiles) jobs.push(put(f, 'purchase_contract', signingDate || null, null))
-    for (const f of mortgageDocFiles) jobs.push(put(f, 'mortgage_statement', null, null))
-    for (const f of loanDocFiles) jobs.push(put(f, 'loan_statement', null, null))
-    for (const f of insuranceDocFiles) jobs.push(put(f, 'insurance_policy', null, null))
-    for (const f of rentalDocFiles) jobs.push(put(f, 'rental_contract', startDate || null, contractId))
+    for (const [cat, files, type, date, contract_id] of spec) {
+      const refs = docRefs[cat]
+      for (const r of refs) jobs.push(link(r, type, date, contract_id))
+      // Only the files that never made it to storage — matched by name, which is what
+      // the ref carries (rename keeps the two in step).
+      const stored = new Set(refs.map(r => r.name))
+      for (const f of files) if (!stored.has(f.name)) jobs.push(put(f, type, date, contract_id))
+    }
     await Promise.all(jobs)
   }
 
@@ -1012,7 +1072,7 @@ export function useOnboardingState(onComplete: () => void) {
     if (step === 'welcome' || step === 'done') return
     const id = setTimeout(() => {
       saveOnboardingDraft<OnboardingDraft>(user?.id, {
-        step, buyerName, street, city, rooms, purchasePrice, signingDate,
+        step, docRefs, buyerName, street, city, rooms, purchasePrice, signingDate,
         keyDeliveryDate, propertySizeSqm, floorNumber,
         tracks, trackForm, graceOn, showTrackForm, editingIdx,
         equityMode, equityValue, costs, extraCosts,
@@ -1024,7 +1084,7 @@ export function useOnboardingState(onComplete: () => void) {
     }, 400)
     return () => clearTimeout(id)
   }, [
-    step, buyerName, street, city, rooms, purchasePrice, signingDate,
+    step, docRefs, buyerName, street, city, rooms, purchasePrice, signingDate,
     keyDeliveryDate, propertySizeSqm, floorNumber,
     tracks, trackForm, graceOn, showTrackForm, editingIdx,
     equityMode, equityValue, costs, extraCosts,
@@ -1334,7 +1394,7 @@ export function useOnboardingState(onComplete: () => void) {
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     // Uploaded document files per category + remove (documents step manage view)
-    purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile,
+    purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile, docRefs,
     insuranceDocFiles, addInsuranceDocs,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
