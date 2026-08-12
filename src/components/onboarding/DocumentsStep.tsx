@@ -3,12 +3,9 @@ import type { ReactNode } from 'react'
 import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown, Plus, Paperclip, X, PencilSimple, Check, Eye } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
+import type { Attachment } from './useOnboardingState'
 import { useAuth } from '../../contexts/AuthContext'
 import { redirectToSignedUrl } from '../../lib/storage'
-
-// One attachment as the card shows it: still in memory (just picked) and/or already
-// in storage (uploaded on pick, so it survives a reload).
-type Attachment = { name: string; file?: File; path?: string }
 
 // Preview an attachment. An in-memory File opens straight from an object URL; a stored
 // one goes through a signed URL. Both open the tab synchronously inside the click so no
@@ -29,15 +26,15 @@ function viewAttachment(a: Attachment) {
 function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRemove, onRename }: {
   icon: ReactNode; title: string; hint: string
   busy: boolean; err: string | null; doneText: string
-  files: Attachment[]; onFiles: (files: File[]) => void; onRemove: (index: number) => void
-  onRename: (index: number, name: string) => void
+  files: Attachment[]; onFiles: (files: File[]) => void; onRemove: (name: string) => void
+  onRename: (oldName: string, newName: string) => void
 }) {
   const ref = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [editIdx, setEditIdx] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const startEdit = (i: number, name: string) => { setEditIdx(i); setDraft(name) }
-  const commitEdit = () => { if (editIdx !== null) onRename(editIdx, draft); setEditIdx(null) }
+  const commitEdit = () => { if (editIdx !== null) onRename(files[editIdx].name, draft); setEditIdx(null) }
   const hasFiles = files.length > 0
   // The wizard draft is persisted to localStorage, but File objects can't be
   // serialized — so after a reload (or a manual remove) the extracted DATA comes back
@@ -111,7 +108,7 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
                   <button type="button" className="onboarding-doc-file-del" onClick={() => startEdit(i, f.name)} aria-label={`שינוי שם ${f.name}`}>
                     <PencilSimple size={14} weight="bold" />
                   </button>
-                  <button type="button" className="onboarding-doc-file-del" onClick={() => onRemove(i)} aria-label={`הסרת ${f.name}`}>
+                  <button type="button" className="onboarding-doc-file-del" onClick={() => onRemove(f.name)} aria-label={`הסרת ${f.name}`}>
                     <X size={14} weight="bold" />
                   </button>
                 </>
@@ -137,20 +134,9 @@ export function DocumentsStep() {
     aiFillMortgage, mortgageAiBusy, mortgageAiErr, tracks,
     aiFillLoans, loanAiBusy, loanAiErr, loans,
     aiFillRental, rentalAiBusy, rentalAiErr, companyName, monthlyRent,
-    purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile,
-    insuranceDocFiles, addInsuranceDocs, docRefs,
+    removeDocFile, renameDocFile,
+    addInsuranceDocs, docAttachments,
   } = useOnboarding()
-
-  // What the card lists = everything already in storage (survives a reload) plus any
-  // file still only in memory because its immediate upload hasn't landed/failed.
-  const attach = (cat: 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance', files: File[]): Attachment[] => {
-    const refs = docRefs[cat]
-    const stored = new Set(refs.map(r => r.name))
-    return [
-      ...refs.map(r => ({ name: r.name, path: r.path, file: files.find(f => f.name === r.name) })),
-      ...files.filter(f => !stored.has(f.name)).map(f => ({ name: f.name, file: f })),
-    ]
-  }
   const { user, signOut } = useAuth()
 
   const purchaseDone = (street || city || purchasePrice)
@@ -182,27 +168,27 @@ export function DocumentsStep() {
           icon={<Tag size={26} weight="duotone" color="var(--accent)" />}
           title="חוזה רכישה" hint="קובץ או צילומי מסך"
           busy={purchaseAiBusy} err={purchaseAiErr} doneText={purchaseDone}
-          files={attach('purchase', purchaseDocFiles)} onFiles={aiFillPurchase} onRemove={i => removeDocFile('purchase', i)} onRename={(i, name) => renameDocFile('purchase', i, name)} />
+          files={docAttachments('purchase')} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />
         <DocCard
           icon={<Bank size={26} weight="duotone" color="var(--accent)" />}
           title="אישור משכנתא" hint="קובץ או צילומי מסך מהבנק"
           busy={mortgageAiBusy} err={mortgageAiErr} doneText={mortgageDone}
-          files={attach('mortgage', mortgageDocFiles)} onFiles={aiFillMortgage} onRemove={i => removeDocFile('mortgage', i)} onRename={(i, name) => renameDocFile('mortgage', i, name)} />
+          files={docAttachments('mortgage')} onFiles={aiFillMortgage} onRemove={name => removeDocFile('mortgage', name)} onRename={(oldName, name) => renameDocFile('mortgage', oldName, name)} />
         <DocCard
           icon={<HandCoins size={26} weight="duotone" color="var(--accent)" />}
           title="הלוואה" hint="מסמך או צילום מסך"
           busy={loanAiBusy} err={loanAiErr} doneText={loansDone}
-          files={attach('loan', loanDocFiles)} onFiles={aiFillLoans} onRemove={i => removeDocFile('loan', i)} onRename={(i, name) => renameDocFile('loan', i, name)} />
+          files={docAttachments('loan')} onFiles={aiFillLoans} onRemove={name => removeDocFile('loan', name)} onRename={(oldName, name) => renameDocFile('loan', oldName, name)} />
         <DocCard
           icon={<FileText size={26} weight="duotone" color="var(--accent)" />}
           title="חוזה שכירות" hint="קובץ או צילומי מסך"
           busy={rentalAiBusy} err={rentalAiErr} doneText={rentalDone}
-          files={attach('rental', rentalDocFiles)} onFiles={aiFillRental} onRemove={i => removeDocFile('rental', i)} onRename={(i, name) => renameDocFile('rental', i, name)} />
+          files={docAttachments('rental')} onFiles={aiFillRental} onRemove={name => removeDocFile('rental', name)} onRename={(oldName, name) => renameDocFile('rental', oldName, name)} />
         <DocCard
           icon={<ShieldCheck size={26} weight="duotone" color="var(--accent)" />}
           title="פוליסת ביטוח" hint="קובץ או צילומי מסך"
           busy={false} err={null} doneText=""
-          files={attach('insurance', insuranceDocFiles)} onFiles={addInsuranceDocs} onRemove={i => removeDocFile('insurance', i)} onRename={(i, name) => renameDocFile('insurance', i, name)} />
+          files={docAttachments('insurance')} onFiles={addInsuranceDocs} onRemove={name => removeDocFile('insurance', name)} onRename={(oldName, name) => renameDocFile('insurance', oldName, name)} />
       </div>
 
       <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={() => advance('purchase')}>

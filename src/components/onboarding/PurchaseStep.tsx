@@ -17,7 +17,7 @@ export function PurchaseStep() {
     signingDate, setSigningDate, setKeyDeliveryDate,
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
-    purchaseDocFiles, removeDocFile, renameDocFile,
+    purchaseDocFiles, docAttachments, removeDocFile, renameDocFile,
     fillTestPurchase,
   } = useOnboarding()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
@@ -48,7 +48,7 @@ export function PurchaseStep() {
         </button>
         <input ref={purchaseDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillPurchase(fs); e.target.value = '' }} />
-        {showDocs && <DocFileList files={purchaseDocFiles} onFiles={aiFillPurchase} onRemove={i => removeDocFile('purchase', i)} onRename={(i, name) => renameDocFile('purchase', i, name)} />}
+        {showDocs && <DocFileList files={docAttachments('purchase')} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />}
         {purchaseAiErr && <p className="onboarding-error" role="alert">{purchaseAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>

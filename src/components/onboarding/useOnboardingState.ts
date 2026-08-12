@@ -49,6 +49,8 @@ const DEV_MOCK = {
 // survives the draft round-trip that File objects cannot.
 export type DocCat = 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance'
 export type DocRef = { docId: string; name: string; path: string }
+// One attachment as the UI shows it: in memory (just picked), in storage, or both.
+export type Attachment = { name: string; file?: File; path?: string }
 
 // Serializable snapshot of the wizard for crash-safe persistence (C2). Mirrors the
 // data-bearing state below; transient UI state (refs, AI-busy flags, error/saving)
@@ -581,6 +583,20 @@ export function useOnboardingState(onComplete: () => void) {
     }
   }
 
+  // The single source of truth for "what is attached to this category": everything
+  // already in storage (survives a reload) plus anything still only in memory. Both
+  // the documents step and the per-step file lists render from this, so they agree.
+  function docAttachments(cat: DocCat): Attachment[] {
+    const files = { purchase: purchaseDocFiles, mortgage: mortgageDocFiles, loan: loanDocFiles,
+      rental: rentalDocFiles, insurance: insuranceDocFiles }[cat]
+    const refs = docRefs[cat]
+    const stored = new Set(refs.map(r => r.name))
+    return [
+      ...refs.map(r => ({ name: r.name, path: r.path, file: files.find(f => f.name === r.name) })),
+      ...files.filter(f => !stored.has(f.name)).map(f => ({ name: f.name, file: f })),
+    ]
+  }
+
   // Upload a just-picked file to storage right away, so it can't be lost by a reload
   // (and so finish only has to link it). Fire-and-forget: on failure the in-memory
   // File remains and finish uploads it the old way, so nothing is lost either path.
@@ -597,34 +613,39 @@ export function useOnboardingState(onComplete: () => void) {
 
   // Remove one already-picked file from a category's list (documents step manage view).
   // Only drops the file from what gets saved; any data already auto-filled is kept.
-  function removeDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance', index: number) {
+  // Keyed by NAME, not position: an attachment can exist in storage (docRefs), in
+  // memory (the File), or both, and those two lists don't stay index-aligned — a
+  // positional remove could drop the wrong entry, or leave the in-memory copy behind
+  // so finish re-uploaded a file the user had just removed.
+  function removeDocFile(category: DocCat, name: string) {
     const setters = {
       purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
       loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
-    setters[category](prev => prev.filter((_, i) => i !== index))
+    setters[category](prev => prev.filter(f => f.name !== name))
     // Drop the stored copy too, otherwise a "removed" document would still be linked
     // on finish (and keep occupying storage).
     setDocRefs(prev => {
-      const ref = prev[category][index]
-      if (ref) removeDocumentFile(ref.path).catch(() => { /* orphan blob, not user-facing */ })
-      return { ...prev, [category]: prev[category].filter((_, i) => i !== index) }
+      for (const r of prev[category].filter(r => r.name === name)) {
+        removeDocumentFile(r.path).catch(() => { /* orphan blob, not user-facing */ })
+      }
+      return { ...prev, [category]: prev[category].filter(r => r.name !== name) }
     })
   }
 
   // Rename a chosen file in place. A File's name is immutable, so we rebuild it from
   // the same bytes — content (and therefore the extraction cache key) is unchanged,
   // so no re-read is triggered; only the stored document's filename changes.
-  function renameDocFile(category: 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance', index: number, newName: string) {
+  function renameDocFile(category: DocCat, oldName: string, newName: string) {
     const name = newName.trim()
-    if (!name) return
+    if (!name || name === oldName) return
     const setters = {
       purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
       loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
-    setters[category](prev => prev.map((f, i) =>
-      i === index ? new File([f], name, { type: f.type, lastModified: f.lastModified }) : f))
-    setDocRefs(prev => ({ ...prev, [category]: prev[category].map((r, i) => i === index ? { ...r, name } : r) }))
+    setters[category](prev => prev.map(f =>
+      f.name === oldName ? new File([f], name, { type: f.type, lastModified: f.lastModified }) : f))
+    setDocRefs(prev => ({ ...prev, [category]: prev[category].map(r => r.name === oldName ? { ...r, name } : r) }))
   }
 
   // Background upload of the supplementary document files (purchase / mortgage / loan /
@@ -1394,7 +1415,7 @@ export function useOnboardingState(onComplete: () => void) {
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     // Uploaded document files per category + remove (documents step manage view)
-    purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile, docRefs,
+    purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile, docRefs, docAttachments,
     insuranceDocFiles, addInsuranceDocs,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,

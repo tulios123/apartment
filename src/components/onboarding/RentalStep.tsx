@@ -17,7 +17,7 @@ export function RentalStep() {
     monthlyRent, setMonthlyRent, rentPaymentMethod, setRentPaymentMethod,
     rentPaymentDay, setRentPaymentDay, addRentReminder, setAddRentReminder,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
-    rentalDocFiles, removeDocFile, renameDocFile,
+    rentalDocFiles, docAttachments, removeDocFile, renameDocFile,
     fillTestRental,
   } = useOnboarding()
   const rentalDocRef = useRef<HTMLInputElement>(null)
@@ -50,7 +50,7 @@ export function RentalStep() {
         </button>
         <input ref={rentalDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillRental(fs); e.target.value = '' }} />
-        {showDocs && <DocFileList files={rentalDocFiles} onFiles={aiFillRental} onRemove={i => removeDocFile('rental', i)} onRename={(i, name) => renameDocFile('rental', i, name)} />}
+        {showDocs && <DocFileList files={docAttachments('rental')} onFiles={aiFillRental} onRemove={name => removeDocFile('rental', name)} onRename={(oldName, name) => renameDocFile('rental', oldName, name)} />}
         {rentalAiErr && <p className="onboarding-error" role="alert">{rentalAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>
