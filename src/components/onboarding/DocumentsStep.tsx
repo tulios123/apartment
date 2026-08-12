@@ -1,24 +1,11 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown, Plus, Paperclip, X, PencilSimple, Check, Eye } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import type { Attachment } from './useOnboardingState'
 import { useAuth } from '../../contexts/AuthContext'
-import { redirectToSignedUrl } from '../../lib/storage'
-
-// Preview an attachment. An in-memory File opens straight from an object URL; a stored
-// one goes through a signed URL. Both open the tab synchronously inside the click so no
-// popup blocker trips — the stored path fills it in once the URL resolves.
-function viewAttachment(a: Attachment) {
-  if (a.file) {
-    const url = URL.createObjectURL(a.file)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
-    return
-  }
-  if (a.path) redirectToSignedUrl(window.open('', '_blank'), a.path)
-}
+import { DocFileList } from './DocFileList'
 
 // One upload topic. Empty → tapping picks file(s) and kicks off extraction in the
 // background. Once files exist, tapping expands a manage panel: see each file,
@@ -31,10 +18,6 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
 }) {
   const ref = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
-  const [editIdx, setEditIdx] = useState<number | null>(null)
-  const [draft, setDraft] = useState('')
-  const startEdit = (i: number, name: string) => { setEditIdx(i); setDraft(name) }
-  const commitEdit = () => { if (editIdx !== null) onRename(files[editIdx].name, draft); setEditIdx(null) }
   const hasFiles = files.length > 0
   // The wizard draft is persisted to localStorage, but File objects can't be
   // serialized — so after a reload (or a manual remove) the extracted DATA comes back
@@ -73,52 +56,14 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
         </span>
       </button>
 
+      {/* One shared attachment list everywhere (owner, 26.07): the documents step and
+          each section's own upload area render the SAME rows — same icons, same order,
+          same actions. This block used to be a near-copy of DocFileList, and the two
+          drifted every time one was fixed, which is where the last round of bugs came
+          from. The containers still differ (checklist here, form-filler there) because
+          they do different jobs; only the parts are unified. */}
       {hasFiles && open && (
-        <div className="onboarding-doc-files">
-          {files.map((f, i) => (
-            <div key={`${f.name}-${i}`} className="onboarding-doc-file">
-              <Paperclip size={15} weight="bold" />
-              {editIdx === i ? (
-                <input
-                  className="onboarding-doc-file-edit"
-                  value={draft}
-                  autoFocus
-                  onChange={e => setDraft(e.target.value)}
-                  onBlur={commitEdit}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') { e.preventDefault(); commitEdit() }
-                    if (e.key === 'Escape') setEditIdx(null)
-                  }}
-                />
-              ) : (
-                <span className="onboarding-doc-file-name" onClick={() => startEdit(i, f.name)}>{f.name}</span>
-              )}
-              {editIdx === i ? (
-                <button type="button" className="onboarding-doc-file-del" onMouseDown={e => e.preventDefault()} onClick={commitEdit} aria-label="שמירת שם">
-                  <Check size={15} weight="bold" />
-                </button>
-              ) : (
-                <>
-                  {/* Actually SEE the uploaded file. It only lives in memory until finish,
-                      so preview it straight from the File via an object URL — opened
-                      synchronously in the click handler so no popup blocker trips. */}
-                  <button type="button" className="onboarding-doc-file-del" onClick={() => viewAttachment(f)} aria-label={`צפייה ב${f.name}`}>
-                    <Eye size={14} weight="bold" />
-                  </button>
-                  <button type="button" className="onboarding-doc-file-del" onClick={() => startEdit(i, f.name)} aria-label={`שינוי שם ${f.name}`}>
-                    <PencilSimple size={14} weight="bold" />
-                  </button>
-                  <button type="button" className="onboarding-doc-file-del" onClick={() => onRemove(f.name)} aria-label={`הסרת ${f.name}`}>
-                    <X size={14} weight="bold" />
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
-          <button type="button" className="onboarding-doc-file-add" onClick={pick}>
-            <Plus size={15} weight="bold" /> הוספת קובץ
-          </button>
-        </div>
+        <DocFileList files={files} onFiles={onFiles} onRemove={onRemove} onRename={onRename} />
       )}
 
       <input ref={ref} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
