@@ -15,7 +15,7 @@ export function MortgageStep() {
   const {
     advance, keyDeliveryDate, setLoanForm,
     mortgageAiBusy, mortgageDocRef, mortgageAiErr, mortgageAiDone, aiFillMortgage,
-    mortgageDocFiles, removeDocFile, renameDocFile,
+    mortgageDocFiles, docAttachments, removeDocFile, renameDocFile,
     tracks, setTracks, trackForm, trackMonthlyPayment, trackEffectiveRate, trackTypeLabel,
     trackIssues, trackDraftHasData,
     editingIdx, setEditingIdx, setTrackForm, setGraceOn, showTrackForm, setShowTrackForm,
@@ -111,7 +111,7 @@ export function MortgageStep() {
         </button>
         <input ref={mortgageDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillMortgage(fs); e.target.value = '' }} />
-        {showDocs && <DocFileList files={mortgageDocFiles} onFiles={aiFillMortgage} onRemove={i => removeDocFile('mortgage', i)} onRename={(i, name) => renameDocFile('mortgage', i, name)} />}
+        {showDocs && <DocFileList files={docAttachments('mortgage')} onFiles={aiFillMortgage} onRemove={name => removeDocFile('mortgage', name)} onRename={(oldName, name) => renameDocFile('mortgage', oldName, name)} />}
         {mortgageAiErr && <p className="onboarding-error" role="alert">{mortgageAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר לבחור כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>

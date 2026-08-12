@@ -18,7 +18,7 @@ export function LoansStep() {
     addLoan, saveLoanEdit, saveLoanAndOpenNew, removeLoan,
     loansMonthlyPrincipal, loansBalloonTotal,
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
-    loanDocFiles, removeDocFile, renameDocFile,
+    loanDocFiles, docAttachments, removeDocFile, renameDocFile,
     fillTestLoans,
   } = useOnboarding()
 
@@ -113,7 +113,7 @@ export function LoansStep() {
         </button>
         <input ref={loanDocRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style={{ display: 'none' }}
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillLoans(fs); e.target.value = '' }} />
-        {showDocs && <DocFileList files={loanDocFiles} onFiles={aiFillLoans} onRemove={i => removeDocFile('loan', i)} onRename={(i, name) => renameDocFile('loan', i, name)} />}
+        {showDocs && <DocFileList files={docAttachments('loan')} onFiles={aiFillLoans} onRemove={name => removeDocFile('loan', name)} onRename={(oldName, name) => renameDocFile('loan', oldName, name)} />}
         {loanAiErr && <p className="onboarding-error" role="alert">{loanAiErr}</p>}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או הזינו ידנית למטה</p>
       </div>
