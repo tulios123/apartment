@@ -23,18 +23,17 @@ const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(
 // Wealth screen's narrower "אחזקה ותיקונים" figure can legitimately differ from it.
 const LOG_CATEGORIES = [MAINTENANCE_CATEGORY, 'אחר']
 
-type RangeId = 'year' | 'lastYear' | 'all' | 'custom'
+type RangeId = 'all' | 'year' | 'custom'
 
 function rangeFor(id: RangeId, customFrom: string, customTo: string): { from?: string; to?: string } {
   const y = new Date().getFullYear()
   if (id === 'year') return { from: `${y}-01-01`, to: `${y}-12-31` }
-  if (id === 'lastYear') return { from: `${y - 1}-01-01`, to: `${y - 1}-12-31` }
   if (id === 'custom') return { from: customFrom || undefined, to: customTo || undefined }
-  return {}
+  return {}   // 'all' — the whole history
 }
 
 export default function MaintenanceLog() {
-  const [range, setRange] = useState<RangeId>('year')
+  const [range, setRange] = useState<RangeId>('all')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState(todayISO())
 
@@ -92,7 +91,7 @@ export default function MaintenanceLog() {
 
       {/* Range picker */}
       <div className="mlog-ranges">
-        {([['year', 'השנה'], ['lastYear', 'שנה שעברה'], ['all', 'הכל'], ['custom', 'טווח']] as [RangeId, string][])
+        {([['all', 'הכל'], ['year', 'השנה'], ['custom', 'טווח']] as [RangeId, string][])
           .map(([id, label]) => (
             <button key={id} type="button" className={`mlog-range${range === id ? ' on' : ''}`} onClick={() => setRange(id)}>
               {label}
