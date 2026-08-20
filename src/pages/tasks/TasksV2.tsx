@@ -241,7 +241,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           <section className="tav-section tav-logbook">
             <div className="tav-section-head">
               <ClipboardText size={16} weight="duotone" color="var(--text-muted)" />
-              <h2>יומן תחזוקה</h2>
+              <h2>משימות שהושלמו</h2>
               {logbook.length > 0 && <span className="tav-bucket-count">{logbook.length}</span>}
             </div>
             {logbook.length === 0 ? (

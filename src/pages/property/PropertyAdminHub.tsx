@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { FileText, ShieldCheck, CheckSquare, FolderOpen, UserCircle, PencilSimple } from '@phosphor-icons/react'
+import { FileText, ShieldCheck, CheckSquare, FolderOpen, UserCircle, PencilSimple , Wrench } from '@phosphor-icons/react'
 import { PropertyForm } from './PropertyForm'
 import { Modal } from '../../components/ui/Modal'
 import Rental from './Rental'
 import Insurance from './Insurance'
+import MaintenanceLog from './MaintenanceLog'
 import TasksV2 from '../tasks/TasksV2'
 import DocumentsV2 from '../documents/DocumentsV2'
 import { usePropertyData, createProperty, updateProperty } from '../../hooks/usePropertyData'
@@ -24,6 +25,7 @@ const TABS = [
   { id: 'insurance', label: 'ביטוח', Icon: ShieldCheck, Comp: Insurance },
   { id: 'tasks', label: 'משימות', Icon: CheckSquare, Comp: TasksPanel },
   { id: 'documents', label: 'מסמכים', Icon: FolderOpen, Comp: DocumentsPanel },
+  { id: 'maintenance', label: 'תחזוקה', Icon: Wrench, Comp: MaintenanceLog },
 ] as const
 
 // Property details now live in the top binder (not a tab); legacy deep-links fall back to the contract.
@@ -119,7 +121,7 @@ export default function PropertyAdminHub() {
             )}
           </div>
 
-          <nav className="prov-tabs">
+          <nav className="prov-tabs" style={{ ['--prov-tab-count' as string]: TABS.length }}>
             {TABS.map(({ id, label, Icon }) => (
               <button
                 key={id}
