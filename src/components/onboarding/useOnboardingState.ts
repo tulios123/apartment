@@ -3,12 +3,14 @@ import { invokeErrorMessage } from '../../lib/invokeError'
 import { userErrorMessage } from '../../lib/errorHe'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadDocument, removeDocumentFile } from '../../lib/storage'
-import { createProperty, createContract } from '../../hooks/usePropertyData'
+import { hydrateFromAccount } from './hydrate'
+import { TRACK_LABELS } from '../../lib/constants'
+import { createProperty, createContract, updateContract } from '../../hooks/usePropertyData'
 import { syncRentRecurringItem } from '../../hooks/useRecurringItems'
-import { ensureMortgage, upsertMortgageTrack } from '../../hooks/useMortgageData'
-import { upsertLoan } from '../../hooks/useLoansData'
+import { ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
+import { upsertLoan, deleteLoan } from '../../hooks/useLoansData'
 import { upsertInvestmentCost } from '../../hooks/useInvestmentData'
-import { createInsurancePolicy } from '../../hooks/useInsurance'
+import { createInsurancePolicy, updateInsurancePolicy, deleteInsurancePolicy } from '../../hooks/useInsurance'
 import { supabase } from '../../lib/supabase'
 import { enablePush } from '../../lib/push'
 import { monthlyPayment } from '../../lib/mortgage'
@@ -225,6 +227,51 @@ export function useOnboardingState(onComplete: () => void) {
   // so the file survives a reload, can be previewed, and finish just links it.
   const [docRefs, setDocRefs] = useState<Record<DocCat, DocRef[]>>(
     () => d0?.docRefs ?? { purchase: [], mortgage: [], loan: [], rental: [], insurance: [] })
+
+  // ── Editing an existing account ──────────────────────────────────────────────
+  // Re-entering the wizard used to start blank, so finishing inserted a SECOND
+  // contract / mortgage tracks / loans on top of the real ones. Load what the account
+  // already has (with row ids) so the wizard edits in place. Truth beats the local
+  // draft — the draft only covers a first run that was interrupted.
+  const [hydratedIds, setHydratedIds] = useState<{
+    propertyId?: string; contractId?: string | null; equityCostId?: string | null
+    costIds: Record<string, string>
+  }>({ costIds: {} })
+  // Removing a row that exists in the account is destructive — it changes real money
+  // figures — so it asks first (owner, 26.07). The deletion is STAGED and applied on
+  // finish, keeping the wizard's "nothing is written until you finish" contract.
+  const [pendingDelete, setPendingDelete] = useState<
+    { kind: 'track' | 'loan' | 'policy' | 'balloon'; idx: number; label: string } | null>(null)
+  const deletedIds = useRef<{ tracks: string[]; loans: string[]; policies: string[] }>(
+    { tracks: [], loans: [], policies: [] })
+  const hydratedRef = useRef(false)
+  useEffect(() => {
+    if (!user || hydratedRef.current) return
+    hydratedRef.current = true
+    let alive = true
+    ;(async () => {
+      let h: Awaited<ReturnType<typeof hydrateFromAccount>> = null
+      try { h = await hydrateFromAccount(user.id) } catch { return }   // offline → keep the draft
+      if (!h || !alive) return
+      setHydratedIds({ propertyId: h.propertyId, contractId: h.contractId, equityCostId: h.equityCostId, costIds: h.costIds })
+      setBuyerName(h.buyerName); setStreet(h.street); setCity(h.city); setRooms(h.rooms)
+      setPurchasePrice(h.purchasePrice); setSigningDate(h.signingDate); setKeyDeliveryDate(h.keyDeliveryDate)
+      setPropertySizeSqm(h.propertySizeSqm); setFloorNumber(h.floorNumber)
+      if (h.tracks.length) setTracks(h.tracks)
+      if (h.loans.length) setLoans(h.loans)
+      if (h.balloonLoans.length) setBalloonLoans(h.balloonLoans)
+      if (h.policies.length) setPolicies(h.policies)
+      if (h.contractId) {
+        setCompanyName(h.companyName); setStartDate(h.startDate); setEndDate(h.endDate)
+        setMonthlyRent(h.monthlyRent); setRentPaymentMethod(h.rentPaymentMethod)
+        setAddRentReminder(h.addRentReminder)
+      }
+      if (h.equityValue) { setEquityMode('amount'); setEquityValue(h.equityValue) }
+      setCosts(h.costs)
+      if (h.extraCosts.length) setExtraCosts(h.extraCosts)
+    })()
+    return () => { alive = false }
+  }, [user])
   const addInsuranceDocs = (files: File[]) => { setInsuranceDocFiles(prev => [...prev, ...files]); void stashDocs('insurance', files) }
 
   // ── Navigation ──────────────────────────────────────────────────────────────
@@ -786,6 +833,7 @@ export function useOnboardingState(onComplete: () => void) {
               const primeDefault = d.track_type === 'prime' ? 6.25 : 0
               const marginDefault = d.track_type === 'prime' ? -0.5 : 0
               return upsertMortgageTrack({
+                id: d.id,   // set when the row already exists → update, don't insert a duplicate
                 mortgage_id: m.id,
                 owner_id: user.id,
                 label: null,
@@ -819,6 +867,7 @@ export function useOnboardingState(onComplete: () => void) {
                   ? (parseFloat(d.prime_rate) || 0) + (parseFloat(d.margin) || 0)
                   : (parseFloat(d.annual_rate) || 0)
                 return upsertLoan({
+                  id: d.id,
                   owner_id: user.id,
                   property_id: property.id,
                   label: d.label.trim() || null,
@@ -839,6 +888,7 @@ export function useOnboardingState(onComplete: () => void) {
               const balloonVal = parseFloat(b.amount) || 0
               if (balloonVal <= 0) continue
               loanWrites.push(upsertLoan({
+                id: b.id,
                 owner_id: user.id,
                 property_id: property.id,
                 label: b.lender.trim() || 'הלוואת בלון',
@@ -867,7 +917,7 @@ export function useOnboardingState(onComplete: () => void) {
           if (savedRef.current.costs) return
           try {
             const tasks = []
-            if (equityAmount > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount }))
+            if (equityAmount > 0) tasks.push(upsertInvestmentCost({ id: hydratedIds.equityCostId ?? undefined, owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount }))
             const fixedCosts: [string, number][] = [
               ['lawyer', parseFloat(effLawyer) || 0],
               ['brokerage', parseFloat(effBrokerage) || 0],
@@ -876,11 +926,11 @@ export function useOnboardingState(onComplete: () => void) {
               ['appraiser', parseFloat(costs.appraiser) || 0],
             ]
             for (const [key, val] of fixedCosts) {
-              if (val > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: key, label: null, amount: val }))
+              if (val > 0) tasks.push(upsertInvestmentCost({ id: hydratedIds.costIds[key], owner_id: user.id, category: key, label: null, amount: val }))
             }
             for (const ec of extraCosts) {
               const val = parseFloat(ec.amount) || 0
-              if (val > 0) tasks.push(upsertInvestmentCost({ owner_id: user.id, category: 'other', label: ec.name.trim() || null, amount: val }))
+              if (val > 0) tasks.push(upsertInvestmentCost({ id: ec.id, owner_id: user.id, category: 'other', label: ec.name.trim() || null, amount: val }))
             }
             await Promise.all(tasks)
             savedRef.current.costs = true
@@ -918,6 +968,21 @@ export function useOnboardingState(onComplete: () => void) {
             return
           }
           try {
+            // An account that already has a rental contract must be EDITED, not given a
+            // second one — two live contracts double-count the rent (owner, 26.07).
+            const existingContractId = hydratedIds.contractId
+            if (existingContractId) {
+              await updateContract(existingContractId, {
+                company_name: companyName.trim(),
+                start_date: startDate, end_date: endDate,
+                monthly_rent: rentVal, payment_method: rentPaymentMethod,
+                requires_approval: addRentReminder,
+              })
+              const { data: refreshed } = await supabase.from('contracts').select('*').eq('id', existingContractId).single()
+              contract = refreshed as Contract
+              savedRef.current.contract = contract
+              return
+            }
             contract = await createContract({
               owner_id: user.id,
               property_id: property.id,
@@ -944,17 +1009,22 @@ export function useOnboardingState(onComplete: () => void) {
           try {
             await Promise.all(allPolicies
               .filter(policyHasData)
-              .map(p => createInsurancePolicy({
-                owner_id: user.id,
-                property_id: property.id,
-                type: p.type,
-                company: p.company.trim() || null,
-                policy_number: null,
-                monthly_premium: p.monthly_premium ? parseFloat(p.monthly_premium) : null,
-                start_date: p.start_date || keyDeliveryDate || null,
-                end_date: p.end_date || null,
-                notes: null,
-              }))
+              .map(p => {
+                const fields = {
+                  type: p.type,
+                  company: p.company.trim() || null,
+                  monthly_premium: p.monthly_premium ? parseFloat(p.monthly_premium) : null,
+                  start_date: p.start_date || keyDeliveryDate || null,
+                  end_date: p.end_date || null,
+                }
+                // Existing policy → update in place; only a genuinely new one is inserted.
+                return p.id
+                  ? updateInsurancePolicy(p.id, fields)
+                  : createInsurancePolicy({
+                      owner_id: user.id, property_id: property.id,
+                      policy_number: null, notes: null, ...fields,
+                    })
+              })
             )
             savedRef.current.policies = true
           } catch {
@@ -962,6 +1032,20 @@ export function useOnboardingState(onComplete: () => void) {
           }
         })(),
       ])
+
+      // Apply the deletions the user confirmed in the wizard. Done after the upserts so
+      // a row that was removed and re-added in the same session isn't deleted afterwards.
+      const { tracks: delT, loans: delL, policies: delP } = deletedIds.current
+      if (delT.length || delL.length || delP.length) {
+        try {
+          await Promise.all([
+            ...delT.map(id => deleteMortgageTrack(id)),
+            ...delL.map(id => deleteLoan(id)),
+            ...delP.map(id => deleteInsurancePolicy(id)),
+          ])
+          deletedIds.current = { tracks: [], loans: [], policies: [] }
+        } catch { failures.push('מחיקת פריטים') }
+      }
 
       // Rent reminder — depends on the contract created above. Cheap and core, so awaited.
       if (contract) {
@@ -1238,6 +1322,8 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   function removeTrack(idx: number) {
+    const t = tracks[idx]
+    if (t?.id) { setPendingDelete({ kind: 'track', idx, label: TRACK_LABELS[t.track_type] ?? 'מסלול' }); return }
     setTracks(prev => prev.filter((_, i) => i !== idx))
   }
 
@@ -1289,6 +1375,8 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   function removePolicy(idx: number) {
+    const p = policies[idx]
+    if (p?.id) { setPendingDelete({ kind: 'policy', idx, label: p.company.trim() || 'הפוליסה' }); return }
     setPolicies(prev => prev.filter((_, i) => i !== idx))
   }
 
@@ -1333,7 +1421,29 @@ export function useOnboardingState(onComplete: () => void) {
   }
 
   function removeLoan(idx: number) {
+    const l = loans[idx]
+    if (l?.id) { setPendingDelete({ kind: 'loan', idx, label: l.label.trim() || 'ההלוואה' }); return }
     setLoans(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  // Confirmed: drop it from the wizard and remember to delete the row on finish.
+  function confirmPendingDelete() {
+    const p = pendingDelete
+    if (!p) return
+    setPendingDelete(null)
+    if (p.kind === 'track') {
+      const id = tracks[p.idx]?.id; if (id) deletedIds.current.tracks.push(id)
+      setTracks(prev => prev.filter((_, i) => i !== p.idx))
+    } else if (p.kind === 'loan') {
+      const id = loans[p.idx]?.id; if (id) deletedIds.current.loans.push(id)
+      setLoans(prev => prev.filter((_, i) => i !== p.idx))
+    } else if (p.kind === 'balloon') {
+      const id = balloonLoans[p.idx]?.id; if (id) deletedIds.current.loans.push(id)
+      setBalloonLoans(prev => prev.filter((_, i) => i !== p.idx))
+    } else {
+      const id = policies[p.idx]?.id; if (id) deletedIds.current.policies.push(id)
+      setPolicies(prev => prev.filter((_, i) => i !== p.idx))
+    }
   }
 
   function setLF<K extends keyof LoanDraft>(key: K, val: LoanDraft[K]) {
@@ -1433,6 +1543,7 @@ export function useOnboardingState(onComplete: () => void) {
     policies, setPolicies, policyForm, setPolicyForm, setPF,
     showPolicyForm, setShowPolicyForm, editingPolicyIdx, setEditingPolicyIdx,
     addPolicy, savePolicyEdit, savePolicyAndOpenNew, removePolicy,
+    pendingDelete, confirmPendingDelete, dismissPendingDelete: () => setPendingDelete(null),
     // loans
     loans, setLoans, loanForm, setLoanForm, setLF,
     loanGraceOn, setLoanGraceOn, showLoanForm, setShowLoanForm,

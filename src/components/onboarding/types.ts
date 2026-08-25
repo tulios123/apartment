@@ -8,6 +8,8 @@ export const STEP_ORDER: Step[] = ['purchase', 'mortgage', 'loans', 'investment'
 
 // ── Draft types ────────────────────────────────────────────────────────────────
 export type TrackDraft = {
+  /** Set when this row already exists in the DB — finish updates it instead of inserting. */
+  id?: string
   track_type: TrackType
   principal: string
   annual_rate: string
@@ -19,6 +21,7 @@ export type TrackDraft = {
 }
 
 export type PolicyDraft = {
+  id?: string
   type: string
   company: string
   monthly_premium: string
@@ -27,6 +30,7 @@ export type PolicyDraft = {
 }
 
 export type LoanDraft = {
+  id?: string
   repayment_type: LoanRepaymentType
   track_type: TrackType
   label: string
@@ -40,10 +44,10 @@ export type LoanDraft = {
   start_date: string
 }
 
-export type ExtraCost = { name: string; amount: string }
+export type ExtraCost = { id?: string; name: string; amount: string }
 
 // A single balloon loan (interest-free, repaid on sale) — e.g. 50k from each parent.
-export type BalloonRow = { amount: string; lender: string }
+export type BalloonRow = { id?: string; amount: string; lender: string }
 
 export function emptyTrack(startDate?: string): TrackDraft {
   return {

@@ -12,6 +12,7 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { monthlyVirtualEntries } from '../../lib/projections'
+import { splitForMonth } from '../../lib/equity'
 import { isForecastMonth } from '../../lib/forecast'
 import type { VirtualEntry } from '../../lib/projections'
 import { supabase } from '../../lib/supabase'
@@ -274,6 +275,30 @@ export default function FinancesV2() {
   const rangeMaxBar = Math.max(1, ...rangeBuckets.map(b => Math.max(b.income, b.expense)))
 
   // ── Displayed figures (mode-aware) ─────────────────────────────────
+  // ── What the period ACTUALLY did, vs what it's forecast to do ────────────────
+  // The year view always spans 12 months, so it silently mixed real figures with a
+  // forecast for months that haven't happened, while a range usually ends today —
+  // two different questions answered by one number (owner, 27.07). The headline is
+  // now the REAL balance for the period in every view, and the forecast is shown
+  // separately and only when the period actually reaches into the future.
+  const periodMonths = useMemo(() => {
+    if (view === 'month') return [`${year}-${String(month).padStart(2, '0')}`]
+    if (view === 'year') return Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`)
+    return periodsBetween(rangeFrom, rangeTo).map(({ year: y, month: m }) => `${y}-${String(m).padStart(2, '0')}`)
+  }, [view, year, month, rangeFrom, rangeTo])
+
+  const periodSummary = useMemo(() => {
+    const actualIncome = transactions.filter(t => t.direction === 'income').reduce((s, t) => s + Number(t.amount), 0)
+    const actualExpense = transactions.filter(t => t.direction === 'expense').reduce((s, t) => s + Number(t.amount), 0)
+    // Principal is summed over the SAME months the headline covers — the headline
+    // includes the forecast for months still ahead, so their mortgage payments (and
+    // therefore their principal) must be counted too, or the equity line understates.
+    const nowKey = todayISO().slice(0, 7)
+    const principal = periodMonths.reduce((s, m) => s + splitForMonth(mortgageTracks, loans, m).principal, 0)
+    const hasFuture = periodMonths.some(m => m > nowKey)
+    return { actualNet: actualIncome - actualExpense, principal, hasFuture }
+  }, [transactions, periodMonths, mortgageTracks, loans])
+
   const income = view === 'month' ? mIncome : view === 'year' ? yearTotals.income : rangeTotals.income
   const expense = view === 'month' ? mExpense : view === 'year' ? yearTotals.expense : rangeTotals.expense
   const net = income - expense
@@ -471,9 +496,26 @@ export default function FinancesV2() {
       <div className="finv-summary">
         <div className="finv-summary-label">
           {view === 'month' ? 'מאזן החודש' : view === 'year' ? 'מאזן השנה' : 'מאזן התקופה'}
-          {monthIsForecast && <span className="finv-summary-forecast">צפי</span>}
+          {(monthIsForecast || periodSummary.hasFuture) && <span className="finv-summary-forecast">כולל תחזית</span>}
         </div>
         <div className={`finv-summary-net ${net >= 0 ? 'pos' : 'neg'}`}>{formatSignedCurrency(net)}</div>
+        {/* The principal lens (owner, 27.07): a mortgage payment isn't all cost — the
+            principal part comes back to you as equity. Two quiet lines, not a card. */}
+        {periodSummary.principal > 0 && (
+          <div className="finv-summary-lens">
+            {/* One line, not two (owner, 27.07): what actually left your pocket once the
+                principal is treated as savings rather than an expense. */}
+            <span>מאזן חיסכון בפועל<b>{formatSignedCurrency(net + periodSummary.principal)}</b></span>
+          </div>
+        )}
+        {/* The year view spans all 12 months, so for most of the year its headline is
+            partly a forecast. Say so, and give the settled figure beside it, instead of
+            leaving the two indistinguishable (owner, 27.07). */}
+        {periodSummary.hasFuture && (
+          <div className="finv-summary-lens forecast">
+            <span>בפועל עד היום<b>{formatSignedCurrency(periodSummary.actualNet)}</b></span>
+          </div>
+        )}
         <div className="finv-summary-bar"><div className="in" style={{ width: `${inPct}%` }} /><div className="out" style={{ width: `${100 - inPct}%` }} /></div>
         <div className="finv-summary-tiles">
           <div className="finv-summary-tile in"><span className="finv-summary-tile-label"><ArrowDown size={13} weight="bold" /> הכנסות</span><span className="finv-summary-tile-value">{fmt(income)}</span></div>

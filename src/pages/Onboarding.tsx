@@ -30,7 +30,7 @@ export default function Onboarding({ onComplete }: Props) {
   useEffect(() => {
     document.body.classList.remove('login-locked', 'app-locked')
   }, [])
-  const { step, back, navDir, finishPrompt, finishBlockers, dismissFinishPrompt, finishPromptBackToComplete, finishPromptContinueWithout } = state
+  const { step, back, navDir, pendingDelete, confirmPendingDelete, dismissPendingDelete, finishPrompt, finishBlockers, dismissFinishPrompt, finishPromptBackToComplete, finishPromptContinueWithout } = state
   // Same title grammar as the steps' own dialogs — specific when possible.
   const finishPromptTitle = finishBlockers.length && finishBlockers.every(b => b.kind === 'track')
     ? 'חסרים פרטים במסלול'
@@ -97,6 +97,25 @@ export default function Onboarding({ onComplete }: Props) {
           is skipped, and useSearchParams is never called — which is what used to crash
           every NEW account on first run. A first-run user is exactly who most needs to
           report a problem, so the lamp belongs here. */}
+      {/* Removing something that already exists in the account changes real money
+          figures, so it confirms first (owner, 26.07). Applied on finish, like every
+          other write in the wizard. */}
+      {pendingDelete && createPortal(
+        <div className="onboarding-dialog-overlay" onClick={dismissPendingDelete}>
+          <div className="onboarding-dialog" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <div className="onboarding-dialog-title">להסיר את {pendingDelete.label}?</div>
+            <p className="onboarding-dialog-lead">
+              זה פריט קיים בחשבון שלך. ההסרה תתבצע כשתסיימו, והיא תשנה את חישובי-הכסף.
+            </p>
+            <div className="onboarding-dialog-actions">
+              <button type="button" className="btn-onboard-skip onboarding-cta-full" onClick={confirmPendingDelete}>הסרה</button>
+              <button type="button" className="btn-onboard-primary onboarding-cta-full" onClick={dismissPendingDelete}>ביטול</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       <FeedbackButton routed={false} screen="onboarding" />
     </OnboardingContext.Provider>
   )

@@ -58,8 +58,10 @@
   .padm-util-edit-name { font-size: 13px; color: var(--text); min-width: 64px; }
 
   /* Tab navigation — one equal column per tab, never scrolls horizontally */
-  .prov-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--bg-card); padding: 5px; border-radius: var(--r-lg); box-shadow: var(--shadow-sm); margin-bottom: 18px; }
-  .prov-tab { border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 12px; font-weight: 600; padding: 8px 4px; border-radius: var(--r-md); cursor: pointer; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+  /* Column count follows the tab list (5 since the maintenance log) instead of a
+     hard-coded 4, which pushed the 5th tab onto its own orphaned second row. */
+  .prov-tabs { display: grid; grid-template-columns: repeat(var(--prov-tab-count, 4), 1fr); gap: 3px; background: var(--bg-card); padding: 5px; border-radius: var(--r-lg); box-shadow: var(--shadow-sm); margin-bottom: 18px; }
+  .prov-tab { border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 11.5px; font-weight: 600; padding: 8px 2px; min-width: 0; border-radius: var(--r-md); cursor: pointer; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
   .prov-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .prov-tab:hover { color: var(--brand-navy); }
   .prov-tab.on { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(42,125,225,0.35); }
