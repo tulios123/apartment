@@ -503,8 +503,9 @@ export default function FinancesV2() {
             principal part comes back to you as equity. Two quiet lines, not a card. */}
         {periodSummary.principal > 0 && (
           <div className="finv-summary-lens">
-            <span>מזה קרן שנכנסה להון<b>{formatSignedCurrency(periodSummary.principal)}</b></span>
-            <span>מאזן כולל בניית־הון<b>{formatSignedCurrency(net + periodSummary.principal)}</b></span>
+            {/* One line, not two (owner, 27.07): what actually left your pocket once the
+                principal is treated as savings rather than an expense. */}
+            <span>מאזן חיסכון בפועל<b>{formatSignedCurrency(net + periodSummary.principal)}</b></span>
           </div>
         )}
         {/* The year view spans all 12 months, so for most of the year its headline is
