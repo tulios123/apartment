@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pendingApprovalItems, reminderLine } from '../reminders'
+import { pendingApprovalItems, reminderLine, isRentLike } from '../reminders'
 import type { DueItem, MonthTx } from '../reminders'
 
 const rentCheck: DueItem = {
@@ -47,5 +47,44 @@ describe('pendingApprovalItems', () => {
     const pending = pendingApprovalItems([rentCheck, expense], tx)
     expect(pending.map((i) => i.id)).toEqual(['pay-1'])
     expect(reminderLine(pending[0])).toBe('תשלום ועד בית')
+  })
+})
+
+describe('rent-cheque items are silenced by the same rule that words them', () => {
+  // Regression (owner, 28.07): reminderLine() calls anything income+cheque a rent
+  // cheque, but the silencing rule required a rent CATEGORY. An income-by-cheque item
+  // filed under another category therefore nagged forever — recording the rent could
+  // never quiet it.
+  const chequeUnderOtherCategory = {
+    id: 'r1', direction: 'income', category: 'אחר', payee: 'דייר', payment_method: 'check',
+  }
+
+  it('words it as a rent-cheque deposit', () => {
+    expect(reminderLine(chequeUnderOtherCategory)).toContain('הפקדת צ׳ק שכר דירה')
+  })
+
+  it('treats it as rent for silencing too', () => {
+    expect(isRentLike(chequeUnderOtherCategory)).toBe(true)
+  })
+
+  it('goes quiet once any rent income is recorded that month', () => {
+    const pending = pendingApprovalItems(
+      [chequeUnderOtherCategory],
+      [{ recurring_item_id: null, direction: 'income', category: 'שכר דירה' }],
+    )
+    expect(pending).toEqual([])
+  })
+
+  it('still reminds while nothing has been recorded', () => {
+    expect(pendingApprovalItems([chequeUnderOtherCategory], [])).toHaveLength(1)
+  })
+
+  it('leaves a genuine expense approval alone', () => {
+    const expense = { id: 'e1', direction: 'expense', category: 'ועד בית', payee: null, payment_method: 'check' }
+    expect(isRentLike(expense)).toBe(false)
+    expect(pendingApprovalItems(
+      [expense],
+      [{ recurring_item_id: null, direction: 'income', category: 'שכר דירה' }],
+    )).toHaveLength(1)
   })
 })

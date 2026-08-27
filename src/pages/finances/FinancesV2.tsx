@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { BusyLabel } from '../../components/ui/Spinner'
 import type { ReactNode, TouchEvent as ReactTouchEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -697,11 +698,11 @@ export default function FinancesV2() {
                 <button type="button" className="finv-receipt-del" onClick={() => removeReceipt(d.id, d.storage_path)} disabled={receiptBusy} aria-label="הסר"><X size={15} /></button>
               </div>
             ))}
-            <button type="button" className="finv-receipt-add" onClick={() => receiptRef.current?.click()} disabled={receiptBusy}>{receiptBusy ? 'מעלה…' : '＋ צרף מסמך'}</button>
+            <button type="button" className="finv-receipt-add" onClick={() => receiptRef.current?.click()} disabled={receiptBusy}><BusyLabel busy={receiptBusy} busyText="מעלה…">＋ צרף מסמך</BusyLabel></button>
           </div>
         )}
         {formError && <div className="finv-form-err" role="alert">{formError}</div>}
-        <button className="finv-save" disabled={saving} onClick={submitForm}>{saving ? 'שומר…' : 'שמירת תנועה'}</button>
+        <button className="finv-save" disabled={saving} onClick={submitForm}><BusyLabel busy={saving} busyText="שומר…">שמירת תנועה</BusyLabel></button>
         {/* D26: delete was reachable only by discovering the swipe gesture — give the
             edit drawer a visible, confirmed delete like tasks/loans/contracts have. */}
         {editingId && (

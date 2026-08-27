@@ -10,6 +10,7 @@ export type DueItem = {
   category: string
   payee: string | null
   payment_method: string | null
+  contract_id?: string | null
 }
 
 export type MonthTx = {
@@ -21,6 +22,17 @@ export type MonthTx = {
 /** A rent-collection item — the monthly "collect rent / deposit the check" approval. */
 export function isRentIncome(item: { direction: string; category: string }): boolean {
   return item.direction === 'income' && RENT_CATEGORIES.includes(item.category)
+}
+
+/**
+ * Anything that reminderLine() will word as a rent-check deposit. That wording keys off
+ * income + payment_method alone, while the silencing rule used to require a rent
+ * CATEGORY — so an income-by-check item filed under any other category produced a
+ * "deposit the rent cheque" nag that no amount of recording could ever silence.
+ * Both sides now ask the same question (owner, 28.07).
+ */
+export function isRentLike(item: { direction: string; category: string; payment_method?: string | null }): boolean {
+  return isRentIncome(item) || (item.direction === 'income' && item.payment_method === 'check')
 }
 
 /**
@@ -40,7 +52,7 @@ export function pendingApprovalItems(dueItems: DueItem[], txThisMonth: MonthTx[]
   const rentIncomeRecorded = txThisMonth.some((t) => isRentIncome(t))
   return dueItems.filter((it) => {
     if (linked.has(it.id)) return false
-    if (isRentIncome(it) && rentIncomeRecorded) return false
+    if (isRentLike(it) && rentIncomeRecorded) return false
     return true
   })
 }
