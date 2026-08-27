@@ -3247,6 +3247,12 @@ input[type="date"] {
   flex-shrink: 0;
 }
 
+/* The shared busy indicator. This rule used to live only inside .hs, so every sheet
+   that portals to <body> rendered a spinner that never actually turned. */
+.spin { animation: spin 0.8s linear infinite; }
+/* Anything inline next to a label shouldn't drag the baseline around. */
+button .spin { vertical-align: -2px; }
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

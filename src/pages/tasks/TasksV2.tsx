@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
+import { BusyLabel } from '../../components/ui/Spinner'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X, Check, CheckCircle, PencilSimple, Trash, Wrench, MagnifyingGlass, ListChecks, ClipboardText, Paperclip, Eye } from '@phosphor-icons/react'
 import { useTasks, updateTask, deleteTask, spawnNextOccurrence } from '../../hooks/useTasks'
@@ -305,12 +306,12 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
           <input ref={fileRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = '' }} />
           <button type="button" className="tav-attach" disabled={attaching} onClick={() => fileRef.current?.click()}>
-            <Paperclip size={15} /> {attaching ? 'מעלה…' : 'צרף מסמך/תמונה'}
+            <Paperclip size={15} /> <BusyLabel busy={attaching} busyText="מעלה…">צרף מסמך/תמונה</BusyLabel>
           </button>
           {attachErr && <div className="form-error" role="alert">{attachErr}</div>}
         </div>
         {editErr && <div className="form-error" role="alert">{editErr}</div>}
-        <button className="tav-save" disabled={saving} onClick={handleEditSave}>{saving ? 'שומר…' : 'שמירה'}</button>
+        <button className="tav-save" disabled={saving} onClick={handleEditSave}><BusyLabel busy={saving} busyText="שומר…">שמירה</BusyLabel></button>
         </div></div>
         <ConfirmDialog
           open={confirmDiscard}

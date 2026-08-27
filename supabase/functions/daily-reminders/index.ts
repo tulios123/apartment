@@ -83,6 +83,10 @@ Deno.serve(async (req) => {
       if (logErr) continue
 
       const lines: string[] = []
+      // Approval reminders are collected first and only added once the per-item cadence
+      // below says they're due — section 1 used to push EVERY day while an item was
+      // outstanding, which is up to 30 notifications a month for one cheque.
+      const pendingLines: { id: string; line: string }[] = []
       // Recurring items that produced an approval line here, so section 3 can skip
       // their generated task and not list the same thing twice (audit C6).
       const section1ItemIds = new Set<string>()
@@ -90,13 +94,26 @@ Deno.serve(async (req) => {
       // 1) Approval items whose due day has passed and aren't recorded this month.
       const { data: items } = await supabase
         .from('recurring_items')
-        .select('id, direction, category, payee, payment_method, day_of_month, start_date, end_date')
+        .select('id, direction, category, payee, payment_method, day_of_month, start_date, end_date, contract_id')
         .eq('owner_id', ownerId)
         .eq('execution_type', 'requires_approval')
         .lte('start_date', today)
         .or(`end_date.is.null,end_date.gte.${monthStart}`)
 
-      const dueItems = (items ?? []).filter((it) => it.day_of_month <= todayDay)
+      // Orphan guard. syncRentRecurringItem() de-duplicates only WITHIN a contract
+      // (it filters by contract_id), so a second contract — which re-entering the
+      // onboarding wizard used to create — left the first contract's rent item behind.
+      // The home "approve" button links to just one item, so the leftover kept nagging
+      // every day forever, even after the rent was recorded and approved (owner, 28.07).
+      // A reminder for a contract that is no longer live is never actionable: skip it.
+      const { data: ownerContracts } = await supabase
+        .from('contracts').select('id, end_date').eq('owner_id', ownerId)
+      const liveContractIds = new Set(
+        (ownerContracts ?? []).filter((c) => !c.end_date || c.end_date >= today).map((c) => c.id),
+      )
+      const dueItems = (items ?? [])
+        .filter((it) => it.day_of_month <= todayDay)
+        .filter((it) => !it.contract_id || liveContractIds.has(it.contract_id))
       if (dueItems.length > 0) {
         // All of this month's transactions — we need both the recurring-item links
         // AND the plain category/direction, so a rent deposit recorded outside the
@@ -109,7 +126,7 @@ Deno.serve(async (req) => {
           .lte('date', today)
         for (const it of pendingApprovalItems(dueItems, txThisMonth ?? [])) {
           section1ItemIds.add(it.id)
-          lines.push(reminderLine(it))
+          pendingLines.push({ id: it.id, line: reminderLine(it) })
         }
       }
 
@@ -121,6 +138,18 @@ Deno.serve(async (req) => {
         const ls = lastSent.get(kind)
         return !ls || daysBetween(ls, today) >= days
       }
+      // Apply the approval cadence now that reminder_log is loaded: remind on the due
+      // day, then after 3 days, then weekly — at most a handful a month instead of one
+      // every single day (owner, 28.07). Recording the payment still silences it at once.
+      const approvalKinds: string[] = []
+      for (const p of pendingLines) {
+        const kind = `approval:${p.id}`
+        if (cadenceDue(kind, 3)) {
+          lines.push(p.line)
+          approvalKinds.push(kind)
+        }
+      }
+
       let logRenewal = false
       let logNoLease = false
 
@@ -206,6 +235,10 @@ Deno.serve(async (req) => {
         sentOwners++
         // Record cadence only after the push actually went out (else it retries
         // tomorrow). upsert so the next eligible day is RENEWAL/NO_LEASE_REPEAT_DAYS off.
+        // Stamp each approval reminder we actually sent, so the 3-day cadence holds.
+        for (const kind of approvalKinds) {
+          await supabase.from('reminder_log').upsert({ owner_id: ownerId, kind, last_sent: today }, { onConflict: 'owner_id,kind' })
+        }
         if (logRenewal) await supabase.from('reminder_log').upsert({ owner_id: ownerId, kind: 'renewal', last_sent: today }, { onConflict: 'owner_id,kind' })
         if (logNoLease) await supabase.from('reminder_log').upsert({ owner_id: ownerId, kind: 'no-lease', last_sent: today }, { onConflict: 'owner_id,kind' })
       } else {

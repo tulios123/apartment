@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react'
+import { BusyLabel } from '../../components/ui/Spinner'
 import { userErrorMessage } from '../../lib/errorHe'
 import { FileText, Image as ImageIcon, ShieldCheck, Receipt, File, Bank, Plus, Eye, Trash, UploadSimple, PencilSimple, FolderOpen, Certificate, CheckCircle } from '@phosphor-icons/react'
 import { useDocuments, createDocument, updateDocument, deleteDocument } from '../../hooks/useDocuments'
@@ -292,7 +293,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
           </div>
         )}
         {formError && <div className="docv-form-err" role="alert">{formError}</div>}
-        <button className="docv-save" disabled={saving} onClick={handleSubmit}>{saving ? 'שומר…' : 'שמירה'}</button>
+        <button className="docv-save" disabled={saving} onClick={handleSubmit}><BusyLabel busy={saving} busyText="שומר…">שמירה</BusyLabel></button>
         </div></div>
         <ConfirmDialog
           open={confirmDiscard}
