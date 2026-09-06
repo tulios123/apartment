@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dueDayOfMonth, pendingApprovalItems, reminderLine, isRentLike } from '../reminders'
+import { awaitingKeyDelivery, dueDayOfMonth, pendingApprovalItems, reminderLine, isRentLike } from '../reminders'
 import type { DueItem, MonthTx } from '../reminders'
 
 const rentCheck: DueItem = {
@@ -108,5 +108,35 @@ describe('dueDayOfMonth', () => {
 
   it('keeps the 1st when nothing else is known', () => {
     expect(dueDayOfMonth(item, null)).toBe(1)
+  })
+})
+
+describe('awaitingKeyDelivery', () => {
+  const today = '2026-09-06'
+
+  it('is waiting while the key delivery is still ahead', () => {
+    // The owner's brother and friend: they bought, the handover is months away, and the
+    // fortnightly "add a tenant" push asked them to let a flat they cannot enter.
+    expect(awaitingKeyDelivery([{ key_delivery_date: '2027-03-01' }], today)).toBe(true)
+  })
+
+  it('is not waiting once the delivery date has arrived or passed', () => {
+    expect(awaitingKeyDelivery([{ key_delivery_date: today }], today)).toBe(false)
+    expect(awaitingKeyDelivery([{ key_delivery_date: '2025-01-01' }], today)).toBe(false)
+  })
+
+  it('treats a missing date as possession, so no existing owner loses the nudge', () => {
+    expect(awaitingKeyDelivery([{ key_delivery_date: null }], today)).toBe(false)
+    expect(awaitingKeyDelivery([{}], today)).toBe(false)
+  })
+
+  it('is not waiting when any property is already in hand', () => {
+    expect(awaitingKeyDelivery(
+      [{ key_delivery_date: '2027-03-01' }, { key_delivery_date: '2025-01-01' }], today,
+    )).toBe(false)
+  })
+
+  it('is not waiting when there is no property at all', () => {
+    expect(awaitingKeyDelivery([], today)).toBe(false)
   })
 })

@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { dueDayOfMonth, pendingApprovalItems, reminderLine } from '../_shared/reminders.ts'
+import { awaitingKeyDelivery, dueDayOfMonth, pendingApprovalItems, reminderLine } from '../_shared/reminders.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -176,11 +176,13 @@ Deno.serve(async (req) => {
       }
 
       // 2b) No active/upcoming lease at all → fortnightly nudge (only when the owner
-      // actually has a property, so a brand-new user isn't nagged).
+      // actually has a property, so a brand-new user isn't nagged — and only when they
+      // hold the keys, since a buyer still awaiting delivery cannot let the place).
       if ((liveContracts ?? []).length === 0) {
-        const { count } = await supabase
-          .from('properties').select('id', { count: 'exact', head: true }).eq('owner_id', ownerId)
-        if ((count ?? 0) > 0 && cadenceDue('no-lease', NO_LEASE_REPEAT_DAYS)) {
+        const { data: props } = await supabase
+          .from('properties').select('key_delivery_date').eq('owner_id', ownerId)
+        const owns = (props ?? []).length > 0
+        if (owns && !awaitingKeyDelivery(props ?? [], today) && cadenceDue('no-lease', NO_LEASE_REPEAT_DAYS)) {
           lines.push('אין חוזה שכירות פעיל — מומלץ להוסיף שוכר חדש')
           logNoLease = true
         }

@@ -59,6 +59,27 @@ export function dueDayOfMonth(
 }
 
 /**
+ * Is this owner still waiting to take possession — i.e. every property they own has a
+ * key-delivery date that hasn't arrived yet?
+ *
+ * The "no active lease — add a tenant" nudge repeats fortnightly for anyone who owns a
+ * property and has no live contract. For a buyer whose key delivery is still ahead that
+ * is a recommendation to let an apartment they may not even enter: eight months of
+ * waiting is ~17 pushes about the one thing they cannot do (owner, 06.09).
+ *
+ * Deliberately conservative, so nobody who can act loses the nudge: only an explicitly
+ * entered, still-future date counts as waiting. A blank date, or one that has passed,
+ * reads as possession — which is every existing owner, so none of them change.
+ */
+export function awaitingKeyDelivery(
+  properties: { key_delivery_date?: string | null }[],
+  todayISO: string,
+): boolean {
+  if (properties.length === 0) return false
+  return properties.every((p) => !!p.key_delivery_date && p.key_delivery_date > todayISO)
+}
+
+/**
  * Which approval items still need a reminder line this month.
  * An item is "already handled" when either:
  *  - a transaction this month is linked to it (recurring_item_id), OR
