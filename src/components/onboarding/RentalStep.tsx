@@ -7,6 +7,7 @@ import { DocFileList } from './DocFileList'
 import { formatNum } from './types'
 import { rentalIssues, rentalGaps, rentalWarnings } from './validation'
 import { monthDayISO, parseLocalISO, sanitizeAmountInt } from '../../lib/format'
+import { rentPaymentDay as effectiveRentDay } from '../../lib/rent'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
@@ -110,8 +111,9 @@ export function RentalStep() {
             </div>
           </div>
           <div className="onboarding-field">
-            <label>יום תשלום בחודש</label>
-            <input type="number" placeholder="1" min="1" max="28" value={rentPaymentDay}
+            <label>{rentPaymentMethod === 'check' ? 'יום הפקדת הצ׳ק' : 'יום התשלום בחודש'}</label>
+            <input type="number" min="1" max="28" value={rentPaymentDay}
+              placeholder={String(effectiveRentDay({ startDate }))}
               onChange={e => setRentPaymentDay(e.target.value)} />
           </div>
         </div>

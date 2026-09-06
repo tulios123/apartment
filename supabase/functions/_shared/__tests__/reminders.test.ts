@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pendingApprovalItems, reminderLine, isRentLike } from '../reminders'
+import { dueDayOfMonth, pendingApprovalItems, reminderLine, isRentLike } from '../reminders'
 import type { DueItem, MonthTx } from '../reminders'
 
 const rentCheck: DueItem = {
@@ -86,5 +86,27 @@ describe('rent-cheque items are silenced by the same rule that words them', () =
       [expense],
       [{ recurring_item_id: null, direction: 'income', category: 'שכר דירה' }],
     )).toHaveLength(1)
+  })
+})
+
+describe('dueDayOfMonth', () => {
+  const item = { day_of_month: 1, contract_id: 'c1' }
+
+  it('falls back to the lease start day when the item is still on the default 1st', () => {
+    // The bug: every rent item was created with day_of_month = 1, so the "deposit the
+    // cheque" push fired from the 1st even for a lease (and cheques) dated the 15th.
+    expect(dueDayOfMonth(item, { start_date: '2026-03-15' })).toBe(15)
+  })
+
+  it('never overrides a day the item already carries', () => {
+    expect(dueDayOfMonth({ day_of_month: 5, contract_id: 'c1' }, { start_date: '2026-03-20' })).toBe(5)
+  })
+
+  it('clamps to 28 so the day exists in February too', () => {
+    expect(dueDayOfMonth(item, { start_date: '2026-03-31' })).toBe(28)
+  })
+
+  it('keeps the 1st when nothing else is known', () => {
+    expect(dueDayOfMonth(item, null)).toBe(1)
   })
 })

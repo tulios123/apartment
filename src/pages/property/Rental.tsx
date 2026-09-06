@@ -12,7 +12,7 @@ import {
   deleteContract,
   upsertUtilities,
 } from '../../hooks/usePropertyData'
-import { syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/useRecurringItems'
+import { useRecurringItems, syncRentRecurringItem, deleteRentRecurringItems } from '../../hooks/useRecurringItems'
 import { useAuth } from '../../contexts/AuthContext'
 import { isManager } from '../../lib/admin'
 import { UTILITIES, MOCK_SCAN_DELAY_MS } from '../../lib/constants'
@@ -25,6 +25,7 @@ import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { extractRental } from '../../lib/extractFinancing'
 import { ScanDocList } from '../liabilities/ScanDocList'
 import { DateField } from '../../components/ui/DateField'
+import { rentPaymentDay } from '../../lib/rent'
 
 const emptyContract = {
   company_name: '',
@@ -35,6 +36,9 @@ const emptyContract = {
   monthly_rent: '',
   deposit: '',
   payment_method: 'check' as 'check' | 'bank_transfer',
+  // Day of the month the rent is payable — for cheques, the date written on them.
+  // Empty = fall back to the start date's day (see lib/rent).
+  payment_day: '',
   requires_approval: false,
 }
 
@@ -46,7 +50,7 @@ type UtilDraft = { utility: string; payer: UtilityPayer; amount: number | null }
 function mockRental(): Record<string, unknown> {
   const start = new Date()
   const end = new Date(start); end.setFullYear(end.getFullYear() + 1); end.setDate(end.getDate() - 1)
-  return { tenantName: 'שוכר לדוגמה (דמו)', startDate: monthDayISO(start), endDate: monthDayISO(end), monthlyRent: 5500, paymentMethod: 'check' }
+  return { tenantName: 'שוכר לדוגמה (דמו)', startDate: monthDayISO(start), endDate: monthDayISO(end), monthlyRent: 5500, paymentMethod: 'check', paymentDay: 10 }
 }
 
 function ContractForm({
@@ -89,6 +93,7 @@ function ContractForm({
       monthly_rent: '5500',
       deposit: '11000',
       payment_method: 'check',
+      payment_day: '10',
       requires_approval: true,
     })
   }
@@ -150,6 +155,9 @@ function ContractForm({
       end_date: d.endDate != null ? String(d.endDate) : f.end_date,
       monthly_rent: d.monthlyRent != null ? String(d.monthlyRent) : f.monthly_rent,
       payment_method: (d.paymentMethod === 'check' || d.paymentMethod === 'bank_transfer') ? d.paymentMethod : f.payment_method,
+      // extract-rental already reads "היום בחודש לתשלום / ז.פ" out of the lease — it just
+      // had nowhere to land here, so the rent day silently stayed on the 1st.
+      payment_day: Number(d.paymentDay) >= 1 ? String(Math.min(28, Number(d.paymentDay))) : f.payment_day,
     }))
   }
   async function scanRental(files: File[]) {
@@ -280,6 +288,18 @@ function ContractForm({
         </div>
       </div>
       <div className="form-row">
+        <label>{form.payment_method === 'check' ? 'יום הפקדת הצ׳ק בחודש' : 'יום התשלום בחודש'}</label>
+        <input type="number" inputMode="numeric" min="1" max="28"
+          placeholder={String(rentPaymentDay({ startDate: form.start_date }))}
+          value={form.payment_day}
+          onChange={e => set('payment_day', e.target.value.replace(/\D/g, '').slice(0, 2))} />
+        <span className="form-hint">
+          {form.payment_method === 'check'
+            ? 'התאריך שרשום על הצ׳ק — לפניו אי אפשר להפקיד, ולכן התזכורת מתחילה ממנו.'
+            : 'היום שבו התשלום אמור להיכנס. התזכורת מתחילה ממנו.'}
+        </span>
+      </div>
+      <div className="form-row">
         <label>אישור תשלום</label>
         <label className="toggle-row">
           <input type="checkbox" checked={form.requires_approval}
@@ -322,6 +342,14 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
   const { property, contracts, utilities, loading, error, refetch } = usePropertyData()
   const { documents, refetch: refetchRentalDocs } = useDocuments()
   const rentalDocs = documents.filter(d => d.type === 'rental_contract')
+  // The rent-collection item holds the day of the month the rent is due (for cheques,
+  // the date on the cheque) — it's the row the daily reminder reads, so the contract
+  // form edits it from here rather than inventing a second place to store the day.
+  const { items: recurringItems, refetch: refetchRecurring } = useRecurringItems()
+  function rentDayFor(c: Contract): number {
+    const item = recurringItems.find(i => i.contract_id === c.id && i.direction === 'income')
+    return rentPaymentDay({ dayOfMonth: item?.day_of_month ?? null, startDate: c.start_date })
+  }
 
   const [showContractModal, setShowContractModal] = useState(false)
   const [editingContract, setEditingContract] = useState<Contract | null>(null)
@@ -374,6 +402,10 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
       requires_approval: form.requires_approval,
       renewal_alert_days: [90, 30],
     }
+    // The rent day lives on the recurring item, not on the contract row.
+    const rentDay = form.payment_day
+      ? Math.min(28, Math.max(1, parseInt(form.payment_day, 10)))
+      : rentPaymentDay({ startDate: form.start_date })
     let contractId: string
     if (editingContract || createdContractIdRef.current) {
       // Editing — or retrying after a partial save that already created the contract.
@@ -406,7 +438,8 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
       company_name: payload.company_name,
       payment_method: payload.payment_method,
       requires_approval: payload.requires_approval,
-    })
+    }, { dayOfMonth: rentDay })
+    refetchRecurring()
     setShowContractModal(false)
     setEditingContract(null)
     createdContractIdRef.current = null
@@ -538,6 +571,12 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                   </div>
                 )}
                 <div className="prop-field-row">
+                  <span className="prop-field-label">
+                    {c.payment_method === 'check' ? 'יום הפקדת הצ׳ק' : 'יום התשלום'}
+                  </span>
+                  <span>{rentDayFor(c)} לחודש</span>
+                </div>
+                <div className="prop-field-row">
                   <span className="prop-field-label">אישור תשלום</span>
                   <span>{c.requires_approval ? 'דורש אישור ידני' : 'אוטומטי'}</span>
                 </div>
@@ -584,6 +623,7 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                 monthly_rent: String(editingContract.monthly_rent),
                 deposit: editingContract.deposit != null ? String(editingContract.deposit) : '',
                 payment_method: (editingContract.payment_method as 'check' | 'bank_transfer') ?? 'check',
+                payment_day: String(rentDayFor(editingContract)),
                 requires_approval: editingContract.requires_approval,
               } : {}}
               initialUtils={editingContract ? utilsForContract(editingContract.id) : UTILITIES.map(u => ({ utility: u, payer: 'tenant' as UtilityPayer, amount: null }))}

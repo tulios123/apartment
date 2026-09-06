@@ -177,7 +177,9 @@ export function useOnboardingState(onComplete: () => void) {
   const [endDate, setEndDate] = useState(d0?.endDate ?? '')
   const [monthlyRent, setMonthlyRent] = useState(d0?.monthlyRent ?? '')
   const [rentPaymentMethod, setRentPaymentMethod] = useState<'check' | 'bank_transfer'>(d0?.rentPaymentMethod ?? 'check')
-  const [rentPaymentDay, setRentPaymentDay] = useState(d0?.rentPaymentDay ?? '1')
+  // Empty, not '1'. The old default silently pinned every rent reminder to the 1st of
+  // the month even when the cheque was dated later; empty means "use the lease's day".
+  const [rentPaymentDay, setRentPaymentDay] = useState(d0?.rentPaymentDay ?? '')
   const [addRentReminder, setAddRentReminder] = useState(d0?.addRentReminder ?? false)
 
   // ── Insurance policies ──
@@ -264,6 +266,7 @@ export function useOnboardingState(onComplete: () => void) {
       if (h.contractId) {
         setCompanyName(h.companyName); setStartDate(h.startDate); setEndDate(h.endDate)
         setMonthlyRent(h.monthlyRent); setRentPaymentMethod(h.rentPaymentMethod)
+        setRentPaymentDay(h.rentPaymentDay)
         setAddRentReminder(h.addRentReminder)
       }
       if (h.equityValue) { setEquityMode('amount'); setEquityValue(h.equityValue) }
@@ -1064,7 +1067,10 @@ export function useOnboardingState(onComplete: () => void) {
                 payment_method: rentPaymentMethod,
                 requires_approval: addRentReminder,
               },
-              { dayOfMonth: parseInt(rentPaymentDay, 10) || 1 },
+              // Left blank → sync falls back to the lease's start day. It used to
+              // default to the 1st, which is what made the cheque reminder start on the
+              // 1st of the month for everyone (owner, 06.09).
+              rentPaymentDay ? { dayOfMonth: parseInt(rentPaymentDay, 10) || 1 } : undefined,
             )
             savedRef.current.reminder = true
           } catch {

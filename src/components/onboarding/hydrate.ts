@@ -21,7 +21,7 @@ export type Hydrated = {
   policies: PolicyDraft[]
   contractId: string | null
   companyName: string; startDate: string; endDate: string; monthlyRent: string
-  rentPaymentMethod: 'check' | 'bank_transfer'; addRentReminder: boolean
+  rentPaymentMethod: 'check' | 'bank_transfer'; rentPaymentDay: string; addRentReminder: boolean
   equityValue: string; equityCostId: string | null
   costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string; appraiser: string }
   costIds: Record<string, string>
@@ -90,6 +90,14 @@ export async function hydrateFromAccount(userId: string): Promise<Hydrated | nul
 
   const allLoans = (loansRes.data ?? []) as Loan[]
   const contract = (contractsRes.data?.[0] ?? null) as Contract | null
+
+  // The rent day lives on the rent-collection item — re-entering the wizard must show
+  // the day already in force, not a blank that silently resets it.
+  const { data: rentItems } = contract
+    ? await supabase.from('recurring_items').select('day_of_month')
+        .eq('owner_id', userId).eq('contract_id', contract.id).eq('direction', 'income').limit(1)
+    : { data: null }
+  const rentDay = rentItems?.[0]?.day_of_month as number | undefined
   const costs = (costsRes.data ?? []) as InvestmentCost[]
   const { street, city } = splitAddress(property.address)
 
@@ -136,6 +144,7 @@ export async function hydrateFromAccount(userId: string): Promise<Hydrated | nul
     endDate: s(contract?.end_date),
     monthlyRent: s(contract?.monthly_rent),
     rentPaymentMethod: contract?.payment_method === 'check' ? 'check' : 'bank_transfer',
+    rentPaymentDay: rentDay != null && rentDay > 1 ? String(rentDay) : '',
     addRentReminder: contract?.requires_approval ?? true,
     equityValue, equityCostId,
     costs: named,
