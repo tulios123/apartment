@@ -36,6 +36,29 @@ export function isRentLike(item: { direction: string; category: string; payment_
 }
 
 /**
+ * The day of the month an approval item actually becomes actionable.
+ *
+ * For rent paid by post-dated cheque this is the date written on the cheque: before it
+ * the cheque cannot be deposited, so "deposit the cheque" from the 1st of the month is
+ * pure noise — which is what every owner was getting, because rent items were created
+ * with day_of_month = 1 and nothing ever updated it (owner, 06.09).
+ *
+ * Resolution order, deliberately never moving a reminder EARLIER than it fires today:
+ *  1. the item's own day_of_month when it isn't the untouched default of 1,
+ *  2. the contract's start day — a lease starting on the 15th is paid on the 15th.
+ * Mirrors rentPaymentDay in src/lib/rent.ts (edge functions can't import from src/).
+ */
+export function dueDayOfMonth(
+  item: { day_of_month: number; contract_id?: string | null },
+  contract?: { start_date?: string | null } | null,
+): number {
+  if (item.day_of_month > 1) return Math.min(28, item.day_of_month)
+  const startDay = Number(contract?.start_date?.slice(8, 10))
+  if (Number.isFinite(startDay) && startDay >= 1) return Math.min(28, startDay)
+  return item.day_of_month
+}
+
+/**
  * Which approval items still need a reminder line this month.
  * An item is "already handled" when either:
  *  - a transaction this month is linked to it (recurring_item_id), OR

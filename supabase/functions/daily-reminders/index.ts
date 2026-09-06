@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { pendingApprovalItems, reminderLine } from '../_shared/reminders.ts'
+import { dueDayOfMonth, pendingApprovalItems, reminderLine } from '../_shared/reminders.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -107,12 +107,16 @@ Deno.serve(async (req) => {
       // every day forever, even after the rent was recorded and approved (owner, 28.07).
       // A reminder for a contract that is no longer live is never actionable: skip it.
       const { data: ownerContracts } = await supabase
-        .from('contracts').select('id, end_date').eq('owner_id', ownerId)
+        .from('contracts').select('id, end_date, start_date').eq('owner_id', ownerId)
       const liveContractIds = new Set(
         (ownerContracts ?? []).filter((c) => !c.end_date || c.end_date >= today).map((c) => c.id),
       )
+      const contractById = new Map((ownerContracts ?? []).map((c) => [c.id, c]))
       const dueItems = (items ?? [])
-        .filter((it) => it.day_of_month <= todayDay)
+        // The due day comes from the CONTRACT (the cheque's date) when it knows it —
+        // the item's own day_of_month is 1 for every owner onboarded before 06.09, which
+        // is why the cheque reminder started on the 1st instead of on the cheque's date.
+        .filter((it) => dueDayOfMonth(it, it.contract_id ? contractById.get(it.contract_id) : null) <= todayDay)
         .filter((it) => !it.contract_id || liveContractIds.has(it.contract_id))
       if (dueItems.length > 0) {
         // All of this month's transactions — we need both the recurring-item links

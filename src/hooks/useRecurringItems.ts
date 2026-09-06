@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { readCache, writeCache } from '../lib/queryCache'
 import { RENT_CATEGORIES } from '../lib/constants'
+import { rentPaymentDay } from '../lib/rent'
 import type { RecurringItem } from '../types'
 import { latestOnly } from '../lib/latestOnly'
 
@@ -64,7 +65,12 @@ type ContractRentInput = {
  * - requires_approval=true  → ensure exactly one 'requires_approval' rent item exists
  *   (this is what generates the monthly "גביית שכר דירה" approval task).
  * - requires_approval=false → rent is automatic/virtual only; remove any rent item.
- * Preserves an existing item's day_of_month; defaults to the 1st for new items.
+ *
+ * The due day (`day_of_month` — for a cheque, the date written on it) is written on
+ * BOTH insert and update. It used to be insert-only and defaulted to the 1st, so every
+ * owner's "deposit the cheque" reminder started on the 1st of the month no matter what
+ * the cheque said, with no way to correct it (owner, 06.09). When the caller passes no
+ * day we fall back to the lease's start day rather than pinning it to the 1st.
  */
 export async function syncRentRecurringItem(
   contract: ContractRentInput,
@@ -100,6 +106,12 @@ export async function syncRentRecurringItem(
     payee: contract.company_name || null,
     execution_type: 'requires_approval' as const,
     payment_method: contract.payment_method ?? null,
+    // The schema constrains day_of_month to 1–28; rentPaymentDay clamps for us, so a
+    // typed-over-max value can't get the write rejected.
+    day_of_month: rentPaymentDay({
+      dayOfMonth: opts?.dayOfMonth ?? rentItems[0]?.day_of_month ?? null,
+      startDate: contract.start_date,
+    }),
   }
 
   if (rentItems.length > 0) {
@@ -114,9 +126,6 @@ export async function syncRentRecurringItem(
     const { error } = await supabase.from('recurring_items').insert({
       ...fields,
       owner_id: ownerId,
-      // The schema constrains day_of_month to 1–28; the number input's max isn't
-      // enforced on typed values, so clamp to keep the insert from being rejected.
-      day_of_month: Math.min(28, Math.max(1, opts?.dayOfMonth ?? 1)),
       renewal_alert_days: [90, 30],
     })
     if (error) throw error

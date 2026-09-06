@@ -13,6 +13,8 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { useTasks, updateTask, spawnNextOccurrence } from '../../hooks/useTasks'
 import { useTransactions, createTransaction } from '../../hooks/useTransactions'
+import { useRecurringItems } from '../../hooks/useRecurringItems'
+import { rentPaymentDay, isRentPayable } from '../../lib/rent'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
 import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
@@ -58,6 +60,8 @@ export default function HomeScreen() {
   const { policies, loading: loadingInsurance } = useInsurance()
   const { tasks, setTasks, loading: loadingTasks, refetch: refetchTasks } = useTasks({ status: 'open' })
   const { transactions, loading: loadingTx, error: txError, refetch: refetchTx } = useTransactions({ year, month })
+  // Carries the day of the month the rent is due (for a cheque, the date on it).
+  const { items: recurringItems, loading: loadingRecurring } = useRecurringItems()
 
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<Set<string>>(new Set())
@@ -90,6 +94,16 @@ export default function HomeScreen() {
   // ── Fixed (expected) monthly expenses — calm, never red ──
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
+
+  // The rent prompt must not appear before the rent is payable: with a post-dated
+  // cheque there is literally nothing to deposit before the date written on it, so
+  // asking "was the cheque deposited?" from the 1st of the month is noise. Same day
+  // the daily push uses — one rule, two surfaces (owner, 06.09).
+  const rentDueDay = useMemo(() => {
+    const item = recurringItems.find(i => i.contract_id === activeContract?.id && i.direction === 'income')
+    return rentPaymentDay({ dayOfMonth: item?.day_of_month ?? null, startDate: activeContract?.start_date })
+  }, [recurringItems, activeContract])
+  const rentPayable = isRentPayable(todayStr, rentDueDay)
   // A5: derive the fixed forecast from the SAME source the Finances ledger uses
   // (monthlyVirtualEntries) — mortgage + loans (schedule-bounded, so grace / paid-off
   // tracks are correct) + insurance. This guarantees the "צפי לסוף החודש" here matches
@@ -133,7 +147,7 @@ export default function HomeScreen() {
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
   const actions = useMemo<Action[]>(() => {
     const list: Action[] = []
-    if (monthlyRent > 0 && !rentCleared) {
+    if (monthlyRent > 0 && !rentCleared && rentPayable) {
       list.push({
         id: 'rent',
         kind: 'rent',
@@ -172,7 +186,7 @@ export default function HomeScreen() {
       )
     // Rent (≤1) + renewals (rare) keep priority; tasks bounded to 2 unless expanded.
     return list.filter(a => !done.has(a.id))
-  }, [monthlyRent, rentCleared, rentReceived, activeContract, shownTasks, upcomingRenewals, done, todayStr, navigate])
+  }, [monthlyRent, rentCleared, rentPayable, rentReceived, activeContract, shownTasks, upcomingRenewals, done, todayStr, navigate])
 
   // How many open tasks aren't shown yet — drives "+ עוד X משימות". Counts every open
   // task (including future-dated ones held back from the collapsed view), so expanding
@@ -185,13 +199,15 @@ export default function HomeScreen() {
   // collapsed view holds back everything and shows 0).
   const collapsedTaskCount = Math.min(collapsedTasks.length, 2)
 
-  const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty
+  // loadingRecurring is in here so the rent card can't render before we know its due
+  // day and then vanish a moment later — it appears once, correctly, or not at all.
+  const loadingActions = loadingStats || loadingTasks || loadingTx || loadingProperty || loadingRecurring
   const loadingFlow = loadingProperty || loadingMortgage || loadingLoans || loadingInsurance || loadingTx
 
   // Once every data source on the home is loaded, let the app reveal it (drops the
   // initial splash held by App). Errors still flip loading→false, so this won't hang.
   const { markReady } = useAppReady()
-  const homeLoaded = !loadingStats && !loadingMortgage && !loadingProperty && !loadingLoans && !loadingInsurance && !loadingTasks && !loadingTx
+  const homeLoaded = !loadingStats && !loadingMortgage && !loadingProperty && !loadingLoans && !loadingInsurance && !loadingTasks && !loadingTx && !loadingRecurring
   useEffect(() => { if (homeLoaded) markReady() }, [homeLoaded, markReady])
 
   async function approveRent(amount: number) {
@@ -458,7 +474,11 @@ export default function HomeScreen() {
                     <div className="hs-flow-line-top">
                       <span className="hs-flow-name">
                         שכר דירה
-                        {rentCleared && <span className="hs-chip ok"><Check size={11} weight="bold" /> התקבל</span>}
+                        {rentCleared
+                          ? <span className="hs-chip ok"><Check size={11} weight="bold" /> התקבל</span>
+                          // Says WHY there's no "was it deposited?" card yet, instead of
+                          // leaving the row looking like nothing is happening.
+                          : !rentPayable && <span className="hs-chip auto">צפוי ב־{rentDueDay} לחודש</span>}
                       </span>
                       <span className="hs-flow-amt income">
                         {fmt(rentReceived)}<span className="hs-flow-of"> / {fmt(monthlyRent)}</span>
