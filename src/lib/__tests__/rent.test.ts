@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rentPaymentDay } from '../rent'
+import { rentPaymentDay, isRentPayable } from '../rent'
 
 describe('rentPaymentDay', () => {
   it('uses the cheque day stored on the rent item', () => {
@@ -21,5 +21,22 @@ describe('rentPaymentDay', () => {
   it('returns the 1st when nothing is known', () => {
     expect(rentPaymentDay({})).toBe(1)
     expect(rentPaymentDay({ dayOfMonth: 1, startDate: '2026-03-01' })).toBe(1)
+  })
+})
+
+describe('isRentPayable', () => {
+  it('stays quiet before the cheque date', () => {
+    // Owner, 06.09: the home must not ask "was the cheque deposited?" on the 6th when
+    // the cheque is dated the 10th — there is nothing to deposit yet.
+    expect(isRentPayable('2026-09-06', 10)).toBe(false)
+  })
+
+  it('asks from the cheque date onward', () => {
+    expect(isRentPayable('2026-09-10', 10)).toBe(true)
+    expect(isRentPayable('2026-09-28', 10)).toBe(true)
+  })
+
+  it('asks all month when the rent day is the 1st', () => {
+    expect(isRentPayable('2026-09-01', 1)).toBe(true)
   })
 })
