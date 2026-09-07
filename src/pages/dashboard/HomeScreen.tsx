@@ -20,6 +20,8 @@ import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../.
 import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
 import { nextDueDate } from '../../lib/recurrence'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
+import { possession } from '../../lib/stage'
+import { PreKeyCard } from './PreKeyCard'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -94,6 +96,9 @@ export default function HomeScreen() {
   // ── Fixed (expected) monthly expenses — calm, never red ──
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
+  // Signed but not yet handed over. Derived, never stored — and a blank or past date
+  // reads as possession, so every existing account behaves exactly as before.
+  const awaitingKey = possession(property?.key_delivery_date, todayStr) === 'awaiting_key'
 
   // The rent prompt must not appear before the rent is payable: with a post-dated
   // cheque there is literally nothing to deposit before the date written on it, so
@@ -453,11 +458,18 @@ export default function HomeScreen() {
           {/* ── Calm cash flow ── */}
           <section className="hs-flow">
             <div className="hs-flow-head">
-              <h2>תזרים החודש</h2>
+              <h2>{awaitingKey ? 'הדירה שלך' : 'תזרים החודש'}</h2>
               <button className="hs-link" onClick={() => navigate('/finances')}>פירוט</button>
             </div>
             {loadingFlow ? (
               <Skeleton width="100%" height={120} radius={18} />
+            ) : awaitingKey && property ? (
+              /* Before handover the month-shaped card is arithmetic on the wrong clock —
+                 it correctly totals ₪0. This one measures the distance to the date. */
+              <PreKeyCard
+                property={property} tracks={tracks} loans={loans} policies={policies}
+                contracts={contracts} today={todayStr}
+              />
             ) : (
               <div className="hs-flow-card">
                 <div className="hs-flow-headline">

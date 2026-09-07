@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { possession, leaseStatus } from '../stage'
+import { possession, leaseStatus, countdownLabel } from '../stage'
 
 const today = '2026-09-07'
 
@@ -62,5 +62,29 @@ describe('the two facts combine', () => {
   it('describes every current owner: keys in hand, tenant in place', () => {
     expect(possession(null, today)).toBe('in_hand')
     expect(leaseStatus([{ start_date: '2026-03-01', end_date: '2027-02-28' }], today)).toBe('leased')
+  })
+})
+
+describe('countdownLabel', () => {
+  it('names the near days rather than counting them', () => {
+    expect(countdownLabel(0)).toBe('היום')
+    expect(countdownLabel(-3)).toBe('היום')   // the date has arrived; the stage flips today
+    expect(countdownLabel(1)).toBe('מחר')
+  })
+
+  it('uses the Hebrew dual form for two', () => {
+    expect(countdownLabel(2)).toBe('בעוד יומיים')
+    expect(countdownLabel(61)).toBe('בעוד כחודשיים')
+  })
+
+  it('counts days below a month and months above it', () => {
+    expect(countdownLabel(9)).toBe('בעוד 9 ימים')
+    expect(countdownLabel(30)).toBe('בעוד 30 ימים')
+    expect(countdownLabel(213)).toBe('בעוד כ-7 חודשים')
+  })
+
+  it('stays approximate above a month — the exact date is shown beside it', () => {
+    expect(countdownLabel(31)).toBe('בעוד כחודש')
+    expect(countdownLabel(40)).toBe('בעוד כחודש')
   })
 })

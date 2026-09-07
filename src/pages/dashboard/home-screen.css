@@ -116,6 +116,12 @@
   .hs-track-fill { height: 100%; border-radius: var(--r-pill); background: var(--border-strong); transition: width 0.6s var(--ease); }
   .hs-track-fill.ok { background: var(--success); }
 
+  /* Before handover: the headline is a date, not a sum. The exact date sits under the
+     approximate countdown so the phrasing stays readable and the fact stays checkable. */
+  .hs-milestone-date { margin-top: 2px; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  /* Signing → handover. The one thing that visibly moves during the wait. */
+  .hs-milestone-track { margin-top: 12px; }
+
   /* No active lease — a calm invitation to add a contract (no tenant = no income) */
   .hs-addlease { width: 100%; display: flex; align-items: center; gap: 11px; padding: 11px 12px; margin: 6px 0 2px; background: var(--accent-soft, rgba(10, 31, 68, .05)); border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; font-family: inherit; text-align: start; transition: background var(--t-base) var(--ease); }
   .hs-addlease:active { background: var(--accent-soft-hover, rgba(10, 31, 68, .09)); }

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { addMonths, scenarioData, SCENARIOS } from '../scenarios'
+import { monthlyVirtualEntries } from '../projections'
+import { parseLocalISO } from '../format'
+import type { MortgageTrack } from '../../types'
 import { possession, leaseStatus } from '../stage'
 
 const today = '2026-09-07'
@@ -67,5 +70,36 @@ describe('scenario shape', () => {
   it('leaves the other two scenarios without a rent item', () => {
     expect(scenarioData('purchase_process', today).rentItem).toBeNull()
     expect(scenarioData('keys_no_tenant', today).rentItem).toBeNull()
+  })
+})
+
+// The pre-key card's whole claim is that it says something true where the month card
+// said ₪0. Prove its inputs are real numbers on the seeded account, using the same
+// engine the card and the ledger both call.
+describe('the pre-key card has something to say', () => {
+  it('has capital already in, and a real first monthly payment', () => {
+    const d = scenarioData('purchase_process', today)
+    const keyDate = d.property.key_delivery_date as string
+
+    const invested = d.costs.reduce((s, c) => s + (c.amount as number), 0)
+    expect(invested).toBe(751_000)
+
+    const kd = parseLocalISO(keyDate)
+    const firstMonth = monthlyVirtualEntries(
+      [], d.tracks as unknown as MortgageTrack[], kd.getFullYear(), kd.getMonth() + 1,
+    ).filter(e => e.direction === 'expense')
+    const firstPayment = firstMonth.reduce((s, e) => s + e.amount, 0)
+
+    // Two Spitzer tracks (600k @ 5.5%/240mo + 550k @ 4.2%/300mo) — a five-figure payment,
+    // not a zero and not a NaN.
+    expect(firstPayment).toBeGreaterThan(6_000)
+    expect(Number.isFinite(firstPayment)).toBe(true)
+  })
+
+  it('shows nothing owed before handover — which is why the month card read ₪0', () => {
+    const d = scenarioData('purchase_process', today)
+    const [y, m] = today.split('-').map(Number)
+    const thisMonth = monthlyVirtualEntries([], d.tracks as unknown as MortgageTrack[], y, m)
+    expect(thisMonth).toHaveLength(0)
   })
 })

@@ -32,6 +32,24 @@ export function possession(keyDeliveryDate: string | null | undefined, todayISO:
   return keyDeliveryDate && keyDeliveryDate > todayISO ? 'awaiting_key' : 'in_hand'
 }
 
+/**
+ * How far off the handover is, in words.
+ *
+ * Deliberately approximate above a month and always shown beside the exact date: a buyer
+ * wants "in about 7 months" to feel the distance, and the date itself to trust it. Hebrew
+ * has a dual form, so 2 is not "2 חודשים".
+ */
+export function countdownLabel(days: number): string {
+  if (days <= 0) return 'היום'
+  if (days === 1) return 'מחר'
+  if (days === 2) return 'בעוד יומיים'
+  if (days < 31) return `בעוד ${days} ימים`
+  const months = Math.round(days / 30.44)
+  if (months <= 1) return 'בעוד כחודש'
+  if (months === 2) return 'בעוד כחודשיים'
+  return `בעוד כ-${months} חודשים`
+}
+
 /** Lease state across every contract on the account. */
 export function leaseStatus(
   contracts: { start_date: string; end_date: string }[],
