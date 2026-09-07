@@ -31,6 +31,17 @@ export interface Property {
   purchase_price: number | null
   purchase_date: string | null
   key_delivery_date: string | null
+  /**
+   * What the owner expects the flat to let for — an estimate, distinct from a signed
+   * contract's rent, and the figure that turns the mortgage engine's output into "what
+   * a month will look like once it is let".
+   *
+   * Optional on the type on purpose: the column arrives in migration 049, and until it
+   * is applied a `select('*')` simply returns rows without the key. Callers detect
+   * support with `'expected_monthly_rent' in property` and light the field up by
+   * themselves the moment the column exists.
+   */
+  expected_monthly_rent?: number | null
   property_size_sqm: number | null
   floor: number | null
   rooms: number | null

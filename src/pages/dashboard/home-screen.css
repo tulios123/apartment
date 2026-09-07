@@ -122,6 +122,12 @@
   /* Signing → handover. The one thing that visibly moves during the wait. */
   .hs-milestone-track { margin-top: 12px; }
 
+  /* The expected-rent lever: an amount that reads as a value but invites a tap. Sized to
+     the 44px touch floor without looking like a form field until it is one. */
+  .hs-prekey-rent-btn { min-height: 44px; padding: 0 2px; border: 0; background: none; font-family: inherit; font-size: 14px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .hs-prekey-rent-btn:disabled { color: var(--text-muted); cursor: default; }
+  .hs-prekey-rent-input { width: 110px; min-height: 44px; padding: 0 8px; text-align: end; border: 1px solid var(--accent); border-radius: var(--r-sm); background: var(--bg-card); color: var(--text); font-family: inherit; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
   /* One-time offer of the handover checklist. Same shape as the add-lease invitation
      so the two read as the same kind of thing: a calm suggestion, not an alert. */
   .hs-prekey-invite { display: flex; align-items: center; gap: 11px; padding: 11px 12px; margin-top: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-md); }
