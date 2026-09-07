@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
 import { InstallGuide } from '../components/InstallGuide'
-import { isFeedbackAdmin, isManager } from '../lib/admin'
+import { isFeedbackAdmin, isManager, FEEDBACK_ADMIN_EMAIL } from '../lib/admin'
 import {
   pushSupported,
   pushConfigured,
@@ -32,6 +32,8 @@ export default function Settings() {
   // Staging-only scenario loader — see the section below and src/lib/scenarios.ts.
   const [confirmScenario, setConfirmScenario] = useState<ScenarioId | null>(null)
   const [scenarioBusy, setScenarioBusy] = useState(false)
+  /** The owner's real identity — the one holding the family's live apartment data. */
+  const ownerIdentity = user?.email?.toLowerCase() === FEEDBACK_ADMIN_EMAIL.toLowerCase()
   const [pushState, setPushState] = useState<PushState>('loading')
   const [pushBusy, setPushBusy] = useState(false)
   // UX-04: inline, auto-dismissing status toast instead of the native blocking alert().
@@ -305,6 +307,16 @@ export default function Settings() {
               התרחישים — רק השלב משתנה, והמסכים נגזרים ממנו בדיוק כמו אצל משתמש אמיתי.
               <strong> הטעינה מוחקת את הנתונים בחשבון הזה.</strong>
             </p>
+            {/* Staging and production share ONE database, so the testing app signed in
+                with the owner's real identity is looking at the family's real data. A
+                destructive tool must not be reachable from there at all — not behind a
+                confirm, not at all. */}
+            {ownerIdentity ? (
+              <p className="settings-note" role="alert" style={{ color: 'var(--danger)', marginBottom: 0 }}>
+                החשבון הזה ({user?.email}) מחזיק את הנתונים האמיתיים שלך, וסביבת-הבדיקות
+                עובדת מול אותו בסיס-נתונים. כדי לטעון תרחיש — היכנסו בחשבון בדיקות.
+              </p>
+            ) : (
             <div className="settings-scenarios">
               {SCENARIOS.map(s => (
                 <div key={s.id} className="settings-scenario">
@@ -314,6 +326,9 @@ export default function Settings() {
                   </div>
                   {confirmScenario === s.id ? (
                     <div className="settings-scenario-confirm">
+                      {/* Name the account being wiped. One database serves both
+                          environments, so "which account am I in" is the whole question. */}
+                      <span className="settings-scenario-hint">ימחק את {user?.email}</span>
                       <button className="btn-secondary" onClick={() => setConfirmScenario(null)} disabled={scenarioBusy}>ביטול</button>
                       <button className="btn-primary" onClick={() => loadScenario(s.id)} disabled={scenarioBusy}>
                         {scenarioBusy ? 'טוען…' : 'מחק וטען'}
@@ -327,6 +342,7 @@ export default function Settings() {
                 </div>
               ))}
             </div>
+            )}
           </section>
         )}
 
