@@ -5,6 +5,7 @@ import { User, CaretDown, Gear, ShieldCheck, FileText, PersonArmsSpread, SignOut
 import { useAuth } from '../../contexts/AuthContext'
 import { isFeedbackAdmin, isManager } from '../../lib/admin'
 import { useVersionCheck } from '../../hooks/useVersionCheck'
+import { ScenarioMenuItems } from './ScenarioMenuItems'
 import './user-menu.css'
 
 // Avatar button in the top bar that opens an account/legal dropdown (mirrors the
@@ -69,6 +70,9 @@ export default function UserMenu() {
                 <ArrowCounterClockwise size={20} /><span>חזרה לאשף־הקליטה</span>
               </button>
             )}
+            {/* Staging-only stage switcher — one tap from anywhere, per the owner.
+                Renders nothing in production. */}
+            <ScenarioMenuItems />
             {/* language toggle would go here when English is added */}
             <div className="usermenu-sep" />
             <Link to="/legal/privacy" className="usermenu-item usermenu-item--quiet" role="menuitem" onClick={close}>

@@ -1373,50 +1373,6 @@ input[type="date"] {
   line-height: 1.6;
 }
 
-/* Staging-only scenario loader (Settings). One row per scenario: name + hint at the
-   start edge, the action at the end edge. Wraps on narrow phones so the 44px action
-   never gets squeezed under the text. */
-.settings-scenarios {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.settings-scenario {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-raised);
-}
-.settings-scenario-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.settings-scenario-label {
-  font-size: 14.5px;
-  font-weight: 600;
-  color: var(--text);
-}
-.settings-scenario-hint {
-  font-size: 12.5px;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-.settings-scenario-confirm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.settings-scenario button {
-  min-height: 44px;   /* Chapter 4 touch floor */
-}
-
 /* Numbered install steps (InstallGuide) — RTL-native ordered list */
 .install-steps {
   margin: 0;

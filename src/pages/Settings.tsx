@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
 import { InstallGuide } from '../components/InstallGuide'
-import { isFeedbackAdmin, isManager, FEEDBACK_ADMIN_EMAIL } from '../lib/admin'
+import { isFeedbackAdmin, isManager } from '../lib/admin'
 import {
   pushSupported,
   pushConfigured,
@@ -19,9 +19,6 @@ import {
 } from '../lib/push'
 import { clearGenerationCache } from '../hooks/useMonthlyGeneration'
 import { userErrorMessage } from '../lib/errorHe'
-import { isStaging } from '../lib/env'
-import { todayISO } from '../lib/format'
-import { SCENARIOS, applyScenario, type ScenarioId } from '../lib/scenarios'
 
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
@@ -29,11 +26,6 @@ export default function Settings() {
   const { user, signOut } = useAuth()
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetting, setResetting] = useState(false)
-  // Staging-only scenario loader — see the section below and src/lib/scenarios.ts.
-  const [confirmScenario, setConfirmScenario] = useState<ScenarioId | null>(null)
-  const [scenarioBusy, setScenarioBusy] = useState(false)
-  /** The owner's real identity — the one holding the family's live apartment data. */
-  const ownerIdentity = user?.email?.toLowerCase() === FEEDBACK_ADMIN_EMAIL.toLowerCase()
   const [pushState, setPushState] = useState<PushState>('loading')
   const [pushBusy, setPushBusy] = useState(false)
   // UX-04: inline, auto-dismissing status toast instead of the native blocking alert().
@@ -116,24 +108,6 @@ export default function Settings() {
     clearGenerationCache(user?.id)
     resetListCache()
     showStatus('המטמון אופס — הגנרציה החודשית תרוץ מחדש בטעינה הבאה')
-  }
-
-  async function loadScenario(id: ScenarioId) {
-    if (!user) return
-    setScenarioBusy(true)
-    try {
-      await applyScenario(supabase, user.id, id, todayISO())
-      clearGenerationCache(user.id)
-      resetListCache()
-      // Full navigation, not a reload: the loader is reached from Settings, but the
-      // point of a scenario is the home screen it produces. assign() rather than
-      // href= — same effect, and it isn't a write to a read-only binding.
-      window.location.assign('/')
-    } catch (e) {
-      showStatus(userErrorMessage(e, 'טעינת התרחיש נכשלה — נסו שוב'))
-      setScenarioBusy(false)
-      setConfirmScenario(null)
-    }
   }
 
   async function resetAllData() {
@@ -293,56 +267,6 @@ export default function Settings() {
                 <ChatDots size={18} /> פתח מרכז ניהול משוב
               </Link>
             </div>
-          </section>
-        )}
-
-        {/* Staging only, and only for an admin identity. Never renders in production —
-            which is also what keeps this work separable: a "פרסם לכולם" for something
-            unrelated can't carry it into the family's app. */}
-        {(isStaging || import.meta.env.DEV) && (feedbackAdmin || isAdmin) && (
-          <section className="settings-section">
-            <h2>תרחישי בדיקה</h2>
-            <p className="settings-note">
-              טוען נתוני דוגמה כדי לראות את האפליקציה בשלב אחר של הדרך. אותה דירה בכל
-              התרחישים — רק השלב משתנה, והמסכים נגזרים ממנו בדיוק כמו אצל משתמש אמיתי.
-              <strong> הטעינה מוחקת את הנתונים בחשבון הזה.</strong>
-            </p>
-            {/* Staging and production share ONE database, so the testing app signed in
-                with the owner's real identity is looking at the family's real data. A
-                destructive tool must not be reachable from there at all — not behind a
-                confirm, not at all. */}
-            {ownerIdentity ? (
-              <p className="settings-note" role="alert" style={{ color: 'var(--danger)', marginBottom: 0 }}>
-                החשבון הזה ({user?.email}) מחזיק את הנתונים האמיתיים שלך, וסביבת-הבדיקות
-                עובדת מול אותו בסיס-נתונים. כדי לטעון תרחיש — היכנסו בחשבון בדיקות.
-              </p>
-            ) : (
-            <div className="settings-scenarios">
-              {SCENARIOS.map(s => (
-                <div key={s.id} className="settings-scenario">
-                  <div className="settings-scenario-text">
-                    <span className="settings-scenario-label">{s.label}</span>
-                    <span className="settings-scenario-hint">{s.hint}</span>
-                  </div>
-                  {confirmScenario === s.id ? (
-                    <div className="settings-scenario-confirm">
-                      {/* Name the account being wiped. One database serves both
-                          environments, so "which account am I in" is the whole question. */}
-                      <span className="settings-scenario-hint">ימחק את {user?.email}</span>
-                      <button className="btn-secondary" onClick={() => setConfirmScenario(null)} disabled={scenarioBusy}>ביטול</button>
-                      <button className="btn-primary" onClick={() => loadScenario(s.id)} disabled={scenarioBusy}>
-                        {scenarioBusy ? 'טוען…' : 'מחק וטען'}
-                      </button>
-                    </div>
-                  ) : (
-                    <button className="btn-secondary" onClick={() => setConfirmScenario(s.id)} disabled={scenarioBusy}>
-                      טען
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            )}
           </section>
         )}
 
