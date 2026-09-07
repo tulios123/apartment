@@ -23,6 +23,7 @@ import { activeContract as findActiveContract, monthlyVirtualEntries } from '../
 import { possession } from '../../lib/stage'
 import { PreKeyCard } from './PreKeyCard'
 import { PreKeyTaskInvite } from './PreKeyTaskInvite'
+import { HandoverMoment } from './HandoverMoment'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -353,6 +354,18 @@ export default function HomeScreen() {
         />
       ) : (
         <>
+          {/* The day the keys arrive the stage flips by itself and the countdown card is
+              replaced by a monthly cycle. Say so, once — otherwise the app silently
+              becomes a different tool (peak-end rule). */}
+          {property?.key_delivery_date && !awaitingKey && (
+            <HandoverMoment
+              propertyId={property.id}
+              keyDate={property.key_delivery_date}
+              today={todayStr}
+              hasLease={!!activeContract}
+            />
+          )}
+
           {/* ── Action Center ── */}
           <section className="hs-actions">
             {loadingActions ? (

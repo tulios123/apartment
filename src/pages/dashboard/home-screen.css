@@ -156,6 +156,16 @@
   .hs-flow-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 
   .spin { animation: hsSpin 0.8s linear infinite; }
+
+  /* Handover day — the one celebratory surface in this stage. Warm but not loud: a card
+     in the flow, dismissible, never a modal over someone collecting their keys. */
+  .hs-handover { position: relative; display: flex; gap: 12px; align-items: flex-start; margin: 0 0 14px; padding: 14px 14px 13px; border: 1px solid var(--accent); border-radius: var(--r-lg, 16px); background: var(--accent-soft, rgba(10, 31, 68, .05)); }
+  .hs-handover-icon { flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--r-md); background: var(--bg-card); display: inline-flex; align-items: center; justify-content: center; color: var(--accent); }
+  .hs-handover-body { min-width: 0; flex: 1; }
+  .hs-handover-title { font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; padding-inline-end: 24px; }
+  .hs-handover-text { margin: 4px 0 0; font-size: 13px; line-height: 1.55; color: var(--text-muted); }
+  .hs-handover-cta { min-height: 44px; margin-top: 4px; padding: 0; border: 0; background: none; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--accent); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .hs-handover-close { position: absolute; inset-block-start: 6px; inset-inline-end: 6px; width: 44px; height: 44px; border: 0; background: none; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 }
 
 @keyframes hsFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }

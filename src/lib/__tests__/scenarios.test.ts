@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { addMonths, scenarioData, SCENARIOS } from '../scenarios'
 import { monthlyVirtualEntries } from '../projections'
-import { parseLocalISO } from '../format'
+import { daysBetween, parseLocalISO } from '../format'
 import type { MortgageTrack } from '../../types'
 import { purchaseTaskPlan } from '../purchaseTasks'
 import { possession, leaseStatus } from '../stage'
@@ -121,5 +121,21 @@ describe('the near-handover scenario', () => {
     const dueNow = plan.filter(t => t.due_date === today)
     expect(dueNow.length).toBeGreaterThanOrEqual(3)
     for (const t of plan) if (t.due_date) expect(t.due_date >= today).toBe(true)
+  })
+})
+
+describe('the handover moment is reachable from a scenario', () => {
+  it('hands the keys over yesterday, inside the greeting window', () => {
+    const d = scenarioData('keys_no_tenant', today)
+    const keyDate = d.property.key_delivery_date as string
+    expect(possession(keyDate, today)).toBe('in_hand')
+    // 0..14 days after handover is when the greeting is offered (HandoverMoment).
+    expect(daysBetween(keyDate, today)).toBe(1)
+    expect(d.contract).toBeNull()
+  })
+
+  it('leaves the leased scenario outside that window, so it stays the ordinary state', () => {
+    const d = scenarioData('leased', today)
+    expect(daysBetween(d.property.key_delivery_date as string, today)).toBeGreaterThan(14)
   })
 })

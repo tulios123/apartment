@@ -23,7 +23,7 @@ export type ScenarioId = 'purchase_process' | 'handover_soon' | 'keys_no_tenant'
 export const SCENARIOS: { id: ScenarioId; label: string; hint: string }[] = [
   { id: 'purchase_process', label: 'תהליך רכישה', hint: 'חוזה נחתם, המפתח בעוד 7 חודשים' },
   { id: 'handover_soon', label: 'מסירה בעוד שבועיים', hint: 'הקצה הצפוף — כשכל הרשימה מתכנסת' },
-  { id: 'keys_no_tenant', label: 'יש מפתח, אין שוכר', hint: 'הדירה נמסרה, מחפשים דייר' },
+  { id: 'keys_no_tenant', label: 'יש מפתח, אין שוכר', hint: 'נמסרה אתמול — כולל רגע המסירה' },
   { id: 'leased', label: 'מושכרת', hint: 'המצב הרגיל — שוכר בפנים' },
 ]
 
@@ -71,6 +71,9 @@ export function scenarioData(id: ScenarioId, today: string): ScenarioData {
   // already passed collapses onto today instead of arriving overdue.
   const keyDelivery = id === 'purchase_process' ? addMonths(today, 7)
     : id === 'handover_soon' ? shiftDays(today, 14)
+    // Yesterday, not last month: inside the handover greeting's window, so this one
+    // scenario shows both the moment itself and the settled no-tenant state behind it.
+    : id === 'keys_no_tenant' ? shiftDays(today, -1)
     : addMonths(today, -1)
 
   const property = {
