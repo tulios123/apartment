@@ -111,7 +111,11 @@ export function PreKeyCard({ property, tracks, loans, policies, contracts, today
 
       <div className="hs-flow-line">
         <div className="hs-flow-line-top">
-          <span className="hs-flow-name">כבר הושקע</span>
+          {/* Not "already invested": self_equity is the equity in the deal, and for a
+              buyer part-way through an instalment schedule some of it may not have left
+              their account yet. Name what we actually know — the same wording the Wealth
+              screen uses — rather than asserting a payment we never tracked. */}
+          <span className="hs-flow-name">הון עצמי ועלויות</span>
           {loadingInvested
             ? <Skeleton width={80} height={16} />
             : <span className="hs-flow-amt">{formatCurrency(totalInvested)}</span>}
