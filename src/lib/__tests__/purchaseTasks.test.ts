@@ -19,7 +19,7 @@ describe('purchaseTaskPlan', () => {
     // deadlines that differ per deal. The app asks; it does not guess.
     const undated = plan.filter(t => t.due_date === null)
     expect(undated).toHaveLength(1)
-    expect(undated[0].title).toBe('לקבוע את מועדי התשלום מהחוזה')
+    expect(undated[0].title).toBe('לקבוע מועדים: מס רכישה ותשלומים למוכר')
   })
 
   it('keeps the home calm — at most one task inside the two-day window', () => {

@@ -16,6 +16,8 @@
 //     become ONE undated task asking the owner to set them from their own contract — the
 //     single deliberate exception to rule 1, and the one thing worth seeing on day one.
 
+import { monthDayISO, parseLocalISO } from './format'
+
 export type SeedTask = {
   title: string
   /** null only for the deliberate exception above. */
@@ -23,11 +25,12 @@ export type SeedTask = {
   category: string
 }
 
+// Israel is UTC+2/+3, so date maths goes through the app's local helpers — never
+// toISOString().slice, which rolls back a day around midnight (src/lib/format).
 function shift(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const t = new Date(Date.UTC(y, m - 1, d))
-  t.setUTCDate(t.getUTCDate() + days)
-  return t.toISOString().slice(0, 10)
+  const d = parseLocalISO(iso)
+  d.setDate(d.getDate() + days)
+  return monthDayISO(d)
 }
 
 /**
@@ -43,7 +46,9 @@ export function purchaseTaskPlan(keyDate: string, today: string): SeedTask[] {
 
   return [
     {
-      title: 'לקבוע את מועדי התשלום מהחוזה',
+      // Names both things it covers. A task carries only a title — there is no notes
+      // field — so the guidance has to live in the title itself or nowhere.
+      title: 'לקבוע מועדים: מס רכישה ותשלומים למוכר',
       due_date: null,
       category: 'כללי',
     },

@@ -21,7 +21,7 @@ export function PreKeyTaskInvite({ keyDate, today, propertyId, onSeeded }: {
   keyDate: string
   today: string
   propertyId: string | null
-  onSeeded: () => void
+  onSeeded: (count: number) => void
 }) {
   const { user } = useAuth()
   const [show, setShow] = useState(false)
@@ -67,7 +67,7 @@ export function PreKeyTaskInvite({ keyDate, today, propertyId, onSeeded }: {
         })
       }
       setShow(false)
-      onSeeded()
+      onSeeded(plan.length)
     } catch (e) {
       setError(userErrorMessage(e, 'הוספת המשימות נכשלה — נסו שוב'))
       setBusy(false)

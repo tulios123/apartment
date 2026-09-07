@@ -487,7 +487,9 @@ export default function HomeScreen() {
                   keyDate={property.key_delivery_date!}
                   today={todayStr}
                   propertyId={property.id}
-                  onSeeded={refetchTasks}
+                  // The card disappearing is not confirmation — say what happened
+                  // (heuristic 1), the same way every other committing action here does.
+                  onSeeded={n => { refetchTasks(); showFlash(`${n} משימות נוספו`) }}
                 />
               </>
             ) : (
