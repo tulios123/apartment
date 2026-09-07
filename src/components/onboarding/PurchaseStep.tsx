@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { sanitizeAmountInt } from '../../lib/format'
+import { sanitizeAmountInt, todayISO } from '../../lib/format'
 import { Tag, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -109,6 +109,15 @@ export function PurchaseStep() {
           <div className="onboarding-field">
             <label>מסירת מפתח</label>
             <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} ariaLabel="מסירת מפתח" />
+            {/* The whole pre-key experience hangs on this one optional field in the
+                middle of a long form: fill it with a future date and the app switches to
+                the waiting period; leave it blank and nothing changes. Say so, or the
+                people it was built for will never see it. */}
+            <span className="onboarding-field-hint">
+              {keyDeliveryDate && keyDeliveryDate > todayISO()
+                ? 'המפתח עוד לא אצלכם — האפליקציה תתאים את עצמה לתקופת ההמתנה'
+                : 'עוד לא קיבלתם את המפתח? מלאו את התאריך הצפוי'}
+            </span>
           </div>
         </div>
       </div>

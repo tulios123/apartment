@@ -314,6 +314,12 @@ export function PropertyForm({
         <div className="form-row">
           <label>תאריך מסירת מפתח</label>
           <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} ariaLabel="מסירת מפתח" />
+          {/* The recovery path for anyone who skipped this during onboarding: it is what
+              puts the app into the waiting period, and nothing else does. */}
+          <span className="form-hint">
+            תאריך עתידי מעביר את האפליקציה למצב המתנה למפתח — ספירה, תחזית וצ׳קליסט
+            במקום מעקב חודשי.
+          </span>
         </div>
       </div>
       <div className="form-row">
