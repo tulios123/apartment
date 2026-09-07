@@ -18,10 +18,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { monthDayISO, parseLocalISO } from './format'
 
-export type ScenarioId = 'purchase_process' | 'keys_no_tenant' | 'leased'
+export type ScenarioId = 'purchase_process' | 'handover_soon' | 'keys_no_tenant' | 'leased'
 
 export const SCENARIOS: { id: ScenarioId; label: string; hint: string }[] = [
   { id: 'purchase_process', label: 'תהליך רכישה', hint: 'חוזה נחתם, המפתח בעוד 7 חודשים' },
+  { id: 'handover_soon', label: 'מסירה בעוד שבועיים', hint: 'הקצה הצפוף — כשכל הרשימה מתכנסת' },
   { id: 'keys_no_tenant', label: 'יש מפתח, אין שוכר', hint: 'הדירה נמסרה, מחפשים דייר' },
   { id: 'leased', label: 'מושכרת', hint: 'המצב הרגיל — שוכר בפנים' },
 ]
@@ -35,6 +36,13 @@ export function addMonths(iso: string, months: number): string {
   // Clamp into the target month (31 Jan + 1 month must not spill into March).
   const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
   d.setDate(Math.min(day, lastDay))
+  return monthDayISO(d)
+}
+
+/** Shift an ISO date by whole days. */
+export function shiftDays(iso: string, days: number): string {
+  const d = parseLocalISO(iso)
+  d.setDate(d.getDate() + days)
   return monthDayISO(d)
 }
 
@@ -52,14 +60,18 @@ export type ScenarioData = {
  * without a database. `today` is passed in for the same reason.
  */
 export function scenarioData(id: ScenarioId, today: string): ScenarioData {
-  // One apartment, one story, three points along it — so switching scenarios changes the
+  // One apartment, one story, four points along it — so switching scenarios changes the
   // stage without changing the flat, and the screens stay comparable.
   const price = 1_850_000
   const signing = addMonths(today, -2)
   const rent = 5_200
 
-  // Handover: ahead for the purchase process, behind for the two later stages.
-  const keyDelivery = id === 'purchase_process' ? addMonths(today, 7) : addMonths(today, -1)
+  // Handover: ahead for the two waiting stages, behind for the two later ones. The
+  // near date is what makes the checklist's clamping visible — every anchor that has
+  // already passed collapses onto today instead of arriving overdue.
+  const keyDelivery = id === 'purchase_process' ? addMonths(today, 7)
+    : id === 'handover_soon' ? shiftDays(today, 14)
+    : addMonths(today, -1)
 
   const property = {
     address: 'הרצל 45, תל אביב',
@@ -95,8 +107,8 @@ export function scenarioData(id: ScenarioId, today: string): ScenarioData {
     { category: 'brokerage', label: null, amount: 39_000 },
   ]
 
-  // Only the leased scenario carries a live contract. The other two differ from it only
-  // in that, which is exactly the distinction the screens must handle.
+  // Only the leased scenario carries a live contract. The others differ from it only in
+  // that, which is exactly the distinction the screens must handle.
   const contract = id === 'leased'
     ? {
         company_name: 'דנה לוי',

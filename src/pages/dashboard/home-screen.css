@@ -122,6 +122,12 @@
   /* Signing → handover. The one thing that visibly moves during the wait. */
   .hs-milestone-track { margin-top: 12px; }
 
+  /* One-time offer of the handover checklist. Same shape as the add-lease invitation
+     so the two read as the same kind of thing: a calm suggestion, not an alert. */
+  .hs-prekey-invite { display: flex; align-items: center; gap: 11px; padding: 11px 12px; margin-top: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-md); }
+  .hs-prekey-invite .hs-addlease-cta { min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0; }
+  .hs-prekey-invite .hs-addlease-cta:disabled { color: var(--text-muted); cursor: default; }
+
   /* No active lease — a calm invitation to add a contract (no tenant = no income) */
   .hs-addlease { width: 100%; display: flex; align-items: center; gap: 11px; padding: 11px 12px; margin: 6px 0 2px; background: var(--accent-soft, rgba(10, 31, 68, .05)); border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; font-family: inherit; text-align: start; transition: background var(--t-base) var(--ease); }
   .hs-addlease:active { background: var(--accent-soft-hover, rgba(10, 31, 68, .09)); }

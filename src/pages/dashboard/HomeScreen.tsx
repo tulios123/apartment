@@ -17,11 +17,12 @@ import { useRecurringItems } from '../../hooks/useRecurringItems'
 import { rentPaymentDay, isRentPayable } from '../../lib/rent'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
+import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks, nextScheduledTask } from '../../lib/homeTasks'
 import { nextDueDate } from '../../lib/recurrence'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { possession } from '../../lib/stage'
 import { PreKeyCard } from './PreKeyCard'
+import { PreKeyTaskInvite } from './PreKeyTaskInvite'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -147,6 +148,10 @@ export default function HomeScreen() {
   // gentle "+N בעתיד" hint in the header, so the owner always sees at a glance that
   // something is queued ahead without it crowding "what to do now" (owner request).
   const futureTaskCount = useMemo(() => futureScheduledTasks(tasks, todayStr).length, [tasks, todayStr])
+  // Name the soonest queued task instead of only counting it. nextScheduledTask() was
+  // written for exactly this line and never wired up; with a handover checklist spread
+  // across months, "עוד 6 משימות בעתיד" is a number nobody can act on or recognise.
+  const nextTask = useMemo(() => nextScheduledTask(tasks, todayStr), [tasks, todayStr])
   const shownTasks = tasksExpanded ? allTasks : collapsedTasks.slice(0, 2)
 
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
@@ -366,7 +371,10 @@ export default function HomeScreen() {
                         state — instead of a header banner the owner didn't like (#47). No date,
                         no extra chrome: just a soft note that something is queued ahead. */}
                     <div className="hs-clear-sub">
-                      {futureTaskCount === 1 ? 'עוד משימה אחת בעתיד' : `עוד ${futureTaskCount} משימות בעתיד`}
+                      {nextTask
+                        ? <>הבא: {nextTask.title}{nextTask.due_date ? ` · ${formatDate(nextTask.due_date)}` : ''}
+                            {futureTaskCount > 1 ? ` · ועוד ${futureTaskCount - 1}` : ''}</>
+                        : futureTaskCount === 1 ? 'עוד משימה אחת בעתיד' : `עוד ${futureTaskCount} משימות בעתיד`}
                     </div>
                   </div>
                 </div>
@@ -459,17 +467,29 @@ export default function HomeScreen() {
           <section className="hs-flow">
             <div className="hs-flow-head">
               <h2>{awaitingKey ? 'הדירה שלך' : 'תזרים החודש'}</h2>
-              <button className="hs-link" onClick={() => navigate('/finances')}>פירוט</button>
+              {/* No cash-flow framing before handover (owner, 07.09): there is no monthly
+                  flow yet, so a link into the ledger points at an empty screen. */}
+              {!awaitingKey && (
+                <button className="hs-link" onClick={() => navigate('/finances')}>פירוט</button>
+              )}
             </div>
             {loadingFlow ? (
               <Skeleton width="100%" height={120} radius={18} />
             ) : awaitingKey && property ? (
               /* Before handover the month-shaped card is arithmetic on the wrong clock —
                  it correctly totals ₪0. This one measures the distance to the date. */
-              <PreKeyCard
-                property={property} tracks={tracks} loans={loans} policies={policies}
-                contracts={contracts} today={todayStr}
-              />
+              <>
+                <PreKeyCard
+                  property={property} tracks={tracks} loans={loans} policies={policies}
+                  contracts={contracts} today={todayStr}
+                />
+                <PreKeyTaskInvite
+                  keyDate={property.key_delivery_date!}
+                  today={todayStr}
+                  propertyId={property.id}
+                  onSeeded={refetchTasks}
+                />
+              </>
             ) : (
               <div className="hs-flow-card">
                 <div className="hs-flow-headline">
