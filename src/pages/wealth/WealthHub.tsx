@@ -12,7 +12,7 @@ import { usePropertyData } from '../../hooks/usePropertyData'
 import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useLoansData } from '../../hooks/useLoansData'
-import { currentSplit, futureSplit, principalNext12Months, interestNext12Months, currentSplitMonth, splitForMonth } from '../../lib/equity'
+import { currentSplitInfo, futureSplit, principalNext12Months, interestNext12Months, splitForMonth } from '../../lib/equity'
 import { formatCurrency, todayISO, daysBetween } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { MAINTENANCE_CATEGORY } from '../../lib/constants'
@@ -40,10 +40,13 @@ export default function WealthHub() {
   const bankDebt = mortgageBalance + (loansSummary.monthlyBalance || 0)
   const balloon = loansSummary.balloonOutstanding || 0
 
-  const split = currentSplit(tracks, monthlyLoans)
+  // `split.isCurrentMonth` is false when nothing is actually paid this month and the
+  // figures come from the first month that does pay (a buyer before drawdown, an owner
+  // in grace). Every sentence phrased in the present tense is gated on it.
+  const split = currentSplitInfo(tracks, monthlyLoans)
   // Owner (21.07): the monthly card lumped mortgage interest and loan interest into one
   // line labelled "ריבית המשכנתא". Break the SAME month down per vehicle so each is named.
-  const splitMonth = currentSplitMonth(tracks, monthlyLoans)
+  const splitMonth = split.month
   const mortgageSplit = splitForMonth(tracks, [], splitMonth)
   const loansSplit = splitForMonth([], monthlyLoans, splitMonth)
   const future5y = futureSplit(tracks, monthlyLoans, 60)
@@ -123,7 +126,7 @@ export default function WealthHub() {
               propertyValue={propertyValue}
               bankDebt={bankDebt}
               balloon={balloon}
-              monthlyPrincipal={split.principal}
+              monthlyPrincipal={split.isCurrentMonth ? split.principal : 0}
             />
           )}
 
@@ -131,9 +134,10 @@ export default function WealthHub() {
             current={split}
             future5yPrincipal={future5y.principal}
             annualPrincipal={annualPrincipal}
+            fromMonth={split.isCurrentMonth ? null : split.month}
           />
 
-          {monthlyRent > 0 && (
+          {monthlyRent > 0 && split.isCurrentMonth && (
             <MonthlyResult
               monthlyRent={monthlyRent}
               mortgageInterest={mortgageSplit.interest}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { MortgageTrack, Loan } from '../../types'
-import { splitForMonth, currentSplit, principalNext12Months } from '../equity'
+import { splitForMonth, currentSplit, currentSplitInfo, principalNext12Months } from '../equity'
 import { trackSchedule } from '../mortgage'
 
 function track(p: Partial<MortgageTrack>): MortgageTrack {
@@ -41,6 +41,43 @@ describe('currentSplit (this-month, uses LOCAL month — no UTC roll-back)', () 
     // T pays Feb 2026 → Jan 2027. asOf in Dec 2025 has no payment → first future = Feb 2026.
     const s = currentSplit([T], [], new Date(2025, 11, 15))
     expect(s.total).toBeGreaterThan(0)
+  })
+})
+
+describe('currentSplitInfo — the fallback has to declare itself', () => {
+  it('this month pays → isCurrentMonth, and the month is now', () => {
+    const info = currentSplitInfo([T], [], new Date(2026, 5, 10))
+    expect(info.month).toBe('2026-06')
+    expect(info.isCurrentMonth).toBe(true)
+    expect(info.total).toBeGreaterThan(0)
+  })
+  it('nothing is paid this month → the future month is named and flagged', () => {
+    // The bug: a buyer whose mortgage starts later was told "+X לבעלות החודש".
+    const info = currentSplitInfo([T], [], new Date(2025, 11, 15))
+    expect(info.isCurrentMonth).toBe(false)
+    expect(info.month).toBe('2026-01') // first paying month, not December
+    expect(info.total).toBeGreaterThan(0)
+  })
+  it('no payment at all within a year → zeros, and no false future claim', () => {
+    const info = currentSplitInfo([T], [], new Date(2030, 0, 15))
+    expect(info.total).toBe(0)
+    expect(info.month).toBe('2030-01')
+    // Nothing to state, so a consumer gating on total>0 shows nothing either way.
+    expect(info.isCurrentMonth).toBe(true)
+  })
+  it('agrees with currentSplit — the old helper is now a projection of it', () => {
+    const asOf = new Date(2025, 11, 15)
+    const info = currentSplitInfo([T], [], asOf)
+    const split = currentSplit([T], [], asOf)
+    expect(split.principal).toBeCloseTo(info.principal, 9)
+    expect(split.interest).toBeCloseTo(info.interest, 9)
+  })
+  it('grace: interest-only months count as paying — the ratio is real, just 0% principal', () => {
+    const g = track({ principal: 500000, annual_rate: 5, term_months: 240, grace_months: 6, start_date: '2026-01-01' })
+    const info = currentSplitInfo([g], [], new Date(2026, 2, 10))
+    expect(info.isCurrentMonth).toBe(true)
+    expect(info.interest).toBeGreaterThan(0)
+    expect(info.principal).toBeCloseTo(0, 6)
   })
 })
 

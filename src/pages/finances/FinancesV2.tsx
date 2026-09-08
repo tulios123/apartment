@@ -19,7 +19,7 @@ import type { VirtualEntry } from '../../lib/projections'
 import { supabase } from '../../lib/supabase'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
+import { formatCurrency, formatSignedCurrency, formatDate, todayISO, HEBREW_MONTHS } from '../../lib/format'
 import type { Transaction } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
@@ -31,7 +31,7 @@ import './finances-v2.css'
 import { DateField } from '../../components/ui/DateField'
 import { userErrorMessage } from '../../lib/errorHe'
 
-const MONTH_NAMES = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+const MONTH_NAMES = HEBREW_MONTHS
 const MONTH_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ']
 const PALETTE = ['var(--accent)', 'var(--accent-coral)', 'var(--accent-teal)', 'var(--accent-2)', 'var(--warning)', 'var(--success)', 'var(--danger)']
 const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(PAYMENT_METHODS.filter(p => p.value).map(p => [p.value, p.label]))

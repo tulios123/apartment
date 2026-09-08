@@ -13,6 +13,20 @@ export function formatSignedCurrency(amount: number): string {
   return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0, signDisplay: 'exceptZero' }).format(amount)
 }
 
+export const HEBREW_MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+
+/**
+ * A `YYYY-MM` as a Hebrew month label — "ספטמבר 2027", and without the year when
+ * it is the current one ("ספטמבר"), since the year is noise inside this year.
+ * Screens that state a figure for a month other than now MUST name that month.
+ */
+export function formatMonthLabel(ym: string, asOf: Date = new Date()): string {
+  const [y, m] = ym.split('-').map(Number)
+  if (!y || !m || m < 1 || m > 12) return ''
+  const name = HEBREW_MONTHS[m - 1]
+  return y === asOf.getFullYear() ? name : `${name} ${y}`
+}
+
 export function formatDate(date: string | null): string {
   if (!date) return ''
   // EDGE-04: `new Date('YYYY-MM-DD')` parses as UTC midnight, so a viewer behind UTC

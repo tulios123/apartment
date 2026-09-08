@@ -1,6 +1,6 @@
 import { Rocket } from '@phosphor-icons/react'
 import type { PaymentSplit } from '../../lib/equity'
-import { formatCurrency } from '../../lib/format'
+import { formatCurrency, formatMonthLabel } from '../../lib/format'
 
 const fmt = (v: number) => formatCurrency(v)
 
@@ -11,6 +11,12 @@ interface Props {
   future5yPrincipal: number
   /** Total principal repaid over the next 12 months. */
   annualPrincipal: number
+  /**
+   * `YYYY-MM` when the figures are NOT this month's — nothing is paid yet (before
+   * drawdown, or a grace period with no amortization). The ratio is still worth
+   * showing; stating it as if it were happening now is not. Null when it is now.
+   */
+  fromMonth?: string | null
 }
 
 /**
@@ -18,17 +24,20 @@ interface Props {
  * savings + a fee: how much builds equity (principal) vs how much is the bank's
  * interest, with the Spitzer trajectory and an annualized framing.
  */
-export default function WealthAccelerator({ current, future5yPrincipal, annualPrincipal }: Props) {
+export default function WealthAccelerator({ current, future5yPrincipal, annualPrincipal, fromMonth }: Props) {
   if (current.total <= 0) return null
   const buildPct = (current.principal / current.total) * 100
   const interestPct = 100 - buildPct
+  const monthLabel = fromMonth ? formatMonthLabel(fromMonth) : ''
 
   return (
     <section className="wlth-card wlth-accel">
       <div className="wlth-card-head">
         <Rocket size={18} weight="duotone" color="var(--brand-navy)" />
         <h2>מאיץ ההון</h2>
-        <span className="wlth-card-note">מכל תשלום חודשי של {fmt(current.total)}</span>
+        <span className="wlth-card-note">
+          {monthLabel ? `מכל תשלום של ${fmt(current.total)} · מ${monthLabel}` : `מכל תשלום חודשי של ${fmt(current.total)}`}
+        </span>
       </div>
 
       <div className="wlth-split-bar">
