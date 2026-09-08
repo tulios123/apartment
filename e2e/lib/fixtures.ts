@@ -25,7 +25,10 @@ export function base(keyInDays: number): Fixture {
     owners: [{ id: OWNER, name: 'איתי בדיקה' }],
     properties: [{
       id: PROPERTY, owner_id: OWNER, address: 'הרצל 45, תל אביב', purchase_price: 1_850_000,
-      purchase_date: d(-60), key_delivery_date: d(keyInDays), property_size_sqm: 68,
+      // Signing always precedes handover — with a flat -60 the leased fixture claimed a
+      // key handed over a year BEFORE the contract was signed, which the app rendered
+      // without blinking (and which is now blocked in the form).
+      purchase_date: d(Math.min(-60, keyInDays - 240)), key_delivery_date: d(keyInDays), property_size_sqm: 68,
       floor: 4, rooms: 3, estimated_value: 1_950_000, buyer_name: 'איתי בדיקה',
       notes: null, block_parcel: null, created_at: d(-60),
     }],

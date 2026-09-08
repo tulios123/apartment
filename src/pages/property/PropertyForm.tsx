@@ -313,7 +313,10 @@ export function PropertyForm({
         </div>
         <div className="form-row">
           <label>תאריך מסירת מפתח</label>
-          <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} ariaLabel="מסירת מפתח" />
+          {/* A key cannot be handed over before the contract is signed, and nothing was
+              stopping it: the pair renders as-entered on the property header, so an
+              inverted pair simply reads as a fact. */}
+          <DateField value={keyDeliveryDate} onChange={setKeyDeliveryDate} min={purchaseDate || undefined} ariaLabel="מסירת מפתח" />
           {/* The recovery path for anyone who skipped this during onboarding: it is what
               puts the app into the waiting period, and nothing else does. */}
           <span className="form-hint">
