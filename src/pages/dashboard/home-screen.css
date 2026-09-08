@@ -4,16 +4,23 @@
 .hs {
   --hs-gap: 18px;
 
-  /* Waiting for the keys: the milestone card leads, then whatever needs doing, then the
-     capture buttons. Same markup, different priority — the generic "nothing to do" card
-     and the add-buttons were filling the first screen ahead of the one thing that says
-     where this person actually stands. */
-  &.hs--prekey { display: flex; flex-direction: column; }
-  &.hs--prekey .hs-header { order: 0; }
-  &.hs--prekey .hs-handover { order: 1; }
+  /* Section order, set here rather than in the JSX so one structure serves every stage.
+     Default (a running property): who/when → what needs you → how the month looks → add.
+     The add-buttons belonging BELOW the month card was decided in the July brains-tour
+     and had drifted back above it; this restores it and pins it (08.09). */
+  display: flex;
+  flex-direction: column;
+  .hs-header { order: 0; }
+  .hs-handover { order: 1; }
+  .hs-actions { order: 2; }
+  .hs-flow { order: 3; }
+  .hs-quick { order: 4; }
+
+  /* Waiting for the keys, the milestone card leads: the generic "nothing to do" card and
+     the add-buttons were filling the first screen ahead of the one thing that tells this
+     person where they actually stand. */
   &.hs--prekey .hs-flow { order: 2; }
   &.hs--prekey .hs-actions { order: 3; }
-  &.hs--prekey .hs-quick { order: 4; }
 
   /* ── Humanized header ── */
   .hs-header { position: relative; margin-bottom: var(--hs-gap); animation: hsFade 0.4s var(--ease) both; }
@@ -170,6 +177,11 @@
   .hs-flow-subcat { color: var(--text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hs-flow-subamt { color: var(--text-muted); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .hs-flow-subamt.income { color: var(--success-text); }
+
+  /* The savings half of a payment, stated under the cash headline. Quiet — it explains
+     the number above rather than competing with it. */
+  .hs-flow-principal { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .hs-flow-principal + .hs-flow-note { margin-top: 6px; padding-top: 0; border-top: 0; }
 
   .hs-flow-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 

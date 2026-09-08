@@ -117,12 +117,18 @@ export default function HomeScreen() {
   // the month total on the תזרים screen exactly, instead of two drifting calculations.
   const fYear = new Date().getFullYear()
   const fMonth = new Date().getMonth() + 1
-  const fixedExpenses = useMemo(
-    () => monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies)
+  // The principal share rides along: a mortgage payment is not all cost, and the app has
+  // said so on the Wealth screen since July ("הקרן היא חיסכון, לא הפסד"). The home said
+  // the opposite by omission — its headline is rent minus the WHOLE payment, so a good
+  // month reads as a loss of roughly the principal (brains-tour, 08.09).
+  const { fixedExpenses, fixedPrincipal } = useMemo(() => {
+    const rows = monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies)
       .filter(e => e.direction === 'expense')
-      .reduce((s, e) => s + e.amount, 0),
-    [contracts, tracks, loans, policies, fYear, fMonth],
-  )
+    return {
+      fixedExpenses: rows.reduce((s, e) => s + e.amount, 0),
+      fixedPrincipal: rows.reduce((s, e) => s + (e.principal ?? 0), 0),
+    }
+  }, [contracts, tracks, loans, policies, fYear, fMonth])
 
   // ── This month's reality ──
   const rentReceived = transactions
@@ -627,11 +633,23 @@ export default function HomeScreen() {
                   </div>
                 )}
 
+                {/* The headline is cash out of pocket. Naming the part that is savings
+                    keeps the home from contradicting the Wealth screen, where the same
+                    month reads as equity being built. */}
+                {fixedPrincipal > 0 && (
+                  <p className="hs-flow-principal">
+                    מתוך התשלומים הקבועים, {fmt(fixedPrincipal)} בונים לכם הון — חיסכון, לא הוצאה.
+                  </p>
+                )}
+
                 <p className="hs-flow-note">
                   {!activeContract
                     ? 'הצפי כולל רק את ההוצאות הקבועות. הוסיפו חוזה שכירות כדי לראות גם את ההכנסה.'
                     : rentCleared
-                    ? 'שכר הדירה נכנס. התשלומים הקבועים יורדים אוטומטית — אין צורך לעשות דבר.'
+                    // Was a third "all clear" on one screen, after the status line and
+                    // the action-centre card. The audit flagged the duplication in July
+                    // (כפילות-רוגע); this is the copy that adds least.
+                    ? ''
                     : 'הסכום מבוסס על הצפי החודשי. הוא יתעדכן כששכר הדירה ייכנס בפועל.'}
                 </p>
               </div>
