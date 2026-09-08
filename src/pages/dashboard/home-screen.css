@@ -4,6 +4,17 @@
 .hs {
   --hs-gap: 18px;
 
+  /* Waiting for the keys: the milestone card leads, then whatever needs doing, then the
+     capture buttons. Same markup, different priority — the generic "nothing to do" card
+     and the add-buttons were filling the first screen ahead of the one thing that says
+     where this person actually stands. */
+  &.hs--prekey { display: flex; flex-direction: column; }
+  &.hs--prekey .hs-header { order: 0; }
+  &.hs--prekey .hs-handover { order: 1; }
+  &.hs--prekey .hs-flow { order: 2; }
+  &.hs--prekey .hs-actions { order: 3; }
+  &.hs--prekey .hs-quick { order: 4; }
+
   /* ── Humanized header ── */
   .hs-header { position: relative; margin-bottom: var(--hs-gap); animation: hsFade 0.4s var(--ease) both; }
   .hs-gear {
@@ -118,9 +129,16 @@
 
   /* Before handover: the headline is a date, not a sum. The exact date sits under the
      approximate countdown so the phrasing stays readable and the fact stays checkable. */
-  .hs-milestone-date { margin-top: 2px; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-  /* Signing → handover. The one thing that visibly moves during the wait. */
-  .hs-milestone-track { margin-top: 12px; }
+  .hs-milestone-value { display: flex; flex-direction: column; align-items: flex-end; }
+  .hs-milestone-date { margin-top: 1px; font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  /* Signing → handover. The one thing that visibly moves during the wait — so it is
+     drawn in the accent, not the grey used for a neutral track, and it says what it is. */
+  .hs-milestone-progress { margin-top: 2px; }
+  .hs-milestone-track { margin-top: 0; }
+  .hs-milestone-track .hs-track-fill { background: var(--accent); }
+  .hs-milestone-progress-label { display: block; margin-top: 6px; font-size: 11.5px; color: var(--text-muted); }
+  /* Sub-note under a figure: the part of a payment that is savings rather than cost. */
+  .hs-prekey-note { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
 
   /* The expected-rent lever: an amount that reads as a value but invites a tap. Sized to
      the 44px touch floor without looking like a form field until it is one. */

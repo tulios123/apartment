@@ -315,7 +315,10 @@ export default function HomeScreen() {
   if (txFailedEmpty) return <PageError message={txError!} onRetry={refetchTx} />
 
   return (
-    <div className="page hs">
+    // Before handover the stage card IS the screen: an empty action centre and two
+    // add-buttons must not occupy the first viewport ahead of it. Ordering is done in
+    // CSS so the JSX stays one structure for every stage.
+    <div className={`page hs${awaitingKey ? ' hs--prekey' : ''}`}>
       {/* ── Humanized status header ── */}
       <header className="hs-header">
         <div className="hs-greet">
@@ -329,7 +332,11 @@ export default function HomeScreen() {
         ) : (
           <p className="hs-status">
             {actions.length === 0
-              ? 'הכול רגוע היום — אין מה לעשות עכשיו.'
+              ? awaitingKey
+                // Same reason as the all-clear card: "calm" describes a running property,
+                // not a purchase still in progress.
+                ? 'עוד לא נדרשת ממך פעולה — נעדכן כשכן.'
+                : 'הכול רגוע היום — אין מה לעשות עכשיו.'
               : actions.length === 1
                 ? 'יש פעולה אחת שמחכה לך.'
                 : `יש ${actions.length} פעולות שמחכות לך.`}
@@ -393,10 +400,20 @@ export default function HomeScreen() {
                 </div>
               ) : (
                 <div className="hs-clear">
-                  <div className="hs-clear-icon"><CheckCircle size={30} weight="fill" /></div>
+                  <div className={`hs-clear-icon${awaitingKey ? ' upcoming' : ''}`}>
+                    {awaitingKey ? <CalendarCheck size={28} weight="fill" /> : <CheckCircle size={30} weight="fill" />}
+                  </div>
                   <div>
-                    <div className="hs-clear-title">הכול מטופל</div>
-                    <div className="hs-clear-sub">הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.</div>
+                    {/* "הנכס עובד בשבילך" is false before handover — there is no tenant, no
+                        income and nothing running. Telling a buyer with months of work
+                        ahead that everything is handled is the same broken promise as the
+                        fortnightly "add a tenant" push (owner, 07.09). */}
+                    <div className="hs-clear-title">{awaitingKey ? 'אין מה לעשות היום' : 'הכול מטופל'}</div>
+                    <div className="hs-clear-sub">
+                      {awaitingKey
+                        ? 'הצעד הבא יופיע כאן כשיגיע זמנו.'
+                        : 'הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.'}
+                    </div>
                   </div>
                 </div>
               )

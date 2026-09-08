@@ -86,11 +86,15 @@ export function PreKeyCard({ property, tracks, loans, policies, contracts, today
 
   // What the first real month costs. Same engine as the ledger and the month forecast
   // (grace-aware, schedule-bounded), asked about the handover month instead of this one.
-  const firstPayment = useMemo(() => {
+  // The principal share comes back with it, because a payment is not all cost.
+  const { firstPayment, firstPrincipal } = useMemo(() => {
     const d = parseLocalISO(keyDate)
-    return monthlyVirtualEntries(contracts, tracks, d.getFullYear(), d.getMonth() + 1, loans, policies)
+    const rows = monthlyVirtualEntries(contracts, tracks, d.getFullYear(), d.getMonth() + 1, loans, policies)
       .filter(e => e.direction === 'expense')
-      .reduce((s, e) => s + e.amount, 0)
+    return {
+      firstPayment: rows.reduce((s, e) => s + e.amount, 0),
+      firstPrincipal: rows.reduce((s, e) => s + (e.principal ?? 0), 0),
+    }
   }, [contracts, tracks, loans, policies, keyDate])
 
   return (
@@ -99,13 +103,22 @@ export function PreKeyCard({ property, tracks, loans, policies, contracts, today
         <span className="hs-flow-headline-label">
           <Key size={15} weight="duotone" /> מסירת המפתח
         </span>
-        <span className="hs-flow-headline-value">{countdownLabel(daysLeft)}</span>
+        {/* Countdown and date as one block. Orphaned on its own line the date read as a
+            stray number belonging to nothing; the two facts are one fact. */}
+        <span className="hs-milestone-value">
+          <span className="hs-flow-headline-value">{countdownLabel(daysLeft)}</span>
+          <span className="hs-milestone-date">{formatDate(keyDate)}</span>
+        </span>
       </div>
-      <div className="hs-milestone-date">{formatDate(keyDate)}</div>
 
       {progressPct != null && (
-        <div className="hs-track hs-milestone-track">
-          <div className="hs-track-fill" style={{ width: `${progressPct}%` }} />
+        <div className="hs-milestone-progress">
+          <div className="hs-track hs-milestone-track">
+            <div className="hs-track-fill" style={{ width: `${progressPct}%` }} />
+          </div>
+          {/* An unlabelled part-filled bar reads as something broken or disabled. Say
+              what it measures. */}
+          <span className="hs-milestone-progress-label">מהחתימה על החוזה ועד המסירה</span>
         </div>
       )}
 
@@ -159,13 +172,24 @@ export function PreKeyCard({ property, tracks, loans, policies, contracts, today
             )}
           </div>
           {expectedRent > 0 && firstPayment > 0 && (
-            <div className="hs-flow-line-top" style={{ marginTop: 8 }}>
-              <span className="hs-flow-name">המאזן החודשי אז</span>
-              {/* Certainty is not optimism: a negative balance is shown, not softened. */}
-              <span className={`hs-flow-amt${expectedRent - firstPayment >= 0 ? ' income' : ' out'}`}>
-                {formatSignedCurrency(expectedRent - firstPayment)}
-              </span>
-            </div>
+            <>
+              <div className="hs-flow-line-top" style={{ marginTop: 8 }}>
+                <span className="hs-flow-name">תזרים חודשי צפוי</span>
+                {/* Certainty is not optimism: a negative month is shown, not softened. */}
+                <span className={`hs-flow-amt${expectedRent - firstPayment >= 0 ? ' income' : ' out'}`}>
+                  {formatSignedCurrency(expectedRent - firstPayment)}
+                </span>
+              </div>
+              {/* The app's money model, applied here too: principal is savings, not a
+                  loss (see WealthHub's "הרווח האמיתי"). Calling rent minus the whole
+                  payment "the balance" contradicted that and made the flat look worse
+                  than it is. */}
+              {firstPrincipal > 0 && (
+                <p className="hs-prekey-note">
+                  מתוך התשלום, {formatCurrency(firstPrincipal)} חוזרים אליכם כהון — חיסכון, לא הוצאה.
+                </p>
+              )}
+            </>
           )}
           {saveError && <span className="hs-addlease-sub" role="alert">{saveError}</span>}
         </div>
@@ -173,7 +197,7 @@ export function PreKeyCard({ property, tracks, loans, policies, contracts, today
 
       <p className="hs-flow-note">
         {expectedRent > 0
-          ? 'שכר הדירה הוא הערכה שלכם — שנו אותו וראו איך המאזן זז. ההכנסה תתחיל אחרי מסירת המפתח.'
+          ? 'שכר הדירה הוא הערכה שלכם — שנו אותו וראו איך התזרים זז.'
           : 'ההכנסה מהשכירות תתחיל אחרי מסירת המפתח. עד אז אין תשלומים חודשיים לעקוב אחריהם.'}
       </p>
     </div>
