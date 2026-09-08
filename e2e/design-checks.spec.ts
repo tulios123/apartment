@@ -238,3 +238,8 @@ test('הנכס · טרם מסירה', async ({ page }) => {
 test('הנכס · מושכרת', async ({ page }) => {
   await check(page, leased({ rentPaid: true }), '/property', 'הנכס · מושכרת')
 })
+// The staging-only process drawing is held to the same bar — a preview nobody can tap
+// is not a preview.
+test('תצוגת התהליך', async ({ page }) => {
+  await check(page, base(213), '/preview/process', 'תצוגת התהליך')
+})

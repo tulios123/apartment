@@ -18,6 +18,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { OfflineBanner } from './components/OfflineBanner'
 import UpdateBanner from './components/UpdateBanner'
 import { pushNotifTarget } from './lib/notifNav'
+import { isStaging } from './lib/env'
 
 // SW-06 (owner approved 18.07): split the safe, rarely-loaded screens out of the
 // main chunk — the manager-only feedback console, the one-time onboarding wizard
@@ -42,6 +43,8 @@ const FeedbackAdmin = lazyRoute(() => import('./pages/admin/FeedbackAdmin'))
 const PrivacyPolicy = lazyRoute(() => import('./pages/legal/LegalPages').then(m => ({ default: m.PrivacyPolicy })))
 const TermsOfService = lazyRoute(() => import('./pages/legal/LegalPages').then(m => ({ default: m.TermsOfService })))
 const Accessibility = lazyRoute(() => import('./pages/legal/LegalPages').then(m => ({ default: m.Accessibility })))
+// Staging-only, and lazily loaded so production never even downloads it.
+const ProcessPreview = lazyRoute(() => import('./pages/preview/ProcessPreview'))
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -192,6 +195,12 @@ function AppRoutes() {
           <Route path="investment" element={<Navigate to="/wealth" replace />} />
           <Route path="tasks" element={<Navigate to="/property/tasks" replace />} />
           <Route path="documents" element={<Navigate to="/property/documents" replace />} />
+
+          {/* Staging/dev only: a drawing of the purchase process to argue with before
+              anything is built on it. Falls through to the catch-all in production. */}
+          {(isStaging || import.meta.env.DEV) && (
+            <Route path="preview/process" element={<Suspense fallback={null}><ProcessPreview /></Suspense>} />
+          )}
 
           <Route path="settings" element={<Settings />} />
           <Route path="admin/feedback" element={<Suspense fallback={null}><FeedbackAdmin /></Suspense>} />

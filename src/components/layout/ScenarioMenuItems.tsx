@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { FlagPennant } from '@phosphor-icons/react'
+import { useNavigate } from 'react-router-dom'
+import { FlagPennant, MapTrifold } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { isFeedbackAdmin, isManager, FEEDBACK_ADMIN_EMAIL } from '../../lib/admin'
 import { isStaging } from '../../lib/env'
@@ -21,6 +22,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog'
  */
 export function ScenarioMenuItems() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [pending, setPending] = useState<ScenarioId | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +32,7 @@ export function ScenarioMenuItems() {
   // looking at the family's live data. A wipe must be unreachable from there — not merely
   // confirmed.
   const ownerIdentity = user?.email?.toLowerCase() === FEEDBACK_ADMIN_EMAIL.toLowerCase()
-  if (!visible || ownerIdentity) return null
+  if (!visible) return null
 
   async function run(id: ScenarioId) {
     if (!user) return
@@ -50,6 +52,18 @@ export function ScenarioMenuItems() {
   return (
     <>
       <div className="usermenu-sep" />
+      {/* Read-only, writes nothing — so unlike the scenario loader it is safe from the
+          owner's own account too. */}
+      <div className="usermenu-grouplabel">תצוגות מקדימות</div>
+      <button className="usermenu-item" role="menuitem" onClick={() => navigate('/preview/process')}>
+        <MapTrifold size={20} />
+        <span>תהליך הרכישה</span>
+      </button>
+
+      {/* Everything below WIPES the signed-in account, and both environments share one
+          database — so it stays unreachable from the owner's real identity. */}
+      {ownerIdentity ? null : <>
+      <div className="usermenu-sep" />
       <div className="usermenu-grouplabel">תרחישי בדיקה</div>
       {SCENARIOS.map(s => (
         <button
@@ -63,6 +77,7 @@ export function ScenarioMenuItems() {
         </button>
       ))}
       {error && <div className="usermenu-grouplabel" role="alert">{error}</div>}
+      </>}
 
       <ConfirmDialog
         open={pending != null}
