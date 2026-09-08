@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { sanitizeAmountInt, todayISO } from '../../lib/format'
 import { Tag, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
@@ -10,6 +10,10 @@ import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
 export function PurchaseStep() {
+  // Real labels: a <label> that neither carries htmlFor nor wraps its control is
+  // decorative text — a screen reader announces an unnamed edit box and tapping it does
+  // not focus the field. useId keeps the pairing unique even if the step ever renders twice.
+  const uid = useId()
   const {
     advance, setTrackForm, keyDeliveryDate,
     buyerName, setBuyerName, street, setStreet, city, setCity,
@@ -60,43 +64,43 @@ export function PurchaseStep() {
 
       <div className="onboarding-form">
         <div className="onboarding-field">
-          <label>שם הרוכש</label>
-          <input type="text" placeholder="שם מלא" value={buyerName}
+          <label htmlFor={`${uid}-buyer`}>שם הרוכש</label>
+          <input id={`${uid}-buyer`} type="text" placeholder="שם מלא" value={buyerName}
             onChange={e => setBuyerName(e.target.value)} />
         </div>
         <div className="onboarding-row">
           <div className="onboarding-field">
-            <label>רחוב</label>
-            <input type="text" placeholder="רחוב ומספר" value={street}
+            <label htmlFor={`${uid}-street`}>רחוב</label>
+            <input id={`${uid}-street`} type="text" placeholder="רחוב ומספר" value={street}
               onChange={e => setStreet(e.target.value)} />
           </div>
           <div className="onboarding-field">
-            <label>עיר</label>
-            <input type="text" placeholder="עיר" value={city}
+            <label htmlFor={`${uid}-city`}>עיר</label>
+            <input id={`${uid}-city`} type="text" placeholder="עיר" value={city}
               onChange={e => setCity(e.target.value)} />
           </div>
         </div>
         <div className="onboarding-row">
           <div className="onboarding-field">
-            <label>שטח (מ&quot;ר)</label>
-            <input type="number" placeholder="0" min="0" value={propertySizeSqm}
+            <label htmlFor={`${uid}-sqm`}>שטח (מ&quot;ר)</label>
+            <input id={`${uid}-sqm`} type="number" placeholder="0" min="0" value={propertySizeSqm}
               onChange={e => setPropertySizeSqm(e.target.value)} />
           </div>
           <div className="onboarding-field">
-            <label>קומה</label>
-            <input type="number" placeholder="0" value={floorNumber}
+            <label htmlFor={`${uid}-floor`}>קומה</label>
+            <input id={`${uid}-floor`} type="number" placeholder="0" value={floorNumber}
               onChange={e => setFloorNumber(e.target.value)} />
           </div>
         </div>
         <div className="onboarding-row">
           <div className="onboarding-field">
-            <label>מספר חדרים</label>
-            <input type="number" placeholder="0" min="0" step="0.5" value={rooms}
+            <label htmlFor={`${uid}-rooms`}>מספר חדרים</label>
+            <input id={`${uid}-rooms`} type="number" placeholder="0" min="0" step="0.5" value={rooms}
               onChange={e => setRooms(e.target.value)} />
           </div>
           <div className="onboarding-field">
-            <label>מחיר רכישה (₪)</label>
-            <input type="text" inputMode="numeric" placeholder="0"
+            <label htmlFor={`${uid}-price`}>מחיר רכישה (₪)</label>
+            <input id={`${uid}-price`} type="text" inputMode="numeric" placeholder="0"
               value={formatPrice(purchasePrice)}
               onChange={e => setPurchasePrice(sanitizeAmountInt(e.target.value))} />
           </div>

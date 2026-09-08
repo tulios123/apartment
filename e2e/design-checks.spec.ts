@@ -47,6 +47,7 @@ async function audit(page: Page) {
       small: [] as { label: string; w: number; h: number }[],
       tiny: [] as { label: string; px: number }[],
       contrast: [] as { label: string; ratio: number; need: number; fg: string; bg: string }[],
+      unnamed: [] as { label: string; why: string }[],
       physical: [] as string[],
     }
 
@@ -123,6 +124,30 @@ async function audit(page: Page) {
       if (px && px < minFont) out.tiny.push({ label: label(el), px: Math.round(px * 10) / 10 })
     }
 
+    // ── Every control needs an accessible name ───────────────────────────────────
+    // A <label> that neither carries htmlFor nor wraps its control is decorative text:
+    // a screen reader announces "edit, blank", and tapping the label does not focus the
+    // field. Found the hard way — getByLabel could not locate a single field in the
+    // onboarding wizard, which is how this check came to exist.
+    for (const el of document.querySelectorAll('input, select, textarea')) {
+      if (!visible(el) || el.closest('[data-dev-only]')) continue
+      const type = (el.getAttribute('type') ?? '').toLowerCase()
+      if (type === 'hidden' || type === 'submit' || type === 'button') continue
+      const id = el.getAttribute('id')
+      const named = !!el.getAttribute('aria-label')
+        || !!el.getAttribute('aria-labelledby')
+        || !!el.closest('label')
+        || (!!id && !!document.querySelector(`label[for="${CSS.escape(id)}"]`))
+      if (named) continue
+      // Name the field by the text nearest to it, so the finding is actionable.
+      const near = el.closest('.onboarding-field, .form-row, label, div')
+      const text = (near?.querySelector('label')?.textContent ?? el.getAttribute('placeholder') ?? '').trim()
+      out.unnamed.push({
+        label: `${text || '—'} · ${el.tagName.toLowerCase()}${type ? `[${type}]` : ''}`,
+        why: near?.querySelector('label') ? 'יש <label> בלי htmlFor ובלי עטיפה' : 'אין תווית כלל',
+      })
+    }
+
     // ── Contrast (WCAG AA) ───────────────────────────────────────────────────────
     // Dark mode is where this bites: a muted grey chosen against white keeps its token
     // name in the dark palette and quietly stops being readable. No human rereads every
@@ -194,11 +219,11 @@ async function audit(page: Page) {
   }, { touchFloor: TOUCH_FLOOR, minFont: MIN_FONT })
 }
 
-async function check(page: Page, fixture: Fixture, route: string, where: string, theme: 'light' | 'dark' = 'light') {
+async function check(page: Page, fixture: Fixture, route: string, where: string, theme: 'light' | 'dark' = 'light', ready = '.bottom-nav') {
   await setTheme(page, theme)
   await stubSupabase(page, fixture)
   await page.goto(route)
-  await page.locator('.bottom-nav').waitFor({ state: 'visible', timeout: 30_000 })
+  await page.locator(ready).first().waitFor({ state: 'visible', timeout: 30_000 })
   await page.locator('.splash-overlay').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {})
   await page.waitForTimeout(800)
 
@@ -220,6 +245,7 @@ async function check(page: Page, fixture: Fixture, route: string, where: string,
   }
   for (const t of r.tiny) findings.push({ rule: `טקסט < ${MIN_FONT}px`, where, detail: `${t.label} — ${t.px}px` })
   for (const c of r.contrast) findings.push({ rule: 'ניגודיות מתחת ל-AA', where, detail: `${c.label} — ${c.ratio}:1 (נדרש ${c.need}) · ${c.fg} על ${c.bg}` })
+  for (const u of r.unnamed) findings.push({ rule: 'שדה בלי שם נגיש', where, detail: `${u.label} — ${u.why}` })
   for (const p of r.physical) findings.push({ rule: 'left/right פיזי ב-style', where, detail: p })
 }
 
@@ -253,6 +279,9 @@ test.afterAll(async () => {
     '',
     '*ניגודיות* נמדדת מול הצבע שבאמת מצויר מאחור (שכבות שקופות מורכבות עד לאטום);',
     'טקסט מעל תמונה או מעבר-צבע מדולג — שם אין מספר אחד למדוד מולו.',
+    '',
+    '*שם נגיש* — לכל שדה חייבת להיות תווית שקשורה אליו (htmlFor, עטיפה, או aria-label).',
+    'תווית שרק יושבת לידו היא טקסט: קורא-מסך לא יקריא אותה, ולחיצה עליה לא ממקדת את השדה.',
     '',
     'לא נבדק (עדיין): מצבי פוקוס, ומסכים שמאחורי אינטראקציה (מודאלים, טפסים) —',
     'אלה דורשים תסריט לחיצות ולא רק טעינה.',
@@ -300,6 +329,32 @@ test('הנכס · טרם מסירה', async ({ page }) => {
 test('הנכס · מושכרת', async ({ page }) => {
   await check(page, leased({ rentPaid: true }), '/property', 'הנכס · מושכרת')
 })
+// The wizard: the app's most important screen and the only route with a real form on it,
+// so it is the only place these checks can see a text field at all.
+const emptyAccount: Fixture = {
+  owners: [{ id: '00000000-0000-0000-0000-0000000000aa', name: 'אח של איתי' }],
+  properties: [], mortgages: [], mortgage_tracks: [], investment_costs: [],
+  contracts: [], loans: [], insurance_policies: [], transactions: [],
+  recurring_items: [], tasks: [], documents: [], push_subscriptions: [],
+}
+test('אשף · פרטי רכישה', async ({ page }) => {
+  await setTheme(page, 'light')
+  await stubSupabase(page, emptyAccount)
+  await page.goto('/')
+  await page.locator('.onboarding-welcome').waitFor({ state: 'visible', timeout: 30_000 })
+  await page.locator('.btn-onboard-primary').last().click()   // מתחילים
+  await page.waitForTimeout(500)
+  await page.locator('.btn-onboard-primary').last().click()   // מסמכים → פרטי רכישה
+  await page.locator('.onboarding-field input').first().waitFor({ state: 'visible' })
+  await page.waitForTimeout(400)
+  const r = await audit(page)
+  expect(r.dir).toBe('rtl')
+  expect(r.overflow, `אשף: the page scrolls sideways by ${r.overflow}px`).toBeLessThanOrEqual(1)
+  for (const u of r.unnamed) findings.push({ rule: 'שדה בלי שם נגיש', where: 'אשף · פרטי רכישה', detail: `${u.label} — ${u.why}` })
+  for (const t of r.tiny) findings.push({ rule: `טקסט < ${MIN_FONT}px`, where: 'אשף · פרטי רכישה', detail: `${t.label} — ${t.px}px` })
+  for (const c of r.contrast) findings.push({ rule: 'ניגודיות מתחת ל-AA', where: 'אשף · פרטי רכישה', detail: `${c.label} — ${c.ratio}:1 (נדרש ${c.need}) · ${c.fg} על ${c.bg}` })
+})
+
 // The staging-only process drawing is held to the same bar — a preview nobody can tap
 // is not a preview.
 test('תצוגת התהליך', async ({ page }) => {

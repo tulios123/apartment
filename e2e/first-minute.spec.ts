@@ -1,0 +1,110 @@
+import { test, type Page } from '@playwright/test'
+import { stubSupabase, type Fixture } from './lib/stub'
+import { saveShot, setTheme } from './lib/helpers'
+import { OWNER, d } from './lib/fixtures'
+
+/**
+ * The first minute — walked as the brother.
+ *
+ * The owner's whole reason for this work was "יש חבר ואח שלי שנכנסו לאפליקציה אבל עוד
+ * לפני העברת המפתח", and "הדקה הראשונה באפליקציה זו הנקודה החשובה ביותר". A week of work
+ * later, nobody had LOOKED at that minute: the wizard has never been rendered here.
+ *
+ * So this spec plays that person. It answers only what a buyer before handover can
+ * honestly answer, skips what he cannot, and photographs every step — including the ones
+ * where the honest answer is "I don't know yet".
+ *
+ * An empty account (no property) is what routes the app into the wizard, so the fixture
+ * is deliberately bare.
+ */
+test.use({
+  launchOptions: {
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    proxy: { server: process.env.HTTPS_PROXY ?? '', bypass: 'localhost,127.0.0.1' },
+  },
+})
+
+/** A brand-new account: the user exists, nothing else does. */
+const empty: Fixture = {
+  owners: [{ id: OWNER, name: 'אח של איתי' }],
+  properties: [], mortgages: [], mortgage_tracks: [], investment_costs: [],
+  contracts: [], loans: [], insurance_policies: [], transactions: [],
+  recurring_items: [], tasks: [], documents: [], push_subscriptions: [],
+}
+
+async function startWizard(page: Page) {
+  await setTheme(page, 'light')
+  await stubSupabase(page, empty)
+  await page.addInitScript(() => {
+    // A leftover draft from another run would hydrate the wizard mid-way and the walk
+    // would photograph the wrong thing (the wizard backs its state up per user id).
+    for (const k of Object.keys(localStorage)) if (k.startsWith('onboarding_draft')) localStorage.removeItem(k)
+  })
+  await page.goto('/')
+  await page.locator('.onboarding-welcome, .onboarding-wrap').first().waitFor({ state: 'visible', timeout: 30_000 })
+  await page.waitForTimeout(700)
+}
+
+async function step(page: Page, name: string) {
+  await page.waitForTimeout(500)
+  await saveShot(page, 'onboarding', name, 'light')
+}
+
+/** The step's own primary CTA — the one a person taps to move on. */
+async function cont(page: Page) {
+  await page.locator('.btn-onboard-primary').last().click()
+  await page.waitForTimeout(700)
+}
+
+test('the first minute, as a buyer who has not got the key', async ({ page }) => {
+  await startWizard(page)
+  await step(page, '1-welcome')
+
+  await cont(page)                      // מתחילים → documents
+  await step(page, '2-documents')
+
+  await cont(page)                      // → purchase
+  await step(page, '3-purchase-empty')
+
+  // What he can answer honestly. Signing happened; handover has a date; everything about
+  // living in the flat does not exist yet.
+  //
+  // By LABEL — and that is the point. On the first walk getByLabel found nothing here:
+  // every <label> in the wizard was decorative text with no htmlFor and no wrapping, so a
+  // screen reader announced unnamed edit boxes and tapping a label focused nothing. This
+  // step's labels are now real, and this locator is what keeps them real.
+  await page.getByLabel('שם הרוכש').fill('אח של איתי')
+  await page.getByLabel('רחוב').fill('הרצל 45')
+  await page.getByLabel('עיר').fill('תל אביב')
+  await page.getByLabel('מחיר רכישה (₪)').fill('1850000')
+
+  // The two dates are not inputs at all — DateField is a button that opens a calendar.
+  // Photograph it: it is a first-minute surface nobody here had ever seen either.
+  await page.locator('.datefield').last().click()
+  await page.locator('.calpop').waitFor({ state: 'visible' })
+  await step(page, '4a-calendar')
+  // Seven months forward, then a day — the buyer's real gesture for "מסירה באפריל".
+  for (let i = 0; i < 7; i++) await page.locator('.calpop-nav').first().click()
+  await page.locator('.calpop-day:not(.blank):not([disabled])').nth(9).click()
+  await page.locator('.calpop').waitFor({ state: 'detached' }).catch(() => {})
+  await page.waitForTimeout(400)
+  await step(page, '4-purchase-filled')
+
+  await cont(page)
+  await step(page, '5-mortgage')
+
+  await cont(page)
+  await step(page, '6-loans')
+
+  await cont(page)
+  await step(page, '7-investment')
+
+  await cont(page)
+  await step(page, '8-rental')
+
+  await cont(page)
+  await step(page, '9-insurance')
+
+  await cont(page)
+  await step(page, '10-done')
+})
