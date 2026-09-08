@@ -44,6 +44,8 @@
   .padm-binder-lease span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .padm-binder-lease.is-active { color: var(--success-text); background: var(--success-bg); }
   .padm-binder-lease.is-none { color: var(--warning-text); background: var(--warning-bg); }
+  /* Waiting for handover is a state, not a warning — neutral, not amber. */
+  .padm-binder-lease.is-waiting { color: var(--text-muted); background: var(--bg-alt); }
 
   /* Read-only utility responsibility chips (contract card) */
   .padm-util-chips-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }

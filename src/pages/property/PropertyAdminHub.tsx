@@ -11,7 +11,8 @@ import DocumentsV2 from '../documents/DocumentsV2'
 import { usePropertyData, createProperty, updateProperty } from '../../hooks/usePropertyData'
 import { useAuth } from '../../contexts/AuthContext'
 import { activeContract as findActiveContract } from '../../lib/projections'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { possession, countdownLabel } from '../../lib/stage'
+import { formatCurrency, formatDate, todayISO, daysBetween } from '../../lib/format'
 import type { Property } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { PageError } from '../../components/ui/EmptyState'
@@ -47,6 +48,17 @@ export default function PropertyAdminHub() {
 
   const { property, contracts, loading, error, refetch } = usePropertyData()
   const [showModal, setShowModal] = useState(false)
+  // Before handover there is no lease to manage and none should be signed yet, so opening
+  // on the contract tab greets a buyer with an empty state and a CTA he must not act on.
+  // Land him on משימות instead — the one tab that has something for him today. Only the
+  // FIRST load moves; a deep link (`section`) and any tap of his own win outright.
+  const [stageDefaultApplied, setStageDefaultApplied] = useState(false)
+  const awaitingKey = possession(property?.key_delivery_date, todayISO()) === 'awaiting_key'
+  useEffect(() => {
+    if (section || stageDefaultApplied || !property) return
+    setStageDefaultApplied(true)
+    if (awaitingKey) setTab('tasks')
+  }, [section, stageDefaultApplied, property, awaitingKey])
 
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
   const activeTenant = findActiveContract(contracts)?.company_name ?? null
@@ -108,9 +120,16 @@ export default function PropertyAdminHub() {
               </button>
             </div>
             {property && (
-              <div className={`padm-binder-lease${activeTenant ? ' is-active' : ' is-none'}`}>
+              /* "אין חוזה שכירות" in warning amber is a problem statement. Before handover
+                 it is not a problem — it is the only correct state — so the chip states
+                 where the apartment is instead of scolding him for a lease he cannot sign. */
+              <div className={`padm-binder-lease${activeTenant ? ' is-active' : awaitingKey ? ' is-waiting' : ' is-none'}`}>
                 <UserCircle size={15} weight="duotone" />
-                <span>{activeTenant ? `${activeTenant} · חוזה פעיל` : 'אין חוזה שכירות'}</span>
+                <span>
+                  {activeTenant ? `${activeTenant} · חוזה פעיל`
+                    : awaitingKey ? `טרם נמסרה · ${countdownLabel(daysBetween(todayISO(), property.key_delivery_date!))}`
+                    : 'אין חוזה שכירות'}
+                </span>
               </div>
             )}
             {(extraParts.length > 0 || property?.notes) && (

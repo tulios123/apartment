@@ -303,7 +303,11 @@ export default function FinancesV2() {
   const income = view === 'month' ? mIncome : view === 'year' ? yearTotals.income : rangeTotals.income
   const expense = view === 'month' ? mExpense : view === 'year' ? yearTotals.expense : rangeTotals.expense
   const net = income - expense
-  const inPct = income + expense > 0 ? (income / (income + expense)) * 100 : 50
+  // A month with no money at all must not paint a ratio. The old default of 50
+  // drew a confident half-green/half-red bar over nothing — the buyer before
+  // handover saw a balanced month that never happened.
+  const hasMoney = income + expense > 0
+  const inPct = hasMoney ? (income / (income + expense)) * 100 : 0
   // A future month's balance is entirely forecast (rent/mortgage not yet booked),
   // so it must not read like a settled past month — badge the header with "צפי".
   const monthIsForecast = view === 'month' && isForecastMonth(year, month, today)
@@ -499,7 +503,7 @@ export default function FinancesV2() {
           {view === 'month' ? 'מאזן החודש' : view === 'year' ? 'מאזן השנה' : 'מאזן התקופה'}
           {(monthIsForecast || periodSummary.hasFuture) && <span className="finv-summary-forecast">כולל תחזית</span>}
         </div>
-        <div className={`finv-summary-net ${net >= 0 ? 'pos' : 'neg'}`}>{formatSignedCurrency(net)}</div>
+        <div className={`finv-summary-net ${net > 0 ? 'pos' : net < 0 ? 'neg' : 'zero'}`}>{formatSignedCurrency(net)}</div>
         {/* The principal lens (owner, 27.07): a mortgage payment isn't all cost — the
             principal part comes back to you as equity. Two quiet lines, not a card. */}
         {periodSummary.principal > 0 && (
@@ -517,10 +521,12 @@ export default function FinancesV2() {
             <span>בפועל עד היום<b>{formatSignedCurrency(periodSummary.actualNet)}</b></span>
           </div>
         )}
-        <div className="finv-summary-bar"><div className="in" style={{ width: `${inPct}%` }} /><div className="out" style={{ width: `${100 - inPct}%` }} /></div>
+        <div className="finv-summary-bar">
+          {hasMoney && <><div className="in" style={{ width: `${inPct}%` }} /><div className="out" style={{ width: `${100 - inPct}%` }} /></>}
+        </div>
         <div className="finv-summary-tiles">
-          <div className="finv-summary-tile in"><span className="finv-summary-tile-label"><ArrowDown size={13} weight="bold" /> הכנסות</span><span className="finv-summary-tile-value">{fmt(income)}</span></div>
-          <div className="finv-summary-tile out"><span className="finv-summary-tile-label"><ArrowUp size={13} weight="bold" /> הוצאות</span><span className="finv-summary-tile-value">{fmt(expense)}</span></div>
+          <div className={`finv-summary-tile in${income > 0 ? '' : ' zero'}`}><span className="finv-summary-tile-label"><ArrowDown size={13} weight="bold" /> הכנסות</span><span className="finv-summary-tile-value">{fmt(income)}</span></div>
+          <div className={`finv-summary-tile out${expense > 0 ? '' : ' zero'}`}><span className="finv-summary-tile-label"><ArrowUp size={13} weight="bold" /> הוצאות</span><span className="finv-summary-tile-value">{fmt(expense)}</span></div>
         </div>
       </div>
 

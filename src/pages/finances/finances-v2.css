@@ -31,6 +31,10 @@
   .finv-summary-net { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; text-align: start; }
   .finv-summary-net.pos { color: var(--success-text); }
   .finv-summary-net.neg { color: var(--danger-text); }
+  /* Zero is not good news. Green on 0 ₪ reads as a healthy month to someone who
+     has simply had no movement yet (a buyer before handover sees a screen of
+     green zeros). Neutral says "nothing here", which is the truth. */
+  .finv-summary-net.zero { color: var(--text-muted); }
   .finv-summary-bar { display: flex; height: 8px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 18px 0 14px; background: var(--bg-alt); }
   .finv-summary-bar .in { background: var(--success); }
   .finv-summary-bar .out { background: var(--danger); }
@@ -40,6 +44,7 @@
   .finv-summary-tile-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .finv-summary-tile.in .finv-summary-tile-value { color: var(--success-text); }
   .finv-summary-tile.out .finv-summary-tile-value { color: var(--danger-text); }
+  .finv-summary-tile.zero .finv-summary-tile-value { color: var(--text-muted); }
 
   /* NL capture */
   /* Primary add-transaction button (replaces the free-text capture box) */
