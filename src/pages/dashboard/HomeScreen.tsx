@@ -639,7 +639,10 @@ export default function HomeScreen() {
 
                 <p className="hs-flow-note">
                   {!activeContract
-                    ? 'הוסיפו חוזה שכירות כדי לראות גם הכנסה.'
+                    // The invitation card directly above already says this, with a
+                    // button. Repeating it as a note is the same duplication as the
+                    // stacked all-clear messages (brains-tour, 08.09).
+                    ? ''
                     : rentCleared
                     // Was a third "all clear" on one screen, after the status line and
                     // the action-centre card. The audit flagged the duplication in July
