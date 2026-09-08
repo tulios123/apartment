@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { FileText, ShieldCheck, CheckSquare, FolderOpen, UserCircle, PencilSimple , Wrench } from '@phosphor-icons/react'
 import { PropertyForm } from './PropertyForm'
@@ -52,13 +52,13 @@ export default function PropertyAdminHub() {
   // on the contract tab greets a buyer with an empty state and a CTA he must not act on.
   // Land him on משימות instead — the one tab that has something for him today. Only the
   // FIRST load moves; a deep link (`section`) and any tap of his own win outright.
-  const [stageDefaultApplied, setStageDefaultApplied] = useState(false)
+  const stageDefaultApplied = useRef(false)
   const awaitingKey = possession(property?.key_delivery_date, todayISO()) === 'awaiting_key'
   useEffect(() => {
-    if (section || stageDefaultApplied || !property) return
-    setStageDefaultApplied(true)
+    if (section || stageDefaultApplied.current || !property) return
+    stageDefaultApplied.current = true
     if (awaitingKey) setTab('tasks')
-  }, [section, stageDefaultApplied, property, awaitingKey])
+  }, [section, property, awaitingKey])
 
   const propertyValue = property?.estimated_value ?? property?.purchase_price ?? 0
   const activeTenant = findActiveContract(contracts)?.company_name ?? null

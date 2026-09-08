@@ -88,7 +88,10 @@
   .finv-breakdown-body { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.35s var(--ease), opacity 0.3s var(--ease); }
   .finv-breakdown.open .finv-breakdown-body { max-height: 420px; opacity: 1; }
   .finv-breakdown-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 11px; }
-  .finv-bd-row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; width: 100%; border: none; background: none; padding: 4px 0; font-family: inherit; text-align: inherit; cursor: pointer; border-radius: var(--r-sm); transition: background var(--t-fast); }
+  /* A filter row is a tap target, and at 4px padding it stood 23px tall — half the 44px
+     floor the project set itself (design-checks.spec.ts measures it). The padding grows,
+     the type does not, so the list reads the same and can actually be hit. */
+  .finv-bd-row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; width: 100%; min-height: 44px; border: none; background: none; padding: 6px 4px; font-family: inherit; text-align: inherit; cursor: pointer; border-radius: var(--r-sm); transition: background var(--t-fast); }
   .finv-bd-row:hover { background: var(--bg-alt); }
   .finv-bd-row.active { background: var(--accent-light); }
   .finv-bd-row.active .finv-bd-label, .finv-bd-row.active .finv-bd-amount { color: var(--accent); }
