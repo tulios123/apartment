@@ -118,7 +118,7 @@ export function PreKeyCard({ property, tracks, loans, policies, contracts, today
           </div>
           {/* An unlabelled part-filled bar reads as something broken or disabled. Say
               what it measures. */}
-          <span className="hs-milestone-progress-label">מהחתימה על החוזה ועד המסירה</span>
+          <span className="hs-milestone-progress-label">מהחתימה עד המסירה</span>
         </div>
       )}
 
@@ -186,7 +186,7 @@ export function PreKeyCard({ property, tracks, loans, policies, contracts, today
                   than it is. */}
               {firstPrincipal > 0 && (
                 <p className="hs-prekey-note">
-                  מתוך התשלום, {formatCurrency(firstPrincipal)} חוזרים אליכם כהון — חיסכון, לא הוצאה.
+                  {formatCurrency(firstPrincipal)} מזה הון.
                 </p>
               )}
             </>
@@ -197,8 +197,8 @@ export function PreKeyCard({ property, tracks, loans, policies, contracts, today
 
       <p className="hs-flow-note">
         {expectedRent > 0
-          ? 'שכר הדירה הוא הערכה שלכם — שנו אותו וראו איך התזרים זז.'
-          : 'ההכנסה מהשכירות תתחיל אחרי מסירת המפתח. עד אז אין תשלומים חודשיים לעקוב אחריהם.'}
+          ? 'שכר הדירה הוא הערכה — אפשר לשנות.'
+          : 'ההכנסה תתחיל אחרי המסירה.'}
       </p>
     </div>
   )

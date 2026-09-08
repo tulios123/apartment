@@ -587,6 +587,10 @@ export default function HomeScreen() {
                     </span>
                     <span className="hs-flow-amt muted out">{formatSignedCurrency(-fixedExpenses)}</span>
                   </div>
+                  {/* Under the row, not inside the amount — nested it forced the label to
+                      wrap. The headline is cash out; without this the home contradicts the
+                      Wealth screen, where the same month reads as equity being built. */}
+                  {fixedPrincipal > 0 && <div className="hs-flow-sub">{fmt(fixedPrincipal)} מזה הון</div>}
                 </div>
 
                 {extraIncome > 0 && (
@@ -633,24 +637,15 @@ export default function HomeScreen() {
                   </div>
                 )}
 
-                {/* The headline is cash out of pocket. Naming the part that is savings
-                    keeps the home from contradicting the Wealth screen, where the same
-                    month reads as equity being built. */}
-                {fixedPrincipal > 0 && (
-                  <p className="hs-flow-principal">
-                    מתוך התשלומים הקבועים, {fmt(fixedPrincipal)} בונים לכם הון — חיסכון, לא הוצאה.
-                  </p>
-                )}
-
                 <p className="hs-flow-note">
                   {!activeContract
-                    ? 'הצפי כולל רק את ההוצאות הקבועות. הוסיפו חוזה שכירות כדי לראות גם את ההכנסה.'
+                    ? 'הוסיפו חוזה שכירות כדי לראות גם הכנסה.'
                     : rentCleared
                     // Was a third "all clear" on one screen, after the status line and
                     // the action-centre card. The audit flagged the duplication in July
                     // (כפילות-רוגע); this is the copy that adds least.
                     ? ''
-                    : 'הסכום מבוסס על הצפי החודשי. הוא יתעדכן כששכר הדירה ייכנס בפועל.'}
+                    : 'כולל שכר דירה שטרם נכנס.'}
                 </p>
               </div>
             )}

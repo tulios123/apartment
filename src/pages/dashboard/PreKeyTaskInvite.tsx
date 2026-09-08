@@ -80,7 +80,7 @@ export function PreKeyTaskInvite({ keyDate, today, propertyId, onSeeded }: {
       <span className="hs-addlease-text">
         <span className="hs-addlease-title">{plan.length} דברים לסדר עד המסירה</span>
         <span className="hs-addlease-sub">
-          ביטוח, ביצוע המשכנתא, בדיקת ליקויים, שוכר — נזכיר לכם כשכל אחד מגיע
+          ביטוח, משכנתא, ליקויים, שוכר — כל אחד בזמנו
         </span>
         {error && <span className="hs-addlease-sub" role="alert">{error}</span>}
       </span>

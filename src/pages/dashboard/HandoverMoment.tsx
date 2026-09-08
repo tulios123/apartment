@@ -54,10 +54,9 @@ export function HandoverMoment({ propertyId, keyDate, today, hasLease }: {
           {sinceHandover === 0 ? 'המפתח שלך — מהיום הדירה ברשותך' : 'הדירה ברשותך'}
         </div>
         <p className="hs-handover-text">
-          {sinceHandover === 0 ? 'מסירה היום' : `נמסרה ב-${formatDate(keyDate)}`}
+          {sinceHandover === 0 ? 'מסירה היום' : formatDate(keyDate)}
           {' · '}
-          מכאן האפליקציה עוברת למעקב חודשי — התשלומים הקבועים מתחילים לרוץ.
-          {!hasLease && ' כשיהיה שוכר, גם ההכנסה תיכנס לתמונה.'}
+          מכאן המעקב החודשי מתחיל.
         </p>
         {!hasLease && (
           <button type="button" className="hs-handover-cta" onClick={() => navigate('/property/rental')}>
