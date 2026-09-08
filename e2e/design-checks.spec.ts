@@ -46,6 +46,7 @@ async function audit(page: Page) {
       scanned: 0,
       small: [] as { label: string; w: number; h: number }[],
       tiny: [] as { label: string; px: number }[],
+      contrast: [] as { label: string; ratio: number; need: number; fg: string; bg: string }[],
       physical: [] as string[],
     }
 
@@ -122,6 +123,63 @@ async function audit(page: Page) {
       if (px && px < minFont) out.tiny.push({ label: label(el), px: Math.round(px * 10) / 10 })
     }
 
+    // ── Contrast (WCAG AA) ───────────────────────────────────────────────────────
+    // Dark mode is where this bites: a muted grey chosen against white keeps its token
+    // name in the dark palette and quietly stops being readable. No human rereads every
+    // label in both themes; this does.
+    const parse = (c: string): [number, number, number, number] | null => {
+      const m = c.match(/rgba?\(([^)]+)\)/)
+      if (!m) return null
+      const p = m[1].split(',').map(v => parseFloat(v))
+      return [p[0], p[1], p[2], p[3] == null ? 1 : p[3]]
+    }
+    const lum = ([r, g, b]: number[]) => {
+      const f = (v: number) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4) }
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+    }
+    /** The colour actually painted behind an element, or null when an image/gradient is. */
+    const behind = (el: Element): [number, number, number] | null => {
+      let node: Element | null = el
+      let acc: [number, number, number, number] | null = null
+      while (node) {
+        const st = getComputedStyle(node)
+        if (st.backgroundImage && st.backgroundImage !== 'none') return null // gradient/photo — not measurable
+        const c = parse(st.backgroundColor)
+        if (c && c[3] > 0) {
+          acc = acc == null ? c : [
+            acc[0] * acc[3] + c[0] * (1 - acc[3]),
+            acc[1] * acc[3] + c[1] * (1 - acc[3]),
+            acc[2] * acc[3] + c[2] * (1 - acc[3]),
+            acc[3] + c[3] * (1 - acc[3]),
+          ]
+          if (acc[3] >= 0.99) return [acc[0], acc[1], acc[2]]
+        }
+        node = node.parentElement
+      }
+      return acc ? [acc[0], acc[1], acc[2]] : null
+    }
+
+    for (const el of document.querySelectorAll('body *')) {
+      if (!visible(el) || el.closest('[data-dev-only]')) continue
+      const text = Array.from(el.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent ?? '').join('').trim()
+      if (text.length < 2) continue
+      const st = getComputedStyle(el)
+      const fg = parse(st.color)
+      const bg = behind(el)
+      if (!fg || !bg || fg[3] < 0.99) continue // translucent text or an unmeasurable ground
+      const px = parseFloat(st.fontSize)
+      const bold = Number(st.fontWeight) >= 700
+      const need = px >= 24 || (px >= 18.66 && bold) ? 3 : 4.5
+      const l1 = lum(fg as unknown as number[])
+      const l2 = lum(bg)
+      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
+      // No tolerance: the project's own foundations note says you cannot round up —
+      // "#777 at 4.47:1 fails" (docs/audit/UX_FOUNDATIONS.md).
+      if (ratio < need) {
+        out.contrast.push({ label: label(el), ratio: Math.round(ratio * 100) / 100, need, fg: st.color, bg: `rgb(${bg.map(Math.round).join(', ')})` })
+      }
+    }
+
     // RTL is a project rule, not a preference: physical left/right in an INLINE style is
     // how a layout silently mirrors wrong. (Stylesheets are audited by eye; inline styles
     // are the ones written in a hurry.)
@@ -161,6 +219,7 @@ async function check(page: Page, fixture: Fixture, route: string, where: string,
     findings.push({ rule: `מטרת-מגע < ${TOUCH_FLOOR}px`, where, detail: `${s.label} — ${s.w}×${s.h}` })
   }
   for (const t of r.tiny) findings.push({ rule: `טקסט < ${MIN_FONT}px`, where, detail: `${t.label} — ${t.px}px` })
+  for (const c of r.contrast) findings.push({ rule: 'ניגודיות מתחת ל-AA', where, detail: `${c.label} — ${c.ratio}:1 (נדרש ${c.need}) · ${c.fg} על ${c.bg}` })
   for (const p of r.physical) findings.push({ rule: 'left/right פיזי ב-style', where, detail: p })
 }
 
@@ -192,8 +251,11 @@ test.afterAll(async () => {
     'וטקסט מתחת ל-11px. שני הספים הם מוסכמה של הפרויקט, לא חוק — 10.5px בתווית ניווט',
     'הוא בגבול המקובל, וההכרעה שלך.',
     '',
-    'לא נבדק (עדיין): ניגודיות צבע, מצבי פוקוס, ומסכים שמאחורי אינטראקציה (מודאלים,',
-    'טפסים) — אלה דורשים תסריט לחיצות ולא רק טעינה.',
+    '*ניגודיות* נמדדת מול הצבע שבאמת מצויר מאחור (שכבות שקופות מורכבות עד לאטום);',
+    'טקסט מעל תמונה או מעבר-צבע מדולג — שם אין מספר אחד למדוד מולו.',
+    '',
+    'לא נבדק (עדיין): מצבי פוקוס, ומסכים שמאחורי אינטראקציה (מודאלים, טפסים) —',
+    'אלה דורשים תסריט לחיצות ולא רק טעינה.',
     '',
     grouped.size === 0 ? '**אין ממצאים.**' : `**${grouped.size} ממצאים ייחודיים** (${findings.length} מופעים על פני ${new Set(findings.map(f => f.where)).size} מסכים).`,
     '',
