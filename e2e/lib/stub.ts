@@ -11,6 +11,20 @@ import type { Page, Route } from '@playwright/test'
  *
  * Fixtures are keyed by table so a spec can describe an account ("a buyer seven months
  * from handover") instead of assembling rows.
+ *
+ * HOW TO RUN (neither part is obvious, both were found the hard way):
+ *
+ *   node node_modules/@playwright/test/cli.js test e2e/home-states.spec.ts --project=pixel7
+ *
+ *  1. Use @playwright/test's OWN cli.js. `npx playwright` resolves a different, newer
+ *     playwright in node_modules and fails with "test() was not expected to be called
+ *     here" — the classic two-versions error.
+ *  2. Each spec must set launchOptions with `executablePath` (the image ships Chromium
+ *     1194, this repo's Playwright wants 1228) and `proxy: { server: HTTPS_PROXY }` —
+ *     without the proxy the browser cannot reach anything and the app hangs at login.
+ *     WebKit is not installed here; --project=pixel7 (Chromium) is the one that runs.
+ *
+ * Screenshots land in docs/audit/evidence/ via saveShot().
  */
 export type Fixture = Record<string, unknown[]>
 
