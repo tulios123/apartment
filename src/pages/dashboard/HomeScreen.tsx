@@ -21,9 +21,11 @@ import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks, nextScheduledT
 import { nextDueDate } from '../../lib/recurrence'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
 import { possession } from '../../lib/stage'
-import { PreKeyCard } from './PreKeyCard'
-import { PreKeyTaskInvite } from './PreKeyTaskInvite'
 import { HandoverMoment } from './HandoverMoment'
+import { PurchaseMap } from '../purchase/PurchaseMap'
+import { PlanSetup } from '../purchase/PlanSetup'
+import { loadPlan, savePlan, type PurchasePlan } from '../../lib/purchasePlan'
+import '../purchase/purchase.css'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -101,6 +103,14 @@ export default function HomeScreen() {
   // Signed but not yet handed over. Derived, never stored — and a blank or past date
   // reads as possession, so every existing account behaves exactly as before.
   const awaitingKey = possession(property?.key_delivery_date, todayStr) === 'awaiting_key'
+
+  // The payment plan — the centre of this stage (docs/specs/purchase-stage.md). Stored
+  // locally for now and read through lib/purchasePlan, so moving it to Postgres later
+  // touches that module alone.
+  const [plan, setPlan] = useState<PurchasePlan | null>(null)
+  const [planSetup, setPlanSetup] = useState(false)
+  useEffect(() => { if (user?.id) setPlan(loadPlan(user.id)) }, [user?.id])
+  const commitPlan = (p: PurchasePlan) => { setPlan(p); if (user?.id) savePlan(user.id, p) }
 
   // The rent prompt must not appear before the rent is payable: with a post-dated
   // cheque there is literally nothing to deposit before the date written on it, so
@@ -380,6 +390,12 @@ export default function HomeScreen() {
           )}
 
           {/* ── Action Center ── */}
+          {/* Before the key, the payment map IS the action centre: everything open is on it,
+              in order. A second card saying "nothing to do today" beneath a run of fifteen
+              open items is the duplicate-reassurance problem again (brains-tour, finding 2)
+              — and this time it is also untrue. Real tasks still surface; only the empty
+              state steps aside. */}
+          {!(awaitingKey && plan && actions.length === 0) && (
           <section className="hs-actions">
             {loadingActions ? (
               <Skeleton width="100%" height={78} radius={18} />
@@ -480,6 +496,7 @@ export default function HomeScreen() {
               </button>
             ) : null}
           </section>
+          )}
 
           {/* ── Quick capture ── Two clear, structured entries. The free-text bar was
               removed (owner, 25.07): its Hebrew parser was only lightly reliable and it
@@ -502,7 +519,7 @@ export default function HomeScreen() {
           {/* ── Calm cash flow ── */}
           <section className="hs-flow">
             <div className="hs-flow-head">
-              <h2>{awaitingKey ? 'הדירה שלך' : 'תזרים החודש'}</h2>
+              <h2>{awaitingKey ? 'לוח התשלומים' : 'תזרים החודש'}</h2>
               {/* No cash-flow framing before handover (owner, 07.09): there is no monthly
                   flow yet, so a link into the ledger points at an empty screen. */}
               {!awaitingKey && (
@@ -514,20 +531,18 @@ export default function HomeScreen() {
             ) : awaitingKey && property ? (
               /* Before handover the month-shaped card is arithmetic on the wrong clock —
                  it correctly totals ₪0. This one measures the distance to the date. */
-              <>
-                <PreKeyCard
-                  property={property} tracks={tracks} loans={loans} policies={policies}
-                  contracts={contracts} today={todayStr}
-                />
-                <PreKeyTaskInvite
-                  keyDate={property.key_delivery_date!}
-                  today={todayStr}
-                  propertyId={property.id}
-                  // The card disappearing is not confirmation — say what happened
-                  // (heuristic 1), the same way every other committing action here does.
-                  onSeeded={n => { refetchTasks(); showFlash(`${n} משימות נוספו`) }}
-                />
-              </>
+              plan ? (
+                <PurchaseMap plan={plan} onChange={commitPlan} onSetup={() => setPlanSetup(true)} />
+              ) : (
+                <div className="pmap-empty">
+                  <h3>לוח התשלומים שלך</h3>
+                  <p>
+                    מה תנאי התשלום בחוזה — 10% ואז 15%, או אחרת? האחוזים ממך, הסכומים
+                    והמועדים מאיתנו, ומשם רואים תמיד מה התשלום הבא.
+                  </p>
+                  <button className="btn-primary" onClick={() => setPlanSetup(true)}>לבנות את הלוח</button>
+                </div>
+              )
             ) : (
               <div className="hs-flow-card">
                 <div className="hs-flow-headline">
@@ -681,6 +696,15 @@ export default function HomeScreen() {
         onCancel={() => setFollowup(null)}
       />
 
+      {planSetup && property && (
+        <PlanSetup
+          price={property.purchase_price ?? 0}
+          signing={property.purchase_date ?? todayStr}
+          handover={property.key_delivery_date ?? todayStr}
+          onDone={p => { commitPlan(p); setPlanSetup(false); showFlash('לוח התשלומים נבנה') }}
+          onClose={() => setPlanSetup(false)}
+        />
+      )}
     </div>
   )
 }

@@ -1,0 +1,151 @@
+/* מהחתימה עד המפתח — the map and the plan setup.
+   Scoped to .pmap / .pln so nothing here can reach a screen that already works. */
+
+.pmap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── The headline: the next payment, and nothing competing with it ── */
+.pmap-next {
+  background: linear-gradient(150deg, var(--hero-navy) 0%, #16306b 100%);
+  color: #fff;
+  border-radius: var(--r-lg);
+  padding: 20px;
+  box-shadow: 0 14px 34px rgba(10, 31, 68, 0.28);
+}
+.pmap-next-label { font-size: 13px; opacity: 0.82; }
+.pmap-next-value {
+  font-size: 36px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05;
+  margin-top: 4px; font-variant-numeric: tabular-nums;
+}
+.pmap-next-when { font-size: 13px; opacity: 0.88; margin-top: 6px; }
+.pmap-next-when.is-over { color: #ffc7bb; opacity: 1; font-weight: 600; }
+
+/* ── The run ── */
+.pmap-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+.pmap-item {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 14px;
+  background: var(--bg-card);
+  border-inline-start: 3px solid transparent;
+  transition: background var(--t-fast) var(--ease);
+}
+.pmap-item:first-child { border-start-start-radius: var(--r-md); border-start-end-radius: var(--r-md); }
+.pmap-item:last-child { border-end-start-radius: var(--r-md); border-end-end-radius: var(--r-md); }
+.pmap-item + .pmap-item { border-top: 1px solid var(--border); }
+
+/* Only what is SETTLED is marked. The screen starts quiet and fills up. */
+.pmap-item.is-done { border-inline-start-color: var(--success); }
+.pmap-item.is-done .pmap-title { color: var(--text-muted); }
+.pmap-item.is-current { background: var(--accent-light); border-inline-start-color: var(--accent); }
+
+.pmap-mark {
+  flex-shrink: 0; width: 22px; height: 22px; margin-top: 1px;
+  border-radius: 50%; border: 1.5px solid var(--border-strong);
+  background: var(--bg-card); color: #fff; cursor: pointer;
+  display: grid; place-items: center; padding: 0;
+  transition: background var(--t-fast), border-color var(--t-fast);
+  /* The visible circle stays small; the touch target does not (44px, project floor). */
+  position: relative;
+}
+.pmap-mark::after { content: ""; position: absolute; inset: -12px; }
+.pmap-mark:hover { border-color: var(--accent); }
+.pmap-item.is-done .pmap-mark { background: var(--success); border-color: var(--success); }
+
+.pmap-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pmap-title { font-size: 14.5px; font-weight: 600; color: var(--text); }
+.pmap-meta { font-size: 12px; color: var(--text-secondary); }
+.pmap-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.pmap-note { font-size: 12px; color: var(--text-muted); }
+.pmap-over { color: var(--danger-text); font-weight: 600; }
+.pmap-wait { color: var(--warning-text); }
+.pmap-donetag { color: var(--success-text); font-weight: 600; }
+
+.pmap-amt {
+  flex-shrink: 0; align-self: center;
+  font-size: 14.5px; font-weight: 700; color: var(--brand-navy);
+  font-variant-numeric: tabular-nums;
+}
+.pmap-item.is-done .pmap-amt { color: var(--text-muted); font-weight: 600; }
+
+/* ── Progress: present, deliberately not the headline ── */
+.pmap-progress { background: var(--bg-card); border-radius: var(--r-md); padding: 14px; box-shadow: var(--shadow-sm); }
+.pmap-progress-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--text-muted); }
+.pmap-progress-top b { font-size: 14px; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+.pmap-track { height: 8px; border-radius: var(--r-pill); background: var(--bg-alt); overflow: hidden; margin-top: 9px; }
+.pmap-fill { height: 100%; background: var(--success); border-radius: var(--r-pill); transition: width var(--t-base) var(--ease); }
+.pmap-edit {
+  margin-top: 11px; width: 100%; min-height: 44px;
+  background: none; border: none; color: var(--accent);
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  border-radius: var(--r-md);
+}
+
+/* ── The invitation, before a plan exists ── */
+.pmap-empty { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 18px; }
+.pmap-empty h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--brand-navy); }
+.pmap-empty p { margin: 0 0 14px; font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
+
+/* ── Plan setup ─────────────────────────────────────────────────────────── */
+/* The Modal supplies chrome, not padding — its children pad themselves (the header's
+   own 28/18px is the house measure). Without this the sheet's content ran to the
+   screen edge and clipped the labels. */
+.pln-setup { display: flex; flex-direction: column; gap: 16px; padding: 2px 28px 24px; }
+@media (max-width: 480px) { .pln-setup { padding: 2px 18px 20px; } }
+.pln-lead { margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
+.pln-price {
+  display: flex; align-items: baseline; justify-content: space-between;
+  background: var(--bg-alt); border-radius: var(--r-md); padding: 12px 14px;
+}
+.pln-price span { font-size: 13px; color: var(--text-muted); }
+.pln-price b { font-size: 18px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+
+.pln-field { display: flex; flex-direction: column; gap: 9px; }
+.pln-label { font-size: 13px; font-weight: 600; color: var(--text); }
+.pln-splits { display: flex; flex-wrap: wrap; gap: 7px; }
+.pln-split {
+  min-height: 44px; padding: 0 15px; border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text);
+  font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.pln-split.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.pln-row { display: flex; gap: 10px; }
+.pln-custom { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.pln-custom span { font-size: 12.5px; color: var(--text-muted); }
+.pln-custom input {
+  min-height: 44px; border-radius: var(--r-sm); border: 1px solid var(--border-strong);
+  background: var(--bg-card); color: var(--text); font-family: inherit; font-size: 15px;
+  padding: 0 12px; text-align: start;
+}
+
+.pln-preview { background: var(--bg-alt); border-radius: var(--r-md); padding: 4px 14px; }
+.pln-prow { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; }
+.pln-prow + .pln-prow { border-top: 1px solid var(--border); }
+.pln-prow span { font-size: 13px; color: var(--text); }
+.pln-prow b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand-navy); }
+.pln-prow.muted span, .pln-prow.muted b { color: var(--text-muted); font-weight: 600; }
+
+.pln-seg { display: flex; gap: 4px; background: var(--bg-alt); padding: 4px; border-radius: var(--r-pill); }
+.pln-seg button {
+  flex: 1; min-height: 44px; border: none; background: none; border-radius: var(--r-pill);
+  font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+}
+.pln-seg button.on { background: var(--bg-card); color: var(--brand-navy); box-shadow: var(--shadow-sm); }
+
+.pln-tax { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.pln-tax b { font-size: 20px; font-weight: 800; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+.pln-tax span { font-size: 12px; color: var(--text-muted); }
+
+.pln-total {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-top: 14px; border-top: 1px solid var(--border-strong);
+}
+.pln-total span { font-size: 14px; font-weight: 600; }
+.pln-total b { font-size: 22px; font-weight: 800; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+.pln-foot { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.pln-cta { width: 100%; min-height: 48px; }

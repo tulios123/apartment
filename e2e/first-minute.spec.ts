@@ -1,7 +1,7 @@
 import { test, type Page } from '@playwright/test'
 import { stubSupabase, type Fixture } from './lib/stub'
 import { saveShot, setTheme } from './lib/helpers'
-import { OWNER, d } from './lib/fixtures'
+import { OWNER } from './lib/fixtures'
 
 /**
  * The first minute — walked as the brother.

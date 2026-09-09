@@ -13,6 +13,8 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { monthlyVirtualEntries } from '../../lib/projections'
+import { possession } from '../../lib/stage'
+import { FirstMonth } from './FirstMonth'
 import { splitForMonth } from '../../lib/equity'
 import { isForecastMonth } from '../../lib/forecast'
 import type { VirtualEntry } from '../../lib/projections'
@@ -467,6 +469,23 @@ export default function FinancesV2() {
   const categories = form.direction === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
   if (error) return <PageError message={error} onRetry={refetch} />
+
+  // Before the key there is no monthly cycle to browse — the present month is genuinely
+  // empty, and a month navigator over empty months is the screen the owner called broken.
+  // One month instead: the FIRST one, which is the thing he said he was afraid of.
+  if (possession(property?.key_delivery_date, todayISO()) === 'awaiting_key' && property?.key_delivery_date) {
+    return (
+      <div className="finv">
+        <FirstMonth
+          keyDate={property.key_delivery_date}
+          contracts={contracts}
+          tracks={mortgageTracks}
+          loans={loans}
+          policies={policies}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="finv">

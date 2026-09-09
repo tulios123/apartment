@@ -3,7 +3,6 @@ import { addMonths, scenarioData, SCENARIOS } from '../scenarios'
 import { monthlyVirtualEntries } from '../projections'
 import { daysBetween, parseLocalISO } from '../format'
 import type { MortgageTrack } from '../../types'
-import { purchaseTaskPlan } from '../purchaseTasks'
 import { possession, leaseStatus } from '../stage'
 
 const today = '2026-09-07'
@@ -117,10 +116,10 @@ describe('the near-handover scenario', () => {
     // back than that collapses onto today. This is the case where the list is densest,
     // and the one to judge the "don't overwhelm" rule against.
     const d = scenarioData('handover_soon', today)
-    const plan = purchaseTaskPlan(d.property.key_delivery_date as string, today)
-    const dueNow = plan.filter(t => t.due_date === today)
-    expect(dueNow.length).toBeGreaterThanOrEqual(3)
-    for (const t of plan) if (t.due_date) expect(t.due_date >= today).toBe(true)
+    // The seeded task list this used to assert against is gone (superseded by the payment
+    // plan, docs/specs/purchase-stage.md). What still matters about this scenario is that it
+    // really is the tight one: a handover close enough to crowd the map.
+    expect(daysBetween(today, d.property.key_delivery_date as string)).toBeLessThanOrEqual(21)
   })
 })
 

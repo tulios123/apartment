@@ -75,7 +75,10 @@ async function audit(page: Page) {
     // nonsense. Scroll the page in steps and measure only what is fully on screen —
     // getting this wrong is what made the first run flag five perfectly good rows.
     const measured = new Map<string, { label: string; w: number; h: number; ok: boolean }>()
-    const step = Math.round(window.innerHeight * 0.8)
+    // Half-viewport steps, not 0.8: a sticky header covers the top of the screen, so an
+    // element sampled only while it sits under the header would fail forever through no
+    // fault of its own. Overlapping windows give every element a clear look.
+    const step = Math.round(window.innerHeight * 0.5)
     for (let y = 0; y < document.documentElement.scrollHeight; y += step) {
       window.scrollTo(0, y)
       for (const el of document.querySelectorAll('button, a[href], input, select, [role="button"], [tabindex="0"]')) {
@@ -353,6 +356,30 @@ test('אשף · פרטי רכישה', async ({ page }) => {
   for (const u of r.unnamed) findings.push({ rule: 'שדה בלי שם נגיש', where: 'אשף · פרטי רכישה', detail: `${u.label} — ${u.why}` })
   for (const t of r.tiny) findings.push({ rule: `טקסט < ${MIN_FONT}px`, where: 'אשף · פרטי רכישה', detail: `${t.label} — ${t.px}px` })
   for (const c of r.contrast) findings.push({ rule: 'ניגודיות מתחת ל-AA', where: 'אשף · פרטי רכישה', detail: `${c.label} — ${c.ratio}:1 (נדרש ${c.need}) · ${c.fg} על ${c.bg}` })
+})
+
+// The payment map — the new main screen for the stage between signing and the key. Built
+// through the real flow, because a plan that only exists in a fixture proves nothing.
+test('בית · מפת התשלומים', async ({ page }) => {
+  await setTheme(page, 'light')
+  await stubSupabase(page, base(213))
+  await page.addInitScript(() => {
+    for (const k of Object.keys(localStorage)) if (k.startsWith('purchase_plan:')) localStorage.removeItem(k)
+  })
+  await page.goto('/')
+  await page.locator('.bottom-nav').waitFor({ state: 'visible', timeout: 30_000 })
+  await page.getByRole('button', { name: 'לבנות את הלוח' }).click()
+  await page.getByRole('button', { name: 'בניית הלוח' }).click()
+  await page.locator('.pmap').waitFor({ state: 'visible' })
+  await page.waitForTimeout(600)
+  const r = await audit(page)
+  expect(r.dir).toBe('rtl')
+  expect(r.overflow, `מפה: sideways by ${r.overflow}px`).toBeLessThanOrEqual(1)
+  const where = 'בית · מפת התשלומים'
+  for (const sm of r.small) findings.push({ rule: `מטרת-מגע < ${TOUCH_FLOOR}px`, where, detail: `${sm.label} — ${sm.w}×${sm.h}` })
+  for (const t of r.tiny) findings.push({ rule: `טקסט < ${MIN_FONT}px`, where, detail: `${t.label} — ${t.px}px` })
+  for (const u of r.unnamed) findings.push({ rule: 'שדה בלי שם נגיש', where, detail: `${u.label} — ${u.why}` })
+  for (const c of r.contrast) findings.push({ rule: 'ניגודיות מתחת ל-AA', where, detail: `${c.label} — ${c.ratio}:1 (נדרש ${c.need}) · ${c.fg} על ${c.bg}` })
 })
 
 // The staging-only process drawing is held to the same bar — a preview nobody can tap

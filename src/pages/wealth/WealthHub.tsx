@@ -8,6 +8,7 @@ import OwnershipScore from './OwnershipScore'
 import WealthAccelerator from './WealthAccelerator'
 import MonthlyResult from './MonthlyResult'
 import FinancingStructure from './FinancingStructure'
+import { DealStructure } from './DealStructure'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
@@ -15,6 +16,9 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { currentSplitInfo, futureSplit, principalNext12Months, interestNext12Months, splitForMonth } from '../../lib/equity'
 import { formatCurrency, todayISO, daysBetween } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
+import { possession } from '../../lib/stage'
+import { loadPlan, planTotals } from '../../lib/purchasePlan'
+import { useAuth } from '../../contexts/AuthContext'
 import { MAINTENANCE_CATEGORY } from '../../lib/constants'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
@@ -25,12 +29,21 @@ const fmt = (v: number) => formatCurrency(v)
 
 export default function WealthHub() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [editing, setEditing] = useState(false)
 
   const { property, contracts, loading: loadingProp, error: errProp, refetch: refetchProp } = usePropertyData()
   const { tracks, summary, loading: loadingMortgage, error: errMortgage, refetch: refetchMortgage } = useMortgageData()
-  const { totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, error: errInv, refetch: refetchInv } = useInvestmentData()
+  const { costs, totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, error: errInv, refetch: refetchInv } = useInvestmentData()
   const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingLoans, error: errLoans, refetch: refetchLoans } = useLoansData()
+
+  // Before the key nothing on this screen has happened yet: no payment has been made, the
+  // mortgage has not been drawn, and the flat is not part-owned. Judgement is therefore
+  // silent here — what stays is the composition, which is true from the day of signing.
+  // (Owner, 09.09: "בהון נעשה את מבנה המימון המלא וכל מבנה העסקה הסופי".)
+  const awaitingKey = possession(property?.key_delivery_date, todayISO()) === 'awaiting_key'
+  const plan = user?.id ? loadPlan(user.id) : null
+  const planPocket = plan ? planTotals(plan).fromPocket : undefined
 
   const statsLoading = loadingProp || loadingMortgage || loadingInv || loadingLoans
   const loadError = errProp || errMortgage || errInv || errLoans
@@ -121,7 +134,18 @@ export default function WealthHub() {
         />
       ) : (
         <>
-          {propertyValue > 0 && (
+          {/* Composition first before the key — it is the only thing on this screen that is
+              already true. After the key the screen keeps the order the owner knows, and the
+              composition sits further down. */}
+          {awaitingKey && (
+            <DealStructure
+              price={property?.purchase_price ?? propertyValue}
+              tracks={tracks} loans={[...monthlyLoans, ...balloonLoans]} costs={costs}
+              fromPocket={planPocket}
+            />
+          )}
+
+          {propertyValue > 0 && !awaitingKey && (
             <OwnershipScore
               propertyValue={propertyValue}
               bankDebt={bankDebt}
@@ -130,12 +154,14 @@ export default function WealthHub() {
             />
           )}
 
-          <WealthAccelerator
-            current={split}
-            future5yPrincipal={future5y.principal}
-            annualPrincipal={annualPrincipal}
-            fromMonth={split.isCurrentMonth ? null : split.month}
-          />
+          {!awaitingKey && (
+            <WealthAccelerator
+              current={split}
+              future5yPrincipal={future5y.principal}
+              annualPrincipal={annualPrincipal}
+              fromMonth={split.isCurrentMonth ? null : split.month}
+            />
+          )}
 
           {monthlyRent > 0 && split.isCurrentMonth && (
             <MonthlyResult
@@ -147,7 +173,7 @@ export default function WealthHub() {
             />
           )}
 
-          {hasCashflow && (
+          {hasCashflow && !awaitingKey && (
             <section className="wlth-card wlth-cashflow">
               <div className="wlth-card-head">
                 <h2>הכנסות מול הוצאות</h2>
@@ -189,7 +215,7 @@ export default function WealthHub() {
           {/* Unique figures only — "הון שהושקע" (totalInvested) was dropped here because
               it already appears in the cash-flow card above as "הון עצמי ועלויות רכישה"
               (owner, 20.07). Gross yield + monthly rent aren't shown elsewhere. */}
-          {(grossYield != null || monthlyRent > 0 || roeCash != null) && (
+          {!awaitingKey && (grossYield != null || monthlyRent > 0 || roeCash != null) && (
             <section className="wlth-card">
               <div className="wlth-card-head"><h2>תשואות</h2></div>
               <div className="wlth-yields">
