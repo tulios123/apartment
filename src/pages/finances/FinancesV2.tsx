@@ -528,8 +528,14 @@ export default function FinancesV2() {
         {periodSummary.principal > 0 && (
           <div className="finv-summary-lens">
             {/* One line, not two (owner, 27.07): what actually left your pocket once the
-                principal is treated as savings rather than an expense. */}
-            <span>מאזן חיסכון בפועל<b>{formatSignedCurrency(net + periodSummary.principal)}</b></span>
+                principal is treated as savings rather than an expense.
+                The label used to be "מאזן חיסכון בפועל", which the owner reads fluently and
+                nobody else does — walked by a first-time owner (NIGHT_RUN C2-A) the screen
+                showed "מאזן החודש −700" and "מאזן חיסכון בפועל +831" four words apart, two
+                balances with opposite signs and no way to tell which one is true. Naming the
+                mechanism instead of the concept costs one line and answers it. */}
+            <span>אחרי החזר הקרן<b>{formatSignedCurrency(net + periodSummary.principal)}</b></span>
+            <em>{formatCurrency(periodSummary.principal)} מתשלום המשכנתא חזרו אליך כהון, לא יצאו מהכיס.</em>
           </div>
         )}
         {/* The year view spans all 12 months, so for most of the year its headline is

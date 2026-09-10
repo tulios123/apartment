@@ -218,6 +218,9 @@
 .finv .finv-summary-lens { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
 .finv .finv-summary-lens span { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--text-muted); }
 .finv .finv-summary-lens b { font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+/* The one-line explanation under the principal lens: quieter than the figure it explains,
+   and only worth its space because two opposite-signed balances sit right above it. */
+.finv .finv-summary-lens em { font-style: normal; font-size: 11.5px; line-height: 1.45; color: var(--text-muted); }
 .finv .finv-summary-lens.forecast { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
 
 /* ── תזרים before the key: one month, and it fills the screen ── */
