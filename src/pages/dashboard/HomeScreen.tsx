@@ -318,6 +318,10 @@ export default function HomeScreen() {
     flashTimer.current = setTimeout(() => setFlash(null), 2600)
   }
 
+  // Keys in hand and nobody in the flat — the one state the owner has never been in
+  // (his came with a tenant), and the one where an all-clear is exactly backwards.
+  const vacant = !awaitingKey && !activeContract
+
   // Before the key the greeting has a plan to read from, so it says the true next thing
   // instead of a blanket all-clear. No plan yet → the invitation below is the message.
   const preKeyStep = plan ? nextStep(plan) : null
@@ -362,7 +366,10 @@ export default function HomeScreen() {
                 // sometimes overdue — payments on it. A greeting that contradicts the screen
                 // under it is worse than no greeting: say what is actually next.
                 ? preKeyLine
-                : 'הכול רגוע היום — אין מה לעשות עכשיו.'
+                : vacant
+                  // "calm" describes a let flat, not an empty one.
+                  ? 'הדירה ריקה — הצעד הבא הוא למצוא שוכר.'
+                  : 'הכול רגוע היום — אין מה לעשות עכשיו.'
               : actions.length === 1
                 ? 'יש פעולה אחת שמחכה לך.'
                 : `יש ${actions.length} פעולות שמחכות לך.`}
@@ -432,19 +439,28 @@ export default function HomeScreen() {
                 </div>
               ) : (
                 <div className="hs-clear">
-                  <div className={`hs-clear-icon${awaitingKey ? ' upcoming' : ''}`}>
-                    {awaitingKey ? <CalendarCheck size={28} weight="fill" /> : <CheckCircle size={30} weight="fill" />}
+                  <div className={`hs-clear-icon${awaitingKey || vacant ? ' upcoming' : ''}`}>
+                    {awaitingKey || vacant ? <CalendarCheck size={28} weight="fill" /> : <CheckCircle size={30} weight="fill" />}
                   </div>
                   <div>
                     {/* "הנכס עובד בשבילך" is false before handover — there is no tenant, no
                         income and nothing running. Telling a buyer with months of work
                         ahead that everything is handled is the same broken promise as the
-                        fortnightly "add a tenant" push (owner, 07.09). */}
-                    <div className="hs-clear-title">{awaitingKey ? 'אין מה לעשות היום' : 'הכול מטופל'}</div>
+                        fortnightly "add a tenant" push (owner, 07.09).
+                        It is just as false the week AFTER the key with no tenant yet — and
+                        worse, because there IS something to do. Walked in that state the
+                        home printed a green tick and "the property is working for you"
+                        directly above "no active lease" and a negative month. Three states,
+                        not two (NIGHT_RUN C-1). */}
+                    <div className="hs-clear-title">
+                      {awaitingKey ? 'אין מה לעשות היום' : vacant ? 'אין משימות פתוחות' : 'הכול מטופל'}
+                    </div>
                     <div className="hs-clear-sub">
                       {awaitingKey
                         ? 'הצעד הבא יופיע כאן כשיגיע זמנו.'
-                        : 'הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.'}
+                        : vacant
+                          ? 'הדירה עדיין ללא שוכר — עד שיהיה חוזה אין הכנסה חודשית.'
+                          : 'הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.'}
                     </div>
                   </div>
                 </div>
