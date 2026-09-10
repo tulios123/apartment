@@ -36,9 +36,22 @@ export type Dependency =
   | 'you'    // nothing external is waiting
   | 'third'  // you started it and now you wait for someone
 
+/**
+ * The three stages are the owner's own sentence, not a taxonomy I invented:
+ * "מקובל לשלם ב-3 תשלומים — חתימה 10/15%, חודש — עד כאן הון עצמי. מסירת מפתח (משכנתא)."
+ * Raise the equity · turn it into a flat · tie off the loose ends.
+ */
+export const STAGES = [
+  { n: 1 as const, title: 'ההון העצמי', closes: 'ההון העצמי שולם במלואו' },
+  { n: 2 as const, title: 'המשכנתא והמסירה', closes: 'המפתח אצלך' },
+  { n: 3 as const, title: 'הסגירה', closes: 'הבעלות רשומה' },
+]
+export type StageNo = 1 | 2 | 3
+
 export interface PlanItem {
   id: string
   kind: ItemKind
+  stage: StageNo
   label: string
   /** 0 for gates and tasks. */
   amount: number
@@ -101,27 +114,27 @@ export function buildPlan(input: {
 
   const items: PlanItem[] = [
     {
-      id: 'pay1', kind: 'payment', label: `תשלום ראשון · ${firstPct}%`, amount: pct(price, firstPct),
+      id: 'pay1', stage: 1, kind: 'payment', label: `תשלום ראשון · ${firstPct}%`, amount: pct(price, firstPct),
       dep: 'date', due: signing, note: 'צ׳ק בנקאי — הכסף צריך לשבת בעו״ש',
       done: false, certain: true,
     },
     {
-      id: 'caution', kind: 'gate', label: 'הערת אזהרה בטאבו', amount: 0,
+      id: 'caution', stage: 1, kind: 'gate', label: 'הערת אזהרה בטאבו', amount: 0,
       dep: 'third', waitingOn: 'עורך הדין', due: null,
       note: 'הצ׳ק משוחרר מהנאמנות רק אחריה', done: false, certain: true,
     },
     {
-      id: 'pay2', kind: 'payment', label: `תשלום שני · ${secondPct}%`, amount: pct(price, secondPct),
+      id: 'pay2', stage: 1, kind: 'payment', label: `תשלום שני · ${secondPct}%`, amount: pct(price, secondPct),
       dep: 'date', due: null, after: 'caution', afterDays: 30,
       note: 'עד חודש משחרור הצ׳ק', done: false, certain: true,
     },
     {
-      id: 'tax-report', kind: 'task', label: 'דיווח לרשות המסים', amount: 0,
+      id: 'tax-report', stage: 1, kind: 'task', label: 'דיווח לרשות המסים', amount: 0,
       dep: 'you', due: shift(signing, 30), note: 'חובה חוקית · 30 יום מהחתימה',
       done: false, certain: true,
     },
     {
-      id: 'tax-pay', kind: 'cost', label: 'תשלום מס רכישה', amount: tax,
+      id: 'tax-pay', stage: 1, kind: 'cost', label: 'תשלום מס רכישה', amount: tax,
       dep: 'date', due: shift(signing, 60),
       note: singleApartment
         ? 'חובה חוקית · 60 יום מהחתימה · דירה יחידה'
@@ -129,41 +142,41 @@ export function buildPlan(input: {
       done: false, certain: true,
     },
     {
-      id: 'insurance', kind: 'task', label: 'ביטוח חיים וביטוח מבנה', amount: 0,
+      id: 'insurance', stage: 2, kind: 'task', label: 'ביטוח חיים וביטוח מבנה', amount: 0,
       dep: 'you', due: shift(handover, -30),
       note: 'תנאי לביצוע המשכנתא. מקבלן — אפשר לבקש שהפרמיה תתחיל במסירה',
       done: false, certain: true,
     },
     {
-      id: 'drawdown', kind: 'gate', label: 'ביצוע המשכנתא', amount: 0,
+      id: 'drawdown', stage: 2, kind: 'gate', label: 'ביצוע המשכנתא', amount: 0,
       dep: 'third', waitingOn: 'הבנק', due: shift(handover, -14),
       note: 'הבנק מסלק קודם את המשכנתא של המוכר', done: false, certain: true,
     },
     {
-      id: 'lien', kind: 'gate', label: 'ירידת השיעבוד של המוכר', amount: 0,
+      id: 'lien', stage: 2, kind: 'gate', label: 'ירידת השיעבוד של המוכר', amount: 0,
       dep: 'third', waitingOn: 'המוכר', due: null, after: 'drawdown', afterDays: 14,
       note: 'רק אחריה מעבירים את היתרה', done: false, certain: true,
     },
     {
-      id: 'pay3', kind: 'payment', label: `יתרת התשלום · ${mortgagePct}%`, amount: pct(price, mortgagePct),
+      id: 'pay3', stage: 2, kind: 'payment', label: `יתרת התשלום · ${mortgagePct}%`, amount: pct(price, mortgagePct),
       dep: 'date', due: handover, note: '~5% נשארים בנאמנות עד אישורי העירייה',
       done: false, certain: true,
     },
     {
-      id: 'handover', kind: 'gate', label: 'מסירת המפתח', amount: 0,
+      id: 'handover', stage: 2, kind: 'gate', label: 'מסירת המפתח', amount: 0,
       dep: 'date', due: handover, note: 'מפתח + הצ׳קים של השוכרים', done: false, certain: true,
     },
     {
-      id: 'utilities', kind: 'task', label: 'חשמל, מים, ארנונה וועד על שמך', amount: 0,
+      id: 'utilities', stage: 3, kind: 'task', label: 'חשמל, מים, ארנונה וועד על שמך', amount: 0,
       dep: 'you', due: shift(handover, 3), done: false, certain: true,
     },
     {
-      id: 'registration', kind: 'gate', label: 'רישום הבעלות בטאבו', amount: 0,
+      id: 'registration', stage: 3, kind: 'gate', label: 'רישום הבעלות בטאבו', amount: 0,
       dep: 'third', waitingOn: 'עורך הדין', due: null, after: 'handover', afterDays: 30,
       note: 'המפתח הקנייני', done: false, certain: true,
     },
     {
-      id: 'approvals', kind: 'gate', label: 'אישורי עירייה ורשות המיסים מהמוכר', amount: 0,
+      id: 'approvals', stage: 3, kind: 'gate', label: 'אישורי עירייה ורשות המיסים מהמוכר', amount: 0,
       dep: 'third', waitingOn: 'המוכר', due: shift(signing, 240),
       note: 'עד 8 חודשים מהחתימה — עד אז ~5% בנאמנות', done: false, certain: true,
     },
@@ -174,7 +187,7 @@ export function buildPlan(input: {
   for (const c of input.costs ?? []) {
     if (!(c.amount > 0)) continue
     items.push({
-      id: `cost-${c.label}`, kind: 'cost', label: c.label, amount: c.amount,
+      id: `cost-${c.label}`, kind: 'cost', stage: 1, label: c.label, amount: c.amount,
       dep: 'date', due: signing, note: 'סביב החתימה', done: false, certain: true,
     })
   }
@@ -221,6 +234,47 @@ export function nextPayment(plan: PurchasePlan): PlanItem | null {
 /** The first item still open, money or not — "what's my next step". */
 export function nextStep(plan: PurchasePlan): PlanItem | null {
   return resolveDates(plan).find(i => !i.done) ?? null
+}
+
+export interface StageState {
+  n: StageNo
+  title: string
+  closes: string
+  items: PlanItem[]
+  done: boolean
+  doneCount: number
+  /** Money that leaves his pocket in this stage — what a closed stage's summary says. */
+  paid: number
+  /** The last thing that closed here, so a finished stage can say WHEN. */
+  closedAt: string | null
+}
+
+/**
+ * The three stages, resolved. A stage is finished when everything in it is; the current one
+ * is the first that is not. That is all the state the accordion needs — no stored "current
+ * stage" to drift out of sync with the items themselves.
+ */
+export function stages(plan: PurchasePlan): StageState[] {
+  const items = resolveDates(plan)
+  return STAGES.map(s => {
+    const mine = items.filter(i => i.stage === s.n)
+    const done = mine.length > 0 && mine.every(i => i.done)
+    const dates = mine.map(i => i.doneAt).filter(Boolean) as string[]
+    return {
+      ...s,
+      items: mine,
+      done,
+      doneCount: mine.filter(i => i.done).length,
+      paid: mine.filter(i => i.done && i.amount > 0 && i.id !== 'pay3').reduce((a, i) => a + i.amount, 0),
+      closedAt: dates.length ? dates.sort().at(-1)! : null,
+    }
+  })
+}
+
+/** The stage the owner is in — the first unfinished one, or the last if everything is done. */
+export function currentStage(plan: PurchasePlan): StageNo {
+  const st = stages(plan)
+  return (st.find(s => !s.done)?.n ?? st[st.length - 1].n)
 }
 
 export interface PlanTotals {

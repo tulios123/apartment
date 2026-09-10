@@ -1,5 +1,8 @@
-import { useId, useRef, useState } from 'react'
-import { sanitizeAmountInt, todayISO } from '../../lib/format'
+import { useId, useRef, useState, useEffect } from 'react'
+import { sanitizeAmountInt, todayISO, formatCurrency } from '../../lib/format'
+import { useAuth } from '../../contexts/AuthContext'
+import { buildPlan, savePlan, clearPlan } from '../../lib/purchasePlan'
+import { purchaseTax } from '../../lib/purchaseTax'
 import { Tag, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -24,7 +27,35 @@ export function PurchaseStep() {
     docAttachments, removeDocFile, renameDocFile,
     fillTestPurchase,
   } = useOnboarding()
+  const { user } = useAuth()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
+
+  // ── תנאי התשלום ──────────────────────────────────────────────────────────────
+  // The owner (10.09): "ההקמה אמורה לקרות בעיקר באונבורדינג". The payment terms belong on
+  // this step and nowhere else — the price and both dates are already here, and asking for
+  // percentages beside them costs one block instead of a tenth wizard step.
+  //
+  // It appears only for someone whose key is still ahead: an owner who already has the flat
+  // has no plan to build, and a question he cannot answer is worse than no question.
+  const [firstPct, setFirstPct] = useState(10)
+  const [secondPct, setSecondPct] = useState(15)
+  const [singleApartment, setSingleApartment] = useState(true)
+  const price = Number(purchasePrice) || 0
+  const awaitingKey = !!keyDeliveryDate && keyDeliveryDate > todayISO()
+  const showTerms = awaitingKey && price > 0
+
+  // The plan IS the persistence — no extra draft field to keep in sync, and it is rebuilt
+  // at finish once the costs are known (useOnboardingState).
+  useEffect(() => {
+    if (!user?.id) return
+    if (!showTerms) { clearPlan(user.id); return }
+    savePlan(user.id, buildPlan({
+      price,
+      signing: signingDate || todayISO(),
+      handover: keyDeliveryDate!,
+      firstPct, secondPct, singleApartment,
+    }))
+  }, [user?.id, showTerms, price, signingDate, keyDeliveryDate, firstPct, secondPct, singleApartment])
   const [showDocs, setShowDocs] = useState(false)
   // Drive the banner/toggle from the SAME source as the list below: files already in
   // storage count too, otherwise after a reload the list knew about the document while
@@ -125,6 +156,48 @@ export function PurchaseStep() {
           </div>
         </div>
       </div>
+
+      {showTerms && (
+        <div className="onboarding-terms">
+          <div className="onboarding-terms-head">
+            <h3>תנאי התשלום בחוזה</h3>
+            <span>האחוזים ממך — הסכומים מאיתנו</span>
+          </div>
+
+          <div className="onboarding-terms-chips">
+            {([[10, 15], [15, 10], [10, 10], [20, 0]] as [number, number][]).map(([a, b]) => (
+              <button
+                key={`${a}-${b}`}
+                type="button"
+                className={`onboarding-terms-chip${firstPct === a && secondPct === b ? ' on' : ''}`}
+                onClick={() => { setFirstPct(a); setSecondPct(b) }}
+              >
+                {b > 0 ? `${a}% ואז ${b}%` : `${a}% בלבד`}
+              </button>
+            ))}
+          </div>
+
+          <div className="onboarding-terms-rows">
+            <div><span>בחתימה</span><b>{formatCurrency(Math.round(price * firstPct / 100))}</b></div>
+            {secondPct > 0 && <div><span>תשלום שני</span><b>{formatCurrency(Math.round(price * secondPct / 100))}</b></div>}
+            <div className="muted">
+              <span>משכנתא במסירה · {Math.max(0, 100 - firstPct - secondPct)}%</span>
+              <b>{formatCurrency(Math.round(price * Math.max(0, 100 - firstPct - secondPct) / 100))}</b>
+            </div>
+          </div>
+
+          <div className="onboarding-terms-tax">
+            <div className="onboarding-terms-chips">
+              <button type="button" className={`onboarding-terms-chip${singleApartment ? ' on' : ''}`} onClick={() => setSingleApartment(true)}>דירה יחידה</button>
+              <button type="button" className={`onboarding-terms-chip${!singleApartment ? ' on' : ''}`} onClick={() => setSingleApartment(false)}>דירה נוספת</button>
+            </div>
+            <span>
+              מס רכישה <b>{formatCurrency(purchaseTax(price, singleApartment))}</b>
+              {' · '}לתשלום עד 60 יום מהחתימה
+            </span>
+          </div>
+        </div>
+      )}
       {warnings.length > 0 && (
         <div className="onboarding-soft-warning" style={{ marginBottom: 10 }}>
           {warnings.map((w, i) => <div key={i}>{w}</div>)}

@@ -1,4 +1,4 @@
-import { test, type Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { stubSupabase, type Fixture } from './lib/stub'
 import { saveShot, setTheme } from './lib/helpers'
 import { OWNER } from './lib/fixtures'
@@ -90,6 +90,13 @@ test('the first minute, as a buyer who has not got the key', async ({ page }) =>
   await page.waitForTimeout(400)
   await step(page, '4-purchase-filled')
 
+  // The payment terms appear on this step once a future key date is set — this is where
+  // the plan is now built (owner, 10.09: "ההקמה אמורה לקרות בעיקר באונבורדינג").
+  await page.locator('.onboarding-terms').waitFor({ state: 'visible', timeout: 5000 })
+  await page.getByRole('button', { name: '15% ואז 10%' }).click()
+  await page.waitForTimeout(400)
+  await step(page, '4b-terms')
+
   await cont(page)
   await step(page, '5-mortgage')
 
@@ -107,4 +114,17 @@ test('the first minute, as a buyer who has not got the key', async ({ page }) =>
 
   await cont(page)
   await step(page, '10-done')
+
+  // The handoff into the app cannot be photographed here — the stub echoes writes without
+  // persisting them, so the account still looks empty and the home shows its "no property"
+  // state. What CAN be proven is the half that matters: the wizard built the plan, with the
+  // split he chose. The other half (the home rendering it) is covered by purchase-map.spec.
+  const stored = await page.evaluate(() => {
+    const k = Object.keys(localStorage).find(x => x.startsWith('purchase_plan:'))
+    return k ? JSON.parse(localStorage.getItem(k)!) : null
+  })
+  expect(stored, 'the wizard should have built a payment plan').not.toBeNull()
+  expect(stored.firstPct).toBe(15)
+  expect(stored.secondPct).toBe(10)
+  expect(stored.items.find((i: { id: string }) => i.id === 'pay1').amount).toBe(277_500)
 })

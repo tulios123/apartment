@@ -5788,3 +5788,31 @@ select {
    only (27px → 37px), so neighbouring rows' hit-areas never overlap. */
 .finv-bd-row { position: relative; }
 .finv-bd-row::after { content: ''; position: absolute; inset: -5px 0; }
+
+/* ── תנאי התשלום, בתוך שלב פרטי הרכישה ──────────────────────────────────────
+   Only for a buyer whose key is still ahead. The percentages are his; the shekels
+   appear as he taps, which is the arithmetic he said he keeps redoing by hand. */
+.onboarding-terms {
+  margin-top: 18px; padding: 16px; border-radius: var(--r-md);
+  background: var(--bg-alt); display: flex; flex-direction: column; gap: 13px;
+}
+.onboarding-terms-head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.onboarding-terms-head h3 { margin: 0; font-size: 14.5px; font-weight: 700; color: var(--brand-navy); }
+.onboarding-terms-head span { font-size: 12px; color: var(--text-muted); }
+.onboarding-terms-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.onboarding-terms-chip {
+  min-height: 44px; padding: 0 14px; border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text);
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.onboarding-terms-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.onboarding-terms-rows { background: var(--bg-card); border-radius: var(--r-sm); padding: 2px 13px; }
+.onboarding-terms-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; }
+.onboarding-terms-rows > div + div { border-top: 1px solid var(--border); }
+.onboarding-terms-rows span { font-size: 13px; color: var(--text); }
+.onboarding-terms-rows b { font-size: 15px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+.onboarding-terms-rows > div.muted span, .onboarding-terms-rows > div.muted b { color: var(--text-muted); font-weight: 600; }
+.onboarding-terms-tax { display: flex; flex-direction: column; gap: 9px; }
+.onboarding-terms-tax > span { font-size: 12.5px; color: var(--text-muted); }
+.onboarding-terms-tax b { color: var(--brand-navy); font-variant-numeric: tabular-nums; }

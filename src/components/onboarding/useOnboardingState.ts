@@ -10,6 +10,7 @@ import { syncRentRecurringItem } from '../../hooks/useRecurringItems'
 import { ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
 import { upsertLoan, deleteLoan } from '../../hooks/useLoansData'
 import { upsertInvestmentCost } from '../../hooks/useInvestmentData'
+import { loadPlan, savePlan, buildPlan } from '../../lib/purchasePlan'
 import { createInsurancePolicy, updateInsurancePolicy, deleteInsurancePolicy } from '../../hooks/useInsurance'
 import { supabase } from '../../lib/supabase'
 import { enablePush } from '../../lib/push'
@@ -1096,6 +1097,26 @@ export function useOnboardingState(onComplete: () => void) {
       // C2: data is now persisted server-side — drop the local draft so a later
       // visit doesn't rehydrate a stale wizard.
       clearOnboardingDraft(user.id)
+
+      // The payment plan was built on the purchase step, before the costs were known.
+      // Rebuild it now with them, keeping his terms — nothing is marked done during the
+      // wizard, so nothing is lost. (docs/specs/purchase-stage.md)
+      const plan = loadPlan(user.id)
+      if (plan) {
+        savePlan(user.id, buildPlan({
+          price: plan.price, signing: plan.signing, handover: plan.handover,
+          firstPct: plan.firstPct, secondPct: plan.secondPct,
+          singleApartment: plan.singleApartment,
+          costs: [
+            ['עורך דין', parseFloat(effLawyer) || 0],
+            ['דמי תיווך', parseFloat(effBrokerage) || 0],
+            ['יועץ משכנתאות', parseFloat(costs.mortgage_advisor) || 0],
+            ['חברת ליווי השקעה', parseFloat(costs.investment_company) || 0],
+            ['שמאי', parseFloat(costs.appraiser) || 0],
+          ].filter(([, a]) => (a as number) > 0).map(([label, amount]) => ({ label: label as string, amount: amount as number })),
+        }))
+      }
+
       setStep('done')
     } catch (e) {
       // Only createProperty throws here — stay on step so the user can retry

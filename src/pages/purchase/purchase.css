@@ -15,32 +15,68 @@
   padding: 20px;
   box-shadow: 0 14px 34px rgba(10, 31, 68, 0.28);
 }
+  .pmap-next-eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.7; margin-bottom: 10px; }
 .pmap-next-label { font-size: 13px; opacity: 0.82; }
 .pmap-next-value {
   font-size: 36px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05;
   margin-top: 4px; font-variant-numeric: tabular-nums;
 }
 .pmap-next-when { font-size: 13px; opacity: 0.88; margin-top: 6px; }
-.pmap-next-when.is-over { color: #ffc7bb; opacity: 1; font-weight: 600; }
+  .pmap-next-when.is-over { color: #ffc7bb; opacity: 1; font-weight: 600; }
+.pmap-next-before {
+  margin-top: 13px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.16);
+  font-size: 12.5px; opacity: 0.85;
+}
 
-/* ── The run ── */
-.pmap-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/* ── The three stages ── */
+.pmap-stages { display: flex; flex-direction: column; gap: 9px; }
+
+.pmap-stage {
+  background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm);
+  overflow: hidden; transition: box-shadow var(--t-base) var(--ease);
+}
+.pmap-stage.is-open { box-shadow: var(--shadow-md); }
+
+.pmap-stage-head {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 15px 15px; min-height: 60px;
+  background: none; border: none; cursor: pointer; font-family: inherit; text-align: start;
+  -webkit-tap-highlight-color: transparent;
+}
+.pmap-stage-badge {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--bg-alt); color: var(--text-muted);
+  font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.pmap-stage-badge.on { background: var(--success); color: #fff; }
+.pmap-stage.is-open .pmap-stage-badge:not(.on) { background: var(--accent); color: #fff; }
+
+.pmap-stage-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pmap-stage-title { font-size: 15px; font-weight: 700; color: var(--brand-navy); }
+.pmap-stage-sub { font-size: 12px; color: var(--text-muted); }
+.pmap-stage.is-done .pmap-stage-title { color: var(--text-muted); font-weight: 600; }
+.pmap-stage.is-done .pmap-stage-sub { color: var(--success-text); }
+
+.pmap-stage-caret { flex-shrink: 0; color: var(--text-muted); transition: transform var(--t-base) var(--ease); }
+.pmap-stage.is-open .pmap-stage-caret { transform: rotate(180deg); }
+
+/* ── The run, inside an open stage ── */
+.pmap-list { list-style: none; margin: 0; padding: 0 0 6px; display: flex; flex-direction: column; }
 
 .pmap-item {
   display: flex; align-items: flex-start; gap: 11px;
-  padding: 13px 14px;
-  background: var(--bg-card);
+  padding: 12px 15px;
   border-inline-start: 3px solid transparent;
   transition: background var(--t-fast) var(--ease);
 }
-.pmap-item:first-child { border-start-start-radius: var(--r-md); border-start-end-radius: var(--r-md); }
-.pmap-item:last-child { border-end-start-radius: var(--r-md); border-end-end-radius: var(--r-md); }
-.pmap-item + .pmap-item { border-top: 1px solid var(--border); }
+.pmap-item { border-top: 1px solid var(--border); }
 
 /* Only what is SETTLED is marked. The screen starts quiet and fills up. */
 .pmap-item.is-done { border-inline-start-color: var(--success); }
 .pmap-item.is-done .pmap-title { color: var(--text-muted); }
 .pmap-item.is-current { background: var(--accent-light); border-inline-start-color: var(--accent); }
+.pmap-item.is-current .pmap-title { font-weight: 700; }
 
 .pmap-mark {
   flex-shrink: 0; width: 22px; height: 22px; margin-top: 1px;

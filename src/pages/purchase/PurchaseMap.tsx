@@ -1,27 +1,31 @@
-import { Check, Hourglass, CalendarBlank } from '@phosphor-icons/react'
+import { useState } from 'react'
+import { Check, Hourglass, CaretDown } from '@phosphor-icons/react'
 import { formatCurrency, formatDate, todayISO, daysBetween } from '../../lib/format'
 import { countdownLabel } from '../../lib/stage'
 import {
-  resolveDates, nextPayment, planTotals, setDone,
-  type PurchasePlan, type PlanItem,
+  stages, currentStage, nextPayment, nextStep, planTotals, setDone,
+  type PurchasePlan, type PlanItem, type StageNo,
 } from '../../lib/purchasePlan'
 
 const fmt = (v: number) => formatCurrency(v)
 
 /**
- * The map: one chronological run of payments and actions, in the order of the PROCESS.
+ * מהחתימה עד המפתח — three stages, folded.
  *
- * Three decisions from the interview are visible here and are the whole design:
+ * The first build printed all fifteen items at once and the owner's verdict was immediate:
+ * "לא נראה מספיק טוב". He was right, and the fix was structural rather than cosmetic — the
+ * screen was answering "here is everything you will ever do" instead of "here is where you
+ * are". The three stages are HIS division, quoted from how he described his own deal:
  *
- *  1. **The headline is the next payment** — how much, and when. Nothing else competes.
- *  2. **The settled things are marked, never the forecast.** Early on almost everything is
- *     ahead of you; marking the unknown would have covered the screen in caveats. Instead the
- *     screen starts quiet and fills with green as things close — the list IS the progress bar.
- *  3. **Waiting looks different from your turn.** An item that waits on the lawyer or the
- *     bank says who it waits for; it does not sit there as a task you failed to do.
+ *   "מקובל לשלם ב-3 תשלומים — חתימה 10/15%, חודש — עד כאן הון עצמי. מסירת מפתח (משכנתא)."
  *
- * An item with no date is not given one. "עד חודש משחרור הצ׳ק" has no date until the caution
- * is registered, and saying so is more useful than a guess.
+ * So: raise the equity · turn it into a flat · tie off the ends. A finished stage folds into
+ * a single summary line carrying what it cost and when it closed — the fold keeps the
+ * information instead of hiding it. The stage you are in is open; the one after is quiet.
+ *
+ * The headline sits ABOVE the stages and ignores them: the next payment is the next payment
+ * wherever it lives, which is also the answer to "what if something urgent is buried in a
+ * folded stage" — it simply is not buried.
  */
 export function PurchaseMap({ plan, onChange, onSetup }: {
   plan: PurchasePlan
@@ -29,18 +33,22 @@ export function PurchaseMap({ plan, onChange, onSetup }: {
   onSetup: () => void
 }) {
   const today = todayISO()
-  // Plain calls, no useMemo: the list is a dozen rows and the React compiler memoizes this
-  // better than a hand-written dependency array (which it flags as unpreservable anyway).
-  const items = resolveDates(plan)
+  const all = stages(plan)
+  const current = currentStage(plan)
   const next = nextPayment(plan)
+  const step = nextStep(plan)
   const totals = planTotals(plan)
 
-  const currentId = items.find(i => !i.done)?.id
+  // Opened by hand — a finished stage can be reopened to look, without changing anything.
+  const [opened, setOpened] = useState<StageNo | null>(null)
+  const openStage = opened ?? current
+  const currentTitle = all.find(s => s.n === current)?.title ?? ''
 
   return (
     <div className="pmap">
       {next && (
         <div className="pmap-next">
+          <div className="pmap-next-eyebrow">שלב {current} מתוך {all.length} · {currentTitle}</div>
           <div className="pmap-next-label">התשלום הבא</div>
           <div className="pmap-next-value">{fmt(next.amount)}</div>
           <div className={`pmap-next-when${next.due && next.due < today ? ' is-over' : ''}`}>
@@ -52,20 +60,60 @@ export function PurchaseMap({ plan, onChange, onSetup }: {
                 ? <>{formatDate(next.due)} · המועד עבר</>
                 : <>{formatDate(next.due)} · {countdownLabel(daysBetween(today, next.due))}</>}
           </div>
+          {/* When the very next thing is not the payment, name it once — so the headline
+              answers "how much" without hiding "what actually comes first". */}
+          {step && step.id !== next.id && (
+            <div className="pmap-next-before">
+              לפני זה: {step.label}
+              {step.dep === 'third' && step.waitingOn ? ` · ממתין ל${step.waitingOn}` : ''}
+            </div>
+          )}
         </div>
       )}
 
-      <ol className="pmap-list">
-        {items.map(item => (
-          <Row
-            key={item.id}
-            item={item}
-            today={today}
-            current={item.id === currentId}
-            onToggle={() => onChange(setDone(plan, item.id, !item.done))}
-          />
-        ))}
-      </ol>
+      <div className="pmap-stages">
+        {all.map(s => {
+          const open = s.n === openStage
+          return (
+            <section key={s.n} className={`pmap-stage${s.done ? ' is-done' : ''}${open ? ' is-open' : ''}`}>
+              <button
+                className="pmap-stage-head"
+                onClick={() => setOpened(open ? (s.n === current ? null : current) : s.n)}
+                aria-expanded={open}
+              >
+                <span className={`pmap-stage-badge${s.done ? ' on' : ''}`}>
+                  {s.done ? <Check size={13} weight="bold" /> : s.n}
+                </span>
+                <span className="pmap-stage-body">
+                  <span className="pmap-stage-title">{s.title}</span>
+                  <span className="pmap-stage-sub">
+                    {s.done
+                      ? <>הושלם{s.closedAt ? ` · ${formatDate(s.closedAt)}` : ''}{s.paid > 0 ? ` · ${fmt(s.paid)}` : ''}</>
+                      : s.n === current
+                        ? <>{s.doneCount} מתוך {s.items.length} הושלמו · נסגר כש{s.closes}</>
+                        : <>{s.items.length} פריטים</>}
+                  </span>
+                </span>
+                <CaretDown className="pmap-stage-caret" size={15} weight="bold" />
+              </button>
+
+              {open && (
+                <ol className="pmap-list">
+                  {s.items.map(item => (
+                    <Row
+                      key={item.id}
+                      item={item}
+                      today={today}
+                      current={item.id === step?.id}
+                      onToggle={() => onChange(setDone(plan, item.id, !item.done))}
+                    />
+                  ))}
+                </ol>
+              )}
+            </section>
+          )
+        })}
+      </div>
 
       {/* Progress lives away from the headline, small — his call: the big number is the next
           payment, not the total, because the total is the one that frightens people. */}
@@ -91,7 +139,7 @@ function Row({ item, today, current, onToggle }: {
   const waiting = item.dep === 'third' && !item.done
 
   return (
-    <li className={`pmap-item${item.done ? ' is-done' : ''}${current ? ' is-current' : ''}${waiting ? ' is-waiting' : ''}`}>
+    <li className={`pmap-item${item.done ? ' is-done' : ''}${current ? ' is-current' : ''}`}>
       <button
         className="pmap-mark"
         onClick={onToggle}
@@ -105,17 +153,18 @@ function Row({ item, today, current, onToggle }: {
         <div className="pmap-title">{item.label}</div>
         <div className="pmap-meta">
           {item.done
-            ? <span className="pmap-donetag">בוצע</span>
+            ? <span className="pmap-donetag">בוצע{item.doneAt ? ` · ${formatDate(item.doneAt)}` : ''}</span>
             : item.due
               ? <span className={overdue ? 'pmap-over' : ''}>
-                  <CalendarBlank size={12} weight="bold" /> {formatDate(item.due)}
-                  {overdue ? ' · עבר' : ` · ${countdownLabel(daysBetween(today, item.due))}`}
+                  {formatDate(item.due)}{overdue ? ' · עבר' : ` · ${countdownLabel(daysBetween(today, item.due))}`}
                 </span>
               : waiting
                 ? <span className="pmap-wait"><Hourglass size={12} weight="bold" /> ממתין ל{item.waitingOn}</span>
                 : <span>ללא תאריך</span>}
         </div>
-        {item.note && <div className="pmap-note">{item.note}</div>}
+        {/* The note is one-time knowledge. Show it on the item that is actually next, not on
+            all fifteen — that alone was half the wall of text in the first build. */}
+        {current && item.note && <div className="pmap-note">{item.note}</div>}
       </div>
 
       {item.amount > 0 && <div className="pmap-amt">{fmt(item.amount)}</div>}
