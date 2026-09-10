@@ -80,18 +80,51 @@ export async function stubSupabase(page: Page, fixture: Fixture) {
       const rows = Array.isArray(sent) ? sent : [sent]
       return json(route, rows.map((r, i) => ({ id: `new-${table}-${i}`, ...(r as object) })))
     }
-    // PostgREST filters are in the query string; the fixtures are small and per-screen,
-    // so serve the table whole and let the app filter. Only `in.(...)` on title is
-    // honoured, because the checklist's once-only check depends on it.
+    // PostgREST filters live in the query string, and this used to serve the table whole
+    // and "let the app filter". That is false for anything the app filters SERVER-side:
+    // useTransactions asks for one month with .gte('date',…).lte('date',…), so a fixture
+    // with several months of history had every month's rows land in the current month.
+    // A stage-C walk then read ₪16,000 of rent against ₪4,000 expected and a month that
+    // was ₪10,000 in the black for a flat that loses money — a Critical finding that was
+    // never in the app at all. The filters are honoured now.
     const rows = fixture[table] ?? []
     const url = new URL(route.request().url())
-    const titleFilter = url.searchParams.get('title')
-    if (titleFilter?.startsWith('in.')) {
-      const wanted = new Set(titleFilter.slice(3).replace(/^\(|\)$/g, '').split(',')
-        .map((v) => v.replace(/^"|"$/g, '')))
-      return json(route, rows.filter((r) => wanted.has((r as { title?: string }).title ?? '')))
-    }
-    return json(route, rows)
+    const NON_FILTER = new Set(['select', 'order', 'limit', 'offset', 'on_conflict', 'columns'])
+    const unwrap = (v: string) => v.replace(/^"|"$/g, '')
+
+    const filtered = rows.filter((row) => {
+      const r = row as Record<string, unknown>
+      for (const [col, raw] of url.searchParams.entries()) {
+        if (NON_FILTER.has(col)) continue
+        const dot = raw.indexOf('.')
+        if (dot < 0) continue
+        const op = raw.slice(0, dot)
+        const val = raw.slice(dot + 1)
+        const cell = r[col]
+        switch (op) {
+          case 'eq':  if (String(cell) !== unwrap(val)) return false; break
+          case 'neq': if (String(cell) === unwrap(val)) return false; break
+          case 'gt':  if (!(String(cell) > unwrap(val))) return false; break
+          case 'gte': if (!(String(cell) >= unwrap(val))) return false; break
+          case 'lt':  if (!(String(cell) < unwrap(val))) return false; break
+          case 'lte': if (!(String(cell) <= unwrap(val))) return false; break
+          case 'in': {
+            const wanted = new Set(val.replace(/^\(|\)$/g, '').split(',').map(unwrap))
+            if (!wanted.has(String(cell))) return false
+            break
+          }
+          case 'is':
+            if (val === 'null' && cell != null) return false
+            if (val === 'not.null' && cell == null) return false
+            break
+          // `or=(…)`, `not.…`, text search and the rest are left alone rather than
+          // guessed at — an unknown operator must not silently drop rows.
+          default: break
+        }
+      }
+      return true
+    })
+    return json(route, filtered)
   })
 
   // Fonts and any other third party: fail fast rather than hang the page for 30s.
