@@ -106,6 +106,7 @@
 
   /* ── Calm cash flow ── */
   .hs-flow-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .hs-flow-head.is-hidden { display: none; }
   .hs-flow-head h2 { font-size: 16px; font-weight: 700; color: var(--brand-navy); }
   .hs-link { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; }
 

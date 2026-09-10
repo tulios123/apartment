@@ -245,6 +245,9 @@ export interface StageState {
   doneCount: number
   /** Money that leaves his pocket in this stage — what a closed stage's summary says. */
   paid: number
+  /** What this stage costs him in total, marked or not — so a folded stage says something
+      worth knowing ("5 פריטים" said nothing; "₪39,000 מהכיס" is why he'd open it). */
+  total: number
   /** The last thing that closed here, so a finished stage can say WHEN. */
   closedAt: string | null
 }
@@ -266,6 +269,7 @@ export function stages(plan: PurchasePlan): StageState[] {
       done,
       doneCount: mine.filter(i => i.done).length,
       paid: mine.filter(i => i.done && i.amount > 0 && i.id !== 'pay3').reduce((a, i) => a + i.amount, 0),
+      total: mine.filter(i => i.amount > 0 && i.id !== 'pay3').reduce((a, i) => a + i.amount, 0),
       closedAt: dates.length ? dates.sort().at(-1)! : null,
     }
   })

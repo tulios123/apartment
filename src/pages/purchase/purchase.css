@@ -66,7 +66,7 @@
 
 .pmap-item {
   display: flex; align-items: flex-start; gap: 11px;
-  padding: 12px 15px;
+  padding: 11px 15px;
   border-inline-start: 3px solid transparent;
   transition: background var(--t-fast) var(--ease);
 }
@@ -91,18 +91,21 @@
 .pmap-mark:hover { border-color: var(--accent); }
 .pmap-item.is-done .pmap-mark { background: var(--success); border-color: var(--success); }
 
-.pmap-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.pmap-title { font-size: 14.5px; font-weight: 600; color: var(--text); }
+.pmap-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pmap-title { font-size: 14.5px; font-weight: 600; color: var(--text); line-height: 1.35; }
 .pmap-meta { font-size: 12px; color: var(--text-secondary); }
 .pmap-meta span { display: inline-flex; align-items: center; gap: 4px; }
-.pmap-note { font-size: 12px; color: var(--text-muted); }
+.pmap-note { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .pmap-over { color: var(--danger-text); font-weight: 600; }
+.pmap-past { color: var(--text-muted); }
 .pmap-wait { color: var(--warning-text); }
 .pmap-donetag { color: var(--success-text); font-weight: 600; }
 
+/* Aligned to the TITLE's baseline, not centred in the row: centred, it floated in the middle
+   of the empty span between the label and the screen edge and read as an unrelated number. */
 .pmap-amt {
-  flex-shrink: 0; align-self: center;
-  font-size: 14.5px; font-weight: 700; color: var(--brand-navy);
+  flex-shrink: 0; align-self: flex-start;
+  font-size: 14.5px; font-weight: 700; line-height: 1.35; color: var(--brand-navy);
   font-variant-numeric: tabular-nums;
 }
 .pmap-item.is-done .pmap-amt { color: var(--text-muted); font-weight: 600; }

@@ -4,11 +4,14 @@
   /* ── ANZ Plus–inspired palette ── */
   --bg:#f5f6f8; --bg-alt:#eef1f4; --bg-card:#ffffff; --surface:#ffffff; --surface-raised:#f5f6f8; --hover-bg:#eef1f4;
   --border:#e3e7ec; --border-strong:#cfd6de;
-  --text:#1a1a1a; --text-primary:#1a1a1a; --text-muted:#6e7480; --text-secondary:#6e7480; --text-on-accent:#ffffff;
+  /* Light palette, contrast pass (docs/audit/contrast-aa.md): three values darkened by
+     7-13%, same hues, and 46 AA failures across ten screens go to zero. Dark mode already
+     passed in full — the default theme was the one nobody had ever measured. */
+  --text:#1a1a1a; --text-primary:#1a1a1a; --text-muted:#666c77; --text-secondary:#666c77; --text-on-accent:#ffffff;
   --text-heading:#0a1f44; --brand-navy:#0a1f44; --hero-navy:#0a1f44;
-  --accent:#2a7de1; --accent-hover:#1f66c0; --accent-light:#e8f1fc; --accent-ring:rgba(42,125,225,0.30); --primary:#2a7de1; --primary-light:#e8f1fc;
+  --accent:#256dc4; --accent-hover:#1f66c0; --accent-light:#e8f1fc; --accent-ring:rgba(37,109,196,0.30); --primary:#256dc4; --primary-light:#e8f1fc;
   --success:#1fa871; --success-bg:#dcf3ea; --success-text:#127a52;
-  --danger:#e0533d; --danger-bg:#fde6e1; --danger-text:#b23420;
+  --danger:#cc4c38; --danger-bg:#fde6e1; --danger-text:#b23420;
   --warning:#b06a00; --warning-bg:#fdf2dc; --warning-text:#8a5200;
   --accent-2:#6d4ad6; --accent-2-bg:#ece7fb;
   /* Soft tints — subtle fills behind chips/rows. Previously referenced with only

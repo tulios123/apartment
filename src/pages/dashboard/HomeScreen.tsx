@@ -24,7 +24,7 @@ import { possession } from '../../lib/stage'
 import { HandoverMoment } from './HandoverMoment'
 import { PurchaseMap } from '../purchase/PurchaseMap'
 import { PlanSetup } from '../purchase/PlanSetup'
-import { loadPlan, savePlan, type PurchasePlan } from '../../lib/purchasePlan'
+import { loadPlan, savePlan, nextStep, type PurchasePlan } from '../../lib/purchasePlan'
 import '../purchase/purchase.css'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
@@ -318,6 +318,15 @@ export default function HomeScreen() {
     flashTimer.current = setTimeout(() => setFlash(null), 2600)
   }
 
+  // Before the key the greeting has a plan to read from, so it says the true next thing
+  // instead of a blanket all-clear. No plan yet → the invitation below is the message.
+  const preKeyStep = plan ? nextStep(plan) : null
+  const preKeyLine = !plan
+    ? 'נבנה יחד את לוח התשלומים.'
+    : preKeyStep
+      ? `הבא בתור: ${preKeyStep.label}.`
+      : 'הכול מסומן — נשאר לחכות למפתח.'
+
   // Distinguish a failed FIRST load (no cache → empty) from a genuine empty state, so we
   // never render a false "שכ״ד לא התקבל" (→ a duplicate rent entry when the user approves)
   // or a false "לא הוגדר נכס" (→ a second property). A transient refetch keeps the cached
@@ -349,9 +358,10 @@ export default function HomeScreen() {
           <p className="hs-status">
             {actions.length === 0
               ? awaitingKey
-                // Same reason as the all-clear card: "calm" describes a running property,
-                // not a purchase still in progress.
-                ? 'עוד לא נדרשת ממך פעולה — נעדכן כשכן.'
+                // "עוד לא נדרשת ממך פעולה" was printed directly above a plan with open —
+                // sometimes overdue — payments on it. A greeting that contradicts the screen
+                // under it is worse than no greeting: say what is actually next.
+                ? preKeyLine
                 : 'הכול רגוע היום — אין מה לעשות עכשיו.'
               : actions.length === 1
                 ? 'יש פעולה אחת שמחכה לך.'
@@ -518,7 +528,9 @@ export default function HomeScreen() {
 
           {/* ── Calm cash flow ── */}
           <section className="hs-flow">
-            <div className="hs-flow-head">
+            {/* With a plan on screen the heading was the third place in 200px saying the same
+                word — page title, hero eyebrow, stage title. The hero owns the identity. */}
+            <div className={`hs-flow-head${awaitingKey && plan ? ' is-hidden' : ''}`}>
               <h2>{awaitingKey ? 'לוח התשלומים' : 'תזרים החודש'}</h2>
               {/* No cash-flow framing before handover (owner, 07.09): there is no monthly
                   flow yet, so a link into the ledger points at an empty screen. */}

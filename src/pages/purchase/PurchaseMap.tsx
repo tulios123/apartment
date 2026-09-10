@@ -90,8 +90,13 @@ export function PurchaseMap({ plan, onChange, onSetup }: {
                     {s.done
                       ? <>הושלם{s.closedAt ? ` · ${formatDate(s.closedAt)}` : ''}{s.paid > 0 ? ` · ${fmt(s.paid)}` : ''}</>
                       : s.n === current
-                        ? <>{s.doneCount} מתוך {s.items.length} הושלמו · נסגר כש{s.closes}</>
-                        : <>{s.items.length} פריטים</>}
+                        /* "נסגר כש…" repeated the stage title one line below itself. The
+                           count is the only thing this line has to add. */
+                        ? <>{s.doneCount} מתוך {s.items.length} הושלמו</>
+                        /* "5 פריטים" said nothing; the stage's price is what would make him
+                           open it. Only when we actually know it — stages 2-3 carry costs we
+                           have no number for yet (insurance), so "ללא תשלום" would be a claim. */
+                        : <>{s.items.length} פריטים{s.total > 0 ? ` · ${fmt(s.total)} מהכיס` : ''}</>}
                   </span>
                 </span>
                 <CaretDown className="pmap-stage-caret" size={15} weight="bold" />
@@ -135,7 +140,12 @@ function Row({ item, today, current, onToggle }: {
   current: boolean
   onToggle: () => void
 }) {
-  const overdue = !item.done && !!item.due && item.due < today
+  const past = !item.done && !!item.due && item.due < today
+  // Red is a claim the app cannot make. Someone who signed in July and installs in September
+  // has five dates behind him — all of them genuinely done, none of them marked — and the
+  // first build painted every one of them red, so the screen opened on a wall of failure.
+  // Only the item that is actually next is urgent; the rest are simply not marked yet.
+  const overdue = past && current
   const waiting = item.dep === 'third' && !item.done
 
   return (
@@ -155,8 +165,9 @@ function Row({ item, today, current, onToggle }: {
           {item.done
             ? <span className="pmap-donetag">בוצע{item.doneAt ? ` · ${formatDate(item.doneAt)}` : ''}</span>
             : item.due
-              ? <span className={overdue ? 'pmap-over' : ''}>
-                  {formatDate(item.due)}{overdue ? ' · עבר' : ` · ${countdownLabel(daysBetween(today, item.due))}`}
+              ? <span className={overdue ? 'pmap-over' : past ? 'pmap-past' : ''}>
+                  {formatDate(item.due)}
+                  {overdue ? ' · המועד עבר' : past ? ' · לא סומן' : ` · ${countdownLabel(daysBetween(today, item.due))}`}
                 </span>
               : waiting
                 ? <span className="pmap-wait"><Hourglass size={12} weight="bold" /> ממתין ל{item.waitingOn}</span>
