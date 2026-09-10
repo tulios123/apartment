@@ -71,7 +71,7 @@ node node_modules/@playwright/test/cli.js test <spec> --project=pixel7 --reporte
 
 # מצב-הריצה
 
-**עודכן:** 10.09, תחילת הריצה
+**עודכן:** 11.09, סוף הריצה · שלושת המעברים + מקרי-קצה הושלמו
 **ענף:** `claude/deep-testing-flight-juiyw9` (נדחף גם ל-`staging`)
 **נקודת-פתיחה:** `0db2bb5` + הבריף לגימיני
 
@@ -87,6 +87,7 @@ node node_modules/@playwright/test/cli.js test <spec> --project=pixel7 --reporte
 | 4 | תיקוני ג' + לפני/אחרי | ✅ (C-1) |
 | 5 | שלב א' — מה קורה היום + בריף עיצובי | ✅ |
 | 6 | מטריצת 4×3 + דוח-בוקר | ✅ |
+| 7 | מקרי-קצה + הכרעת B-10 | ✅ |
 
 ## הפעולה הבאה
 
