@@ -41,7 +41,9 @@ export function DealStructure({ price, tracks, loans, costs, fromPocket }: {
     <section className="wlth-card wlth-deal">
       <div className="wlth-card-head">
         <h2>מבנה העסקה</h2>
-        <span className="wlth-card-note">לא מתיישן</span>
+        {/* "לא מתיישן" meant "these figures do not move" and read as a riddle — the sibling
+            card uses this slot for a fact (חוב כולל …). A cryptic badge is worse than an
+            empty slot, so until there is a fact worth putting here, nothing goes here. */}
       </div>
 
       <div className="wlth-deal-rows">
