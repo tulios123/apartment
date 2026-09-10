@@ -154,7 +154,12 @@ function Row({ item, today, current, onToggle }: {
   // over-correction: the row that costs the most money on this screen became the calmest
   // one on it. It is not painted as failure (the app still does not know whether he
   // filed) — it is painted as something that will not wait.
-  const lateStatutory = past && !current && !!item.statutory
+  // …and not when there is nothing to pay. A single apartment under the 2026 exemption owes
+  // ₪0 purchase tax, and the map still raised an amber "המועד החוקי עבר" over it — alarming
+  // a 22-year-old about a debt that does not exist, on the one screen he opened to find out
+  // whether he was in trouble. A cost of zero is not a missed obligation.
+  const emptyCost = item.kind === 'cost' && item.amount === 0
+  const lateStatutory = past && !current && !!item.statutory && !emptyCost
   const waiting = item.dep === 'third' && !item.done
 
   return (

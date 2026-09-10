@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import { ArrowDown, ArrowUp } from '@phosphor-icons/react'
 import { monthlyVirtualEntries } from '../../lib/projections'
-import { formatCurrency, parseLocalISO, HEBREW_MONTHS } from '../../lib/format'
+import { formatCurrency, parseLocalISO, HEBREW_MONTHS, formatDate } from '../../lib/format'
+import { useAuth } from '../../contexts/AuthContext'
+import { loadPlan, resolveDates } from '../../lib/purchasePlan'
 import type { Contract, MortgageTrack, Loan } from '../../types'
 
 const fmt = (v: number) => formatCurrency(v)
@@ -29,6 +31,27 @@ export function FirstMonth({ keyDate, contracts, tracks, loans, policies }: {
   const d = parseLocalISO(keyDate)
   const y = d.getFullYear()
   const m = d.getMonth() + 1
+
+  /**
+   * What ELSE happens in this month — read off the payment plan, not recomputed.
+   *
+   * Walked as a buyer (NIGHT_RUN B-2/B-5) this screen answered "how much leaves in the
+   * handover month" with the mortgage instalment alone, said the same number four times,
+   * and left two thirds of the phone empty — in the month he completes the purchase. These
+   * rows are the plan's own, at the plan's own amounts, so the screen gains what actually
+   * happens without a second calculation of it anywhere.
+   *
+   * Deliberately NOT stated here: how much of the balance is his money and how much the
+   * bank's. The app currently gives two different answers to that (NIGHT_RUN B-1) and this
+   * screen will not pick one before the owner does.
+   */
+  const { user } = useAuth()
+  const monthKey = `${y}-${String(m).padStart(2, '0')}`
+  const planRows = useMemo(() => {
+    const plan = user ? loadPlan(user.id) : null
+    if (!plan) return []
+    return resolveDates(plan).filter(i => !i.done && i.due?.startsWith(monthKey))
+  }, [user, monthKey])
 
   const first = useMemo(
     () => monthlyVirtualEntries(contracts, tracks, y, m, loans, policies),
@@ -103,6 +126,26 @@ export function FirstMonth({ keyDate, contracts, tracks, loans, policies }: {
           ? 'החודש הראשון שונה מחודש רגיל — בדרך כלל בגלל תשלום המשכנתא הראשון.'
           : 'החודש הראשון זהה לחודש רגיל.'}
       </p>
+
+      {planRows.length > 0 && (
+        <section className="fm-plan">
+          <h3>גם בחודש הזה, מלוח התשלומים</h3>
+          <div className="fm-rows">
+            {planRows.map(i => (
+              <div className="fm-row" key={i.id}>
+                <span className="fm-row-name">
+                  {i.label}
+                  {i.due && <span className="fm-row-when">{formatDate(i.due)}</span>}
+                </span>
+                {i.amount > 0 && <b>{fmt(i.amount)}</b>}
+              </div>
+            ))}
+          </div>
+          <p className="fm-note">
+            אלה שורות לוח התשלומים, לא הוצאה חודשית — הן קורות פעם אחת, בחודש המסירה.
+          </p>
+        </section>
+      )}
     </div>
   )
 }

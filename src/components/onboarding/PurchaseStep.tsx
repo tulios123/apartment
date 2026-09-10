@@ -43,19 +43,25 @@ export function PurchaseStep() {
   const price = Number(purchasePrice) || 0
   const awaitingKey = !!keyDeliveryDate && keyDeliveryDate > todayISO()
   const showTerms = awaitingKey && price > 0
+  // Every statutory deadline in the plan is measured from the SIGNING date — report within
+  // 30 days, pay within 60. `signingDate || todayISO()` silently anchored them to the day
+  // he installed instead: someone who signed two months ago and skipped the field was told
+  // his tax report was due in a month, when he was already a month late. The app may not
+  // invent the one date its legal deadlines hang on. Without it, no plan and no deadline.
+  const canPlan = showTerms && !!signingDate
 
   // The plan IS the persistence — no extra draft field to keep in sync, and it is rebuilt
   // at finish once the costs are known (useOnboardingState).
   useEffect(() => {
     if (!user?.id) return
-    if (!showTerms) { clearPlan(user.id); return }
+    if (!canPlan) { clearPlan(user.id); return }
     savePlan(user.id, buildPlan({
       price,
-      signing: signingDate || todayISO(),
+      signing: signingDate,
       handover: keyDeliveryDate!,
       firstPct, secondPct, singleApartment,
     }))
-  }, [user?.id, showTerms, price, signingDate, keyDeliveryDate, firstPct, secondPct, singleApartment])
+  }, [user?.id, canPlan, price, signingDate, keyDeliveryDate, firstPct, secondPct, singleApartment])
   const [showDocs, setShowDocs] = useState(false)
   // Drive the banner/toggle from the SAME source as the list below: files already in
   // storage count too, otherwise after a reload the list knew about the document while
@@ -191,9 +197,14 @@ export function PurchaseStep() {
               <button type="button" className={`onboarding-terms-chip${singleApartment ? ' on' : ''}`} onClick={() => setSingleApartment(true)}>דירה יחידה</button>
               <button type="button" className={`onboarding-terms-chip${!singleApartment ? ' on' : ''}`} onClick={() => setSingleApartment(false)}>דירה נוספת</button>
             </div>
+            {/* The amount depends only on the price and the declaration, so it is honest
+                either way. The DEADLINE hangs on the signing date — so it is only stated
+                once that date exists, and its absence is named instead of papered over. */}
             <span>
               מס רכישה <b>{formatCurrency(purchaseTax(price, singleApartment))}</b>
-              {' · '}לתשלום עד 60 יום מהחתימה
+              {signingDate
+                ? <>{' · '}לתשלום עד 60 יום מהחתימה</>
+                : <>{' · '}<em>מלאו תאריך חתימה כדי לחשב את המועדים</em></>}
             </span>
           </div>
         </div>
