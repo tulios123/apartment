@@ -93,10 +93,14 @@ export function PurchaseMap({ plan, onChange, onSetup }: {
                         /* "נסגר כש…" repeated the stage title one line below itself. The
                            count is the only thing this line has to add. */
                         ? <>{s.doneCount} מתוך {s.items.length} הושלמו</>
-                        /* "5 פריטים" said nothing; the stage's price is what would make him
-                           open it. Only when we actually know it — stages 2-3 carry costs we
-                           have no number for yet (insurance), so "ללא תשלום" would be a claim. */
-                        : <>{s.items.length} פריטים{s.total > 0 ? ` · ${fmt(s.total)} מהכיס` : ''}</>}
+                        /* "5 פריטים" said nothing. A folded future stage owes him either its
+                           price or its horizon — "not yet, and here is when" is the whole
+                           point of folding it. (Stages 2-3 carry costs we have no number for
+                           yet, e.g. insurance, so "ללא תשלום" would be a claim, not a fact.) */
+                        : <>
+                            {s.items.length} פריטים
+                            {s.total > 0 ? ` · ${fmt(s.total)} מהכיס` : s.startsAt ? ` · מ-${formatDate(s.startsAt)}` : ''}
+                          </>}
                   </span>
                 </span>
                 <CaretDown className="pmap-stage-caret" size={15} weight="bold" />
@@ -146,10 +150,15 @@ function Row({ item, today, current, onToggle }: {
   // first build painted every one of them red, so the screen opened on a wall of failure.
   // Only the item that is actually next is urgent; the rest are simply not marked yet.
   const overdue = past && current
+  // …with one exception. A deadline set by law carries a fine, and quieting it was the
+  // over-correction: the row that costs the most money on this screen became the calmest
+  // one on it. It is not painted as failure (the app still does not know whether he
+  // filed) — it is painted as something that will not wait.
+  const lateStatutory = past && !current && !!item.statutory
   const waiting = item.dep === 'third' && !item.done
 
   return (
-    <li className={`pmap-item${item.done ? ' is-done' : ''}${current ? ' is-current' : ''}`}>
+    <li className={`pmap-item${item.done ? ' is-done' : ''}${current ? ' is-current' : ''}${lateStatutory ? ' is-legal-late' : ''}`}>
       <button
         className="pmap-mark"
         onClick={onToggle}
@@ -165,17 +174,24 @@ function Row({ item, today, current, onToggle }: {
           {item.done
             ? <span className="pmap-donetag">בוצע{item.doneAt ? ` · ${formatDate(item.doneAt)}` : ''}</span>
             : item.due
-              ? <span className={overdue ? 'pmap-over' : past ? 'pmap-past' : ''}>
+              ? <span className={overdue ? 'pmap-over' : lateStatutory ? 'pmap-legal' : past ? 'pmap-past' : ''}>
                   {formatDate(item.due)}
-                  {overdue ? ' · המועד עבר' : past ? ' · לא סומן' : ` · ${countdownLabel(daysBetween(today, item.due))}`}
+                  {overdue ? ' · המועד עבר'
+                    : lateStatutory ? ' · המועד החוקי עבר'
+                      : past ? ' · לא סומן'
+                        : ` · ${countdownLabel(daysBetween(today, item.due))}`}
                 </span>
               : waiting
                 ? <span className="pmap-wait"><Hourglass size={12} weight="bold" /> ממתין ל{item.waitingOn}</span>
                 : <span>ללא תאריך</span>}
         </div>
         {/* The note is one-time knowledge. Show it on the item that is actually next, not on
-            all fifteen — that alone was half the wall of text in the first build. */}
-        {current && item.note && <div className="pmap-note">{item.note}</div>}
+            all fifteen — that alone was half the wall of text in the first build. The
+            exception is a legal deadline already behind him: the note IS the reason the row
+            matters, and hiding it left the most expensive line on the screen unexplained. */}
+        {(current || lateStatutory) && item.note && (
+          <div className={`pmap-note${lateStatutory ? ' is-legal' : ''}`}>{item.note}</div>
+        )}
       </div>
 
       {item.amount > 0 && <div className="pmap-amt">{fmt(item.amount)}</div>}

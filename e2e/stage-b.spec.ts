@@ -26,7 +26,13 @@ test.use({
 async function fresh(page: Page, theme: 'light' | 'dark' = 'light') {
   await setTheme(page, theme)
   await stubSupabase(page, account(B.keyInDays, B.signedDaysAgo))
+  // ONCE, not on every navigation. addInitScript re-runs on each page load, so the first
+  // version of this wiped the plan the moment the walk moved to another pillar — and the
+  // whole pillar sweep was photographed with no plan at all, silently. The sentinel makes
+  // it a genuine "start clean", which is what it was always meant to be.
   await page.addInitScript(() => {
+    if (sessionStorage.getItem('__walk_cleared')) return
+    sessionStorage.setItem('__walk_cleared', '1')
     for (const k of Object.keys(localStorage)) {
       if (k.startsWith('onboarding_draft') || k.startsWith('purchase_plan:')) localStorage.removeItem(k)
     }

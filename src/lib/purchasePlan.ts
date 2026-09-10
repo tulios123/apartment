@@ -70,6 +70,12 @@ export interface PlanItem {
   doneAt?: string
   /** True once the number is his (he typed it) or it has happened. */
   certain: boolean
+  /**
+   * A deadline set by law, not by the contract — missing it costs a fine, and the app
+   * cannot un-miss it for him. Presentation only: it changes no amount and no date,
+   * it only stops the row from being as quiet as the ones beside it.
+   */
+  statutory?: boolean
 }
 
 export interface PurchasePlan {
@@ -131,7 +137,7 @@ export function buildPlan(input: {
     {
       id: 'tax-report', stage: 1, kind: 'task', label: 'דיווח לרשות המסים', amount: 0,
       dep: 'you', due: shift(signing, 30), note: 'חובה חוקית · 30 יום מהחתימה',
-      done: false, certain: true,
+      done: false, certain: true, statutory: true,
     },
     {
       id: 'tax-pay', stage: 1, kind: 'cost', label: 'תשלום מס רכישה', amount: tax,
@@ -139,7 +145,7 @@ export function buildPlan(input: {
       note: singleApartment
         ? 'חובה חוקית · 60 יום מהחתימה · דירה יחידה'
         : 'חובה חוקית · 60 יום מהחתימה · דירה נוספת',
-      done: false, certain: true,
+      done: false, certain: true, statutory: true,
     },
     {
       id: 'insurance', stage: 2, kind: 'task', label: 'ביטוח חיים וביטוח מבנה', amount: 0,
@@ -250,6 +256,10 @@ export interface StageState {
   total: number
   /** The last thing that closed here, so a finished stage can say WHEN. */
   closedAt: string | null
+  /** The earliest date in the stage — what a folded FUTURE stage can honestly say about
+      itself. "5 פריטים" told him nothing; "מ-16.3.2027" tells him it is not his problem
+      yet, which is the reassurance the fold is supposed to buy. */
+  startsAt: string | null
 }
 
 /**
@@ -271,6 +281,12 @@ export function stages(plan: PurchasePlan): StageState[] {
       paid: mine.filter(i => i.done && i.amount > 0 && i.id !== 'pay3').reduce((a, i) => a + i.amount, 0),
       total: mine.filter(i => i.amount > 0 && i.id !== 'pay3').reduce((a, i) => a + i.amount, 0),
       closedAt: dates.length ? dates.sort().at(-1)! : null,
+      // Third-party items are excluded on purpose. `approvals` (the seller's municipal
+      // certificates) carries signing+240, which lands BEFORE the handover — so the raw
+      // minimum made stage 3 announce that it starts a week before stage 2. That date is
+      // a guess about someone else's schedule; a stage's horizon may only be built from
+      // dates the app actually stands behind. See NIGHT_RUN.md, B-12.
+      startsAt: mine.filter(i => i.dep !== 'third').map(i => i.due).filter(Boolean).sort()[0] as string ?? null,
     }
   })
 }

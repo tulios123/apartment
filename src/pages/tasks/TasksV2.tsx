@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
+import { loadPlan } from '../../lib/purchasePlan'
 import { recurrenceLabel } from '../../lib/recurrence'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
@@ -56,6 +57,13 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const taskDocs = editing ? documents.filter(d => d.task_id === editing.id) : []
+
+  // A buyer before handover has everything open on the payment plan and nothing in this
+  // list — and the empty state was answering him with a green tick and "הכול תחת שליטה",
+  // one tap away from three overdue payments. This screen may only speak for what it
+  // holds. A plan exists only before the key, so its presence is the whole condition.
+  const plan = user ? loadPlan(user.id) : null
+  const planOpen = plan ? plan.items.filter(i => !i.done).length : 0
 
   async function handleAttach(file: File) {
     if (!user || !editing) return
@@ -206,7 +214,18 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             {backlog.length === 0 ? (
-              <div className="tav-empty"><div className="empty-flat-icon ok"><CheckCircle size={30} weight="fill" /></div><p>אין משימות פתוחות — הכול תחת שליטה</p></div>
+              planOpen > 0 ? (
+                <div className="tav-empty">
+                  <div className="empty-flat-icon"><ClipboardText size={30} weight="fill" /></div>
+                  <p>עוד לא הוספת משימות משלך.</p>
+                  <p className="tav-empty-sub">{planOpen} פריטים פתוחים יושבים בלוח התשלומים.</p>
+                  <button type="button" className="tav-empty-link" onClick={() => navigate('/')}>
+                    ללוח התשלומים
+                  </button>
+                </div>
+              ) : (
+                <div className="tav-empty"><div className="empty-flat-icon ok"><CheckCircle size={30} weight="fill" /></div><p>אין משימות פתוחות — הכול תחת שליטה</p></div>
+              )
             ) : backlog.map(t => {
               const Icon = CAT_ICON[t.category] ?? ListChecks
               const overdue = isOverdue(t)

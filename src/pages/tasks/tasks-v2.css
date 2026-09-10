@@ -68,6 +68,15 @@
   .tav-empty { text-align: center; padding: 48px 20px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); color: var(--text-muted); }
   .tav-empty svg { color: var(--success); margin-bottom: 10px; }
   .tav-empty p { font-size: 14px; }
+  /* The green tick belongs to the genuine all-clear only. When the plan still has open
+     items this state is informational, not a celebration — so the icon stays neutral. */
+  .tav-empty .empty-flat-icon:not(.ok) svg { color: var(--text-muted); }
+  .tav-empty-sub { margin-top: 5px; font-size: 13px; color: var(--text-secondary); }
+  .tav-empty-link {
+    margin-top: 14px; min-height: 44px; padding: 0 18px;
+    background: none; border: 1px solid var(--border-strong); border-radius: var(--r-pill);
+    color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  }
 
   /* Edit drawer */
   .tav-scrim { position: fixed; inset: 0; background: rgba(10,31,68,0.28); opacity: 0; pointer-events: none; transition: opacity 0.35s var(--ease); z-index: 90; }
