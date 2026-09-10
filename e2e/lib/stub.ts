@@ -89,7 +89,13 @@ export async function stubSupabase(page: Page, fixture: Fixture) {
     // never in the app at all. The filters are honoured now.
     const rows = fixture[table] ?? []
     const url = new URL(route.request().url())
-    const NON_FILTER = new Set(['select', 'order', 'limit', 'offset', 'on_conflict', 'columns'])
+    // `owner_id` is row-level security in production, not a query the fixtures model: a
+    // per-screen fixture is already one user's data by construction, and several specs
+    // carry a placeholder owner ('u') that only ever worked because filters were ignored.
+    // Honouring it would route those walks to onboarding and photograph the wrong screen.
+    const NON_FILTER = new Set([
+      'select', 'order', 'limit', 'offset', 'on_conflict', 'columns', 'owner_id', 'user_id',
+    ])
     const unwrap = (v: string) => v.replace(/^"|"$/g, '')
 
     const filtered = rows.filter((row) => {

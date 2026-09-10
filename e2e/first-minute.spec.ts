@@ -78,6 +78,15 @@ test('the first minute, as a buyer who has not got the key', async ({ page }) =>
   await page.getByLabel('עיר').fill('תל אביב')
   await page.getByLabel('מחיר רכישה (₪)').fill('1850000')
 
+  // The signing date FIRST, and it is not optional any more. Every statutory deadline in
+  // the plan is measured from it, so the app refuses to invent one: without this field
+  // there is no plan at all (see the sibling test below, which holds that guarantee).
+  await page.locator('.datefield').first().click()
+  await page.locator('.calpop').waitFor({ state: 'visible' })
+  await page.locator('.calpop-day:not(.blank):not([disabled])').first().click()
+  await page.locator('.calpop').waitFor({ state: 'detached' }).catch(() => {})
+  await page.waitForTimeout(300)
+
   // The two dates are not inputs at all — DateField is a button that opens a calendar.
   // Photograph it: it is a first-minute surface nobody here had ever seen either.
   await page.locator('.datefield').last().click()
@@ -127,4 +136,41 @@ test('the first minute, as a buyer who has not got the key', async ({ page }) =>
   expect(stored.firstPct).toBe(15)
   expect(stored.secondPct).toBe(10)
   expect(stored.items.find((i: { id: string }) => i.id === 'pay1').amount).toBe(277_500)
+})
+
+/**
+ * The guarantee behind the change above: the app will not invent the date its legal
+ * deadlines hang on.
+ *
+ * A buyer who signed two months ago and skips this field used to be told his 30-day tax
+ * report was due in a month — because the plan was built with `signingDate || todayISO()`
+ * and quietly anchored every statutory deadline to the day he installed. No signing date
+ * now means no plan, which is the honest answer.
+ */
+test('בלי תאריך חתימה — האפליקציה לא ממציאה מועדים', async ({ page }) => {
+  await startWizard(page)
+  await cont(page)                      // → documents
+  await cont(page)                      // → purchase
+
+  await page.getByLabel('מחיר רכישה (₪)').fill('1850000')
+  // Handover only. The signing DateField is left untouched, on purpose.
+  await page.locator('.datefield').last().click()
+  await page.locator('.calpop').waitFor({ state: 'visible' })
+  for (let i = 0; i < 7; i++) await page.locator('.calpop-nav').first().click()
+  await page.locator('.calpop-day:not(.blank):not([disabled])').nth(9).click()
+  await page.locator('.calpop').waitFor({ state: 'detached' }).catch(() => {})
+  await page.waitForTimeout(600)
+
+  // The terms block still does its honest half — the amounts and the tax depend only on
+  // the price and the declaration — but it must not assert a deadline it cannot place.
+  const terms = page.locator('.onboarding-terms')
+  await terms.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(terms).toContainText('מלאו תאריך חתימה')
+  await expect(terms).not.toContainText('60 יום מהחתימה')
+
+  const stored = await page.evaluate(() => {
+    const k = Object.keys(localStorage).find(x => x.startsWith('purchase_plan:'))
+    return k ? localStorage.getItem(k) : null
+  })
+  expect(stored, 'no signing date must mean no plan, not a plan dated from today').toBeNull()
 })
