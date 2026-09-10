@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Bank, CreditCard, Handshake, CaretDown, PencilSimple } from '@phosphor-icons/react'
 import { trackSchedule } from '../../lib/mortgage'
 import { loanBalance, loanMonthlyPayment, loanEndDate } from '../../lib/loans'
-import { formatCurrency, todayISO, parseLocalISO, monthDayISO } from '../../lib/format'
+import { formatCurrency, formatDate, todayISO, parseLocalISO, monthDayISO } from '../../lib/format'
 import type { MortgageTrack, Loan } from '../../types'
 import type { MortgageSummary } from '../../hooks/useMortgageData'
 
@@ -29,6 +29,16 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
   const [open, setOpen] = useState(false)
 
   const mortgageBalance = summary.currentBalance || 0
+  /**
+   * A mortgage whose every track starts in the future has not been drawn: there is no
+   * debt yet and no instalment. Walked before handover (NIGHT_RUN B-6) the card read
+   * "יתרה ₪1,150,000 · 0 ₪/חודש" — a debt he does not owe, and a payment of zero that is
+   * not zero but not-yet. Display only; the arithmetic below is untouched.
+   */
+  const drawdown = tracks.length > 0
+    ? tracks.map(t => t.start_date).filter(Boolean).sort()[0] as string | undefined
+    : undefined
+  const notDrawn = !!drawdown && drawdown > todayISO()
   // Principal-weighted average rate. Guard the denominator (not just tracks.length)
   // so a stray 0-principal track can't produce NaN% in the blended-rate label.
   const trackPrincipal = tracks.reduce((s, t) => s + (Number(t.principal) || 0), 0)   // numeric cols → strings; coerce before summing
@@ -90,9 +100,13 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
             <span className="wlth-vehicle-icon"><Bank size={20} weight="duotone" /></span>
             <div className="wlth-vehicle-main">
               <div className="wlth-vehicle-title">משכנתא ראשית <span className="wlth-vehicle-meta">· {tracks.length === 1 ? 'מסלול אחד' : `${tracks.length} מסלולים`}</span></div>
-              <div className="wlth-vehicle-sub">{blendedRate.toFixed(1)}% · {fmt(currentMonthlyPayment)}/חודש{inGrace ? ' · בגרייס' : ''}</div>
+              <div className="wlth-vehicle-sub">
+                {blendedRate.toFixed(1)}% · {notDrawn
+                  ? <>מתחילה ב-{formatDate(drawdown!)}</>
+                  : <>{fmt(currentMonthlyPayment)}/חודש{inGrace ? ' · בגרייס' : ''}</>}
+              </div>
             </div>
-            <div className="wlth-vehicle-bal"><b>{fmt(mortgageBalance)}</b><span>יתרה</span></div>
+            <div className="wlth-vehicle-bal"><b>{fmt(mortgageBalance)}</b><span>{notDrawn ? 'צפויה' : 'יתרה'}</span></div>
             <CaretDown className="wlth-vehicle-caret" size={16} weight="bold" />
           </button>
           {open && (
