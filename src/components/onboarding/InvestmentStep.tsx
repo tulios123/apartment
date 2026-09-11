@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react'
+import { useId, useState, type ChangeEvent } from 'react'
 import { sanitizeAmountInt } from '../../lib/format'
 import { Coins, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
@@ -24,6 +24,11 @@ export function InvestmentStep() {
   // Which balloon row is expanded for editing; others collapse to a compact summary
   // so the list stays tidy as more family lenders are added.
   const [editBalloon, setEditBalloon] = useState<number | null>(null)
+  // The cost boxes had decorative labels only, so each was announced as an unnamed edit
+  // box and its label focused nothing (docs/audit/a11y-forms.md). The focus key each one
+  // already carries ('c.lawyer', …) doubles as the DOM id.
+  const uid = useId()
+  const fid = (k: string) => `${uid}-${k.replace(/\./g, '-')}`
 
   return (
     <form noValidate onSubmit={e => { e.preventDefault(); advance('rental') }}>
@@ -52,6 +57,7 @@ export function InvestmentStep() {
                   : formatNum(equityValue || eqDefRaw)
                 return (
                   <input
+                    aria-label="הון עצמי (₪)"
                     type="text" inputMode="numeric"
                     className={isGrey ? 'input-ph-grey' : ''}
                     value={displayVal}
@@ -64,6 +70,7 @@ export function InvestmentStep() {
               }
               return (
                 <input
+                  aria-label="הון עצמי (%)"
                   type="number" min="0" max="100" step="0.1"
                   className={isGrey ? 'input-ph-grey' : ''}
                   value={focusedInput === 'equity' ? equityValue : (equityValue || eqDefRaw)}
@@ -154,6 +161,7 @@ export function InvestmentStep() {
           const lawyerDef = defaultLawyerCost(price)
           const brokerageDef = defaultBrokerageCost(price)
           const inp = (id: string, val: string, def: string, onChange: (v: string) => void) => ({
+            id: fid(id),
             type: 'text' as const,
             inputMode: 'numeric' as const,
             className: !val && !!def && focusedInput !== id ? 'input-ph-grey' : '',
@@ -166,34 +174,34 @@ export function InvestmentStep() {
             <>
               <div className="onboarding-row">
                 <div className="onboarding-field">
-                  <label>עורך דין (₪)</label>
+                  <label htmlFor={fid('c.lawyer')}>עורך דין (₪)</label>
                   <input {...inp('c.lawyer', costs.lawyer, lawyerDef, v => setCosts(c => ({ ...c, lawyer: v })))} />
                   <span className="onboarding-field-hint">0.5% + ₪1,000 + מע"מ 18%</span>
                 </div>
                 <div className="onboarding-field">
-                  <label>דמי תיווך (₪)</label>
+                  <label htmlFor={fid('c.brokerage')}>דמי תיווך (₪)</label>
                   <input {...inp('c.brokerage', costs.brokerage, brokerageDef, v => setCosts(c => ({ ...c, brokerage: v })))} />
                   <span className="onboarding-field-hint">2% + מע"מ 18%</span>
                 </div>
               </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
-                  <label>יועץ משכנתאות (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
+                  <label htmlFor={fid('c.advisor')}>יועץ משכנתאות (₪)</label>
+                  <input id={fid('c.advisor')} type="text" inputMode="numeric" placeholder="0"
                     value={formatNum(costs.mortgage_advisor)}
                     onChange={e => setCosts(c => ({ ...c, mortgage_advisor: sanitizeAmountInt(e.target.value) }))} />
                 </div>
                 <div className="onboarding-field">
-                  <label>חברת ליווי השקעה (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
+                  <label htmlFor={fid('c.escort')}>חברת ליווי השקעה (₪)</label>
+                  <input id={fid('c.escort')} type="text" inputMode="numeric" placeholder="0"
                     value={formatNum(costs.investment_company)}
                     onChange={e => setCosts(c => ({ ...c, investment_company: sanitizeAmountInt(e.target.value) }))} />
                 </div>
               </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
-                  <label>שמאי (₪)</label>
-                  <input type="text" inputMode="numeric" placeholder="0"
+                  <label htmlFor={fid('c.appraiser')}>שמאי (₪)</label>
+                  <input id={fid('c.appraiser')} type="text" inputMode="numeric" placeholder="0"
                     value={formatNum(costs.appraiser ?? '')}
                     onChange={e => setCosts(c => ({ ...c, appraiser: sanitizeAmountInt(e.target.value) }))} />
                 </div>

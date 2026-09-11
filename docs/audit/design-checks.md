@@ -1,6 +1,6 @@
 # בדיקות עיצוב — פלט אוטומטי
 
-נוצר על-ידי `e2e/design-checks.spec.ts` · 10.9.2026 · מכשיר: Pixel 7 (412px)
+נוצר על-ידי `e2e/design-checks.spec.ts` · 11.9.2026 · מכשיר: Pixel 7 (412px)
 
 הקובץ נכתב מחדש בכל הרצה — לא לערוך ביד:
 `node node_modules/@playwright/test/cli.js test e2e/design-checks.spec.ts --project=pixel7`
