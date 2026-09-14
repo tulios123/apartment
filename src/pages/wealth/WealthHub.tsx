@@ -184,7 +184,12 @@ export default function WealthHub() {
               </div>
               <div className="wlth-cf-rows">
                 <div className="wlth-cf-row">
-                  <span><i className="wlth-cf-dot in" /> שכר דירה שהתקבל</span>
+                  {/* "שהתקבל" asserted receipt. `rentReceivedToDate` counts what the LEASE
+                      says is due since it started — the ledger here held 16,000 while this
+                      line read 44,000 (NIGHT_RUN C2-C). Naming the source is the honest
+                      minimum; whether the figure should instead come from the transactions
+                      is the owner's call, not a rename. */}
+                  <span><i className="wlth-cf-dot in" /> שכר דירה לפי החוזה</span>
                   <strong className="in">{fmt(rentReceived)}</strong>
                 </div>
                 <div className="wlth-cf-row">
