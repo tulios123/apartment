@@ -47,6 +47,10 @@ test('הכפתורים הצפים — מה באמת מתחתיהם', async ({ pa
         const r = el.getBoundingClientRect()
         const round = parseFloat(cs.borderRadius) >= r.width / 2 - 2
         if (cs.position !== 'fixed' || !round || r.width < 30 || r.width > 90) continue
+        // DevNotes renders only in dev or for dev@test.local (App.tsx DevNotesGate), so it
+        // is NOT on a family member's screen — counting it inflated this finding. The dev
+        // server shows it; production does not.
+        if (el.hasAttribute('data-dev-only')) continue
         // Peek underneath: hide it, ask what is there, put it back.
         const vis = (el as HTMLElement).style.visibility
         ;(el as HTMLElement).style.visibility = 'hidden'

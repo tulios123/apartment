@@ -104,7 +104,9 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     const backlog = tasks.filter(t => t.status !== 'done')
     const logbook = tasks
       .filter(t => t.status === 'done')
-      .sort((a, b) => (b.completed_at ?? b.created_at).localeCompare(a.completed_at ?? a.created_at))
+      // Same missing-timestamp hazard as the stamp below, and it survived only because a
+      // one-element sort never calls its comparator. Two bare rows would have thrown here.
+      .sort((a, b) => (b.completed_at ?? b.created_at ?? '').localeCompare(a.completed_at ?? a.created_at ?? ''))
     return { backlog, logbook }
   }, [tasks])
 
@@ -278,7 +280,10 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
                       <span className="tav-task-cat"><Icon size={13} weight="duotone" /> {t.category}</span>
                     </div>
                   </div>
-                  <span className="tav-log-stamp">נסגר {formatDate(stamp.slice(0, 10))}</span>
+                  {/* A completed task with neither timestamp threw on .slice and took the
+                      whole Property→Tasks pillar down to the error boundary — one bad row
+                      for an entire screen. Found by walking it (NIGHT_RUN D-3). */}
+                  {stamp && <span className="tav-log-stamp">נסגר {formatDate(stamp.slice(0, 10))}</span>}
                 </div>
               )
             })}

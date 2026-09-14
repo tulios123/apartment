@@ -91,8 +91,16 @@ export function owner(opts: { rentThisMonth?: boolean; leaseEndsInDays?: number 
     }],
     tasks: [
       // One behind him, one ahead — the brief asks for both.
+      // Deliberately carries NEITHER completed_at NOR created_at. That is how the crash was
+      // found — the logbook read `(completed_at ?? created_at).slice(0,10)` and took the
+      // whole pillar down. Leave it bare so the guard stays guarded.
       { id: 'k1', owner_id: OWNER, property_id: PROPERTY, title: 'לחדש את פוליסת המבנה',
         due_date: d(-40), due_time: null, category: 'כללי', status: 'done', source: 'manual',
+        is_recurring: false, recurring_item_id: null, transaction_id: null, recurrence_days: null },
+      // A SECOND bare completed row: with one, the logbook sort never calls its comparator
+      // and the missing-timestamp hazard hides. Two is what exercises it.
+      { id: 'k3', owner_id: OWNER, property_id: PROPERTY, title: 'לתאם ניקיון לפני כניסת השוכר',
+        due_date: d(-120), due_time: null, category: 'כללי', status: 'done', source: 'manual',
         is_recurring: false, recurring_item_id: null, transaction_id: null, recurrence_days: null },
       { id: 'k2', owner_id: OWNER, property_id: PROPERTY, title: 'בדיקת רטיבות בחדר האמבטיה',
         due_date: d(6), due_time: null, category: 'תיקונים ותחזוקה', status: 'open', source: 'manual',
