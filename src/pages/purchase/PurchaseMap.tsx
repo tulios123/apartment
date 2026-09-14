@@ -128,7 +128,11 @@ export function PurchaseMap({ plan, onChange, onSetup }: {
           payment, not the total, because the total is the one that frightens people. */}
       <div className="pmap-progress">
         <div className="pmap-progress-top">
-          <span>שולם {fmt(totals.paid)} מתוך {fmt(totals.fromPocket)}</span>
+          {/* "עד המפתח" is not decoration. This total and מבנה העסקה's "סה״כ מהכיס" answer
+              two different questions — what leaves before handover, and what the whole deal
+              costs him — and printing both under the same words was the contradiction in
+              NIGHT_RUN B-1. Each says which one it is now. */}
+          <span>שולם {fmt(totals.paid)} מתוך {fmt(totals.fromPocket)} עד המפתח</span>
           <b>{Math.round(totals.paidPct)}%</b>
         </div>
         <div className="pmap-track"><div className="pmap-fill" style={{ width: `${totals.paidPct}%` }} /></div>

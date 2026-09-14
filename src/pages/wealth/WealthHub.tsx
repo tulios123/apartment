@@ -17,7 +17,7 @@ import { currentSplitInfo, futureSplit, principalNext12Months, interestNext12Mon
 import { formatCurrency, todayISO, daysBetween } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { possession } from '../../lib/stage'
-import { loadPlan, planTotals } from '../../lib/purchasePlan'
+import { loadPlan } from '../../lib/purchasePlan'
 import { useAuth } from '../../contexts/AuthContext'
 import { MAINTENANCE_CATEGORY } from '../../lib/constants'
 import { SkeletonList } from '../../components/ui/Skeleton'
@@ -43,7 +43,10 @@ export default function WealthHub() {
   // (Owner, 09.09: "בהון נעשה את מבנה המימון המלא וכל מבנה העסקה הסופי".)
   const awaitingKey = possession(property?.key_delivery_date, todayISO()) === 'awaiting_key'
   const plan = user?.id ? loadPlan(user.id) : null
-  const planPocket = plan ? planTotals(plan).fromPocket : undefined
+  // Purchase tax is his money and often his largest cost after the equity, but it is not
+  // an investment_cost row — only the plan knows it. Passing the FIGURE (not a total) keeps
+  // מבנה העסקה adding up its own rows; see the note in DealStructure.
+  const planTax = plan ? plan.items.find(i => i.id === 'tax-pay')?.amount : undefined
 
   const statsLoading = loadingProp || loadingMortgage || loadingInv || loadingLoans
   const loadError = errProp || errMortgage || errInv || errLoans
@@ -141,7 +144,7 @@ export default function WealthHub() {
             <DealStructure
               price={property?.purchase_price ?? propertyValue}
               tracks={tracks} loans={[...monthlyLoans, ...balloonLoans]} costs={costs}
-              fromPocket={planPocket}
+              tax={planTax}
             />
           )}
 
