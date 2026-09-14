@@ -28,7 +28,7 @@ function rentTx(id: string, back: number) {
   const ym = `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}`
   return {
     id, owner_id: OWNER, direction: 'income', amount: RENT, date: `${ym}-05`,
-    category: 'שכר דירה', description: 'יובל אברהם', payment_method: 'transfer',
+    category: 'שכר דירה', description: 'יובל אברהם', payment_method: 'bank_transfer',
     recurring_item_id: 'r1',
   }
 }
@@ -47,9 +47,9 @@ export function owner(opts: { rentThisMonth?: boolean; leaseEndsInDays?: number 
     rentTx('x1', 3), rentTx('x2', 2), rentTx('x3', 1),
     // Real expenses he entered himself.
     { id: 'x4', owner_id: OWNER, direction: 'expense', amount: 1_450, date: d(-52),
-      category: 'תיקונים ותחזוקה', description: 'החלפת דוד שמש', payment_method: 'transfer', recurring_item_id: null },
+      category: 'תיקונים ותחזוקה', description: 'החלפת דוד שמש', payment_method: 'bank_transfer', recurring_item_id: null },
     { id: 'x5', owner_id: OWNER, direction: 'expense', amount: 260, date: d(-24),
-      category: 'ועד בית', description: 'ועד רבעוני', payment_method: 'transfer', recurring_item_id: null },
+      category: 'ועד בית', description: 'ועד רבעוני', payment_method: 'bank_transfer', recurring_item_id: null },
   ]
   if (opts.rentThisMonth !== false) transactions.push(rentTx('x6', 0))
 
@@ -74,7 +74,7 @@ export function owner(opts: { rentThisMonth?: boolean; leaseEndsInDays?: number 
     contracts: [{
       id: 'ct1', owner_id: OWNER, property_id: PROPERTY, company_name: 'יובל אברהם',
       start_date: leaseStart, end_date: leaseEnd, monthly_rent: RENT, deposit: RENT,
-      payment_method: 'transfer', requires_approval: true, renewal_alert_days: [60, 30],
+      payment_method: 'bank_transfer', requires_approval: true, renewal_alert_days: [60, 30],
       contact_name: null, contact_phone: null, created_at: leaseStart,
     }],
     loans: [],
@@ -86,7 +86,7 @@ export function owner(opts: { rentThisMonth?: boolean; leaseEndsInDays?: number 
     recurring_items: [{
       id: 'r1', owner_id: OWNER, contract_id: 'ct1', direction: 'income', amount: RENT,
       category: 'שכר דירה', day_of_month: 5, start_date: leaseStart, end_date: leaseEnd,
-      payee: 'יובל אברהם', execution_type: 'requires_approval', payment_method: 'transfer',
+      payee: 'יובל אברהם', execution_type: 'requires_approval', payment_method: 'bank_transfer',
       renewal_alert_days: [60, 30],
     }],
     tasks: [

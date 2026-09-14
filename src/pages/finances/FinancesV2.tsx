@@ -543,7 +543,14 @@ export default function FinancesV2() {
             leaving the two indistinguishable (owner, 27.07). */}
         {periodSummary.hasFuture && (
           <div className="finv-summary-lens forecast">
-            <span>בפועל עד היום<b>{formatSignedCurrency(periodSummary.actualNet)}</b></span>
+            {/* This counts TRANSACTIONS ONLY, so every forecast row is missing from it —
+                including the mortgage, which leaves his account every month and which the
+                app forecasts for him rather than asking him to log. Walked on a flat that
+                loses ~700 a month, the year view printed "בפועל עד היום +14,290" and read
+                as a profit (NIGHT_RUN U-1). The figure is right for what it measures; it
+                just never said what that was. */}
+            <span>נרשם בפועל עד היום<b>{formatSignedCurrency(periodSummary.actualNet)}</b></span>
+            <em>רק תנועות שנרשמו — שורות תחזית (משכנתא, ביטוח) לא נספרות כאן.</em>
           </div>
         )}
         <div className="finv-summary-bar">
