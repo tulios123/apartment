@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { TASK_CATEGORIES } from '../../lib/constants'
 import { formatDate, todayISO } from '../../lib/format'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
+import { loadPlan } from '../../lib/purchasePlan'
 import { recurrenceLabel } from '../../lib/recurrence'
 import type { Task } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
@@ -57,6 +58,13 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
 
   const taskDocs = editing ? documents.filter(d => d.task_id === editing.id) : []
 
+  // A buyer before handover has everything open on the payment plan and nothing in this
+  // list — and the empty state was answering him with a green tick and "הכול תחת שליטה",
+  // one tap away from three overdue payments. This screen may only speak for what it
+  // holds. A plan exists only before the key, so its presence is the whole condition.
+  const plan = user ? loadPlan(user.id) : null
+  const planOpen = plan ? plan.items.filter(i => !i.done).length : 0
+
   async function handleAttach(file: File) {
     if (!user || !editing) return
     // Mirror the hardened sibling paths (ExpenseSheet EDGE-17 / removeDoc): reject
@@ -96,7 +104,9 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
     const backlog = tasks.filter(t => t.status !== 'done')
     const logbook = tasks
       .filter(t => t.status === 'done')
-      .sort((a, b) => (b.completed_at ?? b.created_at).localeCompare(a.completed_at ?? a.created_at))
+      // Same missing-timestamp hazard as the stamp below, and it survived only because a
+      // one-element sort never calls its comparator. Two bare rows would have thrown here.
+      .sort((a, b) => (b.completed_at ?? b.created_at ?? '').localeCompare(a.completed_at ?? a.created_at ?? ''))
     return { backlog, logbook }
   }, [tasks])
 
@@ -206,7 +216,18 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             {backlog.length === 0 ? (
-              <div className="tav-empty"><div className="empty-flat-icon ok"><CheckCircle size={30} weight="fill" /></div><p>אין משימות פתוחות — הכול תחת שליטה</p></div>
+              planOpen > 0 ? (
+                <div className="tav-empty">
+                  <div className="empty-flat-icon"><ClipboardText size={30} weight="fill" /></div>
+                  <p>עוד לא הוספת משימות משלך.</p>
+                  <p className="tav-empty-sub">{planOpen} פריטים פתוחים יושבים בלוח התשלומים.</p>
+                  <button type="button" className="tav-empty-link" onClick={() => navigate('/')}>
+                    ללוח התשלומים
+                  </button>
+                </div>
+              ) : (
+                <div className="tav-empty"><div className="empty-flat-icon ok"><CheckCircle size={30} weight="fill" /></div><p>אין משימות פתוחות — הכול תחת שליטה</p></div>
+              )
             ) : backlog.map(t => {
               const Icon = CAT_ICON[t.category] ?? ListChecks
               const overdue = isOverdue(t)
@@ -259,7 +280,10 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
                       <span className="tav-task-cat"><Icon size={13} weight="duotone" /> {t.category}</span>
                     </div>
                   </div>
-                  <span className="tav-log-stamp">נסגר {formatDate(stamp.slice(0, 10))}</span>
+                  {/* A completed task with neither timestamp threw on .slice and took the
+                      whole Property→Tasks pillar down to the error boundary — one bad row
+                      for an entire screen. Found by walking it (NIGHT_RUN D-3). */}
+                  {stamp && <span className="tav-log-stamp">נסגר {formatDate(stamp.slice(0, 10))}</span>}
                 </div>
               )
             })}

@@ -56,6 +56,12 @@ export function parseQuick(raw: string): ParsedQuick | null {
 export function predictCategory(text: string): string {
   const t = text.trim()
   if (/תיקון|ברז|אינסטל|חשמלאי|נזיל|תחזוק|צבע|מזגן|דוד|נגר|מנעול|דלת|חלון|אסל|ביוב|סתימ|טכנאי|בוילר|תריס/.test(t)) return 'תיקונים'
-  if (/ריבית|עמלה|בנק|משכנת|הלוואה/.test(t)) return 'ריבית'
+  // 'בנק|משכנת|הלוואה' used to land here too, and that was the one rule able to corrupt a
+  // number rather than merely mislabel one: 'ריבית' is what useInvestmentData sums into
+  // "ריבית ששולמה" on the Wealth screen, which feeds the yield. A manually typed
+  // "תשלום משכנתא" is principal AND interest, so filing it as pure interest overstates
+  // the interest paid and distorts the return. Only words that genuinely mean interest
+  // stay. Everything unmatched falls to 'אחר', which claims nothing.
+  if (/ריבית|עמלה/.test(t)) return 'ריבית'
   return 'אחר'
 }

@@ -31,6 +31,10 @@
   .finv-summary-net { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; text-align: start; }
   .finv-summary-net.pos { color: var(--success-text); }
   .finv-summary-net.neg { color: var(--danger-text); }
+  /* Zero is not good news. Green on 0 ₪ reads as a healthy month to someone who
+     has simply had no movement yet (a buyer before handover sees a screen of
+     green zeros). Neutral says "nothing here", which is the truth. */
+  .finv-summary-net.zero { color: var(--text-muted); }
   .finv-summary-bar { display: flex; height: 8px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; margin: 18px 0 14px; background: var(--bg-alt); }
   .finv-summary-bar .in { background: var(--success); }
   .finv-summary-bar .out { background: var(--danger); }
@@ -40,6 +44,7 @@
   .finv-summary-tile-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .finv-summary-tile.in .finv-summary-tile-value { color: var(--success-text); }
   .finv-summary-tile.out .finv-summary-tile-value { color: var(--danger-text); }
+  .finv-summary-tile.zero .finv-summary-tile-value { color: var(--text-muted); }
 
   /* NL capture */
   /* Primary add-transaction button (replaces the free-text capture box) */
@@ -83,7 +88,10 @@
   .finv-breakdown-body { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.35s var(--ease), opacity 0.3s var(--ease); }
   .finv-breakdown.open .finv-breakdown-body { max-height: 420px; opacity: 1; }
   .finv-breakdown-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 11px; }
-  .finv-bd-row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; width: 100%; border: none; background: none; padding: 4px 0; font-family: inherit; text-align: inherit; cursor: pointer; border-radius: var(--r-sm); transition: background var(--t-fast); }
+  /* A filter row is a tap target, and at 4px padding it stood 23px tall — half the 44px
+     floor the project set itself (design-checks.spec.ts measures it). The padding grows,
+     the type does not, so the list reads the same and can actually be hit. */
+  .finv-bd-row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; width: 100%; min-height: 44px; border: none; background: none; padding: 6px 4px; font-family: inherit; text-align: inherit; cursor: pointer; border-radius: var(--r-sm); transition: background var(--t-fast); }
   .finv-bd-row:hover { background: var(--bg-alt); }
   .finv-bd-row.active { background: var(--accent-light); }
   .finv-bd-row.active .finv-bd-label, .finv-bd-row.active .finv-bd-amount { color: var(--accent); }
@@ -210,4 +218,48 @@
 .finv .finv-summary-lens { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
 .finv .finv-summary-lens span { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--text-muted); }
 .finv .finv-summary-lens b { font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+/* The one-line explanation under the principal lens: quieter than the figure it explains,
+   and only worth its space because two opposite-signed balances sit right above it. */
+.finv .finv-summary-lens em { font-style: normal; font-size: 11.5px; line-height: 1.45; color: var(--text-muted); }
 .finv .finv-summary-lens.forecast { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+
+/* ── תזרים before the key: one month, and it fills the screen ── */
+.finv {
+  .fm { display: flex; flex-direction: column; gap: 14px; }
+  .fm-head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; padding-inline: 4px; }
+  .fm-head h2 { margin: 0; font-size: 21px; font-weight: 800; color: var(--brand-navy); }
+  .fm-head span { font-size: 13px; color: var(--text-muted); }
+
+  .fm-hero {
+    background: linear-gradient(150deg, var(--hero-navy) 0%, #16306b 100%);
+    color: #fff; border-radius: var(--r-lg); padding: 22px;
+    box-shadow: 0 14px 34px rgba(10, 31, 68, 0.28);
+  }
+  .fm-hero-label { font-size: 13px; opacity: 0.82; }
+  .fm-hero-value { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .fm-hero-sub { font-size: 13px; opacity: 0.88; margin-top: 6px; }
+
+  .fm-rows { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 4px 15px; }
+  .fm-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 13px 0; }
+  .fm-row + .fm-row { border-top: 1px solid var(--border); }
+  .fm-row-name { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--text); }
+  .fm-row b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+  .fm-row.in .fm-row-name svg, .fm-row.in b { color: var(--success-text); }
+  .fm-row .fm-row-name svg { color: var(--text-muted); }
+
+  .fm-steady {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    background: var(--bg-alt); border-radius: var(--r-md); padding: 14px 15px;
+  }
+  .fm-steady span { font-size: 13.5px; color: var(--text-secondary); }
+  .fm-steady b { font-size: 18px; font-weight: 700; color: var(--brand-navy); font-variant-numeric: tabular-nums; }
+  .fm-note { margin: 0; padding-inline: 4px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+
+  /* The plan's own rows, on the month they fall — one-off, so visibly a separate block
+     from the monthly running cost above it. */
+  .fm-plan { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+  .fm-plan h3 { margin: 0; padding-inline: 4px; font-size: 14px; font-weight: 700; color: var(--brand-navy); }
+  .fm-plan .fm-row-name { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .fm-row-when { font-size: 12px; color: var(--text-muted); }
+  .fm-empty { background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 20px; font-size: 13.5px; color: var(--text-muted); line-height: 1.6; }
+}

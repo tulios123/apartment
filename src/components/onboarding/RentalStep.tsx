@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { FileText, CaretDown } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -12,6 +12,9 @@ import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
 export function RentalStep() {
+  // Decorative labels only — each box was announced unnamed (docs/audit/a11y-forms.md).
+  const uid = useId()
+  const fid = (k: string) => `${uid}-${k}`
   const {
     advance,
     companyName, setCompanyName, startDate, setStartDate, endDate, setEndDate,
@@ -63,8 +66,8 @@ export function RentalStep() {
 
       <div className="onboarding-form">
         <div className="onboarding-field">
-          <label>שם חברה / שוכר</label>
-          <input type="text" placeholder="שם החברה או השוכר" value={companyName}
+          <label htmlFor={fid('tenant')}>שם חברה / שוכר</label>
+          <input id={fid('tenant')} type="text" placeholder="שם החברה או השוכר" value={companyName}
             onChange={e => setCompanyName(e.target.value)} autoFocus />
         </div>
         <div className="onboarding-row">
@@ -89,8 +92,8 @@ export function RentalStep() {
           </div>
         </div>
         <div className="onboarding-field">
-          <label>שכר דירה חודשי (₪)</label>
-          <input type="text" inputMode="numeric" placeholder="0"
+          <label htmlFor={fid('rent')}>שכר דירה חודשי (₪)</label>
+          <input id={fid('rent')} type="text" inputMode="numeric" placeholder="0"
             className={issueFor('rent') ? 'input-invalid' : ''}
             aria-invalid={!!issueFor('rent')}
             value={formatNum(monthlyRent)}
@@ -111,8 +114,8 @@ export function RentalStep() {
             </div>
           </div>
           <div className="onboarding-field">
-            <label>{rentPaymentMethod === 'check' ? 'יום הפקדת הצ׳ק' : 'יום התשלום בחודש'}</label>
-            <input type="number" min="1" max="28" value={rentPaymentDay}
+            <label htmlFor={fid('day')}>{rentPaymentMethod === 'check' ? 'יום הפקדת הצ׳ק' : 'יום התשלום בחודש'}</label>
+            <input id={fid('day')} type="number" min="1" max="28" value={rentPaymentDay}
               placeholder={String(effectiveRentDay({ startDate }))}
               onChange={e => setRentPaymentDay(e.target.value)} />
           </div>

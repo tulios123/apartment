@@ -13,13 +13,15 @@ import { useLoansData } from '../../hooks/useLoansData'
 import { useInsurance } from '../../hooks/useInsurance'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS, RENT_CATEGORIES, MORTGAGE_CATEGORIES } from '../../lib/constants'
 import { monthlyVirtualEntries } from '../../lib/projections'
+import { possession } from '../../lib/stage'
+import { FirstMonth } from './FirstMonth'
 import { splitForMonth } from '../../lib/equity'
 import { isForecastMonth } from '../../lib/forecast'
 import type { VirtualEntry } from '../../lib/projections'
 import { supabase } from '../../lib/supabase'
 import { uploadDocument, redirectToSignedUrl } from '../../lib/storage'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
+import { formatCurrency, formatSignedCurrency, formatDate, todayISO, HEBREW_MONTHS } from '../../lib/format'
 import type { Transaction } from '../../types'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import BottomSheet from '../../components/ui/BottomSheet'
@@ -31,7 +33,7 @@ import './finances-v2.css'
 import { DateField } from '../../components/ui/DateField'
 import { userErrorMessage } from '../../lib/errorHe'
 
-const MONTH_NAMES = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+const MONTH_NAMES = HEBREW_MONTHS
 const MONTH_SHORT = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ']
 const PALETTE = ['var(--accent)', 'var(--accent-coral)', 'var(--accent-teal)', 'var(--accent-2)', 'var(--warning)', 'var(--success)', 'var(--danger)']
 const PAYMENT_LABEL: Record<string, string> = Object.fromEntries(PAYMENT_METHODS.filter(p => p.value).map(p => [p.value, p.label]))
@@ -303,7 +305,11 @@ export default function FinancesV2() {
   const income = view === 'month' ? mIncome : view === 'year' ? yearTotals.income : rangeTotals.income
   const expense = view === 'month' ? mExpense : view === 'year' ? yearTotals.expense : rangeTotals.expense
   const net = income - expense
-  const inPct = income + expense > 0 ? (income / (income + expense)) * 100 : 50
+  // A month with no money at all must not paint a ratio. The old default of 50
+  // drew a confident half-green/half-red bar over nothing — the buyer before
+  // handover saw a balanced month that never happened.
+  const hasMoney = income + expense > 0
+  const inPct = hasMoney ? (income / (income + expense)) * 100 : 0
   // A future month's balance is entirely forecast (rent/mortgage not yet booked),
   // so it must not read like a settled past month — badge the header with "צפי".
   const monthIsForecast = view === 'month' && isForecastMonth(year, month, today)
@@ -464,6 +470,23 @@ export default function FinancesV2() {
 
   if (error) return <PageError message={error} onRetry={refetch} />
 
+  // Before the key there is no monthly cycle to browse — the present month is genuinely
+  // empty, and a month navigator over empty months is the screen the owner called broken.
+  // One month instead: the FIRST one, which is the thing he said he was afraid of.
+  if (possession(property?.key_delivery_date, todayISO()) === 'awaiting_key' && property?.key_delivery_date) {
+    return (
+      <div className="finv">
+        <FirstMonth
+          keyDate={property.key_delivery_date}
+          contracts={contracts}
+          tracks={mortgageTracks}
+          loans={loans}
+          policies={policies}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="finv">
       {flash && <div className={`finv-flash ${flash.tone}`} role="status">{flash.msg}</div>}
@@ -499,14 +522,20 @@ export default function FinancesV2() {
           {view === 'month' ? 'מאזן החודש' : view === 'year' ? 'מאזן השנה' : 'מאזן התקופה'}
           {(monthIsForecast || periodSummary.hasFuture) && <span className="finv-summary-forecast">כולל תחזית</span>}
         </div>
-        <div className={`finv-summary-net ${net >= 0 ? 'pos' : 'neg'}`}>{formatSignedCurrency(net)}</div>
+        <div className={`finv-summary-net ${net > 0 ? 'pos' : net < 0 ? 'neg' : 'zero'}`}>{formatSignedCurrency(net)}</div>
         {/* The principal lens (owner, 27.07): a mortgage payment isn't all cost — the
             principal part comes back to you as equity. Two quiet lines, not a card. */}
         {periodSummary.principal > 0 && (
           <div className="finv-summary-lens">
             {/* One line, not two (owner, 27.07): what actually left your pocket once the
-                principal is treated as savings rather than an expense. */}
-            <span>מאזן חיסכון בפועל<b>{formatSignedCurrency(net + periodSummary.principal)}</b></span>
+                principal is treated as savings rather than an expense.
+                The label used to be "מאזן חיסכון בפועל", which the owner reads fluently and
+                nobody else does — walked by a first-time owner (NIGHT_RUN C2-A) the screen
+                showed "מאזן החודש −700" and "מאזן חיסכון בפועל +831" four words apart, two
+                balances with opposite signs and no way to tell which one is true. Naming the
+                mechanism instead of the concept costs one line and answers it. */}
+            <span>אחרי החזר הקרן<b>{formatSignedCurrency(net + periodSummary.principal)}</b></span>
+            <em>{formatCurrency(periodSummary.principal)} מתשלום המשכנתא חזרו אליך כהון, לא יצאו מהכיס.</em>
           </div>
         )}
         {/* The year view spans all 12 months, so for most of the year its headline is
@@ -514,13 +543,22 @@ export default function FinancesV2() {
             leaving the two indistinguishable (owner, 27.07). */}
         {periodSummary.hasFuture && (
           <div className="finv-summary-lens forecast">
-            <span>בפועל עד היום<b>{formatSignedCurrency(periodSummary.actualNet)}</b></span>
+            {/* This counts TRANSACTIONS ONLY, so every forecast row is missing from it —
+                including the mortgage, which leaves his account every month and which the
+                app forecasts for him rather than asking him to log. Walked on a flat that
+                loses ~700 a month, the year view printed "בפועל עד היום +14,290" and read
+                as a profit (NIGHT_RUN U-1). The figure is right for what it measures; it
+                just never said what that was. */}
+            <span>נרשם בפועל עד היום<b>{formatSignedCurrency(periodSummary.actualNet)}</b></span>
+            <em>רק תנועות שנרשמו — שורות תחזית (משכנתא, ביטוח) לא נספרות כאן.</em>
           </div>
         )}
-        <div className="finv-summary-bar"><div className="in" style={{ width: `${inPct}%` }} /><div className="out" style={{ width: `${100 - inPct}%` }} /></div>
+        <div className="finv-summary-bar">
+          {hasMoney && <><div className="in" style={{ width: `${inPct}%` }} /><div className="out" style={{ width: `${100 - inPct}%` }} /></>}
+        </div>
         <div className="finv-summary-tiles">
-          <div className="finv-summary-tile in"><span className="finv-summary-tile-label"><ArrowDown size={13} weight="bold" /> הכנסות</span><span className="finv-summary-tile-value">{fmt(income)}</span></div>
-          <div className="finv-summary-tile out"><span className="finv-summary-tile-label"><ArrowUp size={13} weight="bold" /> הוצאות</span><span className="finv-summary-tile-value">{fmt(expense)}</span></div>
+          <div className={`finv-summary-tile in${income > 0 ? '' : ' zero'}`}><span className="finv-summary-tile-label"><ArrowDown size={13} weight="bold" /> הכנסות</span><span className="finv-summary-tile-value">{fmt(income)}</span></div>
+          <div className={`finv-summary-tile out${expense > 0 ? '' : ' zero'}`}><span className="finv-summary-tile-label"><ArrowUp size={13} weight="bold" /> הוצאות</span><span className="finv-summary-tile-value">{fmt(expense)}</span></div>
         </div>
       </div>
 

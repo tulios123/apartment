@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { sanitizeAmountInt } from '../../lib/format'
 import { Check } from '@phosphor-icons/react'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
@@ -19,6 +19,10 @@ export function LoanForm({ onSave, onCancel, alert, pulse }: { onSave: () => voi
   const [edited, setEdited] = useState(false)
   useEffect(() => { setEdited(false) }, [pulse])
   const change: typeof setLF = (k, v) => { setEdited(true); setLF(k, v) }
+  // Every label here was decorative — no htmlFor, no wrapping — so each box was announced
+  // as an unnamed edit box and its label focused nothing (docs/audit/a11y-forms.md).
+  const uid = useId()
+  const fid = (k: string) => `${uid}-${k}`
   const errFields = new Set((alert ?? []).map(i => i.field))
   const err = (f: IssueField) => errFields.has(f) ? { className: 'input-invalid', 'aria-invalid': true as const } : {}
   const fieldNote = (f: IssueField) => {
@@ -32,26 +36,26 @@ export function LoanForm({ onSave, onCancel, alert, pulse }: { onSave: () => voi
       {isMonthly ? (
         <div className="onboarding-row">
           <div className="onboarding-field">
-            <label>תיאור</label>
-            <input type="text" placeholder="הלוואה משלימה" value={loanForm.label}
+            <label htmlFor={fid('label')}>תיאור</label>
+            <input id={fid('label')} type="text" placeholder="הלוואה משלימה" value={loanForm.label}
               onChange={e => change('label', e.target.value)} />
           </div>
           <div className="onboarding-field">
-            <label>נותן ההלוואה</label>
-            <input type="text" placeholder="בנק" value={loanForm.lender}
+            <label htmlFor={fid('lender')}>נותן ההלוואה</label>
+            <input id={fid('lender')} type="text" placeholder="בנק" value={loanForm.lender}
               onChange={e => change('lender', e.target.value)} />
           </div>
         </div>
       ) : (
         <div className="onboarding-field">
-          <label>שם</label>
-          <input type="text" placeholder="הורים" value={loanForm.lender}
+          <label htmlFor={fid('lender2')}>שם</label>
+          <input id={fid('lender2')} type="text" placeholder="הורים" value={loanForm.lender}
             onChange={e => change('lender', e.target.value)} />
         </div>
       )}
       <div className="onboarding-field">
-        <label>סכום ההלוואה (₪)</label>
-        <input type="text" inputMode="numeric" placeholder="0" {...err('principal')}
+        <label htmlFor={fid('principal')}>סכום ההלוואה (₪)</label>
+        <input id={fid('principal')} type="text" inputMode="numeric" placeholder="0" {...err('principal')}
           value={formatNum(loanForm.principal)}
           onChange={e => change('principal', sanitizeAmountInt(e.target.value))} />
         {fieldNote('principal')}
@@ -59,8 +63,8 @@ export function LoanForm({ onSave, onCancel, alert, pulse }: { onSave: () => voi
       {isMonthly ? (
         <>
           <div className="onboarding-field">
-            <label>סוג מסלול</label>
-            <select className="form-input" value={loanForm.track_type}
+            <label htmlFor={fid('type')}>סוג מסלול</label>
+            <select id={fid('type')} className="form-input" value={loanForm.track_type}
               onChange={e => change('track_type', e.target.value as TrackType)}>
               {MORTGAGE_TRACK_TYPES.map(t => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -71,15 +75,15 @@ export function LoanForm({ onSave, onCancel, alert, pulse }: { onSave: () => voi
             <>
               <div className="onboarding-row">
                 <div className="onboarding-field">
-                  <label>{loanForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
-                  <input type="number" step="0.01" {...err('rate')}
+                  <label htmlFor={fid('prime')}>{loanForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
+                  <input id={fid('prime')} type="number" step="0.01" {...err('rate')}
                     placeholder={loanForm.track_type === 'prime' ? '6' : '3.5'}
                     value={loanForm.prime_rate}
                     onChange={e => change('prime_rate', e.target.value)} />
                 </div>
                 <div className="onboarding-field">
-                  <label>מרווח % (פריים מינוס = שלילי)</label>
-                  <input type="number" step="0.01" {...err('rate')}
+                  <label htmlFor={fid('margin')}>מרווח % (פריים מינוס = שלילי)</label>
+                  <input id={fid('margin')} type="number" step="0.01" {...err('rate')}
                     placeholder={loanForm.track_type === 'prime' ? '-0.5' : '1.5'}
                     value={loanForm.margin}
                     onChange={e => change('margin', e.target.value)} />
@@ -87,8 +91,8 @@ export function LoanForm({ onSave, onCancel, alert, pulse }: { onSave: () => voi
                 </div>
               </div>
               <div className="onboarding-field">
-                <label>תקופה (חודשים)</label>
-                <input type="number" min="1" placeholder="60" {...err('term')} value={loanForm.term_months}
+                <label htmlFor={fid('term-a')}>תקופה (חודשים)</label>
+                <input id={fid('term-a')} type="number" min="1" placeholder="60" {...err('term')} value={loanForm.term_months}
                   onChange={e => change('term_months', e.target.value)} />
                 {fieldNote('term')}
               </div>
@@ -96,14 +100,14 @@ export function LoanForm({ onSave, onCancel, alert, pulse }: { onSave: () => voi
           ) : (
             <div className="onboarding-row">
               <div className="onboarding-field">
-                <label>ריבית שנתית (%)</label>
-                <input type="number" step="0.01" min="0" placeholder="5" {...err('rate')} value={loanForm.annual_rate}
+                <label htmlFor={fid('annual')}>ריבית שנתית (%)</label>
+                <input id={fid('annual')} type="number" step="0.01" min="0" placeholder="5" {...err('rate')} value={loanForm.annual_rate}
                   onChange={e => change('annual_rate', e.target.value)} />
                 {fieldNote('rate')}
               </div>
               <div className="onboarding-field">
-                <label>תקופה (חודשים)</label>
-                <input type="number" min="1" placeholder="60" {...err('term')} value={loanForm.term_months}
+                <label htmlFor={fid('term-b')}>תקופה (חודשים)</label>
+                <input id={fid('term-b')} type="number" min="1" placeholder="60" {...err('term')} value={loanForm.term_months}
                   onChange={e => change('term_months', e.target.value)} />
                 {fieldNote('term')}
               </div>

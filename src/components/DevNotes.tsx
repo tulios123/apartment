@@ -75,6 +75,7 @@ export default function DevNotes() {
     <>
       {/* Floating trigger button */}
       <button
+        data-dev-only
         onClick={() => setOpen(v => !v)}
         title="הערות פיתוח"
         style={{

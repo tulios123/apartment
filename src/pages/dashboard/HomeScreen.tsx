@@ -17,9 +17,15 @@ import { useRecurringItems } from '../../hooks/useRecurringItems'
 import { rentPaymentDay, isRentPayable } from '../../lib/rent'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatSignedCurrency, formatDate, todayISO } from '../../lib/format'
-import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks } from '../../lib/homeTasks'
+import { visibleHomeTasks, sortedHomeTasks, futureScheduledTasks, nextScheduledTask } from '../../lib/homeTasks'
 import { nextDueDate } from '../../lib/recurrence'
 import { activeContract as findActiveContract, monthlyVirtualEntries } from '../../lib/projections'
+import { possession } from '../../lib/stage'
+import { HandoverMoment } from './HandoverMoment'
+import { PurchaseMap } from '../purchase/PurchaseMap'
+import { PlanSetup } from '../purchase/PlanSetup'
+import { loadPlan, savePlan, nextStep, type PurchasePlan } from '../../lib/purchasePlan'
+import '../purchase/purchase.css'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -94,6 +100,17 @@ export default function HomeScreen() {
   // ── Fixed (expected) monthly expenses — calm, never red ──
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
+  // Signed but not yet handed over. Derived, never stored — and a blank or past date
+  // reads as possession, so every existing account behaves exactly as before.
+  const awaitingKey = possession(property?.key_delivery_date, todayStr) === 'awaiting_key'
+
+  // The payment plan — the centre of this stage (docs/specs/purchase-stage.md). Stored
+  // locally for now and read through lib/purchasePlan, so moving it to Postgres later
+  // touches that module alone.
+  const [plan, setPlan] = useState<PurchasePlan | null>(null)
+  const [planSetup, setPlanSetup] = useState(false)
+  useEffect(() => { if (user?.id) setPlan(loadPlan(user.id)) }, [user?.id])
+  const commitPlan = (p: PurchasePlan) => { setPlan(p); if (user?.id) savePlan(user.id, p) }
 
   // The rent prompt must not appear before the rent is payable: with a post-dated
   // cheque there is literally nothing to deposit before the date written on it, so
@@ -110,12 +127,18 @@ export default function HomeScreen() {
   // the month total on the תזרים screen exactly, instead of two drifting calculations.
   const fYear = new Date().getFullYear()
   const fMonth = new Date().getMonth() + 1
-  const fixedExpenses = useMemo(
-    () => monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies)
+  // The principal share rides along: a mortgage payment is not all cost, and the app has
+  // said so on the Wealth screen since July ("הקרן היא חיסכון, לא הפסד"). The home said
+  // the opposite by omission — its headline is rent minus the WHOLE payment, so a good
+  // month reads as a loss of roughly the principal (brains-tour, 08.09).
+  const { fixedExpenses, fixedPrincipal } = useMemo(() => {
+    const rows = monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies)
       .filter(e => e.direction === 'expense')
-      .reduce((s, e) => s + e.amount, 0),
-    [contracts, tracks, loans, policies, fYear, fMonth],
-  )
+    return {
+      fixedExpenses: rows.reduce((s, e) => s + e.amount, 0),
+      fixedPrincipal: rows.reduce((s, e) => s + (e.principal ?? 0), 0),
+    }
+  }, [contracts, tracks, loans, policies, fYear, fMonth])
 
   // ── This month's reality ──
   const rentReceived = transactions
@@ -142,6 +165,10 @@ export default function HomeScreen() {
   // gentle "+N בעתיד" hint in the header, so the owner always sees at a glance that
   // something is queued ahead without it crowding "what to do now" (owner request).
   const futureTaskCount = useMemo(() => futureScheduledTasks(tasks, todayStr).length, [tasks, todayStr])
+  // Name the soonest queued task instead of only counting it. nextScheduledTask() was
+  // written for exactly this line and never wired up; with a handover checklist spread
+  // across months, "עוד 6 משימות בעתיד" is a number nobody can act on or recognise.
+  const nextTask = useMemo(() => nextScheduledTask(tasks, todayStr), [tasks, todayStr])
   const shownTasks = tasksExpanded ? allTasks : collapsedTasks.slice(0, 2)
 
   // ── Build the prioritized action list (rent → overdue tasks → renewals) ──
@@ -291,6 +318,19 @@ export default function HomeScreen() {
     flashTimer.current = setTimeout(() => setFlash(null), 2600)
   }
 
+  // Keys in hand and nobody in the flat — the one state the owner has never been in
+  // (his came with a tenant), and the one where an all-clear is exactly backwards.
+  const vacant = !awaitingKey && !activeContract
+
+  // Before the key the greeting has a plan to read from, so it says the true next thing
+  // instead of a blanket all-clear. No plan yet → the invitation below is the message.
+  const preKeyStep = plan ? nextStep(plan) : null
+  const preKeyLine = !plan
+    ? 'נבנה יחד את לוח התשלומים.'
+    : preKeyStep
+      ? `הבא בתור: ${preKeyStep.label}.`
+      : 'הכול מסומן — נשאר לחכות למפתח.'
+
   // Distinguish a failed FIRST load (no cache → empty) from a genuine empty state, so we
   // never render a false "שכ״ד לא התקבל" (→ a duplicate rent entry when the user approves)
   // or a false "לא הוגדר נכס" (→ a second property). A transient refetch keeps the cached
@@ -304,7 +344,10 @@ export default function HomeScreen() {
   if (txFailedEmpty) return <PageError message={txError!} onRetry={refetchTx} />
 
   return (
-    <div className="page hs">
+    // Before handover the stage card IS the screen: an empty action centre and two
+    // add-buttons must not occupy the first viewport ahead of it. Ordering is done in
+    // CSS so the JSX stays one structure for every stage.
+    <div className={`page hs${awaitingKey ? ' hs--prekey' : ''}`}>
       {/* ── Humanized status header ── */}
       <header className="hs-header">
         <div className="hs-greet">
@@ -318,7 +361,15 @@ export default function HomeScreen() {
         ) : (
           <p className="hs-status">
             {actions.length === 0
-              ? 'הכול רגוע היום — אין מה לעשות עכשיו.'
+              ? awaitingKey
+                // "עוד לא נדרשת ממך פעולה" was printed directly above a plan with open —
+                // sometimes overdue — payments on it. A greeting that contradicts the screen
+                // under it is worse than no greeting: say what is actually next.
+                ? preKeyLine
+                : vacant
+                  // "calm" describes a let flat, not an empty one.
+                  ? 'הדירה ריקה — הצעד הבא הוא למצוא שוכר.'
+                  : 'הכול רגוע היום — אין מה לעשות עכשיו.'
               : actions.length === 1
                 ? 'יש פעולה אחת שמחכה לך.'
                 : `יש ${actions.length} פעולות שמחכות לך.`}
@@ -343,7 +394,25 @@ export default function HomeScreen() {
         />
       ) : (
         <>
+          {/* The day the keys arrive the stage flips by itself and the countdown card is
+              replaced by a monthly cycle. Say so, once — otherwise the app silently
+              becomes a different tool (peak-end rule). */}
+          {property?.key_delivery_date && !awaitingKey && (
+            <HandoverMoment
+              propertyId={property.id}
+              keyDate={property.key_delivery_date}
+              today={todayStr}
+              hasLease={!!activeContract}
+            />
+          )}
+
           {/* ── Action Center ── */}
+          {/* Before the key, the payment map IS the action centre: everything open is on it,
+              in order. A second card saying "nothing to do today" beneath a run of fifteen
+              open items is the duplicate-reassurance problem again (brains-tour, finding 2)
+              — and this time it is also untrue. Real tasks still surface; only the empty
+              state steps aside. */}
+          {!(awaitingKey && plan && actions.length === 0) && (
           <section className="hs-actions">
             {loadingActions ? (
               <Skeleton width="100%" height={78} radius={18} />
@@ -361,16 +430,38 @@ export default function HomeScreen() {
                         state — instead of a header banner the owner didn't like (#47). No date,
                         no extra chrome: just a soft note that something is queued ahead. */}
                     <div className="hs-clear-sub">
-                      {futureTaskCount === 1 ? 'עוד משימה אחת בעתיד' : `עוד ${futureTaskCount} משימות בעתיד`}
+                      {nextTask
+                        ? <>הבא: {nextTask.title}{nextTask.due_date ? ` · ${formatDate(nextTask.due_date)}` : ''}
+                            {futureTaskCount > 1 ? ` · ועוד ${futureTaskCount - 1}` : ''}</>
+                        : futureTaskCount === 1 ? 'עוד משימה אחת בעתיד' : `עוד ${futureTaskCount} משימות בעתיד`}
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="hs-clear">
-                  <div className="hs-clear-icon"><CheckCircle size={30} weight="fill" /></div>
+                  <div className={`hs-clear-icon${awaitingKey || vacant ? ' upcoming' : ''}`}>
+                    {awaitingKey || vacant ? <CalendarCheck size={28} weight="fill" /> : <CheckCircle size={30} weight="fill" />}
+                  </div>
                   <div>
-                    <div className="hs-clear-title">הכול מטופל</div>
-                    <div className="hs-clear-sub">הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.</div>
+                    {/* "הנכס עובד בשבילך" is false before handover — there is no tenant, no
+                        income and nothing running. Telling a buyer with months of work
+                        ahead that everything is handled is the same broken promise as the
+                        fortnightly "add a tenant" push (owner, 07.09).
+                        It is just as false the week AFTER the key with no tenant yet — and
+                        worse, because there IS something to do. Walked in that state the
+                        home printed a green tick and "the property is working for you"
+                        directly above "no active lease" and a negative month. Three states,
+                        not two (NIGHT_RUN C-1). */}
+                    <div className="hs-clear-title">
+                      {awaitingKey ? 'אין מה לעשות היום' : vacant ? 'אין משימות פתוחות' : 'הכול מטופל'}
+                    </div>
+                    <div className="hs-clear-sub">
+                      {awaitingKey
+                        ? 'הצעד הבא יופיע כאן כשיגיע זמנו.'
+                        : vacant
+                          ? 'הדירה עדיין ללא שוכר — עד שיהיה חוזה אין הכנסה חודשית.'
+                          : 'הנכס עובד בשבילך. נתריע כשמשהו ידרוש תשומת לב.'}
+                    </div>
                   </div>
                 </div>
               )
@@ -431,6 +522,7 @@ export default function HomeScreen() {
               </button>
             ) : null}
           </section>
+          )}
 
           {/* ── Quick capture ── Two clear, structured entries. The free-text bar was
               removed (owner, 25.07): its Hebrew parser was only lightly reliable and it
@@ -452,12 +544,33 @@ export default function HomeScreen() {
 
           {/* ── Calm cash flow ── */}
           <section className="hs-flow">
-            <div className="hs-flow-head">
-              <h2>תזרים החודש</h2>
-              <button className="hs-link" onClick={() => navigate('/finances')}>פירוט</button>
+            {/* With a plan on screen the heading was the third place in 200px saying the same
+                word — page title, hero eyebrow, stage title. The hero owns the identity. */}
+            <div className={`hs-flow-head${awaitingKey && plan ? ' is-hidden' : ''}`}>
+              <h2>{awaitingKey ? 'לוח התשלומים' : 'תזרים החודש'}</h2>
+              {/* No cash-flow framing before handover (owner, 07.09): there is no monthly
+                  flow yet, so a link into the ledger points at an empty screen. */}
+              {!awaitingKey && (
+                <button className="hs-link" onClick={() => navigate('/finances')}>פירוט</button>
+              )}
             </div>
             {loadingFlow ? (
               <Skeleton width="100%" height={120} radius={18} />
+            ) : awaitingKey && property ? (
+              /* Before handover the month-shaped card is arithmetic on the wrong clock —
+                 it correctly totals ₪0. This one measures the distance to the date. */
+              plan ? (
+                <PurchaseMap plan={plan} onChange={commitPlan} onSetup={() => setPlanSetup(true)} />
+              ) : (
+                <div className="pmap-empty">
+                  <h3>לוח התשלומים שלך</h3>
+                  <p>
+                    מה תנאי התשלום בחוזה — 10% ואז 15%, או אחרת? האחוזים ממך, הסכומים
+                    והמועדים מאיתנו, ומשם רואים תמיד מה התשלום הבא.
+                  </p>
+                  <button className="btn-primary" onClick={() => setPlanSetup(true)}>לבנות את הלוח</button>
+                </div>
+              )
             ) : (
               <div className="hs-flow-card">
                 <div className="hs-flow-headline">
@@ -517,6 +630,10 @@ export default function HomeScreen() {
                     </span>
                     <span className="hs-flow-amt muted out">{formatSignedCurrency(-fixedExpenses)}</span>
                   </div>
+                  {/* Under the row, not inside the amount — nested it forced the label to
+                      wrap. The headline is cash out; without this the home contradicts the
+                      Wealth screen, where the same month reads as equity being built. */}
+                  {fixedPrincipal > 0 && <div className="hs-flow-sub">{fmt(fixedPrincipal)} מזה הון</div>}
                 </div>
 
                 {extraIncome > 0 && (
@@ -565,10 +682,16 @@ export default function HomeScreen() {
 
                 <p className="hs-flow-note">
                   {!activeContract
-                    ? 'הצפי כולל רק את ההוצאות הקבועות. הוסיפו חוזה שכירות כדי לראות גם את ההכנסה.'
+                    // The invitation card directly above already says this, with a
+                    // button. Repeating it as a note is the same duplication as the
+                    // stacked all-clear messages (brains-tour, 08.09).
+                    ? ''
                     : rentCleared
-                    ? 'שכר הדירה נכנס. התשלומים הקבועים יורדים אוטומטית — אין צורך לעשות דבר.'
-                    : 'הסכום מבוסס על הצפי החודשי. הוא יתעדכן כששכר הדירה ייכנס בפועל.'}
+                    // Was a third "all clear" on one screen, after the status line and
+                    // the action-centre card. The audit flagged the duplication in July
+                    // (כפילות-רוגע); this is the copy that adds least.
+                    ? ''
+                    : 'כולל שכר דירה שטרם נכנס.'}
                 </p>
               </div>
             )}
@@ -601,6 +724,15 @@ export default function HomeScreen() {
         onCancel={() => setFollowup(null)}
       />
 
+      {planSetup && property && (
+        <PlanSetup
+          price={property.purchase_price ?? 0}
+          signing={property.purchase_date ?? todayStr}
+          handover={property.key_delivery_date ?? todayStr}
+          onDone={p => { commitPlan(p); setPlanSetup(false); showFlash('לוח התשלומים נבנה') }}
+          onClose={() => setPlanSetup(false)}
+        />
+      )}
     </div>
   )
 }

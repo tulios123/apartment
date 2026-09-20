@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { sanitizeAmountInt } from '../../lib/format'
 import { Check } from '@phosphor-icons/react'
 import { INS_TYPES, formatNum, formatCurrency } from './types'
@@ -11,6 +11,9 @@ import { toMonthly, displayAmount } from '../../lib/premium'
 // policy rules — an empty policy or an inverted coverage window shows a precise
 // note instead of the button silently doing nothing.
 export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+  // Decorative labels only (docs/audit/a11y-forms.md).
+  const uid = useId()
+  const fid = (k: string) => `${uid}-${k}`
   const { policyForm, setPF, keyDeliveryDate } = useOnboarding()
   const [attempted, setAttempted] = useState(false)
   const issues = policyIssues(policyForm)
@@ -50,25 +53,25 @@ export function PolicyForm({ onSave, onCancel }: { onSave: () => void; onCancel:
   return (
     <div className="onboarding-inline-form">
       <div className="onboarding-field">
-        <label>סוג ביטוח</label>
-        <select className="form-input" value={policyForm.type}
+        <label htmlFor={fid('type')}>סוג ביטוח</label>
+        <select id={fid('type')} className="form-input" value={policyForm.type}
           onChange={e => setPF('type', e.target.value)}>
           {INS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
       <div className="onboarding-field">
-        <label>חברת ביטוח</label>
-        <input type="text" placeholder="שם החברה" value={policyForm.company}
+        <label htmlFor={fid('company')}>חברת ביטוח</label>
+        <input id={fid('company')} type="text" placeholder="שם החברה" value={policyForm.company}
           onChange={e => setPF('company', e.target.value)} />
       </div>
       <div className="onboarding-field">
-        <label>פרמיה (₪)</label>
+        <label htmlFor={fid('premium')}>פרמיה (₪)</label>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div className="toggle-group" style={{ flexShrink: 0 }}>
             <button type="button" className={`toggle-btn${freq === 'monthly' ? ' active' : ''}`} onClick={() => switchFreq('monthly')}>חודשי</button>
             <button type="button" className={`toggle-btn${freq === 'yearly' ? ' active' : ''}`} onClick={() => switchFreq('yearly')}>שנתי</button>
           </div>
-          <input type="text" inputMode="numeric" placeholder="0" style={{ flex: 1 }}
+          <input id={fid('premium')} type="text" inputMode="numeric" placeholder="0" style={{ flex: 1 }}
             value={formatNum(amount)}
             onChange={e => onAmount(e.target.value)} />
         </div>

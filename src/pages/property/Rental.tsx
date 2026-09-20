@@ -516,7 +516,10 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                   <span className="contract-company">{c.company_name}</span>
                   {isActive && (
                     <span className={`contract-status-badge ${left <= 30 ? 'urgent' : left <= 90 ? 'warning' : ''}`}>
-                      {left > 0 ? `${left} ימים` : 'מסתיים היום'}
+                      {/* "120 ימים" alone counts down to nothing a newcomer can name — and
+                          it is green, which reads as a verdict rather than a distance.
+                          Say what the days are until (NIGHT_RUN C2-D). */}
+                      {left > 0 ? `עוד ${left} ימים לסיום` : 'מסתיים היום'}
                     </span>
                   )}
                   {!isActive && <span className="contract-status-badge expired-badge">הסתיים</span>}

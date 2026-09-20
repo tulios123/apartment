@@ -276,8 +276,14 @@ export default function ExpenseSheet({ open, onClose, initialDesc = '', initialA
             </div>
 
             <div className="cap-row-chips">
+              {/* Labelled by what it DOES, not by the value the chip above already shows.
+                  With "היום" selected the sheet printed "היום" twice — once as the chosen
+                  chip and once here — so this read as a third redundant option instead of
+                  "pick another date" (NIGHT_RUN D-1). It still shows the date itself the
+                  moment that date is not one the chips can express. */}
               <button type="button" className="cap-datechip" onClick={() => setCalOpen(true)}>
-                <CalendarBlank size={18} weight="duotone" /> {dateLabel}
+                <CalendarBlank size={18} weight="duotone" />
+                {date === today || date === yesterday ? 'תאריך אחר' : dateLabel}
               </button>
               <button type="button" className={`cap-datechip${receipt ? ' on' : ''}`} onClick={() => receiptRef.current?.click()}>
                 <Paperclip size={17} weight="bold" /> {receipt ? 'קבלה צורפה' : 'צרף קבלה'}

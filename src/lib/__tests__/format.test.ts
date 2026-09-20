@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  formatMonthLabel,
   formatCurrency,
   formatSignedCurrency,
   formatDate,
@@ -137,5 +138,23 @@ describe('sanitizeAmountInt', () => {
     expect(sanitizeAmountInt('')).toBe('')
     expect(sanitizeAmountInt('.')).toBe('')
     expect(sanitizeAmountInt('₪')).toBe('')
+  })
+})
+
+describe('formatMonthLabel — naming the month a figure belongs to', () => {
+  const asOf = new Date(2026, 8, 8) // September 2026
+
+  it('drops the year inside the current year', () => {
+    expect(formatMonthLabel('2026-09', asOf)).toBe('ספטמבר')
+    expect(formatMonthLabel('2026-01', asOf)).toBe('ינואר')
+  })
+  it('states the year for any other year', () => {
+    expect(formatMonthLabel('2027-04', asOf)).toBe('אפריל 2027')
+    expect(formatMonthLabel('2025-12', asOf)).toBe('דצמבר 2025')
+  })
+  it('empty for malformed input rather than a wrong month', () => {
+    expect(formatMonthLabel('', asOf)).toBe('')
+    expect(formatMonthLabel('2026-13', asOf)).toBe('')
+    expect(formatMonthLabel('2026-00', asOf)).toBe('')
   })
 })

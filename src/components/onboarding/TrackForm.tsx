@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { sanitizeAmountInt } from '../../lib/format'
 import { Check } from '@phosphor-icons/react'
 import { MORTGAGE_TRACK_TYPES } from '../../lib/constants'
@@ -34,7 +34,14 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
   const principalDefault = price > 0 ? String(Math.round(price * 0.75)) : ''
   const primeDefault = trackForm.track_type === 'prime' ? '6.25' : '3.5'
   const marginDefault = trackForm.track_type === 'prime' ? '-0.5' : '1.5'
+  // The focus key `ph` already takes ('tf.principal', …) is unique per field, so it can
+  // double as the DOM id and finally give these boxes a name. Every <label> beside them was
+  // decorative: no htmlFor, no wrapping, so a screen reader announced an unnamed edit box
+  // and tapping the label focused nothing (docs/audit/a11y-forms.md).
+  const uid = useId()
+  const fid = (key: string) => `${uid}-${key.replace(/\./g, '-')}`
   const ph = (id: string, val: string, def: string, field?: IssueField) => ({
+    id: fid(id),
     className: [
       !val && !!def && focusedInput !== id ? 'input-ph-grey' : '',
       field && invalid(field) ? 'input-invalid' : '',
@@ -48,8 +55,8 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
   return (
     <div className="onboarding-inline-form">
       <div className="onboarding-field">
-        <label>סוג מסלול</label>
-        <select className="form-input" value={trackForm.track_type}
+        <label htmlFor={`${uid}-type`}>סוג מסלול</label>
+        <select id={`${uid}-type`} className="form-input" value={trackForm.track_type}
           onChange={e => change('track_type', e.target.value as TrackType)}>
           {MORTGAGE_TRACK_TYPES.map(t => (
             <option key={t.value} value={t.value}>{t.label}</option>
@@ -57,7 +64,7 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
         </select>
       </div>
       <div className="onboarding-field">
-        <label>קרן (₪)</label>
+        <label htmlFor={fid('tf.principal')}>קרן (₪)</label>
         <input type="text" inputMode="numeric"
           {...ph('tf.principal', trackForm.principal, principalDefault, 'principal')}
           value={focusedInput === 'tf.principal'
@@ -69,13 +76,13 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
       {(trackForm.track_type === 'prime' || trackForm.track_type === 'variable') ? (
         <div className="onboarding-row">
           <div className="onboarding-field">
-            <label>{trackForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
+            <label htmlFor={fid('tf.prime_rate')}>{trackForm.track_type === 'prime' ? 'ריבית פריים (%)' : 'עוגן (%)'}</label>
             <input type="number" step="0.01"
               {...ph('tf.prime_rate', trackForm.prime_rate, primeDefault, 'rate')}
               onChange={e => change('prime_rate', e.target.value)} />
           </div>
           <div className="onboarding-field">
-            <label>מרווח (%)</label>
+            <label htmlFor={fid('tf.margin')}>מרווח (%)</label>
             <input type="number" step="0.01" dir="ltr"
               {...ph('tf.margin', trackForm.margin, marginDefault, 'rate')}
               onChange={e => change('margin', e.target.value)} />
@@ -84,7 +91,7 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
         </div>
       ) : (
         <div className="onboarding-field">
-          <label>ריבית שנתית (%)</label>
+          <label htmlFor={fid('tf.annual_rate')}>ריבית שנתית (%)</label>
           <input type="number" step="0.01"
             {...ph('tf.annual_rate', trackForm.annual_rate, '5', 'rate')}
             onChange={e => change('annual_rate', e.target.value)} />
@@ -93,7 +100,7 @@ export function TrackForm({ onSave, onCancel, alert, pulse }: { onSave: () => vo
       )}
       <div className="onboarding-row">
         <div className="onboarding-field">
-          <label>תקופה (חודשים)</label>
+          <label htmlFor={fid('tf.term')}>תקופה (חודשים)</label>
           <input type="number" min="1"
             {...ph('tf.term', trackForm.term_months, '360', 'term')}
             onChange={e => change('term_months', e.target.value)} />

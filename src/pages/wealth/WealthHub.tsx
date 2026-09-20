@@ -8,13 +8,17 @@ import OwnershipScore from './OwnershipScore'
 import WealthAccelerator from './WealthAccelerator'
 import MonthlyResult from './MonthlyResult'
 import FinancingStructure from './FinancingStructure'
+import { DealStructure } from './DealStructure'
 import { usePropertyData } from '../../hooks/usePropertyData'
 import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useLoansData } from '../../hooks/useLoansData'
-import { currentSplit, futureSplit, principalNext12Months, interestNext12Months, currentSplitMonth, splitForMonth } from '../../lib/equity'
+import { currentSplitInfo, futureSplit, principalNext12Months, interestNext12Months, splitForMonth } from '../../lib/equity'
 import { formatCurrency, todayISO, daysBetween } from '../../lib/format'
 import { activeContract as findActiveContract } from '../../lib/projections'
+import { possession } from '../../lib/stage'
+import { loadPlan } from '../../lib/purchasePlan'
+import { useAuth } from '../../contexts/AuthContext'
 import { MAINTENANCE_CATEGORY } from '../../lib/constants'
 import { SkeletonList } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
@@ -25,12 +29,24 @@ const fmt = (v: number) => formatCurrency(v)
 
 export default function WealthHub() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [editing, setEditing] = useState(false)
 
   const { property, contracts, loading: loadingProp, error: errProp, refetch: refetchProp } = usePropertyData()
   const { tracks, summary, loading: loadingMortgage, error: errMortgage, refetch: refetchMortgage } = useMortgageData()
-  const { totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, error: errInv, refetch: refetchInv } = useInvestmentData()
+  const { costs, totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, error: errInv, refetch: refetchInv } = useInvestmentData()
   const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingLoans, error: errLoans, refetch: refetchLoans } = useLoansData()
+
+  // Before the key nothing on this screen has happened yet: no payment has been made, the
+  // mortgage has not been drawn, and the flat is not part-owned. Judgement is therefore
+  // silent here — what stays is the composition, which is true from the day of signing.
+  // (Owner, 09.09: "בהון נעשה את מבנה המימון המלא וכל מבנה העסקה הסופי".)
+  const awaitingKey = possession(property?.key_delivery_date, todayISO()) === 'awaiting_key'
+  const plan = user?.id ? loadPlan(user.id) : null
+  // Purchase tax is his money and often his largest cost after the equity, but it is not
+  // an investment_cost row — only the plan knows it. Passing the FIGURE (not a total) keeps
+  // מבנה העסקה adding up its own rows; see the note in DealStructure.
+  const planTax = plan ? plan.items.find(i => i.id === 'tax-pay')?.amount : undefined
 
   const statsLoading = loadingProp || loadingMortgage || loadingInv || loadingLoans
   const loadError = errProp || errMortgage || errInv || errLoans
@@ -40,10 +56,13 @@ export default function WealthHub() {
   const bankDebt = mortgageBalance + (loansSummary.monthlyBalance || 0)
   const balloon = loansSummary.balloonOutstanding || 0
 
-  const split = currentSplit(tracks, monthlyLoans)
+  // `split.isCurrentMonth` is false when nothing is actually paid this month and the
+  // figures come from the first month that does pay (a buyer before drawdown, an owner
+  // in grace). Every sentence phrased in the present tense is gated on it.
+  const split = currentSplitInfo(tracks, monthlyLoans)
   // Owner (21.07): the monthly card lumped mortgage interest and loan interest into one
   // line labelled "ריבית המשכנתא". Break the SAME month down per vehicle so each is named.
-  const splitMonth = currentSplitMonth(tracks, monthlyLoans)
+  const splitMonth = split.month
   const mortgageSplit = splitForMonth(tracks, [], splitMonth)
   const loansSplit = splitForMonth([], monthlyLoans, splitMonth)
   const future5y = futureSplit(tracks, monthlyLoans, 60)
@@ -118,22 +137,36 @@ export default function WealthHub() {
         />
       ) : (
         <>
-          {propertyValue > 0 && (
+          {/* Composition first before the key — it is the only thing on this screen that is
+              already true. After the key the screen keeps the order the owner knows, and the
+              composition sits further down. */}
+          {awaitingKey && (
+            <DealStructure
+              price={property?.purchase_price ?? propertyValue}
+              tracks={tracks} loans={[...monthlyLoans, ...balloonLoans]} costs={costs}
+              tax={planTax}
+            />
+          )}
+
+          {propertyValue > 0 && !awaitingKey && (
             <OwnershipScore
               propertyValue={propertyValue}
               bankDebt={bankDebt}
               balloon={balloon}
-              monthlyPrincipal={split.principal}
+              monthlyPrincipal={split.isCurrentMonth ? split.principal : 0}
             />
           )}
 
-          <WealthAccelerator
-            current={split}
-            future5yPrincipal={future5y.principal}
-            annualPrincipal={annualPrincipal}
-          />
+          {!awaitingKey && (
+            <WealthAccelerator
+              current={split}
+              future5yPrincipal={future5y.principal}
+              annualPrincipal={annualPrincipal}
+              fromMonth={split.isCurrentMonth ? null : split.month}
+            />
+          )}
 
-          {monthlyRent > 0 && (
+          {monthlyRent > 0 && split.isCurrentMonth && (
             <MonthlyResult
               monthlyRent={monthlyRent}
               mortgageInterest={mortgageSplit.interest}
@@ -143,7 +176,7 @@ export default function WealthHub() {
             />
           )}
 
-          {hasCashflow && (
+          {hasCashflow && !awaitingKey && (
             <section className="wlth-card wlth-cashflow">
               <div className="wlth-card-head">
                 <h2>הכנסות מול הוצאות</h2>
@@ -151,7 +184,12 @@ export default function WealthHub() {
               </div>
               <div className="wlth-cf-rows">
                 <div className="wlth-cf-row">
-                  <span><i className="wlth-cf-dot in" /> שכר דירה שהתקבל</span>
+                  {/* "שהתקבל" asserted receipt. `rentReceivedToDate` counts what the LEASE
+                      says is due since it started — the ledger here held 16,000 while this
+                      line read 44,000 (NIGHT_RUN C2-C). Naming the source is the honest
+                      minimum; whether the figure should instead come from the transactions
+                      is the owner's call, not a rename. */}
+                  <span><i className="wlth-cf-dot in" /> שכר דירה לפי החוזה</span>
                   <strong className="in">{fmt(rentReceived)}</strong>
                 </div>
                 <div className="wlth-cf-row">
@@ -185,7 +223,7 @@ export default function WealthHub() {
           {/* Unique figures only — "הון שהושקע" (totalInvested) was dropped here because
               it already appears in the cash-flow card above as "הון עצמי ועלויות רכישה"
               (owner, 20.07). Gross yield + monthly rent aren't shown elsewhere. */}
-          {(grossYield != null || monthlyRent > 0 || roeCash != null) && (
+          {!awaitingKey && (grossYield != null || monthlyRent > 0 || roeCash != null) && (
             <section className="wlth-card">
               <div className="wlth-card-head"><h2>תשואות</h2></div>
               <div className="wlth-yields">

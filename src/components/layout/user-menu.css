@@ -70,6 +70,15 @@
   margin: 6px 4px;
 }
 
+/* Small caption above a group of related menu items (staging scenario switcher). */
+.usermenu-grouplabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  padding: 4px 10px 2px;
+}
+
 .usermenu-item {
   display: flex;
   align-items: center;

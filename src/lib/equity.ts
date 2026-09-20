@@ -52,13 +52,8 @@ export function splitForMonth(tracks: MortgageTrack[], monthlyLoans: Loan[], mon
  * payment within the next year so the accelerator still shows a real figure.
  */
 export function currentSplit(tracks: MortgageTrack[], monthlyLoans: Loan[], asOf: Date = new Date()): PaymentSplit {
-  const now = splitForMonth(tracks, monthlyLoans, ym(asOf))
-  if (now.total > 0) return now
-  for (let i = 1; i <= 12; i++) {
-    const s = splitForMonth(tracks, monthlyLoans, ym(shift(asOf, i)))
-    if (s.total > 0) return s
-  }
-  return now
+  const { principal, interest, total } = currentSplitInfo(tracks, monthlyLoans, asOf)
+  return { principal, interest, total }
 }
 
 /**
@@ -67,13 +62,37 @@ export function currentSplit(tracks: MortgageTrack[], monthlyLoans: Loan[], asOf
  * drifting onto different months.
  */
 export function currentSplitMonth(tracks: MortgageTrack[], monthlyLoans: Loan[], asOf: Date = new Date()): string {
-  const now = ym(asOf)
-  if (splitForMonth(tracks, monthlyLoans, now).total > 0) return now
+  return currentSplitInfo(tracks, monthlyLoans, asOf).month
+}
+
+export interface CurrentSplit extends PaymentSplit {
+  /** The `YYYY-MM` the figures actually belong to. */
+  month: string
+  /** True only when that month is the calendar month we are in right now. */
+  isCurrentMonth: boolean
+}
+
+/**
+ * `currentSplit` + `currentSplitMonth` in one call, and — the point of it — the
+ * fact that the fallback fired.
+ *
+ * The 12-month look-ahead was written so the accelerator still shows a real ratio
+ * during a grace period. But it hands the caller a future month's numbers with no
+ * hint that they are future, and every consumer then narrated them in the present:
+ * "+2,417 לבעלות החודש" to a buyer whose mortgage starts in seven months, and the
+ * same untrue sentence to any owner sitting in grace. Silence about the month was
+ * the bug; a caller that knows can either name the month or say nothing.
+ */
+export function currentSplitInfo(tracks: MortgageTrack[], monthlyLoans: Loan[], asOf: Date = new Date()): CurrentSplit {
+  const nowMonth = ym(asOf)
+  const now = splitForMonth(tracks, monthlyLoans, nowMonth)
+  if (now.total > 0) return { ...now, month: nowMonth, isCurrentMonth: true }
   for (let i = 1; i <= 12; i++) {
     const m = ym(shift(asOf, i))
-    if (splitForMonth(tracks, monthlyLoans, m).total > 0) return m
+    const s = splitForMonth(tracks, monthlyLoans, m)
+    if (s.total > 0) return { ...s, month: m, isCurrentMonth: false }
   }
-  return now
+  return { ...now, month: nowMonth, isCurrentMonth: true }
 }
 
 /** The split `monthsAhead` from now — for the Spitzer trajectory line. */
