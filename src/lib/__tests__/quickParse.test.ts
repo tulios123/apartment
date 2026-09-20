@@ -69,6 +69,14 @@ describe('predictCategory', () => {
     expect(predictCategory('ריבית משכנתא')).toBe('ריבית')
     expect(predictCategory('עמלה בנק')).toBe('ריבית')
   })
+  // 'ריבית' is what useInvestmentData sums into "ריבית ששולמה", which feeds the yield —
+  // so a wrong guess here does not mislabel a row, it overstates a number. A mortgage or
+  // loan payment is principal AND interest and must never be guessed as pure interest.
+  it('never guesses ריבית for a payment that is not one', () => {
+    expect(predictCategory('תשלום משכנתא')).toBe('אחר')
+    expect(predictCategory('החזר הלוואה')).toBe('אחר')
+    expect(predictCategory('העברה לבנק')).toBe('אחר')
+  })
   it('defaults to אחר', () => {
     expect(predictCategory('קניות בסופר')).toBe('אחר')
   })
