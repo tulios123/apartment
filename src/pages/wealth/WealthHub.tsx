@@ -14,7 +14,8 @@ import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useLoansData } from '../../hooks/useLoansData'
 import { currentSplitInfo, futureSplit, principalNext12Months, interestNext12Months, splitForMonth } from '../../lib/equity'
-import { formatCurrency, todayISO, daysBetween } from '../../lib/format'
+import { formatCurrency, todayISO, daysBetween, monthEndISO } from '../../lib/format'
+import { useInsurance } from '../../hooks/useInsurance'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { possession } from '../../lib/stage'
 import { loadPlan } from '../../lib/purchasePlan'
@@ -37,6 +38,8 @@ export default function WealthHub() {
   const { tracks, summary, loading: loadingMortgage, error: errMortgage, refetch: refetchMortgage } = useMortgageData()
   const { costs, totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, error: errInv, refetch: refetchInv } = useInvestmentData()
   const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingLoans, error: errLoans, refetch: refetchLoans } = useLoansData()
+  // Loaded here for the first time — see the note on monthlyInsurance below.
+  const { policies } = useInsurance()
 
   // Before the key nothing on this screen has happened yet: no payment has been made, the
   // mortgage has not been drawn, and the flat is not part-owned. Judgement is therefore
@@ -95,6 +98,29 @@ export default function WealthHub() {
 
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
+
+  /**
+   * Insurance — the expense this screen did not know existed.
+   *
+   * WealthHub never loaded the policies, so "הרווח החודשי האמיתי" was rent minus interest
+   * minus upkeep, with the premium missing, while the תזרים screen counted it (the forecast
+   * engine has always included it). The two screens each announced "the real profit" for the
+   * same month and gave answers 110 apart — night run C2-B, and the owner cleared this one
+   * to fix on 21.09.
+   *
+   * Not a redefinition: תזרים is the reference and this brings Wealth to it. The same figure
+   * also enters the annual cash used by the yields below, because a card and a yield on ONE
+   * screen disagreeing about whether insurance exists would be worse than the original bug.
+   *
+   * Active-in-month test mirrors monthlyVirtualEntries exactly, so the two engines can't
+   * drift on which policies count.
+   */
+  const monthStart = `${todayISO().slice(0, 7)}-01`
+  const monthEnd = monthEndISO(Number(todayISO().slice(0, 4)), Number(todayISO().slice(5, 7)))
+  const monthlyInsurance = policies.reduce((s, p) => {
+    const active = (!p.start_date || p.start_date <= monthEnd) && (!p.end_date || p.end_date >= monthStart)
+    return s + (active ? (Number(p.monthly_premium) || 0) : 0)
+  }, 0)
   const grossYield = propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
 
   // ── Return on the equity you actually put in (cash-on-cash + total) ──────────
@@ -106,7 +132,7 @@ export default function WealthHub() {
   const yearsHeld = property?.purchase_date ? Math.max(1, daysBetween(property.purchase_date, todayISO()) / 365) : 0
   const annualMaintenance = yearsHeld > 0 ? maintenance / yearsHeld : 0
   const monthlyMaintenance = annualMaintenance / 12
-  const netCashAnnual = annualRent - annualInterest - annualMaintenance
+  const netCashAnnual = annualRent - annualInterest - annualMaintenance - monthlyInsurance * 12
   // Owner (20.07): return on the NET equity — property value minus all debt
   // (mortgage + loans + balloon), i.e. the "הון עצמי נטו" shown at the top — not the
   // cash originally invested. "תזרים" is cash-on-cash (principal excluded); "כולל
@@ -209,6 +235,7 @@ export default function WealthHub() {
               loansInterest={loansSplit.interest}
               monthlyPrincipal={split.principal}
               monthlyMaintenance={monthlyMaintenance}
+              monthlyInsurance={monthlyInsurance}
             />
           )}
 
