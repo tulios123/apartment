@@ -87,14 +87,41 @@ test('מס רכישה מחושב, מוסבר וניתן לשינוי', async ({ 
 test('בלי מחיר — לא ממציא מספר', async ({ page }) => {
   await setTheme(page, 'light')
   await stubSupabase(page, empty)
-  await page.addInitScript(() => {
+
+  /**
+   * Since 21.09 the purchase price is required, so the costs step cannot be REACHED
+   * without one by walking forward — which is the point of that gate. A draft can still
+   * arrive here with the field empty (saved before the gate existed, or saved after the
+   * user went back and cleared it), and that is exactly the state worth pinning: the tax
+   * field must stay blank rather than compute something from a price of zero.
+   */
+  await page.addInitScript((owner) => {
     for (const k of Object.keys(localStorage)) if (k.startsWith('onboarding_draft')) localStorage.removeItem(k)
-  })
+    localStorage.setItem(`onboarding_draft:${owner}`, JSON.stringify({
+      v: 1,
+      step: 'investment',
+      docRefs: { purchase: [], tabu: [], mortgage: [], loan: [], rental: [], insurance: [] },
+      buyerName: '', street: '', city: '', rooms: '',
+      purchasePrice: '', signingDate: '', keyDeliveryDate: '',
+      propertySizeSqm: '', floorNumber: '',
+      tracks: [], trackForm: null, graceOn: false, showTrackForm: false, editingIdx: null,
+      equityMode: 'amount', equityValue: '',
+      costs: { lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '', purchase_tax: '' },
+      extraCosts: [], singleApartment: true,
+      companyName: '', startDate: '', endDate: '', monthlyRent: '',
+      rentPaymentMethod: 'check', rentPaymentDay: '', addRentReminder: false,
+      policies: [], policyForm: null, showPolicyForm: false, editingPolicyIdx: null,
+      loans: [], balloonLoans: [], loanForm: null, loanGraceOn: false,
+      showLoanForm: false, editingLoanIdx: null,
+    }))
+  }, OWNER)
+
   await page.goto('/')
-  await page.locator('.onboarding-welcome, .onboarding-wrap').first().waitFor({ state: 'visible', timeout: 30_000 })
-  await page.waitForTimeout(700)
-  for (let i = 0; i < 5; i++) { await page.locator('.btn-onboard-primary').last().click(); await page.waitForTimeout(650) }
+  await page.locator('.onboarding-tax').waitFor({ state: 'visible', timeout: 30_000 })
+  await page.waitForTimeout(500)
 
   await expect(page.locator('.onboarding-tax input')).toHaveValue('')
   await expect(page.getByText('יחושב אוטומטית ברגע שיוזן מחיר רכישה')).toBeVisible()
+  // …and no bracket ladder to open, because there is nothing to explain.
+  await expect(page.getByRole('button', { name: 'איך חושב?' })).toHaveCount(0)
 })
