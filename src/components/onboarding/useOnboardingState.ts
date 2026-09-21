@@ -214,6 +214,10 @@ export function useOnboardingState(onComplete: () => void) {
   const [purchaseAiBusy, setPurchaseAiBusy] = useState(false)
   const [purchaseAiErr, setPurchaseAiErr] = useState<string | null>(null)
   const [purchaseAiDone, setPurchaseAiDone] = useState(false)
+  /** Fields the person had already filled, where the document said something different.
+   *  Kept as typed — and named, so the choice is visible rather than silent. */
+  const [purchaseAiKept, setPurchaseAiKept] = useState<string[]>([])
+  const [rentalAiKept, setRentalAiKept] = useState<string[]>([])
   const [rentalAiBusy, setRentalAiBusy] = useState(false)
   const [rentalAiErr, setRentalAiErr] = useState<string | null>(null)
   const [rentalAiDone, setRentalAiDone] = useState(false)
@@ -378,6 +382,32 @@ export function useOnboardingState(onComplete: () => void) {
       h = Math.imul(h, 0x01000193)
     }
     return (h >>> 0).toString(36)
+  }
+
+  /**
+   * Extraction fills BLANKS. It does not overwrite what the person typed.
+   *
+   * It used to: every field the model returned was written straight over whatever was in
+   * the form. Omer filled his signing and handover dates by hand, then uploaded the
+   * contract, and both were silently replaced — he only noticed later, from a date that
+   * looked wrong on another screen. Those two dates anchor every statutory deadline in the
+   * payment plan and decide the app's whole stage, so the cost of a silent overwrite is
+   * not one field.
+   *
+   * A disagreement is not dropped either: the field keeps what he typed and its name is
+   * collected, so the screen can say what it left alone.
+   */
+  function fillBlank(
+    current: string,
+    set: (v: string) => void,
+    value: unknown,
+    label: string,
+    kept: string[],
+  ) {
+    if (value == null || value === '') return
+    const next = String(value)
+    if (current.trim() === '') { set(next); return }
+    if (current.trim() !== next.trim()) kept.push(label)
   }
 
   async function aiFillMortgage(fileList: File[]) {
@@ -561,24 +591,28 @@ export function useOnboardingState(onComplete: () => void) {
         }
       }
       const d = data ?? {}
-      if (d.buyerName) setBuyerName(String(d.buyerName))
+      const kept: string[] = []
+      fillBlank(buyerName, setBuyerName, d.buyerName, 'שם הרוכש', kept)
       // Prefer the separately-extracted street/city; fall back to splitting the full
       // address on its last comma (older/looser extractions only return propertyAddress).
       if (d.street || d.city) {
-        if (d.street) setStreet(String(d.street))
-        if (d.city) setCity(String(d.city))
+        fillBlank(street, setStreet, d.street, 'רחוב', kept)
+        fillBlank(city, setCity, d.city, 'עיר', kept)
       } else if (d.propertyAddress) {
         const addr = String(d.propertyAddress)
         const ci = addr.lastIndexOf(',')
-        if (ci > 0) { setStreet(addr.slice(0, ci).trim()); setCity(addr.slice(ci + 1).trim()) }
-        else setStreet(addr)
+        if (ci > 0) {
+          fillBlank(street, setStreet, addr.slice(0, ci).trim(), 'רחוב', kept)
+          fillBlank(city, setCity, addr.slice(ci + 1).trim(), 'עיר', kept)
+        } else fillBlank(street, setStreet, addr, 'רחוב', kept)
       }
-      if (d.purchasePrice != null) setPurchasePrice(String(d.purchasePrice))
-      if (d.purchaseDate) setSigningDate(String(d.purchaseDate))
-      if (d.keyDeliveryDate) setKeyDeliveryDate(String(d.keyDeliveryDate))
-      if (d.propertySizeSqm != null) setPropertySizeSqm(String(d.propertySizeSqm))
-      if (d.floor != null) setFloorNumber(String(d.floor))
-      if (d.rooms != null) setRooms(String(d.rooms))
+      fillBlank(purchasePrice, setPurchasePrice, d.purchasePrice, 'מחיר רכישה', kept)
+      fillBlank(signingDate, setSigningDate, d.purchaseDate, 'תאריך חתימת חוזה', kept)
+      fillBlank(keyDeliveryDate, setKeyDeliveryDate, d.keyDeliveryDate, 'מסירת מפתח', kept)
+      fillBlank(propertySizeSqm, setPropertySizeSqm, d.propertySizeSqm, 'שטח', kept)
+      fillBlank(floorNumber, setFloorNumber, d.floor, 'קומה', kept)
+      fillBlank(rooms, setRooms, d.rooms, 'מספר חדרים', kept)
+      setPurchaseAiKept(kept)
       setPurchaseAiDone(true)
     } catch (e) {
       setPurchaseAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.'))
@@ -619,13 +653,15 @@ export function useOnboardingState(onComplete: () => void) {
         }
       }
       const d = data ?? {}
-      if (d.tenantName) setCompanyName(String(d.tenantName))
-      if (d.startDate) setStartDate(String(d.startDate))
-      if (d.endDate) setEndDate(String(d.endDate))
-      if (d.monthlyRent != null) setMonthlyRent(String(d.monthlyRent))
+      const keptR: string[] = []
+      fillBlank(companyName, setCompanyName, d.tenantName, 'שם השוכר', keptR)
+      fillBlank(startDate, setStartDate, d.startDate, 'תאריך התחלה', keptR)
+      fillBlank(endDate, setEndDate, d.endDate, 'תאריך סיום', keptR)
+      fillBlank(monthlyRent, setMonthlyRent, d.monthlyRent, 'שכר דירה חודשי', keptR)
       if (d.paymentMethod === 'check') { setRentPaymentMethod('check'); setAddRentReminder(true) }
       else if (d.paymentMethod === 'bank_transfer') setRentPaymentMethod('bank_transfer')
-      if (d.paymentDay != null) setRentPaymentDay(String(d.paymentDay))
+      fillBlank(rentPaymentDay, setRentPaymentDay, d.paymentDay, 'יום התשלום', keptR)
+      setRentalAiKept(keptR)
       setRentalAiDone(true)
     } catch (e) {
       setRentalAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.'))
@@ -1549,7 +1585,7 @@ export function useOnboardingState(onComplete: () => void) {
     mortgageDocRef, mortgageAiBusy, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
     // AI purchase + rental fill
-    purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
+    purchaseAiBusy, purchaseAiErr, purchaseAiDone, purchaseAiKept, rentalAiKept, aiFillPurchase,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     // Uploaded document files per category + remove (documents step manage view)
     purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile, docRefs, docAttachments,

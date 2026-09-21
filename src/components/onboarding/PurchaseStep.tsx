@@ -23,7 +23,7 @@ export function PurchaseStep() {
     rooms, setRooms, purchasePrice, setPurchasePrice,
     signingDate, setSigningDate, setKeyDeliveryDate,
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
-    purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
+    purchaseAiBusy, purchaseAiErr, purchaseAiDone, purchaseAiKept, aiFillPurchase,
     docAttachments, removeDocFile, renameDocFile,
     fillTestPurchase,
   } = useOnboarding()
@@ -96,6 +96,14 @@ export function PurchaseStep() {
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillPurchase(fs); e.target.value = '' }} />
         {showDocs && <DocFileList files={docs} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />}
         {purchaseAiErr && <p className="onboarding-error" role="alert">{purchaseAiErr}</p>}
+        {/* Extraction no longer writes over what you typed. When the document disagreed,
+            say which fields were left alone — otherwise "kept your value" is just another
+            silent decision, and the whole point was to stop making those. */}
+        {purchaseAiKept.length > 0 && (
+          <p className="onboarding-soft-warning" role="status">
+            שמרנו את מה שמילאת: {purchaseAiKept.join(', ')} — במסמך רשום אחרת. בדקו מה נכון.
+          </p>
+        )}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>
 
