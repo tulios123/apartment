@@ -63,7 +63,7 @@ export function useDashboardStats(): DashboardStats {
         const in90 = new Date(); in90.setDate(in90.getDate() + 90)
         const in90Str = monthDayISO(in90)
 
-        const [txRes, tasksRes, renewalRes, allContractsRes, tracksRes, mortgageRes] = await Promise.all([
+        const [txRes, tasksRes, renewalRes, allContractsRes, tracksRes, mortgageRes, propRes] = await Promise.all([
           supabase
             .from('transactions')
             .select('id, direction, amount, date, category, description, payment_method, contract_id, recurring_item_id, document_id, owner_id, created_at')
@@ -85,6 +85,9 @@ export function useDashboardStats(): DashboardStats {
           supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', user!.id),
           supabase.from('mortgage_tracks').select('*').eq('owner_id', user!.id),
           supabase.from('mortgages').select('payment_day').eq('owner_id', user!.id).limit(1),
+          // Rent before handover is not income (see projections.rentDue) — the all-time
+          // total needs the key-delivery date to know where to start counting.
+          supabase.from('properties').select('key_delivery_date').eq('owner_id', user!.id).limit(1),
         ])
 
         if (txRes.error) throw txRes.error
@@ -110,7 +113,8 @@ export function useDashboardStats(): DashboardStats {
         const txIncome = txs.filter(t => t.direction === 'income' && !rentCatSet.has(t.category)).reduce((s, t) => s + t.amount, 0)
         const txExpense = txs.filter(t => t.direction === 'expense' && !mortCatSet.has(t.category)).reduce((s, t) => s + t.amount, 0)
 
-        const nextIncome = txIncome + rentReceivedToDate(allContracts)
+        const handover = (propRes.error ? null : (propRes.data?.[0]?.key_delivery_date ?? null))
+        const nextIncome = txIncome + rentReceivedToDate(allContracts, new Date(), handover)
         const nextExpense = txExpense + mortgagePaidToDate(tracks, todayStr)
         const nextRecent = txs.slice(0, 5)
         const nextTasks = tasksRes.data ?? []

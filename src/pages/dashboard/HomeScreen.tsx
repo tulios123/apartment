@@ -120,7 +120,16 @@ export default function HomeScreen() {
     const item = recurringItems.find(i => i.contract_id === activeContract?.id && i.direction === 'income')
     return rentPaymentDay({ dayOfMonth: item?.day_of_month ?? null, startDate: activeContract?.start_date })
   }, [recurringItems, activeContract])
-  const rentPayable = isRentPayable(todayStr, rentDueDay)
+  // …and it must not appear before the keys exist. A lease dated to start before handover
+  // is normal, but the tenant is not paying yet — asking "was the rent received?" then is
+  // asking about money that cannot have arrived (Omer, notes 11+16). Same due-date rule as
+  // the forecast engine (projections.rentDue), computed on this month's own payment day.
+  const rentStarted = useMemo(() => {
+    const handover = property?.key_delivery_date
+    if (!handover) return true
+    return `${todayStr.slice(0, 7)}-${String(rentDueDay).padStart(2, '0')}` >= handover
+  }, [property?.key_delivery_date, todayStr, rentDueDay])
+  const rentPayable = isRentPayable(todayStr, rentDueDay) && rentStarted
   // A5: derive the fixed forecast from the SAME source the Finances ledger uses
   // (monthlyVirtualEntries) — mortgage + loans (schedule-bounded, so grace / paid-off
   // tracks are correct) + insurance. This guarantees the "צפי לסוף החודש" here matches
@@ -132,13 +141,13 @@ export default function HomeScreen() {
   // the opposite by omission — its headline is rent minus the WHOLE payment, so a good
   // month reads as a loss of roughly the principal (brains-tour, 08.09).
   const { fixedExpenses, fixedPrincipal } = useMemo(() => {
-    const rows = monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies)
+    const rows = monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies, property?.key_delivery_date)
       .filter(e => e.direction === 'expense')
     return {
       fixedExpenses: rows.reduce((s, e) => s + e.amount, 0),
       fixedPrincipal: rows.reduce((s, e) => s + (e.principal ?? 0), 0),
     }
-  }, [contracts, tracks, loans, policies, fYear, fMonth])
+  }, [contracts, tracks, loans, policies, fYear, fMonth, property?.key_delivery_date])
 
   // ── This month's reality ──
   const rentReceived = transactions
