@@ -28,6 +28,22 @@ export interface ChecklistSlot {
   hint: string
   /** False when the slot is only expected because the account has that thing. */
   universal: boolean
+  /**
+   * How to recognise the document, for the (?) beside it (Omer, note 1: "הייתי מוסיף (?)
+   * ליד כל מסמך ולהציג דוגמה שלו"). The documents step is the first moment the app asks
+   * for something from the real world, and the names alone assume you already know an
+   * אישור משכנתא from a מסמך הלוואה.
+   */
+  example: string
+  /**
+   * Does uploading this one fill fields in automatically?
+   *
+   * Insurance and the tabu extract are filed as-is — nothing is read out of them. The card
+   * said "1 קובץ הועלה" and stopped there, which looks exactly like the successful cards
+   * beside it, so Omer read it as "the policy was recognised" and it had not been (note 12).
+   * Naming it up front is the difference between a quiet failure and a stated limit.
+   */
+  extracts: boolean
 }
 
 const ALL: (ChecklistSlot & { applies: (c: ChecklistContext) => boolean })[] = [
@@ -35,6 +51,8 @@ const ALL: (ChecklistSlot & { applies: (c: ChecklistContext) => boolean })[] = [
     type: 'purchase_contract', label: 'חוזה רכישה', universal: true,
     hint: 'מחיר, תאריכים וצדדים',
     applies: () => true,
+    example: 'הסכם המכר שנחתם מול המוכר — בדרך כלל PDF מעורך הדין, עם שמות הצדדים, המחיר ולוח התשלומים.',
+    extracts: true,
   },
   {
     type: 'tabu_extract', label: 'נסח טאבו', universal: true,
@@ -42,26 +60,36 @@ const ALL: (ChecklistSlot & { applies: (c: ChecklistContext) => boolean })[] = [
     // a freshly-finished account opened the screen at 0/1 on a document nobody mentioned.
     hint: 'אישור הבעלות מהטאבו',
     applies: () => true,
+    example: 'מסמך מרשם המקרקעין (טאבו) או מרשות מקרקעי ישראל — גוש, חלקה, ושם הבעלים הרשום. אפשר להפיק אונליין. נשמר לתיק ולא נקרא אוטומטית.',
+    extracts: false,
   },
   {
     type: 'mortgage_statement', label: 'אישור משכנתא', universal: false,
     hint: 'דף התנאים מהבנק',
     applies: c => c.hasMortgage,
+    example: 'דף אישור העקרוני או דוח יתרות מהבנק — טבלה של מסלולים עם סכום, ריבית ותקופה לכל אחד.',
+    extracts: true,
   },
   {
     type: 'loan_statement', label: 'הלוואה', universal: false,
     hint: 'מסמך ההלוואה המשלימה',
     applies: c => c.hasLoan,
+    example: 'מסמך ההלוואה המשלימה — לא המשכנתא. בדרך כלל דף אחד מהבנק או מהגוף המלווה עם הסכום, הריבית והחזר חודשי.',
+    extracts: true,
   },
   {
     type: 'rental_contract', label: 'חוזה שכירות', universal: false,
     hint: 'החוזה מול הדייר',
     applies: c => c.hasLease,
+    example: 'חוזה השכירות מול הדייר — שם השוכר, תאריכי התחלה וסיום, שכר הדירה ואופן התשלום.',
+    extracts: true,
   },
   {
     type: 'insurance_policy', label: 'פוליסת ביטוח', universal: true,
     hint: 'ביטוח מבנה או משכנתא',
     applies: () => true,
+    example: 'דף הפוליסה מחברת הביטוח — ביטוח מבנה ו/או ביטוח משכנתא. נשמר לתיק ולא נקרא אוטומטית, אז את הפרמיה ותקופת הכיסוי צריך להזין בשלב הביטוח.',
+    extracts: false,
   },
 ]
 
@@ -73,7 +101,7 @@ const ALL: (ChecklistSlot & { applies: (c: ChecklistContext) => boolean })[] = [
  */
 export function checklistSlots(ctx: ChecklistContext | 'wizard'): ChecklistSlot[] {
   const pick = (s: (typeof ALL)[number]): ChecklistSlot =>
-    ({ type: s.type, label: s.label, hint: s.hint, universal: s.universal })
+    ({ type: s.type, label: s.label, hint: s.hint, universal: s.universal, example: s.example, extracts: s.extracts })
   if (ctx === 'wizard') return ALL.map(pick)
   return ALL.filter(s => s.applies(ctx)).map(pick)
 }
