@@ -73,6 +73,34 @@ export default function FeedbackButton({ screen, routed = true }: { screen?: str
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<View>('send')
 
+  /**
+   * The bubble gets out of the way when you scroll down (Omer, note 8).
+   *
+   * It is fixed to the bottom-start corner, which is exactly where the last row of a
+   * scrolled-to-the-end page lands — on Settings it sat on top of the word "פרטיות",
+   * a link you could see and could not tap. Of the three fixes on the table the owner
+   * left the choice here, and this is the one that costs nothing elsewhere: reading
+   * downwards hides it, reading back up brings it straight back, and the footer of
+   * every page in the app is reachable because getting there means scrolling down.
+   *
+   * Deliberately no timer-based restore: on the screen that prompted this, the user
+   * stops scrolling precisely AT the link, and a bubble that fades back in a second
+   * later would re-cover it.
+   */
+  const [fabHidden, setFabHidden] = useState(false)
+  useEffect(() => {
+    let last = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      const dy = y - last
+      if (Math.abs(dy) < 6) return   // ignore jitter and rubber-banding
+      last = y
+      setFabHidden(dy > 0 && y > 80) // never hidden near the top, where nothing is under it
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   // ── Send form ──
   const [category, setCategory] = useState<Category>('bug')
   const [note, setNote] = useState('')
@@ -274,7 +302,7 @@ export default function FeedbackButton({ screen, routed = true }: { screen?: str
   return (
     <>
       {routed && <FeedbackDeepLink user={user ? { id: user.id } : null} openThread={openThread} />}
-      <button className="fb-fab" aria-label="שליחת משוב" onClick={openForm}>
+      <button className={`fb-fab${fabHidden && !open ? ' is-hidden' : ''}`} aria-label="שליחת משוב" onClick={openForm}>
         <Lightbulb size={18} weight="fill" />
       </button>
 
