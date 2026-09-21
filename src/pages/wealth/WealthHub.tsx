@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { PencilSimple, CaretLeft, CaretRight } from '@phosphor-icons/react'
@@ -67,6 +67,30 @@ export default function WealthHub() {
   const loansSplit = splitForMonth([], monthlyLoans, splitMonth)
   const future5y = futureSplit(tracks, monthlyLoans, 60)
   const annualPrincipal = principalNext12Months(tracks, monthlyLoans)
+
+  /**
+   * In a grace period the bank takes interest only: nothing at all is converted to equity.
+   * The accelerator — whose entire subject is how much of each payment builds equity —
+   * therefore showed "בונה הון ₪0 (0%)" beside a full interest bar, as if the owner were
+   * choosing badly rather than being in a window where the choice does not exist yet
+   * (Omer, note 19). The owner's call (21.09): hide it during grace, with a line that can
+   * be expanded.
+   *
+   * Detected from the schedule rather than from grace_months, so it is right for every
+   * reason a month can be interest-only, and the resume month is found by asking the
+   * schedule when principal next appears — which is the honest answer to "from when".
+   */
+  const inGrace = split.total > 0 && split.principal <= 0
+  const accelResumes = useMemo(() => {
+    if (!inGrace) return null
+    const [y, m] = splitMonth.split('-').map(Number)
+    for (let i = 1; i <= 36; i++) {
+      const d = new Date(y, m - 1 + i, 1)
+      const mm = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (splitForMonth(tracks, monthlyLoans, mm).principal > 0) return mm
+    }
+    return null
+  }, [inGrace, splitMonth, tracks, monthlyLoans])
 
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
@@ -163,6 +187,8 @@ export default function WealthHub() {
               future5yPrincipal={future5y.principal}
               annualPrincipal={annualPrincipal}
               fromMonth={split.isCurrentMonth ? null : split.month}
+              inGrace={inGrace}
+              resumesMonth={accelResumes}
             />
           )}
 

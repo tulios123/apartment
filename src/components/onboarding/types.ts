@@ -2,7 +2,9 @@ import type { TrackType, LoanRepaymentType } from '../../types'
 import { todayISO, formatNum } from '../../lib/format'
 
 // ── Step types ────────────────────────────────────────────────────────────────
-export type Step = 'welcome' | 'documents' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'done'
+// 'review' is deliberately NOT in STEP_ORDER: it collects nothing, so counting it would
+// turn "שלב 6 מתוך 6" into 7 and make the wizard look longer while it got shorter.
+export type Step = 'welcome' | 'documents' | 'purchase' | 'mortgage' | 'loans' | 'investment' | 'rental' | 'insurance' | 'review' | 'done'
 
 export const STEP_ORDER: Step[] = ['purchase', 'mortgage', 'loans', 'investment', 'rental', 'insurance']
 

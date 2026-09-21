@@ -304,6 +304,9 @@ export function useOnboardingState(onComplete: () => void) {
     dismissKeyboardAndScrollTop()
     setNavDir('back')
     if (step === 'documents') { setStep('welcome'); return }
+    // The review screen is not in STEP_ORDER, so the generic lookup below would drop the
+    // user all the way back to the documents step instead of the step he just left.
+    if (step === 'review') { setStep('insurance'); return }
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
     else setStep('documents')
@@ -1196,6 +1199,20 @@ export function useOnboardingState(onComplete: () => void) {
     // of being silently dropped or saved with backfilled defaults.
     if (finishBlockers.length > 0) { setFinishPrompt(true); return }
     if (anyAiBusy) { setPendingFinish(true); return }
+    advance('review')
+  }
+
+  /**
+   * The actual save, from the review screen's own button.
+   *
+   * Proofreading has to come BEFORE the write: handleFinish guards each section against a
+   * repeat write (savedRef), so a correction made after the save and re-submitted would be
+   * silently dropped. Re-running the blocker check here as well, because the user may have
+   * gone back from the review screen, changed something, and returned.
+   */
+  function confirmFinish() {
+    if (finishBlockers.length > 0) { setFinishPrompt(true); return }
+    if (anyAiBusy) { setPendingFinish(true); return }
     handleFinish()
   }
 
@@ -1248,7 +1265,10 @@ export function useOnboardingState(onComplete: () => void) {
     // tracks/fields rather than the stale snapshot from when the user tapped.
     if (pendingFinish && !anyAiBusy) {
       setPendingFinish(false)
-      handleFinish()
+      // Deferred because a document was still being read: land on the review screen, not
+      // in the database — the freshly extracted values are exactly what wants proofreading.
+      if (step === 'review') handleFinish()
+      else advance('review')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingFinish, anyAiBusy])
@@ -1615,7 +1635,7 @@ export function useOnboardingState(onComplete: () => void) {
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,
     costs, setCosts, extraCosts, setExtraCosts,
-    singleApartment, setSingleApartment, effPurchaseTax, taxDefault,
+    singleApartment, setSingleApartment, effPurchaseTax, taxDefault, effLawyer, effBrokerage,
     balloonLoans, setBalloonLoans, balloonTotal,
     // focused input
     focusedInput, setFocusedInput,
@@ -1637,7 +1657,7 @@ export function useOnboardingState(onComplete: () => void) {
     loanIsValid, loanDraftRate, loanTypeLabel,
     loansMonthlyPrincipal, loansBalloonTotal,
     // submit
-    handleFinish, requestFinish, anyAiBusy, pendingFinish,
+    handleFinish, requestFinish, confirmFinish, anyAiBusy, pendingFinish,
     finishPrompt, finishBlockers, dismissFinishPrompt, finishPromptBackToComplete, finishPromptContinueWithout,
     // dev fill
     fillTestPurchase, fillTestMortgage, fillTestInvestment,

@@ -65,6 +65,20 @@
   .wlth-split-col.build .amt { color: var(--success-text); }
   .wlth-split-col .lbl { font-size: 13px; font-weight: 600; margin-top: 4px; }
   .wlth-split-col .hint { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  /* In grace the card collapses to one openable line — see WealthAccelerator. */
+  .wlth-accel.is-grace { padding-block: 10px; }
+  .wlth-accel-grace-head {
+    width: 100%; display: flex; align-items: center; gap: 8px;
+    border: 0; background: none; padding: 0; cursor: pointer; text-align: start; font: inherit;
+  }
+  .wlth-accel-grace-title { flex: 1; font-size: 14px; font-weight: 700; color: var(--text-secondary); }
+  .wlth-accel-grace-title .wlth-card-note { font-weight: 400; }
+  .wlth-accel-caret { color: var(--text-muted); transition: transform 0.18s ease; }
+  .wlth-accel-caret.is-open { transform: rotate(180deg); }
+  .wlth-accel-grace-body {
+    margin: 8px 0 0; font-size: 13px; line-height: 1.55; color: var(--text-secondary);
+  }
+
   .wlth-accel-notes { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .wlth-accel-notes li { font-size: 13px; color: var(--text-secondary); padding-inline-start: 16px; position: relative; line-height: 1.5; }
   .wlth-accel-notes li::before { content: '▸'; position: absolute; inset-inline-start: 0; color: var(--accent-teal); }

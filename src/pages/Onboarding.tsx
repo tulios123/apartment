@@ -13,6 +13,7 @@ import { LoansStep } from '../components/onboarding/LoansStep'
 import { InvestmentStep } from '../components/onboarding/InvestmentStep'
 import { RentalStep } from '../components/onboarding/RentalStep'
 import { InsuranceStep } from '../components/onboarding/InsuranceStep'
+import { ReviewStep } from '../components/onboarding/ReviewStep'
 import { DoneStep } from '../components/onboarding/DoneStep'
 
 interface Props { onComplete: () => void }
@@ -65,6 +66,7 @@ export default function Onboarding({ onComplete }: Props) {
             {step === 'investment' && <InvestmentStep />}
             {step === 'rental' && <RentalStep />}
             {step === 'insurance' && <InsuranceStep />}
+            {step === 'review' && <ReviewStep />}
             {step === 'done' && <DoneStep />}
           </div>
         </div>

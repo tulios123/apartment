@@ -4883,6 +4883,63 @@ button .spin { vertical-align: -2px; }
 
 /* מס רכישה — a full-width cost field: the single/additional toggle decides the number,
    so the two live on one line, and the bracket ladder folds out underneath it. */
+/* ── הסיכום לפני השמירה (ReviewStep) ─────────────────────────────────────────
+   Read-only rows in cards, one card per wizard step, each with a pencil back to it. */
+.onboarding-review-card {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 12px);
+  background: var(--surface);
+}
+.onboarding-review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.onboarding-review-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.onboarding-review-head button {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  cursor: pointer;
+}
+.onboarding-review-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle, transparent);
+}
+.onboarding-review-row:first-of-type { border-top: 0; }
+.onboarding-review-row b {
+  color: var(--text);
+  font-weight: 600;
+  text-align: start;
+}
+.onboarding-review-empty {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.onboarding-review .btn-onboard-primary { margin-top: 18px; }
+
 /* Required marker + its error line. One field carries this today (the purchase price);
    the marker exists so that when a second one earns it, it looks the same. */
 .onboarding-required {
