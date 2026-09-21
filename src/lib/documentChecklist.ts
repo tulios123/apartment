@@ -72,6 +72,8 @@ const ALL: (ChecklistSlot & { applies: (c: ChecklistContext) => boolean })[] = [
  * offering a place to put each document, not claiming one is missing.
  */
 export function checklistSlots(ctx: ChecklistContext | 'wizard'): ChecklistSlot[] {
-  if (ctx === 'wizard') return ALL.map(({ applies: _applies, ...s }) => s)
-  return ALL.filter(s => s.applies(ctx)).map(({ applies: _applies, ...s }) => s)
+  const pick = (s: (typeof ALL)[number]): ChecklistSlot =>
+    ({ type: s.type, label: s.label, hint: s.hint, universal: s.universal })
+  if (ctx === 'wizard') return ALL.map(pick)
+  return ALL.filter(s => s.applies(ctx)).map(pick)
 }
