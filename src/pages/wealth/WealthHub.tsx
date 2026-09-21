@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { PencilSimple, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { PencilSimple, CaretLeft, CaretRight, Question } from '@phosphor-icons/react'
 import InvestmentCosts from '../property/InvestmentCosts'
 import LiabilitiesV2 from '../liabilities/LiabilitiesV2'
 import OwnershipScore from './OwnershipScore'
@@ -31,6 +31,7 @@ export default function WealthHub() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
+  const [yieldHelp, setYieldHelp] = useState(false)
 
   const { property, contracts, loading: loadingProp, error: errProp, refetch: refetchProp } = usePropertyData()
   const { tracks, summary, loading: loadingMortgage, error: errMortgage, refetch: refetchMortgage } = useMortgageData()
@@ -120,6 +121,15 @@ export default function WealthHub() {
   const totalOut = totalInvested + interestPaid + maintenance
   const cashNet = rentReceived - totalOut
   const hasCashflow = totalOut > 0 || rentReceived > 0
+
+  /**
+   * No debt on the books ⇒ the three yields are the same number by construction: the
+   * equity IS the property value, there is no interest to subtract and no principal to
+   * add back, so ROE-cash, ROE-total and the gross yield all reduce to rent ÷ value.
+   * Reproduced in e2e/yields.spec.ts. Omer's "three times 2.5%" (note 17) was this state,
+   * not a calculation fault.
+   */
+  const debtFree = bankDebt + balloon <= 0
 
   const hasData = propertyValue > 0 || mortgageBalance > 0 || balloon > 0
 
@@ -251,14 +261,43 @@ export default function WealthHub() {
               (owner, 20.07). Gross yield + monthly rent aren't shown elsewhere. */}
           {!awaitingKey && (grossYield != null || monthlyRent > 0 || roeCash != null) && (
             <section className="wlth-card">
-              <div className="wlth-card-head"><h2>תשואות</h2></div>
+              <div className="wlth-card-head">
+                <h2>תשואות</h2>
+                <button type="button" className="wlth-yield-help" aria-expanded={yieldHelp}
+                  aria-label="מה ההבדל בין התשואות" onClick={() => setYieldHelp(h => !h)}>
+                  <Question size={16} weight="bold" />
+                </button>
+              </div>
               <div className="wlth-yields">
-                {roeCash != null && <div><span>על ההון העצמי<br />תזרים בלבד</span><strong>{roeCash.toFixed(1)}%</strong></div>}
-                {roeTotal != null && <div><span>על ההון העצמי<br />כולל בניית הון</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
+                {/* With no debt on the books all three formulas reduce to the SAME number:
+                    the equity IS the property value, there is no interest to subtract and
+                    no principal to add back. Omer saw three rows reading 2.5%, 2.5%, 2.5%
+                    with nothing saying why (note 17) — reproduced and confirmed as
+                    arithmetic, not a bug. Three identical rows are still three ways of
+                    saying one thing, so in that state the card says it once. */}
+                {!debtFree && roeCash != null && <div><span>על ההון העצמי<br />תזרים בלבד</span><strong>{roeCash.toFixed(1)}%</strong></div>}
+                {!debtFree && roeTotal != null && <div><span>על ההון העצמי<br />כולל בניית הון</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
                 {grossYield != null && <div><span>ברוטו<br />על שווי הנכס</span><strong>{grossYield.toFixed(1)}%</strong></div>}
                 {monthlyRent > 0 && <div><span>שכר דירה<br />חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
               </div>
-              {roeCash != null && <p className="wlth-yield-note">ההון העצמי = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון).</p>}
+              {yieldHelp && (
+                <div className="wlth-yield-help-body">
+                  <p><b>ברוטו</b> — שכר הדירה השנתי חלקי שווי הנכס. לא מתחשב בריבית, באחזקה או בחוב.</p>
+                  {!debtFree && <>
+                    <p><b>על ההון העצמי · תזרים בלבד</b> — מה שנשאר ביד בשנה (שכר דירה פחות ריבית ואחזקה), חלקי ההון העצמי.</p>
+                    <p><b>על ההון העצמי · כולל בניית הון</b> — אותו דבר, ובתוספת החזר הקרן: הקרן היא חיסכון, לא הוצאה.</p>
+                  </>}
+                  <p className="muted">ההון העצמי כאן = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון) — כלומר ההון שלך היום, לא הסכום שהשקעת בתחילת הדרך.</p>
+                </div>
+              )}
+              {debtFree && grossYield != null && (
+                <p className="wlth-yield-note">
+                  אין חוב רשום על הנכס, ולכן התשואה על ההון העצמי זהה לתשואה ברוטו — ההון העצמי הוא מלוא שווי הנכס.
+                </p>
+              )}
+              {/* The standing footnote says the same thing the open (?) says at more length —
+                  printing both puts the definition on screen twice. */}
+              {!debtFree && !yieldHelp && roeCash != null && <p className="wlth-yield-note">ההון העצמי = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון).</p>}
             </section>
           )}
 
