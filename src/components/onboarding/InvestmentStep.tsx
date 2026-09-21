@@ -170,18 +170,28 @@ export function InvestmentStep() {
             onBlur: () => setFocusedInput(null),
             onChange: (e: ChangeEvent<HTMLInputElement>) => onChange(sanitizeAmountInt(e.target.value)),
           })
+          /** His own figure as a share of the price, once he has overridden the estimate. */
+          const costHint = (raw: string, formula: string) => {
+            const v = Number(raw)
+            if (!(v > 0) || !(price > 0)) return formula
+            return `${(v / price * 100).toFixed(2)}% ממחיר הדירה`
+          }
           return (
             <>
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label htmlFor={fid('c.lawyer')}>עורך דין (₪)</label>
                   <input {...inp('c.lawyer', costs.lawyer, lawyerDef, v => setCosts(c => ({ ...c, lawyer: v })))} />
-                  <span className="onboarding-field-hint">0.5% + ₪1,000 + מע"מ 18%</span>
+                  {/* The hint describes the ESTIMATE's formula. Once his own number is in
+                      the box it stopped describing anything on screen but stayed anyway
+                      (Omer, note 6), so past that point it says what his number actually
+                      is as a share of the price. */}
+                  <span className="onboarding-field-hint">{costHint(costs.lawyer, '0.5% + ₪1,000 + מע"מ 18%')}</span>
                 </div>
                 <div className="onboarding-field">
                   <label htmlFor={fid('c.brokerage')}>דמי תיווך (₪)</label>
                   <input {...inp('c.brokerage', costs.brokerage, brokerageDef, v => setCosts(c => ({ ...c, brokerage: v })))} />
-                  <span className="onboarding-field-hint">2% + מע"מ 18%</span>
+                  <span className="onboarding-field-hint">{costHint(costs.brokerage, '2% + מע"מ 18%')}</span>
                 </div>
               </div>
               <div className="onboarding-row">

@@ -103,6 +103,9 @@
 
   .wlth-tracks { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
   .wlth-track-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  /* Quieter than the rows it labels — it is a key, not data. */
+  .wlth-track-head { font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-muted); padding-bottom: 2px; border-bottom: 1px solid var(--border); margin-bottom: 2px; }
+  .wlth-track-head .wlth-track-name, .wlth-track-head .wlth-track-rate, .wlth-track-head .wlth-track-bal { color: var(--text-muted); font-weight: 600; }
   .wlth-track-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
   .wlth-track-name { flex: 1; color: var(--text); }
   .wlth-track-rate { color: var(--text-muted); font-variant-numeric: tabular-nums; }

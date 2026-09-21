@@ -115,7 +115,9 @@ export function PurchaseStep() {
         </div>
         <div className="onboarding-row">
           <div className="onboarding-field">
-            <label htmlFor={`${uid}-street`}>רחוב</label>
+            {/* The hint said "רחוב ומספר" and the label said "רחוב" — and the hint is the one
+              that disappears the moment you type (Omer, note 3). The label carries it. */}
+          <label htmlFor={`${uid}-street`}>רחוב ומספר</label>
             <input id={`${uid}-street`} type="text" placeholder="רחוב ומספר" value={street}
               onChange={e => setStreet(e.target.value)} />
           </div>

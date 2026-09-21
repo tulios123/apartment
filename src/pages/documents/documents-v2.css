@@ -14,7 +14,13 @@
   .docv-group-head h2 { font-size: 14px; font-weight: 700; color: var(--brand-navy); }
   .docv-group-head span { font-size: 12px; color: var(--text-muted); background: var(--bg-alt); border-radius: var(--r-pill); padding: 1px 8px; font-weight: 600; }
 
-  .docv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  /* One file per row on a phone. Two columns bought density at the cost of the only
+     thing the row has to say — WHICH file it is: two contracts both truncated to
+     "הסכם מכר …" are indistinguishable (Omer, note 15). Wider screens still pair up. */
+  .docv-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 620px) {
+    .docv-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  }
   .docv-card { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 14px; transition: box-shadow var(--t-base) var(--ease); }
   .docv-card:hover { box-shadow: var(--shadow-md); }
   .docv-card:hover .docv-actions, .docv-card:focus-within .docv-actions { opacity: 1; }

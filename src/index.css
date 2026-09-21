@@ -1182,6 +1182,13 @@ input[type="date"] {
   color: var(--text-muted);
 }
 
+/* A lease that has not begun yet — forward-looking, not finished. Accent rather than
+   the grey of something that is over. */
+.contract-status-badge.upcoming-badge {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
 .contract-card-actions {
   display: flex;
   gap: 4px;
@@ -3086,6 +3093,13 @@ input[type="date"] {
   font-size: 13px;
   margin-top: -8px;
   margin-bottom: 8px;
+  /* It used to sit wider than the banner it explains and clip at both ends, so the one
+     sentence telling you the contract could not be read was the least readable thing on
+     the step (Omer, note 2). */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  text-align: center;
 }
 
 /* Choice grid (purchase / rental contract step) */

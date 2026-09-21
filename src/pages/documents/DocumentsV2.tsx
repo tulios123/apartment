@@ -200,7 +200,11 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
                     <span className="docv-slot-icon">{docIcon(type)}</span>
                     <span className="docv-slot-body">
                       <span className="docv-slot-label">{DOC_TYPE_LABELS[type]}</span>
-                      <span className="docv-slot-status">{filled ? (n > 1 ? `${n} מסמכים` : 'קיים') : 'חסר — העלה'}</span>
+                      {/* "קיים" claimed the THING exists. This list counts files, and Omer
+                          read "פוליסת ביטוח · קיים · 5/5" as "insurance is set up" — while
+                          the extraction had silently found nothing in it. Say what is
+                          actually known: a file was uploaded. */}
+                      <span className="docv-slot-status">{filled ? (n > 1 ? `${n} מסמכים` : 'הועלה') : 'חסר — העלה'}</span>
                     </span>
                     <span className="docv-slot-badge">
                       {filled ? <CheckCircle size={18} weight="fill" /> : <UploadSimple size={15} weight="bold" />}

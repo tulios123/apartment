@@ -124,6 +124,14 @@ export default function FinancingStructure({ tracks, summary, monthlyLoans, ball
                 <span className="wlth-progress-label">נפרעו {Math.round(mortgagePaidPct)}% · נותרו {fmt(mortgageBalance)}</span>
               </div>
               <div className="wlth-tracks">
+                {/* The two columns were a bare "3.1%" and a bare "₪545,490" with nothing
+                    saying which was which (Omer, note 18). One header row, once. */}
+                <div className="wlth-track-row wlth-track-head" aria-hidden="true">
+                  <span className="wlth-track-dot" style={{ background: 'transparent' }} />
+                  <span className="wlth-track-name">מסלול</span>
+                  <span className="wlth-track-rate">ריבית</span>
+                  <span className="wlth-track-bal">יתרה</span>
+                </div>
                 {tracks.map(t => (
                   <div key={t.id} className="wlth-track-row">
                     <span className="wlth-track-dot" style={{ background: TRACK_COLORS[t.track_type] }} />

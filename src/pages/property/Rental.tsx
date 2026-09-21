@@ -148,12 +148,17 @@ function ContractForm({
   async function removeScanDoc(id: string, path: string) { try { await deleteDocument(id, path); setSessionDocIds(prev => prev.filter(x => x !== id)); syncDocs() } catch { /* ignore */ } }
 
   function applyRental(d: Record<string, unknown>) {
+    // Same rule as the wizard (NIGHT_RUN / Omer note 10): a scan fills BLANKS. It used to
+    // prefer whatever the document said and keep the typed value only when the document
+    // was silent, which is how hand-entered dates disappeared without a word.
+    const blank = (cur: string, val: unknown) =>
+      cur.trim() !== '' ? cur : (val != null ? String(val) : cur)
     setForm(f => ({
       ...f,
-      company_name: d.tenantName != null ? String(d.tenantName) : f.company_name,
-      start_date: d.startDate != null ? String(d.startDate) : f.start_date,
-      end_date: d.endDate != null ? String(d.endDate) : f.end_date,
-      monthly_rent: d.monthlyRent != null ? String(d.monthlyRent) : f.monthly_rent,
+      company_name: blank(f.company_name, d.tenantName),
+      start_date: blank(f.start_date, d.startDate),
+      end_date: blank(f.end_date, d.endDate),
+      monthly_rent: blank(f.monthly_rent, d.monthlyRent),
       payment_method: (d.paymentMethod === 'check' || d.paymentMethod === 'bank_transfer') ? d.paymentMethod : f.payment_method,
       // extract-rental already reads "היום בחודש לתשלום / ז.פ" out of the lease — it just
       // had nowhere to land here, so the rent day silently stayed on the 1st.
@@ -522,7 +527,15 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
                       {left > 0 ? `עוד ${left} ימים לסיום` : 'מסתיים היום'}
                     </span>
                   )}
-                  {!isActive && <span className="contract-status-badge expired-badge">הסתיים</span>}
+                  {/* Not-yet-started is not ended. The badge ran off `isActive` alone, so a
+                      lease beginning next month was announced as finished — which is what
+                      Omer saw on a contract he had just signed. `leaseStatus` already models
+                      this exact case as 'signed'; the badge simply never asked. */}
+                  {!isActive && (
+                    c.start_date > _today
+                      ? <span className="contract-status-badge upcoming-badge">טרם התחיל</span>
+                      : <span className="contract-status-badge expired-badge">הסתיים</span>
+                  )}
                 </div>
                 <div className="contract-card-actions">
                   <button className="btn-icon" onClick={() => openEditContract(c)} aria-label="עריכת חוזה" title="עריכה">
