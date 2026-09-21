@@ -25,6 +25,7 @@ export function PurchaseStep() {
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
     purchaseAiBusy, purchaseAiErr, purchaseAiDone, purchaseAiKept, aiFillPurchase,
     docAttachments, removeDocFile, renameDocFile,
+    singleApartment, setSingleApartment,
     fillTestPurchase,
   } = useOnboarding()
   const { user } = useAuth()
@@ -39,7 +40,6 @@ export function PurchaseStep() {
   // has no plan to build, and a question he cannot answer is worse than no question.
   const [firstPct, setFirstPct] = useState(10)
   const [secondPct, setSecondPct] = useState(15)
-  const [singleApartment, setSingleApartment] = useState(true)
   const price = Number(purchasePrice) || 0
   const awaitingKey = !!keyDeliveryDate && keyDeliveryDate > todayISO()
   const showTerms = awaitingKey && price > 0

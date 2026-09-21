@@ -23,7 +23,7 @@ export type Hydrated = {
   companyName: string; startDate: string; endDate: string; monthlyRent: string
   rentPaymentMethod: 'check' | 'bank_transfer'; rentPaymentDay: string; addRentReminder: boolean
   equityValue: string; equityCostId: string | null
-  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string; appraiser: string }
+  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string; appraiser: string; purchase_tax: string }
   costIds: Record<string, string>
   extraCosts: ExtraCost[]
 }
@@ -71,7 +71,7 @@ function loanToDraft(l: Loan): LoanDraft {
 }
 
 /** The named cost rows the wizard shows as its own fields; anything else is "extra". */
-const NAMED_COSTS = ['lawyer', 'brokerage', 'mortgage_advisor', 'investment_company', 'appraiser'] as const
+const NAMED_COSTS = ['lawyer', 'brokerage', 'mortgage_advisor', 'investment_company', 'appraiser', 'purchase_tax'] as const
 
 export async function hydrateFromAccount(userId: string): Promise<Hydrated | null> {
   const { data: props } = await supabase.from('properties').select('*').eq('owner_id', userId).limit(1)
@@ -101,7 +101,7 @@ export async function hydrateFromAccount(userId: string): Promise<Hydrated | nul
   const costs = (costsRes.data ?? []) as InvestmentCost[]
   const { street, city } = splitAddress(property.address)
 
-  const named = { lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '' }
+  const named = { lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '', purchase_tax: '' }
   const costIds: Record<string, string> = {}
   const extraCosts: ExtraCost[] = []
   let equityValue = ''

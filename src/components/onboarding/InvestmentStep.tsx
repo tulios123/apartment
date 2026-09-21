@@ -1,5 +1,6 @@
 import { useId, useState, type ChangeEvent } from 'react'
 import { sanitizeAmountInt } from '../../lib/format'
+import { purchaseTax, taxBreakdown } from '../../lib/purchaseTax'
 import { Coins, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -18,8 +19,13 @@ export function InvestmentStep() {
     derivedEquityAmount, derivedEquityPct,
     balloonLoans, setBalloonLoans, balloonTotal,
     costs, setCosts, extraCosts, setExtraCosts, costsTotal,
+    singleApartment, setSingleApartment, taxDefault,
     fillTestInvestment,
   } = useOnboarding()
+
+  // The tax brackets, folded. The number itself is the answer; the ladder is there for
+  // the one person in ten who wants to check it against the Tax Authority's calculator.
+  const [showBrackets, setShowBrackets] = useState(false)
 
   // Which balloon row is expanded for editing; others collapse to a compact summary
   // so the list stays tidy as more family lenders are added.
@@ -178,6 +184,46 @@ export function InvestmentStep() {
           }
           return (
             <>
+              {/* מס רכישה — Omer's note 5: the costs step asked about the lawyer and the
+                  agent and never mentioned the one cost fixed by law, which is usually the
+                  largest of them. Same contract as the lawyer fee (owner 21.09): computed,
+                  itemised, and editable. It sits first because it is the biggest. */}
+              <div className="onboarding-field onboarding-tax">
+                <label htmlFor={fid('c.purchase_tax')}>מס רכישה (₪)</label>
+<div className="toggle-group onboarding-tax-toggle-group">
+                  <button type="button" className={`toggle-btn${singleApartment ? ' active' : ''}`}
+                    onClick={() => setSingleApartment(true)}>דירה יחידה</button>
+                  <button type="button" className={`toggle-btn${!singleApartment ? ' active' : ''}`}
+                    onClick={() => setSingleApartment(false)}>דירה נוספת</button>
+                </div>
+                <input {...inp('c.purchase_tax', costs.purchase_tax, taxDefault, v => setCosts(c => ({ ...c, purchase_tax: v })))} />
+                {price > 0 ? (
+                  <>
+                    <button type="button" className="onboarding-tax-toggle" onClick={() => setShowBrackets(b => !b)}>
+                      {showBrackets ? 'הסתר את המדרגות' : 'איך חושב?'}
+                    </button>
+                    {showBrackets && (
+                      <div className="onboarding-tax-brackets">
+                        {taxBreakdown(price, singleApartment).map((b, i) => (
+                          <div key={i} className="onboarding-tax-bracket">
+                            <span>{b.label}</span>
+                            <b>{formatCurrency(b.amount)}</b>
+                          </div>
+                        ))}
+                        <div className="onboarding-tax-bracket onboarding-tax-bracket-sum">
+                          <span>{singleApartment ? 'דירה יחידה' : 'דירה נוספת'} · סה״כ</span>
+                          <b>{formatCurrency(purchaseTax(price, singleApartment))}</b>
+                        </div>
+                        <p className="onboarding-field-hint">
+                          לפי מדרגות מס הרכישה התקפות היום. המחשבון של רשות המסים הוא המילה האחרונה.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span className="onboarding-field-hint">יחושב אוטומטית ברגע שיוזן מחיר רכישה</span>
+                )}
+              </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label htmlFor={fid('c.lawyer')}>עורך דין (₪)</label>

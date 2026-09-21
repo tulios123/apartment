@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { uploadDocument, removeDocumentFile } from '../../lib/storage'
 import { hydrateFromAccount } from './hydrate'
 import { TRACK_LABELS } from '../../lib/constants'
+import { purchaseTax } from '../../lib/purchaseTax'
 import { createProperty, createContract, updateContract } from '../../hooks/usePropertyData'
 import { syncRentRecurringItem } from '../../hooks/useRecurringItems'
 import { ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
@@ -67,8 +68,10 @@ type OnboardingDraft = {
   tracks: TrackDraft[]; trackForm: TrackDraft; graceOn: boolean
   showTrackForm: boolean; editingIdx: number | null
   equityMode: 'amount' | 'percent'; equityValue: string
-  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string; appraiser: string }
+  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string; appraiser: string; purchase_tax: string }
   extraCosts: ExtraCost[]
+  /** דירה יחידה vs דירה נוספת — the one input purchase tax turns on. */
+  singleApartment: boolean
   companyName: string; startDate: string; endDate: string; monthlyRent: string
   rentPaymentMethod: 'check' | 'bank_transfer'; rentPaymentDay: string; addRentReminder: boolean
   policies: PolicyDraft[]; policyForm: PolicyDraft; showPolicyForm: boolean; editingPolicyIdx: number | null
@@ -163,7 +166,11 @@ export function useOnboardingState(onComplete: () => void) {
   const [equityValue, setEquityValue] = useState(d0?.equityValue ?? '')
   // Merge over the defaults (not `??`) so a draft saved before a new cost key existed
   // (e.g. appraiser) restores with that key defaulted to '' rather than undefined.
-  const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '', ...(d0?.costs ?? {}) })
+  const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '', purchase_tax: '', ...(d0?.costs ?? {}) })
+  // Single vs additional apartment. Lifted out of PurchaseStep (owner 21.09) because the
+  // costs step now needs it too: it is the difference between 0% and 8% from the first
+  // shekel, and it was previously asked only of buyers still waiting for a key.
+  const [singleApartment, setSingleApartment] = useState(d0?.singleApartment ?? true)
   const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(d0?.extraCosts ?? [])
 
   // ── Focused input tracking (for grey-placeholder UX) ──
@@ -275,7 +282,7 @@ export function useOnboardingState(onComplete: () => void) {
         setAddRentReminder(h.addRentReminder)
       }
       if (h.equityValue) { setEquityMode('amount'); setEquityValue(h.equityValue) }
-      setCosts(h.costs)
+      setCosts(c => ({ ...c, ...h.costs }))
       if (h.extraCosts.length) setExtraCosts(h.extraCosts)
     })()
     return () => { alive = false }
@@ -319,13 +326,19 @@ export function useOnboardingState(onComplete: () => void) {
     : (derivedEquityAmount > 0 ? String(derivedEquityAmount) : ''))
   const effLawyer = costs.lawyer || defaultLawyerCost(price)
   const effBrokerage = costs.brokerage || defaultBrokerageCost(price)
+  // Purchase tax — the one cost fixed by law, so the app computes it rather than asking
+  // (Omer, note 5: the costs step never mentioned it at all, and it is usually the largest
+  // line after the equity). Same contract as the lawyer fee: a grey computed estimate that
+  // is saved as shown, shown with its brackets, and overridable.
+  const taxDefault = price > 0 ? String(purchaseTax(price, singleApartment)) : ''
+  const effPurchaseTax = costs.purchase_tax || taxDefault
   const equityAmount = equityMode === 'percent'
     ? Math.round(price * (parseFloat(effEquity) || 0) / 100)
     : Math.round(parseFloat(effEquity) || 0)
   const equityPercent = price > 0 ? equityAmount / price * 100 : 0
   const costsTotal = (parseFloat(effLawyer) || 0) + (parseFloat(effBrokerage) || 0)
     + (parseFloat(costs.mortgage_advisor) || 0) + (parseFloat(costs.investment_company) || 0)
-    + (parseFloat(costs.appraiser) || 0)
+    + (parseFloat(costs.appraiser) || 0) + (parseFloat(effPurchaseTax) || 0)
     + extraCosts.reduce((s, ec) => s + (parseFloat(ec.amount) || 0), 0)
 
   // ── Derived: mortgage track live preview ─────────────────────────────────────
@@ -964,6 +977,7 @@ export function useOnboardingState(onComplete: () => void) {
               ['mortgage_advisor', parseFloat(costs.mortgage_advisor) || 0],
               ['investment_company', parseFloat(costs.investment_company) || 0],
               ['appraiser', parseFloat(costs.appraiser) || 0],
+              ['purchase_tax', parseFloat(effPurchaseTax) || 0],
             ]
             for (const [key, val] of fixedCosts) {
               if (val > 0) tasks.push(upsertInvestmentCost({ id: hydratedIds.costIds[key], owner_id: user.id, category: key, label: null, amount: val }))
@@ -1243,7 +1257,7 @@ export function useOnboardingState(onComplete: () => void) {
         step, docRefs, buyerName, street, city, rooms, purchasePrice, signingDate,
         keyDeliveryDate, propertySizeSqm, floorNumber,
         tracks, trackForm, graceOn, showTrackForm, editingIdx,
-        equityMode, equityValue, costs, extraCosts,
+        equityMode, equityValue, costs, extraCosts, singleApartment,
         companyName, startDate, endDate, monthlyRent, rentPaymentMethod,
         rentPaymentDay, addRentReminder,
         policies, policyForm, showPolicyForm, editingPolicyIdx,
@@ -1255,7 +1269,7 @@ export function useOnboardingState(onComplete: () => void) {
     step, docRefs, buyerName, street, city, rooms, purchasePrice, signingDate,
     keyDeliveryDate, propertySizeSqm, floorNumber,
     tracks, trackForm, graceOn, showTrackForm, editingIdx,
-    equityMode, equityValue, costs, extraCosts,
+    equityMode, equityValue, costs, extraCosts, singleApartment,
     companyName, startDate, endDate, monthlyRent, rentPaymentMethod,
     rentPaymentDay, addRentReminder,
     policies, policyForm, showPolicyForm, editingPolicyIdx,
@@ -1312,6 +1326,7 @@ export function useOnboardingState(onComplete: () => void) {
       mortgage_advisor: '5000',
       investment_company: '0',
       appraiser: '2500',
+      purchase_tax: '',   // left blank on purpose: the computed bracket figure is the point
     })
   }
 
@@ -1594,6 +1609,7 @@ export function useOnboardingState(onComplete: () => void) {
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,
     costs, setCosts, extraCosts, setExtraCosts,
+    singleApartment, setSingleApartment, effPurchaseTax, taxDefault,
     balloonLoans, setBalloonLoans, balloonTotal,
     // focused input
     focusedInput, setFocusedInput,

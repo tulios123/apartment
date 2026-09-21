@@ -58,7 +58,7 @@ export function taxBreakdown(price: number, singleApartment: boolean): { label: 
     const slice = Math.min(price, upTo) - from
     const top = Math.min(price, upTo)
     out.push({
-      label: `${(rate * 100).toFixed(rate * 100 % 1 ? 1 : 0)}% על ${from === 0 ? 'עד' : `${fmt(from)}–`}${fmt(top)}`,
+      label: `${(rate * 100).toFixed(rate * 100 % 1 ? 1 : 0)}% על ${from === 0 ? `עד ${fmt(top)}` : `${fmt(from)}–${fmt(top)}`}`,
       amount: Math.round(slice * rate),
     })
     from = upTo

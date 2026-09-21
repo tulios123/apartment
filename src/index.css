@@ -4881,6 +4881,51 @@ button .spin { vertical-align: -2px; }
   color: var(--text);
 }
 
+/* מס רכישה — a full-width cost field: the single/additional toggle decides the number,
+   so the two live on one line, and the bracket ladder folds out underneath it. */
+.onboarding-tax-toggle-group {
+  display: flex;
+  width: 100%;
+  margin-bottom: 8px;
+}
+.onboarding-tax-toggle-group .toggle-btn { flex: 1; white-space: nowrap; }
+.onboarding-tax-toggle {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.onboarding-tax-brackets {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2, var(--surface));
+}
+.onboarding-tax-bracket {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  padding: 3px 0;
+  color: var(--text-muted);
+}
+.onboarding-tax-bracket b { color: var(--text); }
+.onboarding-tax-bracket-sum {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+}
+.onboarding-tax-brackets .onboarding-field-hint { margin-top: 6px; }
+
 /* Collapsed balloon-loan row: a compact chip listing amount · lender, tap to edit. */
 .onboarding-balloon-chip {
   width: 100%;
