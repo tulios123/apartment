@@ -51,7 +51,7 @@ const DEV_MOCK = {
 
 // A document already uploaded to storage during the wizard: serializable, so it
 // survives the draft round-trip that File objects cannot.
-export type DocCat = 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance'
+export type DocCat = 'purchase' | 'tabu' | 'mortgage' | 'loan' | 'rental' | 'insurance'
 export type DocRef = { docId: string; name: string; path: string }
 // One attachment as the UI shows it: in memory (just picked), in storage, or both.
 export type Attachment = { name: string; file?: File; path?: string }
@@ -235,12 +235,14 @@ export function useOnboardingState(onComplete: () => void) {
   // Insurance has no AI extraction — the card just stores the policy document(s),
   // saved as insurance_policy documents on finish.
   const [insuranceDocFiles, setInsuranceDocFiles] = useState<File[]>([])
+  // נסח טאבו — filed as-is, nothing is extracted from it (see lib/documentChecklist).
+  const [tabuDocFiles, setTabuDocFiles] = useState<File[]>([])
   // Picked files used to live ONLY in memory until finish, so a reload lost them
   // silently — the card kept its ✓ while the document never reached storage. Each
   // pick now uploads immediately and we keep this serializable pointer in the draft,
   // so the file survives a reload, can be previewed, and finish just links it.
   const [docRefs, setDocRefs] = useState<Record<DocCat, DocRef[]>>(
-    () => d0?.docRefs ?? { purchase: [], mortgage: [], loan: [], rental: [], insurance: [] })
+    () => ({ purchase: [], tabu: [], mortgage: [], loan: [], rental: [], insurance: [], ...(d0?.docRefs ?? {}) }))
 
   // ── Editing an existing account ──────────────────────────────────────────────
   // Re-entering the wizard used to start blank, so finishing inserted a SECOND
@@ -288,6 +290,9 @@ export function useOnboardingState(onComplete: () => void) {
     return () => { alive = false }
   }, [user])
   const addInsuranceDocs = (files: File[]) => { setInsuranceDocFiles(prev => [...prev, ...files]); void stashDocs('insurance', files) }
+  // נסח טאבו — nothing is extracted from it; it is filed as-is. The Documents screen has
+  // always expected it, so the wizard offers it a place too (Omer, note 14).
+  const addTabuDocs = (files: File[]) => { setTabuDocFiles(prev => [...prev, ...files]); void stashDocs('tabu', files) }
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function dismissKeyboardAndScrollTop() {
@@ -687,8 +692,8 @@ export function useOnboardingState(onComplete: () => void) {
   // already in storage (survives a reload) plus anything still only in memory. Both
   // the documents step and the per-step file lists render from this, so they agree.
   function docAttachments(cat: DocCat): Attachment[] {
-    const files = { purchase: purchaseDocFiles, mortgage: mortgageDocFiles, loan: loanDocFiles,
-      rental: rentalDocFiles, insurance: insuranceDocFiles }[cat]
+    const files = { purchase: purchaseDocFiles, tabu: tabuDocFiles, mortgage: mortgageDocFiles,
+      loan: loanDocFiles, rental: rentalDocFiles, insurance: insuranceDocFiles }[cat]
     const refs = docRefs[cat]
     const stored = new Set(refs.map(r => r.name))
     return [
@@ -719,7 +724,7 @@ export function useOnboardingState(onComplete: () => void) {
   // so finish re-uploaded a file the user had just removed.
   function removeDocFile(category: DocCat, name: string) {
     const setters = {
-      purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
+      purchase: setPurchaseDocFiles, tabu: setTabuDocFiles, mortgage: setMortgageDocFiles,
       loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
     setters[category](prev => prev.filter(f => f.name !== name))
@@ -740,7 +745,7 @@ export function useOnboardingState(onComplete: () => void) {
     const name = newName.trim()
     if (!name || name === oldName) return
     const setters = {
-      purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
+      purchase: setPurchaseDocFiles, tabu: setTabuDocFiles, mortgage: setMortgageDocFiles,
       loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
     setters[category](prev => prev.map(f =>
@@ -781,6 +786,7 @@ export function useOnboardingState(onComplete: () => void) {
       ['mortgage', mortgageDocFiles, 'mortgage_statement', null, null],
       ['loan', loanDocFiles, 'loan_statement', null, null],
       ['insurance', insuranceDocFiles, 'insurance_policy', null, null],
+      ['tabu', tabuDocFiles, 'tabu_extract', null, null],
       ['rental', rentalDocFiles, 'rental_contract', startDate || null, contractId],
     ]
     const jobs: Promise<void>[] = []
@@ -1604,7 +1610,7 @@ export function useOnboardingState(onComplete: () => void) {
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     // Uploaded document files per category + remove (documents step manage view)
     purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile, docRefs, docAttachments,
-    insuranceDocFiles, addInsuranceDocs,
+    insuranceDocFiles, addInsuranceDocs, addTabuDocs,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,

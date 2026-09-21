@@ -16,6 +16,7 @@ import './documents-v2.css'
 import { DateField } from '../../components/ui/DateField'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { shouldConfirmDiscard } from '../../lib/discardGuard'
+import { checklistSlots } from '../../lib/documentChecklist'
 
 const DOC_TYPE_LABELS: Record<DocumentType, string> = {
   purchase_contract: 'חוזה רכישה',
@@ -67,14 +68,12 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
 
   // The KEY documents a property owner should have on file. Universal ones always show; the
   // contextual ones appear only when the property actually has that thing.
-  const keySlots = useMemo<DocumentType[]>(() => {
-    const slots: DocumentType[] = ['tabu_extract', 'purchase_contract']
-    if (contracts.length > 0) slots.push('rental_contract')
-    if (mortgage != null || tracks.length > 0) slots.push('mortgage_statement')
-    if (loans.length > 0) slots.push('loan_statement')
-    slots.push('insurance_policy')
-    return slots
-  }, [contracts.length, mortgage, tracks.length, loans.length])
+  const slots = useMemo(() => checklistSlots({
+    hasLease: contracts.length > 0,
+    hasMortgage: mortgage != null || tracks.length > 0,
+    hasLoan: loans.length > 0,
+  }), [contracts.length, mortgage, tracks.length, loans.length])
+  const keySlots = useMemo<DocumentType[]>(() => slots.map(s => s.type), [slots])
 
   const filledCount = useMemo(
     () => keySlots.filter(t => documents.some(d => d.type === t)).length,
@@ -187,7 +186,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
               <span className="docv-progress">{filledCount}/{keySlots.length}</span>
             </div>
             <div className="docv-slots-grid">
-              {keySlots.map(type => {
+              {slots.map(({ type, hint }) => {
                 const n = documents.filter(d => d.type === type).length
                 const filled = n > 0
                 return (
@@ -204,7 +203,11 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
                           read "פוליסת ביטוח · קיים · 5/5" as "insurance is set up" — while
                           the extraction had silently found nothing in it. Say what is
                           actually known: a file was uploaded. */}
-                      <span className="docv-slot-status">{filled ? (n > 1 ? `${n} מסמכים` : 'הועלה') : 'חסר — העלה'}</span>
+                      {/* An empty slot used to say only "חסר — העלה", which tells you that
+                          something is missing without telling you what it is or why the app
+                          thinks you need it. The wizard and this screen now read from the
+                          same list (lib/documentChecklist), so the reason travels with it. */}
+                      <span className="docv-slot-status">{filled ? (n > 1 ? `${n} מסמכים` : 'הועלה') : hint}</span>
                     </span>
                     <span className="docv-slot-badge">
                       {filled ? <CheckCircle size={18} weight="fill" /> : <UploadSimple size={15} weight="bold" />}

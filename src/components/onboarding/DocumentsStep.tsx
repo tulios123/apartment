@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown, Certificate } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import type { Attachment } from './useOnboardingState'
@@ -80,7 +80,7 @@ export function DocumentsStep() {
     aiFillLoans, loanAiBusy, loanAiErr, loans,
     aiFillRental, rentalAiBusy, rentalAiErr, companyName, monthlyRent,
     removeDocFile, renameDocFile,
-    addInsuranceDocs, docAttachments,
+    addInsuranceDocs, addTabuDocs, docAttachments,
   } = useOnboarding()
   const { user, signOut } = useAuth()
 
@@ -114,6 +114,15 @@ export function DocumentsStep() {
           title="חוזה רכישה" hint="קובץ או צילומי מסך"
           busy={purchaseAiBusy} err={purchaseAiErr} doneText={purchaseDone}
           files={docAttachments('purchase')} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />
+        {/* נסח טאבו — the Documents screen has always expected it and the wizard never
+            asked, so an account could finish the wizard and open Documents at 1/6 on a
+            document it had never heard of (Omer, note 14). One list now, from
+            lib/documentChecklist; nothing here is required. */}
+        <DocCard
+          icon={<Certificate size={26} weight="duotone" color="var(--accent)" />}
+          title="נסח טאבו" hint="אישור הבעלות מהטאבו"
+          busy={false} err={null} doneText=""
+          files={docAttachments('tabu')} onFiles={addTabuDocs} onRemove={name => removeDocFile('tabu', name)} onRename={(oldName, name) => renameDocFile('tabu', oldName, name)} />
         <DocCard
           icon={<Bank size={26} weight="duotone" color="var(--accent)" />}
           title="אישור משכנתא" hint="קובץ או צילומי מסך מהבנק"
