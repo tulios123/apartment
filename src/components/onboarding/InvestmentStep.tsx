@@ -26,6 +26,13 @@ export function InvestmentStep() {
   // The tax brackets, folded. The number itself is the answer; the ladder is there for
   // the one person in ten who wants to check it against the Tax Authority's calculator.
   const [showBrackets, setShowBrackets] = useState(false)
+  // The rarer costs start folded — unless this account already has one, in which case
+  // hiding it would be hiding data. Derived rather than initial state on purpose:
+  // hydrating an existing account fills `costs` AFTER mount, and a lazy initializer would
+  // have missed it and folded away numbers the user had already entered.
+  const [showMoreManual, setShowMoreManual] = useState(false)
+  const showMore = showMoreManual
+    || !!(costs.mortgage_advisor || costs.investment_company || costs.appraiser || extraCosts.length)
 
   // Which balloon row is expanded for editing; others collapse to a compact summary
   // so the list stays tidy as more family lenders are added.
@@ -240,6 +247,18 @@ export function InvestmentStep() {
                   <span className="onboarding-field-hint">{costHint(costs.brokerage, '2% + מע"מ 18%')}</span>
                 </div>
               </div>
+              {/* The three costs nearly everyone has are above; these are the ones most
+                  people leave at zero. Folding them is the "מה שאפשר לקפל לקפל" half of the
+                  owner's answer on shortening the wizard (21.09) — the step loses four empty
+                  boxes without losing a field. Opens by itself when any of them has a value,
+                  so a returning account never has data hidden behind a caret. */}
+              {!showMore && (
+                <button type="button" className="btn-onboard-skip onboarding-add-btn"
+                  onClick={() => setShowMoreManual(true)}>
+                  + עלויות נוספות (יועץ, ליווי, שמאי)
+                </button>
+              )}
+              {showMore && <>
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label htmlFor={fid('c.advisor')}>יועץ משכנתאות (₪)</label>
@@ -289,6 +308,7 @@ export function InvestmentStep() {
                 onClick={() => setExtraCosts(prev => [...prev, { name: '', amount: '' }])}>
                 + הוסף עלות
               </button>
+              </>}
             </>
           )
         })()}

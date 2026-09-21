@@ -8,7 +8,7 @@ import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { DocFileList } from './DocFileList'
 import { emptyTrack, formatPrice } from './types'
-import { purchaseWarnings } from './validation'
+import { purchaseWarnings, purchaseRequiredMissing } from './validation'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
@@ -30,6 +30,7 @@ export function PurchaseStep() {
   } = useOnboarding()
   const { user } = useAuth()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
+  const priceRef = useRef<HTMLInputElement>(null)
 
   // ── תנאי התשלום ──────────────────────────────────────────────────────────────
   // The owner (10.09): "ההקמה אמורה לקרות בעיקר באונבורדינג". The payment terms belong on
@@ -73,9 +74,14 @@ export function PurchaseStep() {
   // a thousands-slip price or an inverted signing/key-delivery pair just asks.
   const warnings = purchaseWarnings({ purchasePrice, signingDate, keyDeliveryDate })
 
+  // The one field the wizard will not continue without — see purchaseRequiredMissing.
+  const missing = purchaseRequiredMissing({ purchasePrice })
+  const [blocked, setBlocked] = useState(false)
+
   return (
     <form onSubmit={e => {
       e.preventDefault()
+      if (missing.length > 0) { setBlocked(true); priceRef.current?.focus(); return }
       setTrackForm(emptyTrack(keyDeliveryDate || undefined))
       advance('mortgage')
     }} noValidate>
@@ -146,10 +152,20 @@ export function PurchaseStep() {
               onChange={e => setRooms(e.target.value)} />
           </div>
           <div className="onboarding-field">
-            <label htmlFor={`${uid}-price`}>מחיר רכישה (₪)</label>
-            <input id={`${uid}-price`} type="text" inputMode="numeric" placeholder="0"
+            <label htmlFor={`${uid}-price`}>
+              מחיר רכישה (₪) <span className="onboarding-required" aria-hidden="true">*</span>
+            </label>
+            <input id={`${uid}-price`} ref={priceRef} type="text" inputMode="numeric" placeholder="0"
+              required aria-required="true"
+              aria-invalid={blocked && missing.length > 0 ? true : undefined}
+              className={blocked && missing.length > 0 ? 'is-invalid' : ''}
               value={formatPrice(purchasePrice)}
-              onChange={e => setPurchasePrice(sanitizeAmountInt(e.target.value))} />
+              onChange={e => { setPurchasePrice(sanitizeAmountInt(e.target.value)); setBlocked(false) }} />
+            {blocked && missing.length > 0 && (
+              <span className="onboarding-field-error" role="alert">
+                בלי מחיר הרכישה אי אפשר לחשב הון עצמי, מס רכישה או תשואה — זה השדה היחיד שחייבים.
+              </span>
+            )}
           </div>
         </div>
         <div className="onboarding-row">

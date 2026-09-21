@@ -182,6 +182,24 @@ export function rentalWarnings(v: RentalDraft): string[] {
 
 type PurchaseDraft = { purchasePrice: string; signingDate: string; keyDeliveryDate: string }
 
+/**
+ * The fields the wizard will not continue without.
+ *
+ * The owner's rule (21.09): mark what is required, block on it, and keep the list to the
+ * critical few. That list is one field long, and it is one field long on purpose — the
+ * purchase price is the only value the rest of the app cannot work around. Equity, purchase
+ * tax, the deal structure, every yield and the whole payment plan are computed FROM it;
+ * with it blank they are not wrong, they do not exist. Everything else on this step degrades
+ * honestly: a missing address makes the property anonymous, a missing signing date means no
+ * statutory deadlines are claimed (already handled — the app refuses to invent that one),
+ * a missing key-delivery date reads as "the place is yours".
+ *
+ * Documents are deliberately NOT in here: nothing in the wizard requires a file (owner, 21.09).
+ */
+export function purchaseRequiredMissing(v: Pick<PurchaseDraft, 'purchasePrice'>): string[] {
+  return (parseFloat(v.purchasePrice) || 0) > 0 ? [] : ['מחיר רכישה']
+}
+
 export function purchaseWarnings(v: PurchaseDraft): string[] {
   const w: string[] = []
   const price = parseFloat(v.purchasePrice) || 0

@@ -4883,6 +4883,25 @@ button .spin { vertical-align: -2px; }
 
 /* מס רכישה — a full-width cost field: the single/additional toggle decides the number,
    so the two live on one line, and the bracket ladder folds out underneath it. */
+/* Required marker + its error line. One field carries this today (the purchase price);
+   the marker exists so that when a second one earns it, it looks the same. */
+.onboarding-required {
+  color: var(--danger);
+  font-weight: 700;
+  margin-inline-start: 2px;
+}
+.onboarding-form input.is-invalid,
+.onboarding-form .is-invalid input {
+  border-color: var(--danger);
+}
+.onboarding-field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--danger);
+}
+
 .onboarding-tax-toggle-group {
   display: flex;
   width: 100%;
