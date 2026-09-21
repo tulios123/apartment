@@ -120,6 +120,8 @@ export function useOnboardingState(onComplete: () => void) {
   // running — finishing is deferred until the read completes so the extracted
   // data isn't silently dropped (see requestFinish + the effect below handleFinish).
   const [pendingFinish, setPendingFinish] = useState(false)
+  // Which step the review screen was entered from, so "back" returns there.
+  const reviewFrom = useRef<Step>('insurance')
   // AUD-001: the finish-path completeness dialog (same gate as the steps' המשך).
   const [finishPrompt, setFinishPrompt] = useState(false)
   const [notifOn, setNotifOn] = useState(false)
@@ -305,8 +307,10 @@ export function useOnboardingState(onComplete: () => void) {
     setNavDir('back')
     if (step === 'documents') { setStep('welcome'); return }
     // The review screen is not in STEP_ORDER, so the generic lookup below would drop the
-    // user all the way back to the documents step instead of the step he just left.
-    if (step === 'review') { setStep('insurance'); return }
+    // user all the way back to the documents step. Return him to the step he pressed
+    // "סיימו עכשיו" on — from the costs step that is the costs step, not the insurance
+    // step he never saw.
+    if (step === 'review') { setStep(reviewFrom.current); return }
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
     else setStep('documents')
@@ -1198,6 +1202,7 @@ export function useOnboardingState(onComplete: () => void) {
     // incomplete track/loan (saved, or open in a form) raises the dialog instead
     // of being silently dropped or saved with backfilled defaults.
     if (finishBlockers.length > 0) { setFinishPrompt(true); return }
+    reviewFrom.current = step === 'review' ? reviewFrom.current : step
     if (anyAiBusy) { setPendingFinish(true); return }
     advance('review')
   }
