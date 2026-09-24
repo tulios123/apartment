@@ -133,14 +133,26 @@ export default function WealthHub() {
   const annualMaintenance = yearsHeld > 0 ? maintenance / yearsHeld : 0
   const monthlyMaintenance = annualMaintenance / 12
   const netCashAnnual = annualRent - annualInterest - annualMaintenance - monthlyInsurance * 12
-  // Owner (20.07): return on the NET equity — property value minus all debt
-  // (mortgage + loans + balloon), i.e. the "הון עצמי נטו" shown at the top — not the
-  // cash originally invested. "תזרים" is cash-on-cash (principal excluded); "כולל
-  // בניית-הון" adds the principal repaid this year (the equity you build).
-  const netEquity = propertyValue - bankDebt - balloon
-  const canRoe = netEquity > 0 && monthlyRent > 0
-  const roeCash = canRoe ? (netCashAnnual / netEquity) * 100 : null
-  const roeTotal = canRoe ? ((netCashAnnual + annualPrincipal) / netEquity) * 100 : null
+  /**
+   * Return on THE MONEY THAT WENT IN — the owner's decision, 24.09.
+   *
+   * It used to be measured against current net equity (property value minus all debt),
+   * which has a property nobody wants from a yield: as the mortgage is repaid the equity
+   * grows, so the yield FALLS every month while nothing about the deal has changed. A
+   * re-valuation of the flat moved it too, so "how hard is my money working" was answering
+   * a question about the market rather than about the investment.
+   *
+   * The denominator is now `totalInvested` — equity plus every purchase cost, exactly the
+   * figure the cash-flow card on this screen already calls "הון עצמי ועלויות רכישה". It is
+   * fixed once the purchase is done, which is what makes the yield comparable to itself
+   * over time and to any other investment.
+   *
+   * "תזרים בלבד" stays cash-on-cash (principal excluded, because it is not a cost);
+   * "כולל בניית הון" adds back the principal repaid this year.
+   */
+  const canRoe = totalInvested > 0 && monthlyRent > 0
+  const roeCash = canRoe ? (netCashAnnual / totalInvested) * 100 : null
+  const roeTotal = canRoe ? ((netCashAnnual + annualPrincipal) / totalInvested) * 100 : null
 
   // Cumulative cash view: everything that went out (equity + costs + interest +
   // maintenance) vs. rent collected so far. Net is pure cash, ignoring property value.
@@ -149,13 +161,13 @@ export default function WealthHub() {
   const hasCashflow = totalOut > 0 || rentReceived > 0
 
   /**
-   * No debt on the books ⇒ the three yields are the same number by construction: the
-   * equity IS the property value, there is no interest to subtract and no principal to
-   * add back, so ROE-cash, ROE-total and the gross yield all reduce to rent ÷ value.
-   * Reproduced in e2e/yields.spec.ts. Omer's "three times 2.5%" (note 17) was this state,
-   * not a calculation fault.
+   * With no principal repaid this year, "תזרים בלבד" and "כולל בניית הון" are the same
+   * number by construction — there is nothing to add back. Showing both is then two labels
+   * for one figure, which is the shape of Omer's note 17 (three rows reading 2.5%). Under
+   * the old denominator the gross yield collapsed into them as well; it no longer does, so
+   * only the pair folds.
    */
-  const debtFree = bankDebt + balloon <= 0
+  const noPrincipalYet = annualPrincipal <= 0
 
   const hasData = propertyValue > 0 || mortgageBalance > 0 || balloon > 0
 
@@ -296,35 +308,39 @@ export default function WealthHub() {
                 </button>
               </div>
               <div className="wlth-yields">
-                {/* With no debt on the books all three formulas reduce to the SAME number:
-                    the equity IS the property value, there is no interest to subtract and
-                    no principal to add back. Omer saw three rows reading 2.5%, 2.5%, 2.5%
-                    with nothing saying why (note 17) — reproduced and confirmed as
-                    arithmetic, not a bug. Three identical rows are still three ways of
-                    saying one thing, so in that state the card says it once. */}
-                {!debtFree && roeCash != null && <div><span>על ההון העצמי<br />תזרים בלבד</span><strong>{roeCash.toFixed(1)}%</strong></div>}
-                {!debtFree && roeTotal != null && <div><span>על ההון העצמי<br />כולל בניית הון</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
+                {/* With nothing being repaid this year the two equity yields are one number
+                    wearing two labels — there is no principal to add back. That is the
+                    shape of Omer's note 17 (three rows reading 2.5%), so in that state the
+                    card says it once. */}
+                {noPrincipalYet
+                  ? (roeCash != null && <div><span>על מה שהשקעת<br />תזרים</span><strong>{roeCash.toFixed(1)}%</strong></div>)
+                  : (<>
+                      {roeCash != null && <div><span>על מה שהשקעת<br />תזרים בלבד</span><strong>{roeCash.toFixed(1)}%</strong></div>}
+                      {roeTotal != null && <div><span>על מה שהשקעת<br />כולל בניית הון</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
+                    </>)}
                 {grossYield != null && <div><span>ברוטו<br />על שווי הנכס</span><strong>{grossYield.toFixed(1)}%</strong></div>}
                 {monthlyRent > 0 && <div><span>שכר דירה<br />חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
               </div>
               {yieldHelp && (
                 <div className="wlth-yield-help-body">
-                  <p><b>ברוטו</b> — שכר הדירה השנתי חלקי שווי הנכס. לא מתחשב בריבית, באחזקה או בחוב.</p>
-                  {!debtFree && <>
-                    <p><b>על ההון העצמי · תזרים בלבד</b> — מה שנשאר ביד בשנה (שכר דירה פחות ריבית ואחזקה), חלקי ההון העצמי.</p>
-                    <p><b>על ההון העצמי · כולל בניית הון</b> — אותו דבר, ובתוספת החזר הקרן: הקרן היא חיסכון, לא הוצאה.</p>
-                  </>}
-                  <p className="muted">ההון העצמי כאן = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון) — כלומר ההון שלך היום, לא הסכום שהשקעת בתחילת הדרך.</p>
+                  <p><b>ברוטו</b> — שכר הדירה השנתי חלקי שווי הנכס. לא מתחשב בריבית, בביטוח, באחזקה או בחוב.</p>
+                  <p><b>על מה שהשקעת{noPrincipalYet ? '' : ' · תזרים בלבד'}</b> — מה שנשאר ביד בשנה (שכר דירה פחות ריבית, ביטוח ואחזקה), חלקי הכסף שיצא מהכיס.</p>
+                  {!noPrincipalYet && (
+                    <p><b>על מה שהשקעת · כולל בניית הון</b> — אותו דבר, ובתוספת החזר הקרן: הקרן היא חיסכון, לא הוצאה.</p>
+                  )}
+                  {noPrincipalYet && (
+                    <p className="muted">השנה עוד לא נפרעת קרן (משכנתא שטרם נמשכה, או תקופת גרייס), ולכן אין מה להוסיף — "תזרים" ו"כולל בניית הון" יוצאים זהים ומוצגים פעם אחת.</p>
+                  )}
+                  <p className="muted">
+                    "מה שהשקעת" = ההון העצמי ועלויות הרכישה, {fmt(totalInvested)}. סכום קבוע — ולכן התשואה ניתנת להשוואה לעצמה לאורך זמן ולכל השקעה אחרת.
+                  </p>
                 </div>
-              )}
-              {debtFree && grossYield != null && (
-                <p className="wlth-yield-note">
-                  אין חוב רשום על הנכס, ולכן התשואה על ההון העצמי זהה לתשואה ברוטו — ההון העצמי הוא מלוא שווי הנכס.
-                </p>
               )}
               {/* The standing footnote says the same thing the open (?) says at more length —
                   printing both puts the definition on screen twice. */}
-              {!debtFree && !yieldHelp && roeCash != null && <p className="wlth-yield-note">ההון העצמי = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון).</p>}
+              {!yieldHelp && roeCash != null && (
+                <p className="wlth-yield-note">מדוד מול {fmt(totalInvested)} — ההון העצמי ועלויות הרכישה.</p>
+              )}
             </section>
           )}
 
