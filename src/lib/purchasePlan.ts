@@ -19,14 +19,25 @@
 // happened, is certain. Nothing is ever marked as a forecast on screen — the SETTLED items
 // are marked, so the screen fills up instead of starting covered in caveats.
 //
-// STORAGE, and why it is where it is: the plan lives in localStorage, per user, until the
-// shape is agreed. It is deliberately behind this module's four functions so moving it to
-// Postgres is a change to this file only (migration 050 is written and waiting). The owner
-// asked for something physical to look at tonight; blocking on a migration he has to run
-// himself would have delivered an empty screen instead.
+// STORAGE (24.09): the plan now lives in Postgres, and localStorage is its cache.
+//
+// It was browser-only until today — deliberately, until the shape settled — which meant
+// clearing site data, switching phone, or opening the app on a laptop lost the payment
+// schedule outright, with no warning and nothing to restore from. The owner cleared the
+// migration on 24.09; the table is `purchase_plans` (migration 050), one jsonb row per
+// owner, because the plan is always read and written whole.
+//
+// The reads stay SYNCHRONOUS on purpose. Four screens call loadPlan during render, and
+// making them async would have turned a storage change into a refactor of all of them —
+// which is exactly the kind of change that breaks the thing it was meant to protect. So:
+// localStorage is the read path, `syncPlan` reconciles it with the server once per session,
+// and every write goes to both. Newest `updatedAt` wins; a legacy local plan has none and
+// therefore loses to any server copy, which is right — the server copy can only have come
+// from a newer client.
 
 import { monthDayISO, parseLocalISO, todayISO } from './format'
 import { purchaseTax } from './purchaseTax'
+import { supabase } from './supabase'
 
 export type ItemKind = 'payment' | 'cost' | 'gate' | 'task'
 
@@ -80,6 +91,8 @@ export interface PlanItem {
 
 export interface PurchasePlan {
   version: 1
+  /** ISO timestamp of the last write. Absent on plans saved before 24.09. */
+  updatedAt?: string
   price: number
   /** Signing and handover come from the property record; kept here so the plan is self-contained. */
   signing: string
@@ -320,21 +333,93 @@ export function planTotals(plan: PurchasePlan): PlanTotals {
 // Temporary and local, on purpose (see the header). Every read is defensive: a plan written
 // by an older build must never take a screen down.
 
+function valid(p: unknown): p is PurchasePlan {
+  const x = p as PurchasePlan | null
+  return !!x && x.version === 1 && Array.isArray(x.items)
+}
+
+/** The synchronous read every screen uses. localStorage is the cache; see the note above. */
 export function loadPlan(uid: string): PurchasePlan | null {
   try {
     const raw = localStorage.getItem(KEY(uid))
     if (!raw) return null
     const p = JSON.parse(raw) as PurchasePlan
-    return p?.version === 1 && Array.isArray(p.items) ? p : null
+    return valid(p) ? p : null
   } catch { return null }
 }
 
+/**
+ * Has the plan reached the server?
+ *
+ * Deliberately observable rather than swallowed. The whole reason for this migration is
+ * that a plan which exists only on one device can vanish; a write that failed to reach
+ * the server puts us back in exactly that state, and the owner should be able to see it
+ * rather than find out the way Omer found out about his document.
+ */
+export type PlanSync = 'idle' | 'saving' | 'saved' | 'failed'
+let syncState: PlanSync = 'idle'
+const listeners = new Set<(s: PlanSync) => void>()
+export function planSyncState(): PlanSync { return syncState }
+export function onPlanSync(fn: (s: PlanSync) => void): () => void {
+  listeners.add(fn)
+  return () => { listeners.delete(fn) }
+}
+function setSync(s: PlanSync) { syncState = s; for (const fn of listeners) fn(s) }
+
+/** Local write first (instant, and what every read sees), then the server. */
 export function savePlan(uid: string, plan: PurchasePlan): void {
-  try { localStorage.setItem(KEY(uid), JSON.stringify(plan)) } catch { /* private mode */ }
+  const stamped: PurchasePlan = { ...plan, updatedAt: new Date().toISOString() }
+  try { localStorage.setItem(KEY(uid), JSON.stringify(stamped)) } catch { /* private mode */ }
+  setSync('saving')
+  void supabase.from('purchase_plans')
+    .upsert({ owner_id: uid, plan: stamped, updated_at: stamped.updatedAt }, { onConflict: 'owner_id' })
+    .then(({ error }) => setSync(error ? 'failed' : 'saved'))
 }
 
 export function clearPlan(uid: string): void {
   try { localStorage.removeItem(KEY(uid)) } catch { /* ignore */ }
+  void supabase.from('purchase_plans').delete().eq('owner_id', uid)
+}
+
+/**
+ * Reconcile the cache with the server. Call once when a session has a user.
+ *
+ * Returns the plan that won, or null when neither side has one. Newest `updatedAt` wins;
+ * a local plan with no timestamp predates 24.09 and loses to any server copy. When only
+ * the local side has one it is pushed up — which is how every existing plan gets off the
+ * browser it is currently trapped in.
+ */
+export async function syncPlan(uid: string): Promise<PurchasePlan | null> {
+  const local = loadPlan(uid)
+  let remote: PurchasePlan | null = null
+  try {
+    const { data, error } = await supabase
+      .from('purchase_plans').select('plan').eq('owner_id', uid).maybeSingle()
+    if (error) throw error
+    const p = data?.plan as unknown
+    if (valid(p)) remote = p
+  } catch {
+    // Offline or the table is not deployed yet: the cache is still authoritative, and the
+    // screens keep working exactly as they did before this migration.
+    return local
+  }
+
+  if (!remote) {
+    if (local) savePlan(uid, local)   // first sync — get it off this browser
+    return local
+  }
+  if (!local) {
+    try { localStorage.setItem(KEY(uid), JSON.stringify(remote)) } catch { /* ignore */ }
+    return remote
+  }
+  const localAt = local.updatedAt ?? ''
+  const remoteAt = remote.updatedAt ?? ''
+  if (remoteAt > localAt) {
+    try { localStorage.setItem(KEY(uid), JSON.stringify(remote)) } catch { /* ignore */ }
+    return remote
+  }
+  if (localAt > remoteAt) savePlan(uid, local)
+  return local
 }
 
 /** Mark an item done (or undone) — and stamp WHEN, because later items are dated from it. */

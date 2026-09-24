@@ -24,7 +24,7 @@ import { possession } from '../../lib/stage'
 import { HandoverMoment } from './HandoverMoment'
 import { PurchaseMap } from '../purchase/PurchaseMap'
 import { PlanSetup } from '../purchase/PlanSetup'
-import { loadPlan, savePlan, nextStep, type PurchasePlan } from '../../lib/purchasePlan'
+import { loadPlan, savePlan, syncPlan, nextStep, type PurchasePlan } from '../../lib/purchasePlan'
 import '../purchase/purchase.css'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
@@ -105,11 +105,20 @@ export default function HomeScreen() {
   const awaitingKey = possession(property?.key_delivery_date, todayStr) === 'awaiting_key'
 
   // The payment plan — the centre of this stage (docs/specs/purchase-stage.md). Stored
-  // locally for now and read through lib/purchasePlan, so moving it to Postgres later
-  // touches that module alone.
+  // read through lib/purchasePlan. Since 24.09 it lives in Postgres with localStorage as
+  // its cache, so the read below is still synchronous and instant; `syncPlan` reconciles
+  // the two once per session and hands back whichever copy is newer. That is what makes a
+  // plan survive a cleared browser, a new phone, or a laptop.
   const [plan, setPlan] = useState<PurchasePlan | null>(null)
   const [planSetup, setPlanSetup] = useState(false)
-  useEffect(() => { if (user?.id) setPlan(loadPlan(user.id)) }, [user?.id])
+  useEffect(() => {
+    if (!user?.id) return
+    const uid = user.id
+    setPlan(loadPlan(uid))               // cached copy, immediately
+    let alive = true
+    void syncPlan(uid).then(p => { if (alive) setPlan(p) })
+    return () => { alive = false }
+  }, [user?.id])
   const commitPlan = (p: PurchasePlan) => { setPlan(p); if (user?.id) savePlan(user.id, p) }
 
   // The rent prompt must not appear before the rent is payable: with a post-dated
