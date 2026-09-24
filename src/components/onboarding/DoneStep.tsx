@@ -7,6 +7,7 @@ export function DoneStep() {
   const {
     onComplete, error, notifOn, notifBusy, enableNotifications,
     street, city, price, totalPrincipal, monthlyRent, equityAmount, derivedEquityAmount,
+    docFailures,
   } = useOnboarding()
 
   const address = [street, city].filter(Boolean).join(', ')
@@ -58,6 +59,17 @@ export function DoneStep() {
       )}
 
       {error && <p className="onboarding-error" role="alert" style={{ textAlign: 'center', marginTop: 12 }}>{error}</p>}
+
+      {/* The one thing this screen must never do is claim "הכול מוכן!" over a file that
+          did not arrive. Until 24.09 every document failure was swallowed here, which is
+          exactly how a policy could be uploaded, reported as saved, and never exist. */}
+      {docFailures.length > 0 && (
+        <div className="onboarding-doc-failed" role="alert">
+          <b>{docFailures.length === 1 ? 'מסמך אחד לא צורף' : `${docFailures.length} מסמכים לא צורפו`}</b>
+          <span>{docFailures.join(' · ')}</span>
+          <span className="muted">כל שאר הנתונים נשמרו. אפשר להעלות אותם שוב ממסך המסמכים.</span>
+        </div>
+      )}
 
       <div className="onboarding-done-spacer" />
 

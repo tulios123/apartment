@@ -48,7 +48,11 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
    * failure; a silence that looks like success is.
    */
   const status = busy ? 'קורא את המסמך…'
-    : err ? 'לא נקרא — אפשר למלא ידנית'
+    // The error's own words. This line used to be hard-coded to "לא נקרא — אפשר למלא ידנית"
+    // whatever the failure was, so a file that never reached storage reported a READING
+    // failure — on a card (insurance, tabu) where there is no reading to fail. Every error
+    // reaching here is already a full Hebrew sentence.
+    : err ? err
     : detached ? `${doneText} · הקובץ עצמו לא מצורף — הקישו לצירוף`
     : doneText ? doneText
     : hasFiles ? `${files.length} ${files.length === 1 ? 'קובץ נשמר' : 'קבצים נשמרו'}${extracts ? '' : ' · לא נקרא אוטומטית'}`
@@ -105,7 +109,7 @@ export function DocumentsStep() {
     aiFillLoans, loanAiBusy, loanAiErr, loans,
     aiFillRental, rentalAiBusy, rentalAiErr, companyName, monthlyRent,
     removeDocFile, renameDocFile,
-    addInsuranceDocs, addTabuDocs, docAttachments,
+    addInsuranceDocs, addTabuDocs, docAttachments, docErrors,
   } = useOnboarding()
   const { user, signOut } = useAuth()
 
@@ -126,6 +130,14 @@ export function DocumentsStep() {
     const s = checklistSlots('wizard').find(x => x.type === t)
     return { example: s?.example, extracts: s?.extracts ?? true, showExample: explain }
   }
+  /**
+   * An upload that did not reach storage now shows on the card it belongs to. It used to
+   * be swallowed while the card counted the in-memory file and said "1 קובץ נשמר" — which
+   * is how a policy could be uploaded, reported as saved, and never exist (Omer, 24.09).
+   * Merged with the extraction error so one card never shows two red lines.
+   */
+  const errFor = (cat: 'purchase' | 'tabu' | 'mortgage' | 'loan' | 'rental' | 'insurance', aiErr: string | null) =>
+    docErrors[cat] ?? aiErr
 
   return (
     <div>
@@ -153,7 +165,7 @@ export function DocumentsStep() {
         <DocCard
           icon={<Tag size={26} weight="duotone" color="var(--accent)" />}
           title="חוזה רכישה" hint="קובץ או צילומי מסך" {...slot('purchase_contract')}
-          busy={purchaseAiBusy} err={purchaseAiErr} doneText={purchaseDone}
+          busy={purchaseAiBusy} err={errFor('purchase', purchaseAiErr)} doneText={purchaseDone}
           files={docAttachments('purchase')} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />
         {/* נסח טאבו — the Documents screen has always expected it and the wizard never
             asked, so an account could finish the wizard and open Documents at 1/6 on a
@@ -162,27 +174,27 @@ export function DocumentsStep() {
         <DocCard
           icon={<Certificate size={26} weight="duotone" color="var(--accent)" />}
           title="נסח טאבו" hint="אישור הבעלות מהטאבו" {...slot('tabu_extract')}
-          busy={false} err={null} doneText=""
+          busy={false} err={errFor('tabu', null)} doneText=""
           files={docAttachments('tabu')} onFiles={addTabuDocs} onRemove={name => removeDocFile('tabu', name)} onRename={(oldName, name) => renameDocFile('tabu', oldName, name)} />
         <DocCard
           icon={<Bank size={26} weight="duotone" color="var(--accent)" />}
           title="אישור משכנתא" hint="קובץ או צילומי מסך מהבנק" {...slot('mortgage_statement')}
-          busy={mortgageAiBusy} err={mortgageAiErr} doneText={mortgageDone}
+          busy={mortgageAiBusy} err={errFor('mortgage', mortgageAiErr)} doneText={mortgageDone}
           files={docAttachments('mortgage')} onFiles={aiFillMortgage} onRemove={name => removeDocFile('mortgage', name)} onRename={(oldName, name) => renameDocFile('mortgage', oldName, name)} />
         <DocCard
           icon={<HandCoins size={26} weight="duotone" color="var(--accent)" />}
           title="הלוואה" hint="מסמך או צילום מסך" {...slot('loan_statement')}
-          busy={loanAiBusy} err={loanAiErr} doneText={loansDone}
+          busy={loanAiBusy} err={errFor('loan', loanAiErr)} doneText={loansDone}
           files={docAttachments('loan')} onFiles={aiFillLoans} onRemove={name => removeDocFile('loan', name)} onRename={(oldName, name) => renameDocFile('loan', oldName, name)} />
         <DocCard
           icon={<FileText size={26} weight="duotone" color="var(--accent)" />}
           title="חוזה שכירות" hint="קובץ או צילומי מסך" {...slot('rental_contract')}
-          busy={rentalAiBusy} err={rentalAiErr} doneText={rentalDone}
+          busy={rentalAiBusy} err={errFor('rental', rentalAiErr)} doneText={rentalDone}
           files={docAttachments('rental')} onFiles={aiFillRental} onRemove={name => removeDocFile('rental', name)} onRename={(oldName, name) => renameDocFile('rental', oldName, name)} />
         <DocCard
           icon={<ShieldCheck size={26} weight="duotone" color="var(--accent)" />}
           title="פוליסת ביטוח" hint="קובץ או צילומי מסך" {...slot('insurance_policy')}
-          busy={false} err={null} doneText=""
+          busy={false} err={errFor('insurance', null)} doneText=""
           files={docAttachments('insurance')} onFiles={addInsuranceDocs} onRemove={name => removeDocFile('insurance', name)} onRename={(oldName, name) => renameDocFile('insurance', oldName, name)} />
       </div>
 

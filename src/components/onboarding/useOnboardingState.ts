@@ -243,6 +243,21 @@ export function useOnboardingState(onComplete: () => void) {
   // silently — the card kept its ✓ while the document never reached storage. Each
   // pick now uploads immediately and we keep this serializable pointer in the draft,
   // so the file survives a reload, can be previewed, and finish just links it.
+  /**
+   * Why a picked file did NOT reach storage, per category.
+   *
+   * Every failure on this path used to be swallowed — an empty catch marked "non-critical" in
+   * three places — on the reasoning that the in-memory File would be uploaded again at
+   * finish. Two of those failures are not transient: a file over MAX_UPLOAD_BYTES throws
+   * at BOTH stages and can never succeed, and a storage/RLS error usually repeats. The
+   * card meanwhile showed "1 קובץ נשמר", because that count comes from the in-memory list.
+   * So the owner uploaded a policy, was told it was saved, and it simply never existed
+   * (Omer, 24.09: "העלה מסמך, והמסמך נעלם"). A limit that is stated is not a failure.
+   */
+  const [docErrors, setDocErrors] = useState<Partial<Record<DocCat, string>>>({})
+  /** Files that did not reach the `documents` table at finish — named on the done screen. */
+  const [docFailures, setDocFailures] = useState<string[]>([])
+
   const [docRefs, setDocRefs] = useState<Record<DocCat, DocRef[]>>(
     () => ({ purchase: [], tabu: [], mortgage: [], loan: [], rental: [], insurance: [], ...(d0?.docRefs ?? {}) }))
 
@@ -714,13 +729,23 @@ export function useOnboardingState(onComplete: () => void) {
   // File remains and finish uploads it the old way, so nothing is lost either path.
   async function stashDocs(cat: DocCat, files: File[]) {
     if (!user) return
+    const failed: string[] = []
     for (const f of files) {
       try {
         const docId = crypto.randomUUID()
         const path = await uploadDocument(f, docId, user.id)
         setDocRefs(prev => ({ ...prev, [cat]: [...prev[cat], { docId, name: f.name, path }] }))
-      } catch { /* keep the in-memory File — handleFinish still uploads it */ }
+      } catch (e) {
+        // The in-memory File stays and finish tries again — but say so NOW, because for
+        // an oversized file the retry cannot succeed either, and until today the only
+        // thing the user ever saw was "1 קובץ נשמר".
+        failed.push(`${f.name}${e instanceof Error && e.message ? ` — ${e.message}` : ''}`)
+      }
     }
+    setDocErrors(prev => ({
+      ...prev,
+      [cat]: failed.length ? `לא הצלחנו לשמור: ${failed.join(' · ')}` : undefined,
+    }))
   }
 
   // Remove one already-picked file from a category's list (documents step manage view).
@@ -735,6 +760,7 @@ export function useOnboardingState(onComplete: () => void) {
       loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
     setters[category](prev => prev.filter(f => f.name !== name))
+    setDocErrors(prev => ({ ...prev, [category]: undefined }))
     // Drop the stored copy too, otherwise a "removed" document would still be linked
     // on finish (and keep occupying storage).
     setDocRefs(prev => {
@@ -764,7 +790,8 @@ export function useOnboardingState(onComplete: () => void) {
   // rental). Called WITHOUT await from handleFinish so "done" shows immediately; each
   // upload is independent and non-critical, so failures are swallowed (re-uploadable
   // from the Documents screen). Passing userId skips a getUser() round-trip per file.
-  async function uploadOnboardingDocs(userId: string, propertyId: string, contractId: string | null) {
+  async function uploadOnboardingDocs(userId: string, propertyId: string, contractId: string | null): Promise<string[]> {
+    const failed: string[] = []
     const put = async (file: File, type: DocumentType, date: string | null, contract_id: string | null) => {
       try {
         const docId = crypto.randomUUID()
@@ -774,7 +801,7 @@ export function useOnboardingState(onComplete: () => void) {
           contract_id, transaction_id: null,
           type, name: file.name, storage_path: path, date,
         })
-      } catch { /* non-critical — re-uploadable from Documents */ }
+      } catch { failed.push(file.name) }
     }
     // Files picked during the wizard were already uploaded by stashDocs — here we only
     // LINK them (no re-upload, so nothing is stored twice). Anything whose immediate
@@ -786,7 +813,7 @@ export function useOnboardingState(onComplete: () => void) {
           contract_id, transaction_id: null,
           type, name: ref.name, storage_path: ref.path, date,
         })
-      } catch { /* non-critical — re-uploadable from Documents */ }
+      } catch { failed.push(ref.name) }
     }
     const spec: [DocCat, File[], DocumentType, string | null, string | null][] = [
       ['purchase', purchaseDocFiles, 'purchase_contract', signingDate || null, null],
@@ -806,6 +833,7 @@ export function useOnboardingState(onComplete: () => void) {
       for (const f of files) if (!stored.has(f.name)) jobs.push(put(f, type, date, contract_id))
     }
     await Promise.all(jobs)
+    return failed
   }
 
   // ── handleFinish ─────────────────────────────────────────────────────────────
@@ -1152,14 +1180,27 @@ export function useOnboardingState(onComplete: () => void) {
         setError(outcome.errorMessage)
         return   // stay on the step; draft kept; `finally` still resets saving/finishingRef
       }
-      // Document files are supplementary — the app is fully usable without them. Upload
-      // them in the background (not awaited) so the user reaches "done" immediately
-      // instead of waiting on several storage round-trips. They keep uploading while the
-      // user is on the done screen; fetch isn't tied to React so unmount won't abort them.
-      uploadOnboardingDocs(user.id, property.id, contract ? (contract as Contract).id : null)
+      /**
+       * The documents are AWAITED now, and this is the fix for "העלה מסמך, והמסמך נעלם".
+       *
+       * They used to be uploaded fire-and-forget, on the reasoning that fetch is not tied
+       * to React so an unmount cannot abort them. True for a route change — and irrelevant
+       * to the case that actually happens: the wizard is finished on a phone, the person
+       * switches app or closes the tab, and iOS suspends the page mid-flight. The very next
+       * line then deleted the draft, which held docRefs — the only record that the blob
+       * exists in storage and where. Blob orphaned, no row, nothing to retry from, and not
+       * a word to the user.
+       *
+       * A few seconds of "מצרפים את המסמכים…" is a trade worth making for files the user
+       * chose to attach. Anything that still fails is NAMED on the done screen, and the
+       * draft is kept so a retry has something to work from.
+       */
+      const failedDocs = await uploadOnboardingDocs(user.id, property.id, contract ? (contract as Contract).id : null)
+      setDocFailures(failedDocs)
       // C2: data is now persisted server-side — drop the local draft so a later
-      // visit doesn't rehydrate a stale wizard.
-      clearOnboardingDraft(user.id)
+      // visit doesn't rehydrate a stale wizard. Kept when a document did not make it,
+      // because the draft is what remembers where that file already is.
+      if (failedDocs.length === 0) clearOnboardingDraft(user.id)
 
       // The payment plan was built on the purchase step, before the costs were known.
       // Rebuild it now with them, keeping his terms — nothing is marked done during the
@@ -1663,6 +1704,7 @@ export function useOnboardingState(onComplete: () => void) {
     loansMonthlyPrincipal, loansBalloonTotal,
     // submit
     handleFinish, requestFinish, confirmFinish, anyAiBusy, pendingFinish,
+    docErrors, docFailures,
     finishPrompt, finishBlockers, dismissFinishPrompt, finishPromptBackToComplete, finishPromptContinueWithout,
     // dev fill
     fillTestPurchase, fillTestMortgage, fillTestInvestment,

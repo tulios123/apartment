@@ -4905,6 +4905,23 @@ button .spin { vertical-align: -2px; }
   color: var(--text);
 }
 
+/* A document that did not make it, named on the done screen (never a silent loss). */
+.onboarding-doc-failed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--warning, #b45309);
+  border-radius: var(--r-md, 12px);
+  background: var(--warning-bg, rgba(180, 83, 9, 0.08));
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  text-align: start;
+}
+.onboarding-doc-failed .muted { color: var(--text-muted); font-size: 12px; }
+
 /* מס רכישה — a full-width cost field: the single/additional toggle decides the number,
    so the two live on one line, and the bracket ladder folds out underneath it. */
 /* ── הסיכום לפני השמירה (ReviewStep) ─────────────────────────────────────────
