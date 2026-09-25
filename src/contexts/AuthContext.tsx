@@ -127,7 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('household_members').select('household_id').eq('user_id', uid)
     // Before migration 051 is applied the table does not exist. Falling back to the single
     // own-household case keeps every screen working exactly as it did.
-    const ids = error ? [uid] : (memberRows ?? []).map(r => r.household_id as string)
+    // Deduplicated: two people in the SAME apartment produce two membership rows, and if
+    // the user_id filter is ever dropped — as the offline harness drops it — that lands
+    // here as the same apartment listed twice, with duplicate React keys behind it.
+    const ids = error ? [uid] : [...new Set((memberRows ?? []).map(r => r.household_id as string))]
     if (ids.length === 0) ids.push(uid)
 
     const [{ data: ownerRows }, { data: propRows }] = await Promise.all([

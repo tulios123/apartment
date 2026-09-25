@@ -4905,6 +4905,62 @@ button .spin { vertical-align: -2px; }
   color: var(--text);
 }
 
+/* ── שיתוף הדירה ─────────────────────────────────────────────────────────────
+   Members, pending invitations, and the apartment switcher (Settings). */
+.hh-members { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.hh-member {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.hh-member.pending { border-style: dashed; }
+.hh-member-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.hh-you { font-weight: 400; color: var(--text-muted); }
+.hh-member-email { font-size: 12px; color: var(--text-muted); direction: ltr; }
+.hh-member-x {
+  margin-inline-start: auto; flex-shrink: 0;
+  width: 26px; height: 26px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: none;
+  color: var(--text-muted); cursor: pointer;
+}
+
+.hh-invite { margin-top: 10px; }
+.hh-invite label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.hh-invite-row { display: flex; gap: 8px; align-items: center; }
+.hh-invite-row input { flex: 1; min-width: 0; }
+.hh-invite-row .btn-secondary { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; }
+
+.hh-invite-in {
+  display: flex; align-items: center; gap: 10px;
+  margin: 10px 0; padding: 12px 14px;
+  border: 1px solid var(--accent); border-radius: var(--r-md, 12px);
+  background: var(--accent-soft, rgba(42, 125, 225, 0.07));
+}
+.hh-invite-in-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hh-invite-in-body b { font-size: 14px; color: var(--text); }
+.hh-invite-in-body span { font-size: 12px; color: var(--text-muted); line-height: 1.45; }
+.hh-invite-in .btn-secondary { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+/* On a phone the three parts fight for one line and the button ends up beside two lines
+   of wrapped text. Stack them, and let the action be the full width it deserves. */
+@media (max-width: 480px) {
+  .hh-invite-in { flex-direction: column; align-items: stretch; }
+  .hh-invite-in .btn-secondary { width: 100%; }
+}
+
+.hh-ok { margin-top: 8px; font-size: 13px; color: var(--success-text, #1a7f37); }
+
+.hh-switch { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.hh-switch-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border); border-radius: var(--r-md, 12px);
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 14px; text-align: start; cursor: pointer;
+}
+.hh-switch-row.is-active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.hh-switch-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* A document that did not make it, named on the done screen (never a silent loss). */
 .onboarding-doc-failed {
   display: flex;

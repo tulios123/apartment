@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ChatDots } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
+import { SharingSection } from './settings/SharingSection'
+import { ApartmentSwitcher } from './settings/ApartmentSwitcher'
 import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
@@ -177,6 +179,12 @@ export default function Settings() {
             <button className="btn-secondary" onClick={signOut}>יציאה מהחשבון</button>
           </div>
         </section>
+
+        {/* Which apartment, and who else is on it. Directly under the account, because
+            both answer "who am I here" — and the switcher only appears for someone who
+            actually has more than one apartment. */}
+        <ApartmentSwitcher />
+        <SharingSection />
 
         <section className="settings-section">
           <h2>מראה</h2>
