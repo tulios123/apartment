@@ -30,6 +30,12 @@ alter table purchase_plans enable row level security;
 -- Same shape as every other table here: a row belongs to exactly one owner and is
 -- invisible to everyone else. `with check` on both insert and update so a client cannot
 -- write a row under someone else's id.
+--
+-- Dropped first so the whole file is idempotent: it is applied from CI (workflow
+-- db-migrate.yml) without writing to supabase_migrations.schema_migrations, so a later
+-- `supabase db push` from the owner's machine will run it a second time. Re-running must
+-- be a no-op, not an error.
+drop policy if exists "owner_scoped" on purchase_plans;
 create policy "owner_scoped" on purchase_plans
   for all to authenticated
   using (owner_id = auth.uid())
