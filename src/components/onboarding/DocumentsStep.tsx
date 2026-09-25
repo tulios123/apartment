@@ -1,20 +1,34 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown } from '@phosphor-icons/react'
+import { House, Tag, Bank, FileText, HandCoins, ShieldCheck, SignOut, UploadSimple, CheckCircle, CaretDown, Certificate, Question } from '@phosphor-icons/react'
 import { formatCurrency, formatNum } from './types'
 import { useOnboarding } from './context'
 import type { Attachment } from './useOnboardingState'
 import { useAuth } from '../../contexts/AuthContext'
+import { checklistSlots } from '../../lib/documentChecklist'
+import type { DocumentType } from '../../types'
 import { DocFileList } from './DocFileList'
 
 // One upload topic. Empty → tapping picks file(s) and kicks off extraction in the
 // background. Once files exist, tapping expands a manage panel: see each file,
 // remove it, or add more (each add re-runs extraction on the new file).
-function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRemove, onRename }: {
+function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRemove, onRename, example, showExample, extracts = true }: {
   icon: ReactNode; title: string; hint: string
   busy: boolean; err: string | null; doneText: string
   files: Attachment[]; onFiles: (files: File[]) => void; onRemove: (name: string) => void
   onRename: (oldName: string, newName: string) => void
+  /**
+   * What the document looks like (Omer, note 1: "הייתי מוסיף (?) ליד כל מסמך ולהציג
+   * דוגמה שלו"). Revealed by one control above the list rather than a (?) per card:
+   * the card IS a button, and a second button inside it is interactive content nested
+   * in interactive content — invalid, and on a phone two targets that close together
+   * are one target. One tap explains all six.
+   */
+  example?: string
+  /** Whether the parent's "מה כל מסמך?" toggle is currently on. */
+  showExample?: boolean
+  /** False for the documents that are filed as-is and never read. Omer, note 12. */
+  extracts?: boolean
 }) {
   const ref = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
@@ -26,12 +40,23 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
   // storage on finish. Name that state honestly and invite a re-attach.
   const detached = !hasFiles && !!doneText
   const state = busy ? 'reading' : err ? 'error' : detached ? 'detached' : doneText ? 'done' : 'empty'
+  /**
+   * The insurance policy and the tabu extract are filed, not read — nothing is extracted
+   * from them. Their card nevertheless said "1 קובץ הועלה" and stopped, which is exactly
+   * what the READING cards beside it say on their way to a green tick, so Omer read it as
+   * "the policy was recognised" and it never had been (note 12). A stated limit is not a
+   * failure; a silence that looks like success is.
+   */
   const status = busy ? 'קורא את המסמך…'
-    : err ? 'לא נקרא — אפשר למלא ידנית'
+    // The error's own words. This line used to be hard-coded to "לא נקרא — אפשר למלא ידנית"
+    // whatever the failure was, so a file that never reached storage reported a READING
+    // failure — on a card (insurance, tabu) where there is no reading to fail. Every error
+    // reaching here is already a full Hebrew sentence.
+    : err ? err
     : detached ? `${doneText} · הקובץ עצמו לא מצורף — הקישו לצירוף`
     : doneText ? doneText
-    : hasFiles ? `${files.length} ${files.length === 1 ? 'קובץ הועלה' : 'קבצים הועלו'}`
-    : hint
+    : hasFiles ? `${files.length} ${files.length === 1 ? 'קובץ נשמר' : 'קבצים נשמרו'}${extracts ? '' : ' · לא נקרא אוטומטית'}`
+    : extracts ? hint : `${hint} · נשמר לתיק בלבד`
   const pick = () => ref.current?.click()
 
   return (
@@ -62,6 +87,8 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
           drifted every time one was fixed, which is where the last round of bugs came
           from. The containers still differ (checklist here, form-filler there) because
           they do different jobs; only the parts are unified. */}
+      {showExample && example && <p className="onboarding-doc-example">{example}</p>}
+
       {hasFiles && open && (
         <DocFileList files={files} onFiles={onFiles} onRemove={onRemove} onRename={onRename} />
       )}
@@ -73,6 +100,8 @@ function DocCard({ icon, title, hint, busy, err, doneText, files, onFiles, onRem
 }
 
 export function DocumentsStep() {
+  // One switch for the whole list — see the note on DocCard's `example`.
+  const [explain, setExplain] = useState(false)
   const {
     advance,
     aiFillPurchase, purchaseAiBusy, purchaseAiErr, street, city, price, purchasePrice,
@@ -80,7 +109,7 @@ export function DocumentsStep() {
     aiFillLoans, loanAiBusy, loanAiErr, loans,
     aiFillRental, rentalAiBusy, rentalAiErr, companyName, monthlyRent,
     removeDocFile, renameDocFile,
-    addInsuranceDocs, docAttachments,
+    addInsuranceDocs, addTabuDocs, docAttachments, docErrors,
   } = useOnboarding()
   const { user, signOut } = useAuth()
 
@@ -95,6 +124,21 @@ export function DocumentsStep() {
 
   const anyBusy = purchaseAiBusy || mortgageAiBusy || loanAiBusy || rentalAiBusy
 
+  // The (?) text and the "is this one read automatically?" flag come from the same list
+  // the Documents screen uses — one place to change a document's description.
+  const slot = (t: DocumentType) => {
+    const s = checklistSlots('wizard').find(x => x.type === t)
+    return { example: s?.example, extracts: s?.extracts ?? true, showExample: explain }
+  }
+  /**
+   * An upload that did not reach storage now shows on the card it belongs to. It used to
+   * be swallowed while the card counted the in-memory file and said "1 קובץ נשמר" — which
+   * is how a policy could be uploaded, reported as saved, and never exist (Omer, 24.09).
+   * Merged with the extraction error so one card never shows two red lines.
+   */
+  const errFor = (cat: 'purchase' | 'tabu' | 'mortgage' | 'loan' | 'rental' | 'insurance', aiErr: string | null) =>
+    docErrors[cat] ?? aiErr
+
   return (
     <div>
       <div className="onboarding-icon"><House size={40} color="var(--accent)" /></div>
@@ -108,31 +152,49 @@ export function DocumentsStep() {
         <span>הקישו כדי להעלות · ושוב כדי לראות, להוסיף או למחוק קבצים</span>
       </div>
 
+      {/* Omer, note 1. This is the first moment the app asks for something from the real
+          world, and the names alone assume you can already tell an אישור משכנתא from a
+          מסמך הלוואה. One tap describes all six. */}
+      <button type="button" className="onboarding-doc-explain" aria-expanded={explain}
+        onClick={() => setExplain(v => !v)}>
+        <Question size={14} weight="bold" />
+        {explain ? 'הסתר את ההסברים' : 'מה כל מסמך? הסבר קצר לכל אחד'}
+      </button>
+
       <div className="onboarding-doc-cards">
         <DocCard
           icon={<Tag size={26} weight="duotone" color="var(--accent)" />}
-          title="חוזה רכישה" hint="קובץ או צילומי מסך"
-          busy={purchaseAiBusy} err={purchaseAiErr} doneText={purchaseDone}
+          title="חוזה רכישה" hint="קובץ או צילומי מסך" {...slot('purchase_contract')}
+          busy={purchaseAiBusy} err={errFor('purchase', purchaseAiErr)} doneText={purchaseDone}
           files={docAttachments('purchase')} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />
+        {/* נסח טאבו — the Documents screen has always expected it and the wizard never
+            asked, so an account could finish the wizard and open Documents at 1/6 on a
+            document it had never heard of (Omer, note 14). One list now, from
+            lib/documentChecklist; nothing here is required. */}
+        <DocCard
+          icon={<Certificate size={26} weight="duotone" color="var(--accent)" />}
+          title="נסח טאבו" hint="אישור הבעלות מהטאבו" {...slot('tabu_extract')}
+          busy={false} err={errFor('tabu', null)} doneText=""
+          files={docAttachments('tabu')} onFiles={addTabuDocs} onRemove={name => removeDocFile('tabu', name)} onRename={(oldName, name) => renameDocFile('tabu', oldName, name)} />
         <DocCard
           icon={<Bank size={26} weight="duotone" color="var(--accent)" />}
-          title="אישור משכנתא" hint="קובץ או צילומי מסך מהבנק"
-          busy={mortgageAiBusy} err={mortgageAiErr} doneText={mortgageDone}
+          title="אישור משכנתא" hint="קובץ או צילומי מסך מהבנק" {...slot('mortgage_statement')}
+          busy={mortgageAiBusy} err={errFor('mortgage', mortgageAiErr)} doneText={mortgageDone}
           files={docAttachments('mortgage')} onFiles={aiFillMortgage} onRemove={name => removeDocFile('mortgage', name)} onRename={(oldName, name) => renameDocFile('mortgage', oldName, name)} />
         <DocCard
           icon={<HandCoins size={26} weight="duotone" color="var(--accent)" />}
-          title="הלוואה" hint="מסמך או צילום מסך"
-          busy={loanAiBusy} err={loanAiErr} doneText={loansDone}
+          title="הלוואה" hint="מסמך או צילום מסך" {...slot('loan_statement')}
+          busy={loanAiBusy} err={errFor('loan', loanAiErr)} doneText={loansDone}
           files={docAttachments('loan')} onFiles={aiFillLoans} onRemove={name => removeDocFile('loan', name)} onRename={(oldName, name) => renameDocFile('loan', oldName, name)} />
         <DocCard
           icon={<FileText size={26} weight="duotone" color="var(--accent)" />}
-          title="חוזה שכירות" hint="קובץ או צילומי מסך"
-          busy={rentalAiBusy} err={rentalAiErr} doneText={rentalDone}
+          title="חוזה שכירות" hint="קובץ או צילומי מסך" {...slot('rental_contract')}
+          busy={rentalAiBusy} err={errFor('rental', rentalAiErr)} doneText={rentalDone}
           files={docAttachments('rental')} onFiles={aiFillRental} onRemove={name => removeDocFile('rental', name)} onRename={(oldName, name) => renameDocFile('rental', oldName, name)} />
         <DocCard
           icon={<ShieldCheck size={26} weight="duotone" color="var(--accent)" />}
-          title="פוליסת ביטוח" hint="קובץ או צילומי מסך"
-          busy={false} err={null} doneText=""
+          title="פוליסת ביטוח" hint="קובץ או צילומי מסך" {...slot('insurance_policy')}
+          busy={false} err={errFor('insurance', null)} doneText=""
           files={docAttachments('insurance')} onFiles={addInsuranceDocs} onRemove={name => removeDocFile('insurance', name)} onRename={(oldName, name) => renameDocFile('insurance', oldName, name)} />
       </div>
 

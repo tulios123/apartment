@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { uploadDocument, removeDocumentFile } from '../../lib/storage'
 import { hydrateFromAccount } from './hydrate'
 import { TRACK_LABELS } from '../../lib/constants'
+import { purchaseTax } from '../../lib/purchaseTax'
 import { createProperty, createContract, updateContract } from '../../hooks/usePropertyData'
 import { syncRentRecurringItem } from '../../hooks/useRecurringItems'
 import { ensureMortgage, upsertMortgageTrack, deleteMortgageTrack } from '../../hooks/useMortgageData'
@@ -50,7 +51,7 @@ const DEV_MOCK = {
 
 // A document already uploaded to storage during the wizard: serializable, so it
 // survives the draft round-trip that File objects cannot.
-export type DocCat = 'purchase' | 'mortgage' | 'loan' | 'rental' | 'insurance'
+export type DocCat = 'purchase' | 'tabu' | 'mortgage' | 'loan' | 'rental' | 'insurance'
 export type DocRef = { docId: string; name: string; path: string }
 // One attachment as the UI shows it: in memory (just picked), in storage, or both.
 export type Attachment = { name: string; file?: File; path?: string }
@@ -67,8 +68,10 @@ type OnboardingDraft = {
   tracks: TrackDraft[]; trackForm: TrackDraft; graceOn: boolean
   showTrackForm: boolean; editingIdx: number | null
   equityMode: 'amount' | 'percent'; equityValue: string
-  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string; appraiser: string }
+  costs: { lawyer: string; brokerage: string; mortgage_advisor: string; investment_company: string; appraiser: string; purchase_tax: string }
   extraCosts: ExtraCost[]
+  /** דירה יחידה vs דירה נוספת — the one input purchase tax turns on. */
+  singleApartment: boolean
   companyName: string; startDate: string; endDate: string; monthlyRent: string
   rentPaymentMethod: 'check' | 'bank_transfer'; rentPaymentDay: string; addRentReminder: boolean
   policies: PolicyDraft[]; policyForm: PolicyDraft; showPolicyForm: boolean; editingPolicyIdx: number | null
@@ -117,6 +120,8 @@ export function useOnboardingState(onComplete: () => void) {
   // running — finishing is deferred until the read completes so the extracted
   // data isn't silently dropped (see requestFinish + the effect below handleFinish).
   const [pendingFinish, setPendingFinish] = useState(false)
+  // Which step the review screen was entered from, so "back" returns there.
+  const reviewFrom = useRef<Step>('insurance')
   // AUD-001: the finish-path completeness dialog (same gate as the steps' המשך).
   const [finishPrompt, setFinishPrompt] = useState(false)
   const [notifOn, setNotifOn] = useState(false)
@@ -163,7 +168,11 @@ export function useOnboardingState(onComplete: () => void) {
   const [equityValue, setEquityValue] = useState(d0?.equityValue ?? '')
   // Merge over the defaults (not `??`) so a draft saved before a new cost key existed
   // (e.g. appraiser) restores with that key defaulted to '' rather than undefined.
-  const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '', ...(d0?.costs ?? {}) })
+  const [costs, setCosts] = useState({ lawyer: '', brokerage: '', mortgage_advisor: '', investment_company: '', appraiser: '', purchase_tax: '', ...(d0?.costs ?? {}) })
+  // Single vs additional apartment. Lifted out of PurchaseStep (owner 21.09) because the
+  // costs step now needs it too: it is the difference between 0% and 8% from the first
+  // shekel, and it was previously asked only of buyers still waiting for a key.
+  const [singleApartment, setSingleApartment] = useState(d0?.singleApartment ?? true)
   const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(d0?.extraCosts ?? [])
 
   // ── Focused input tracking (for grey-placeholder UX) ──
@@ -214,6 +223,10 @@ export function useOnboardingState(onComplete: () => void) {
   const [purchaseAiBusy, setPurchaseAiBusy] = useState(false)
   const [purchaseAiErr, setPurchaseAiErr] = useState<string | null>(null)
   const [purchaseAiDone, setPurchaseAiDone] = useState(false)
+  /** Fields the person had already filled, where the document said something different.
+   *  Kept as typed — and named, so the choice is visible rather than silent. */
+  const [purchaseAiKept, setPurchaseAiKept] = useState<string[]>([])
+  const [rentalAiKept, setRentalAiKept] = useState<string[]>([])
   const [rentalAiBusy, setRentalAiBusy] = useState(false)
   const [rentalAiErr, setRentalAiErr] = useState<string | null>(null)
   const [rentalAiDone, setRentalAiDone] = useState(false)
@@ -224,12 +237,29 @@ export function useOnboardingState(onComplete: () => void) {
   // Insurance has no AI extraction — the card just stores the policy document(s),
   // saved as insurance_policy documents on finish.
   const [insuranceDocFiles, setInsuranceDocFiles] = useState<File[]>([])
+  // נסח טאבו — filed as-is, nothing is extracted from it (see lib/documentChecklist).
+  const [tabuDocFiles, setTabuDocFiles] = useState<File[]>([])
   // Picked files used to live ONLY in memory until finish, so a reload lost them
   // silently — the card kept its ✓ while the document never reached storage. Each
   // pick now uploads immediately and we keep this serializable pointer in the draft,
   // so the file survives a reload, can be previewed, and finish just links it.
+  /**
+   * Why a picked file did NOT reach storage, per category.
+   *
+   * Every failure on this path used to be swallowed — an empty catch marked "non-critical" in
+   * three places — on the reasoning that the in-memory File would be uploaded again at
+   * finish. Two of those failures are not transient: a file over MAX_UPLOAD_BYTES throws
+   * at BOTH stages and can never succeed, and a storage/RLS error usually repeats. The
+   * card meanwhile showed "1 קובץ נשמר", because that count comes from the in-memory list.
+   * So the owner uploaded a policy, was told it was saved, and it simply never existed
+   * (Omer, 24.09: "העלה מסמך, והמסמך נעלם"). A limit that is stated is not a failure.
+   */
+  const [docErrors, setDocErrors] = useState<Partial<Record<DocCat, string>>>({})
+  /** Files that did not reach the `documents` table at finish — named on the done screen. */
+  const [docFailures, setDocFailures] = useState<string[]>([])
+
   const [docRefs, setDocRefs] = useState<Record<DocCat, DocRef[]>>(
-    () => d0?.docRefs ?? { purchase: [], mortgage: [], loan: [], rental: [], insurance: [] })
+    () => ({ purchase: [], tabu: [], mortgage: [], loan: [], rental: [], insurance: [], ...(d0?.docRefs ?? {}) }))
 
   // ── Editing an existing account ──────────────────────────────────────────────
   // Re-entering the wizard used to start blank, so finishing inserted a SECOND
@@ -271,12 +301,15 @@ export function useOnboardingState(onComplete: () => void) {
         setAddRentReminder(h.addRentReminder)
       }
       if (h.equityValue) { setEquityMode('amount'); setEquityValue(h.equityValue) }
-      setCosts(h.costs)
+      setCosts(c => ({ ...c, ...h.costs }))
       if (h.extraCosts.length) setExtraCosts(h.extraCosts)
     })()
     return () => { alive = false }
   }, [user])
   const addInsuranceDocs = (files: File[]) => { setInsuranceDocFiles(prev => [...prev, ...files]); void stashDocs('insurance', files) }
+  // נסח טאבו — nothing is extracted from it; it is filed as-is. The Documents screen has
+  // always expected it, so the wizard offers it a place too (Omer, note 14).
+  const addTabuDocs = (files: File[]) => { setTabuDocFiles(prev => [...prev, ...files]); void stashDocs('tabu', files) }
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function dismissKeyboardAndScrollTop() {
@@ -288,6 +321,11 @@ export function useOnboardingState(onComplete: () => void) {
     dismissKeyboardAndScrollTop()
     setNavDir('back')
     if (step === 'documents') { setStep('welcome'); return }
+    // The review screen is not in STEP_ORDER, so the generic lookup below would drop the
+    // user all the way back to the documents step. Return him to the step he pressed
+    // "סיימו עכשיו" on — from the costs step that is the costs step, not the insurance
+    // step he never saw.
+    if (step === 'review') { setStep(reviewFrom.current); return }
     const idx = STEP_ORDER.indexOf(step as typeof STEP_ORDER[number])
     if (idx > 0) setStep(STEP_ORDER[idx - 1])
     else setStep('documents')
@@ -315,13 +353,19 @@ export function useOnboardingState(onComplete: () => void) {
     : (derivedEquityAmount > 0 ? String(derivedEquityAmount) : ''))
   const effLawyer = costs.lawyer || defaultLawyerCost(price)
   const effBrokerage = costs.brokerage || defaultBrokerageCost(price)
+  // Purchase tax — the one cost fixed by law, so the app computes it rather than asking
+  // (Omer, note 5: the costs step never mentioned it at all, and it is usually the largest
+  // line after the equity). Same contract as the lawyer fee: a grey computed estimate that
+  // is saved as shown, shown with its brackets, and overridable.
+  const taxDefault = price > 0 ? String(purchaseTax(price, singleApartment)) : ''
+  const effPurchaseTax = costs.purchase_tax || taxDefault
   const equityAmount = equityMode === 'percent'
     ? Math.round(price * (parseFloat(effEquity) || 0) / 100)
     : Math.round(parseFloat(effEquity) || 0)
   const equityPercent = price > 0 ? equityAmount / price * 100 : 0
   const costsTotal = (parseFloat(effLawyer) || 0) + (parseFloat(effBrokerage) || 0)
     + (parseFloat(costs.mortgage_advisor) || 0) + (parseFloat(costs.investment_company) || 0)
-    + (parseFloat(costs.appraiser) || 0)
+    + (parseFloat(costs.appraiser) || 0) + (parseFloat(effPurchaseTax) || 0)
     + extraCosts.reduce((s, ec) => s + (parseFloat(ec.amount) || 0), 0)
 
   // ── Derived: mortgage track live preview ─────────────────────────────────────
@@ -378,6 +422,32 @@ export function useOnboardingState(onComplete: () => void) {
       h = Math.imul(h, 0x01000193)
     }
     return (h >>> 0).toString(36)
+  }
+
+  /**
+   * Extraction fills BLANKS. It does not overwrite what the person typed.
+   *
+   * It used to: every field the model returned was written straight over whatever was in
+   * the form. Omer filled his signing and handover dates by hand, then uploaded the
+   * contract, and both were silently replaced — he only noticed later, from a date that
+   * looked wrong on another screen. Those two dates anchor every statutory deadline in the
+   * payment plan and decide the app's whole stage, so the cost of a silent overwrite is
+   * not one field.
+   *
+   * A disagreement is not dropped either: the field keeps what he typed and its name is
+   * collected, so the screen can say what it left alone.
+   */
+  function fillBlank(
+    current: string,
+    set: (v: string) => void,
+    value: unknown,
+    label: string,
+    kept: string[],
+  ) {
+    if (value == null || value === '') return
+    const next = String(value)
+    if (current.trim() === '') { set(next); return }
+    if (current.trim() !== next.trim()) kept.push(label)
   }
 
   async function aiFillMortgage(fileList: File[]) {
@@ -561,24 +631,28 @@ export function useOnboardingState(onComplete: () => void) {
         }
       }
       const d = data ?? {}
-      if (d.buyerName) setBuyerName(String(d.buyerName))
+      const kept: string[] = []
+      fillBlank(buyerName, setBuyerName, d.buyerName, 'שם הרוכש', kept)
       // Prefer the separately-extracted street/city; fall back to splitting the full
       // address on its last comma (older/looser extractions only return propertyAddress).
       if (d.street || d.city) {
-        if (d.street) setStreet(String(d.street))
-        if (d.city) setCity(String(d.city))
+        fillBlank(street, setStreet, d.street, 'רחוב', kept)
+        fillBlank(city, setCity, d.city, 'עיר', kept)
       } else if (d.propertyAddress) {
         const addr = String(d.propertyAddress)
         const ci = addr.lastIndexOf(',')
-        if (ci > 0) { setStreet(addr.slice(0, ci).trim()); setCity(addr.slice(ci + 1).trim()) }
-        else setStreet(addr)
+        if (ci > 0) {
+          fillBlank(street, setStreet, addr.slice(0, ci).trim(), 'רחוב', kept)
+          fillBlank(city, setCity, addr.slice(ci + 1).trim(), 'עיר', kept)
+        } else fillBlank(street, setStreet, addr, 'רחוב', kept)
       }
-      if (d.purchasePrice != null) setPurchasePrice(String(d.purchasePrice))
-      if (d.purchaseDate) setSigningDate(String(d.purchaseDate))
-      if (d.keyDeliveryDate) setKeyDeliveryDate(String(d.keyDeliveryDate))
-      if (d.propertySizeSqm != null) setPropertySizeSqm(String(d.propertySizeSqm))
-      if (d.floor != null) setFloorNumber(String(d.floor))
-      if (d.rooms != null) setRooms(String(d.rooms))
+      fillBlank(purchasePrice, setPurchasePrice, d.purchasePrice, 'מחיר רכישה', kept)
+      fillBlank(signingDate, setSigningDate, d.purchaseDate, 'תאריך חתימת חוזה', kept)
+      fillBlank(keyDeliveryDate, setKeyDeliveryDate, d.keyDeliveryDate, 'מסירת מפתח', kept)
+      fillBlank(propertySizeSqm, setPropertySizeSqm, d.propertySizeSqm, 'שטח', kept)
+      fillBlank(floorNumber, setFloorNumber, d.floor, 'קומה', kept)
+      fillBlank(rooms, setRooms, d.rooms, 'מספר חדרים', kept)
+      setPurchaseAiKept(kept)
       setPurchaseAiDone(true)
     } catch (e) {
       setPurchaseAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.'))
@@ -619,13 +693,15 @@ export function useOnboardingState(onComplete: () => void) {
         }
       }
       const d = data ?? {}
-      if (d.tenantName) setCompanyName(String(d.tenantName))
-      if (d.startDate) setStartDate(String(d.startDate))
-      if (d.endDate) setEndDate(String(d.endDate))
-      if (d.monthlyRent != null) setMonthlyRent(String(d.monthlyRent))
+      const keptR: string[] = []
+      fillBlank(companyName, setCompanyName, d.tenantName, 'שם השוכר', keptR)
+      fillBlank(startDate, setStartDate, d.startDate, 'תאריך התחלה', keptR)
+      fillBlank(endDate, setEndDate, d.endDate, 'תאריך סיום', keptR)
+      fillBlank(monthlyRent, setMonthlyRent, d.monthlyRent, 'שכר דירה חודשי', keptR)
       if (d.paymentMethod === 'check') { setRentPaymentMethod('check'); setAddRentReminder(true) }
       else if (d.paymentMethod === 'bank_transfer') setRentPaymentMethod('bank_transfer')
-      if (d.paymentDay != null) setRentPaymentDay(String(d.paymentDay))
+      fillBlank(rentPaymentDay, setRentPaymentDay, d.paymentDay, 'יום התשלום', keptR)
+      setRentalAiKept(keptR)
       setRentalAiDone(true)
     } catch (e) {
       setRentalAiErr(await invokeErrorMessage(e, 'לא הצלחנו לקרוא את החוזה — נסו שוב או מלאו ידנית.'))
@@ -638,8 +714,8 @@ export function useOnboardingState(onComplete: () => void) {
   // already in storage (survives a reload) plus anything still only in memory. Both
   // the documents step and the per-step file lists render from this, so they agree.
   function docAttachments(cat: DocCat): Attachment[] {
-    const files = { purchase: purchaseDocFiles, mortgage: mortgageDocFiles, loan: loanDocFiles,
-      rental: rentalDocFiles, insurance: insuranceDocFiles }[cat]
+    const files = { purchase: purchaseDocFiles, tabu: tabuDocFiles, mortgage: mortgageDocFiles,
+      loan: loanDocFiles, rental: rentalDocFiles, insurance: insuranceDocFiles }[cat]
     const refs = docRefs[cat]
     const stored = new Set(refs.map(r => r.name))
     return [
@@ -653,13 +729,23 @@ export function useOnboardingState(onComplete: () => void) {
   // File remains and finish uploads it the old way, so nothing is lost either path.
   async function stashDocs(cat: DocCat, files: File[]) {
     if (!user) return
+    const failed: string[] = []
     for (const f of files) {
       try {
         const docId = crypto.randomUUID()
         const path = await uploadDocument(f, docId, user.id)
         setDocRefs(prev => ({ ...prev, [cat]: [...prev[cat], { docId, name: f.name, path }] }))
-      } catch { /* keep the in-memory File — handleFinish still uploads it */ }
+      } catch (e) {
+        // The in-memory File stays and finish tries again — but say so NOW, because for
+        // an oversized file the retry cannot succeed either, and until today the only
+        // thing the user ever saw was "1 קובץ נשמר".
+        failed.push(`${f.name}${e instanceof Error && e.message ? ` — ${e.message}` : ''}`)
+      }
     }
+    setDocErrors(prev => ({
+      ...prev,
+      [cat]: failed.length ? `לא הצלחנו לשמור: ${failed.join(' · ')}` : undefined,
+    }))
   }
 
   // Remove one already-picked file from a category's list (documents step manage view).
@@ -670,10 +756,11 @@ export function useOnboardingState(onComplete: () => void) {
   // so finish re-uploaded a file the user had just removed.
   function removeDocFile(category: DocCat, name: string) {
     const setters = {
-      purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
+      purchase: setPurchaseDocFiles, tabu: setTabuDocFiles, mortgage: setMortgageDocFiles,
       loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
     setters[category](prev => prev.filter(f => f.name !== name))
+    setDocErrors(prev => ({ ...prev, [category]: undefined }))
     // Drop the stored copy too, otherwise a "removed" document would still be linked
     // on finish (and keep occupying storage).
     setDocRefs(prev => {
@@ -691,7 +778,7 @@ export function useOnboardingState(onComplete: () => void) {
     const name = newName.trim()
     if (!name || name === oldName) return
     const setters = {
-      purchase: setPurchaseDocFiles, mortgage: setMortgageDocFiles,
+      purchase: setPurchaseDocFiles, tabu: setTabuDocFiles, mortgage: setMortgageDocFiles,
       loan: setLoanDocFiles, rental: setRentalDocFiles, insurance: setInsuranceDocFiles,
     } as const
     setters[category](prev => prev.map(f =>
@@ -703,7 +790,8 @@ export function useOnboardingState(onComplete: () => void) {
   // rental). Called WITHOUT await from handleFinish so "done" shows immediately; each
   // upload is independent and non-critical, so failures are swallowed (re-uploadable
   // from the Documents screen). Passing userId skips a getUser() round-trip per file.
-  async function uploadOnboardingDocs(userId: string, propertyId: string, contractId: string | null) {
+  async function uploadOnboardingDocs(userId: string, propertyId: string, contractId: string | null): Promise<string[]> {
+    const failed: string[] = []
     const put = async (file: File, type: DocumentType, date: string | null, contract_id: string | null) => {
       try {
         const docId = crypto.randomUUID()
@@ -713,7 +801,7 @@ export function useOnboardingState(onComplete: () => void) {
           contract_id, transaction_id: null,
           type, name: file.name, storage_path: path, date,
         })
-      } catch { /* non-critical — re-uploadable from Documents */ }
+      } catch { failed.push(file.name) }
     }
     // Files picked during the wizard were already uploaded by stashDocs — here we only
     // LINK them (no re-upload, so nothing is stored twice). Anything whose immediate
@@ -725,13 +813,14 @@ export function useOnboardingState(onComplete: () => void) {
           contract_id, transaction_id: null,
           type, name: ref.name, storage_path: ref.path, date,
         })
-      } catch { /* non-critical — re-uploadable from Documents */ }
+      } catch { failed.push(ref.name) }
     }
     const spec: [DocCat, File[], DocumentType, string | null, string | null][] = [
       ['purchase', purchaseDocFiles, 'purchase_contract', signingDate || null, null],
       ['mortgage', mortgageDocFiles, 'mortgage_statement', null, null],
       ['loan', loanDocFiles, 'loan_statement', null, null],
       ['insurance', insuranceDocFiles, 'insurance_policy', null, null],
+      ['tabu', tabuDocFiles, 'tabu_extract', null, null],
       ['rental', rentalDocFiles, 'rental_contract', startDate || null, contractId],
     ]
     const jobs: Promise<void>[] = []
@@ -744,6 +833,7 @@ export function useOnboardingState(onComplete: () => void) {
       for (const f of files) if (!stored.has(f.name)) jobs.push(put(f, type, date, contract_id))
     }
     await Promise.all(jobs)
+    return failed
   }
 
   // ── handleFinish ─────────────────────────────────────────────────────────────
@@ -928,6 +1018,7 @@ export function useOnboardingState(onComplete: () => void) {
               ['mortgage_advisor', parseFloat(costs.mortgage_advisor) || 0],
               ['investment_company', parseFloat(costs.investment_company) || 0],
               ['appraiser', parseFloat(costs.appraiser) || 0],
+              ['purchase_tax', parseFloat(effPurchaseTax) || 0],
             ]
             for (const [key, val] of fixedCosts) {
               if (val > 0) tasks.push(upsertInvestmentCost({ id: hydratedIds.costIds[key], owner_id: user.id, category: key, label: null, amount: val }))
@@ -1089,14 +1180,27 @@ export function useOnboardingState(onComplete: () => void) {
         setError(outcome.errorMessage)
         return   // stay on the step; draft kept; `finally` still resets saving/finishingRef
       }
-      // Document files are supplementary — the app is fully usable without them. Upload
-      // them in the background (not awaited) so the user reaches "done" immediately
-      // instead of waiting on several storage round-trips. They keep uploading while the
-      // user is on the done screen; fetch isn't tied to React so unmount won't abort them.
-      uploadOnboardingDocs(user.id, property.id, contract ? (contract as Contract).id : null)
+      /**
+       * The documents are AWAITED now, and this is the fix for "העלה מסמך, והמסמך נעלם".
+       *
+       * They used to be uploaded fire-and-forget, on the reasoning that fetch is not tied
+       * to React so an unmount cannot abort them. True for a route change — and irrelevant
+       * to the case that actually happens: the wizard is finished on a phone, the person
+       * switches app or closes the tab, and iOS suspends the page mid-flight. The very next
+       * line then deleted the draft, which held docRefs — the only record that the blob
+       * exists in storage and where. Blob orphaned, no row, nothing to retry from, and not
+       * a word to the user.
+       *
+       * A few seconds of "מצרפים את המסמכים…" is a trade worth making for files the user
+       * chose to attach. Anything that still fails is NAMED on the done screen, and the
+       * draft is kept so a retry has something to work from.
+       */
+      const failedDocs = await uploadOnboardingDocs(user.id, property.id, contract ? (contract as Contract).id : null)
+      setDocFailures(failedDocs)
       // C2: data is now persisted server-side — drop the local draft so a later
-      // visit doesn't rehydrate a stale wizard.
-      clearOnboardingDraft(user.id)
+      // visit doesn't rehydrate a stale wizard. Kept when a document did not make it,
+      // because the draft is what remembers where that file already is.
+      if (failedDocs.length === 0) clearOnboardingDraft(user.id)
 
       // The payment plan was built on the purchase step, before the costs were known.
       // Rebuild it now with them, keeping his terms — nothing is marked done during the
@@ -1138,6 +1242,21 @@ export function useOnboardingState(onComplete: () => void) {
     // AUD-001: the finish path enforces the steps' own completeness gate — an
     // incomplete track/loan (saved, or open in a form) raises the dialog instead
     // of being silently dropped or saved with backfilled defaults.
+    if (finishBlockers.length > 0) { setFinishPrompt(true); return }
+    reviewFrom.current = step === 'review' ? reviewFrom.current : step
+    if (anyAiBusy) { setPendingFinish(true); return }
+    advance('review')
+  }
+
+  /**
+   * The actual save, from the review screen's own button.
+   *
+   * Proofreading has to come BEFORE the write: handleFinish guards each section against a
+   * repeat write (savedRef), so a correction made after the save and re-submitted would be
+   * silently dropped. Re-running the blocker check here as well, because the user may have
+   * gone back from the review screen, changed something, and returned.
+   */
+  function confirmFinish() {
     if (finishBlockers.length > 0) { setFinishPrompt(true); return }
     if (anyAiBusy) { setPendingFinish(true); return }
     handleFinish()
@@ -1192,7 +1311,10 @@ export function useOnboardingState(onComplete: () => void) {
     // tracks/fields rather than the stale snapshot from when the user tapped.
     if (pendingFinish && !anyAiBusy) {
       setPendingFinish(false)
-      handleFinish()
+      // Deferred because a document was still being read: land on the review screen, not
+      // in the database — the freshly extracted values are exactly what wants proofreading.
+      if (step === 'review') handleFinish()
+      else advance('review')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingFinish, anyAiBusy])
@@ -1207,7 +1329,7 @@ export function useOnboardingState(onComplete: () => void) {
         step, docRefs, buyerName, street, city, rooms, purchasePrice, signingDate,
         keyDeliveryDate, propertySizeSqm, floorNumber,
         tracks, trackForm, graceOn, showTrackForm, editingIdx,
-        equityMode, equityValue, costs, extraCosts,
+        equityMode, equityValue, costs, extraCosts, singleApartment,
         companyName, startDate, endDate, monthlyRent, rentPaymentMethod,
         rentPaymentDay, addRentReminder,
         policies, policyForm, showPolicyForm, editingPolicyIdx,
@@ -1219,7 +1341,7 @@ export function useOnboardingState(onComplete: () => void) {
     step, docRefs, buyerName, street, city, rooms, purchasePrice, signingDate,
     keyDeliveryDate, propertySizeSqm, floorNumber,
     tracks, trackForm, graceOn, showTrackForm, editingIdx,
-    equityMode, equityValue, costs, extraCosts,
+    equityMode, equityValue, costs, extraCosts, singleApartment,
     companyName, startDate, endDate, monthlyRent, rentPaymentMethod,
     rentPaymentDay, addRentReminder,
     policies, policyForm, showPolicyForm, editingPolicyIdx,
@@ -1276,6 +1398,7 @@ export function useOnboardingState(onComplete: () => void) {
       mortgage_advisor: '5000',
       investment_company: '0',
       appraiser: '2500',
+      purchase_tax: '',   // left blank on purpose: the computed bracket figure is the point
     })
   }
 
@@ -1549,15 +1672,16 @@ export function useOnboardingState(onComplete: () => void) {
     mortgageDocRef, mortgageAiBusy, mortgageAiErr, mortgageAiDone, aiFillMortgage,
     loanDocRef, loanAiBusy, loanAiErr, loanAiDone, aiFillLoans,
     // AI purchase + rental fill
-    purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
+    purchaseAiBusy, purchaseAiErr, purchaseAiDone, purchaseAiKept, rentalAiKept, aiFillPurchase,
     rentalAiBusy, rentalAiErr, rentalAiDone, aiFillRental,
     // Uploaded document files per category + remove (documents step manage view)
     purchaseDocFiles, mortgageDocFiles, loanDocFiles, rentalDocFiles, removeDocFile, renameDocFile, docRefs, docAttachments,
-    insuranceDocFiles, addInsuranceDocs,
+    insuranceDocFiles, addInsuranceDocs, addTabuDocs,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
     equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,
     costs, setCosts, extraCosts, setExtraCosts,
+    singleApartment, setSingleApartment, effPurchaseTax, taxDefault, effLawyer, effBrokerage,
     balloonLoans, setBalloonLoans, balloonTotal,
     // focused input
     focusedInput, setFocusedInput,
@@ -1579,7 +1703,8 @@ export function useOnboardingState(onComplete: () => void) {
     loanIsValid, loanDraftRate, loanTypeLabel,
     loansMonthlyPrincipal, loansBalloonTotal,
     // submit
-    handleFinish, requestFinish, anyAiBusy, pendingFinish,
+    handleFinish, requestFinish, confirmFinish, anyAiBusy, pendingFinish,
+    docErrors, docFailures,
     finishPrompt, finishBlockers, dismissFinishPrompt, finishPromptBackToComplete, finishPromptContinueWithout,
     // dev fill
     fillTestPurchase, fillTestMortgage, fillTestInvestment,

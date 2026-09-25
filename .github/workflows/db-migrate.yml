@@ -1,0 +1,123 @@
+name: Apply a DB migration
+
+# Schema changes were the last part of the stack still applied by hand, from the owner's
+# own machine — the same gap that used to keep edge-function fixes sitting merged for weeks
+# (see deploy-functions.yml). This closes it, with two deliberate limits:
+#
+#  * MANUAL ONLY. A schema change must never ride along with a push; someone has to ask
+#    for it, name the file, and type the project ref to confirm.
+#  * ONE FILE AT A TIME, named explicitly. This is not a migration runner that diffs the
+#    database and decides what is missing — getting that wrong against a shared production
+#    database is worse than doing it by hand.
+#
+# It runs the SQL through the Supabase Management API, which needs only the personal access
+# token already stored for the function deploy. It does NOT write to
+# supabase_migrations.schema_migrations, so a later `supabase db push` from the owner's
+# machine will re-apply the same file. Every migration applied this way must therefore be
+# idempotent, and the job refuses to run one that does not look it.
+#
+# NOTE: staging and production share ONE Supabase project. There is no such thing as
+# applying this "to staging only".
+
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: 'Migration file under supabase/migrations/ (e.g. 050_purchase_plans.sql)'
+        required: true
+        type: string
+      confirm_project_ref:
+        description: 'Type the project ref to confirm: bjholzkesnzkbogxmurw'
+        required: true
+        type: string
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_REF: bjholzkesnzkbogxmurw
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Confirm the target
+        run: |
+          if [ "${{ inputs.confirm_project_ref }}" != "$PROJECT_REF" ]; then
+            echo "::error::Confirmation does not match the project ref. Nothing was run."
+            exit 1
+          fi
+
+      - name: Check the file
+        id: check
+        run: |
+          FILE="supabase/migrations/${{ inputs.file }}"
+          case "${{ inputs.file }}" in
+            */*|..*) echo "::error::Pass a bare file name, not a path."; exit 1 ;;
+          esac
+          if [ ! -f "$FILE" ]; then
+            echo "::error::$FILE does not exist on this ref."
+            exit 1
+          fi
+          # Re-application has to be a no-op, because this path does not record the
+          # migration and the owner's own `db push` will run it again.
+          if ! grep -qiE 'if not exists|if exists|or replace' "$FILE"; then
+            echo "::error::$FILE has no idempotency guard (if not exists / if exists / or replace). Refusing."
+            exit 1
+          fi
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          echo "--- SQL to be applied ---"
+          cat "$FILE"
+
+      - name: Apply
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          # Through the environment, never interpolated into the script: the value comes
+          # from a workflow input.
+          MIGRATION_FILE: ${{ steps.check.outputs.file }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is not set."
+            exit 1
+          fi
+          # One transaction: a migration that fails half-way leaves nothing behind.
+          # Built by concatenation rather than printf, so a '%' anywhere in the SQL cannot
+          # be read as a format specifier.
+          SQL="begin;
+          $(cat "$MIGRATION_FILE")
+          commit;"
+          BODY=$(jq -nc --arg q "$SQL" '{query: $q}')
+          CODE=$(curl -sS -o /tmp/out.json -w '%{http_code}' \
+            -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary "$BODY")
+          echo "HTTP $CODE"
+          cat /tmp/out.json
+          echo
+          if [ "$CODE" -ge 300 ]; then
+            echo "::error::The migration was rejected. Nothing was committed."
+            exit 1
+          fi
+
+      - name: Report the schema afterwards
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          # Read back what exists now, rather than trusting the call above, and print the
+          # last recorded migration versions so the CLI's numbering convention is visible
+          # for whoever wires the bookkeeping later.
+          q() {
+            jq -nc --arg q "$1" '{query: $q}' | curl -sS \
+              -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Content-Type: application/json' --data-binary @-
+          }
+          echo "--- tables created by this migration ---"
+          q "select table_name from information_schema.tables where table_schema='public' order by table_name desc limit 12"
+          echo
+          echo "--- last recorded migration versions ---"
+          q "select version from supabase_migrations.schema_migrations order by version desc limit 5"
+          echo

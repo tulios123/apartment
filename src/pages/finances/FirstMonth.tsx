@@ -54,15 +54,15 @@ export function FirstMonth({ keyDate, contracts, tracks, loans, policies }: {
   }, [user, monthKey])
 
   const first = useMemo(
-    () => monthlyVirtualEntries(contracts, tracks, y, m, loans, policies),
-    [contracts, tracks, y, m, loans, policies],
+    () => monthlyVirtualEntries(contracts, tracks, y, m, loans, policies, keyDate),
+    [contracts, tracks, y, m, loans, policies, keyDate],
   )
   // The month after — the steady state, which is what "כמה עולה חודש" really asks.
   const nextY = m === 12 ? y + 1 : y
   const nextM = m === 12 ? 1 : m + 1
   const steady = useMemo(
-    () => monthlyVirtualEntries(contracts, tracks, nextY, nextM, loans, policies),
-    [contracts, tracks, nextY, nextM, loans, policies],
+    () => monthlyVirtualEntries(contracts, tracks, nextY, nextM, loans, policies, keyDate),
+    [contracts, tracks, nextY, nextM, loans, policies, keyDate],
   )
 
   const sum = (rows: typeof first, dir: 'income' | 'expense') =>

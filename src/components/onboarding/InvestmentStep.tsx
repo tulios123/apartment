@@ -1,5 +1,6 @@
 import { useId, useState, type ChangeEvent } from 'react'
 import { sanitizeAmountInt } from '../../lib/format'
+import { purchaseTax, taxBreakdown } from '../../lib/purchaseTax'
 import { Coins, X } from '@phosphor-icons/react'
 import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
@@ -18,8 +19,20 @@ export function InvestmentStep() {
     derivedEquityAmount, derivedEquityPct,
     balloonLoans, setBalloonLoans, balloonTotal,
     costs, setCosts, extraCosts, setExtraCosts, costsTotal,
+    singleApartment, setSingleApartment, taxDefault,
     fillTestInvestment,
   } = useOnboarding()
+
+  // The tax brackets, folded. The number itself is the answer; the ladder is there for
+  // the one person in ten who wants to check it against the Tax Authority's calculator.
+  const [showBrackets, setShowBrackets] = useState(false)
+  // The rarer costs start folded — unless this account already has one, in which case
+  // hiding it would be hiding data. Derived rather than initial state on purpose:
+  // hydrating an existing account fills `costs` AFTER mount, and a lazy initializer would
+  // have missed it and folded away numbers the user had already entered.
+  const [showMoreManual, setShowMoreManual] = useState(false)
+  const showMore = showMoreManual
+    || !!(costs.mortgage_advisor || costs.investment_company || costs.appraiser || extraCosts.length)
 
   // Which balloon row is expanded for editing; others collapse to a compact summary
   // so the list stays tidy as more family lenders are added.
@@ -170,20 +183,82 @@ export function InvestmentStep() {
             onBlur: () => setFocusedInput(null),
             onChange: (e: ChangeEvent<HTMLInputElement>) => onChange(sanitizeAmountInt(e.target.value)),
           })
+          /** His own figure as a share of the price, once he has overridden the estimate. */
+          const costHint = (raw: string, formula: string) => {
+            const v = Number(raw)
+            if (!(v > 0) || !(price > 0)) return formula
+            return `${(v / price * 100).toFixed(2)}% ממחיר הדירה`
+          }
           return (
             <>
+              {/* מס רכישה — Omer's note 5: the costs step asked about the lawyer and the
+                  agent and never mentioned the one cost fixed by law, which is usually the
+                  largest of them. Same contract as the lawyer fee (owner 21.09): computed,
+                  itemised, and editable. It sits first because it is the biggest. */}
+              <div className="onboarding-field onboarding-tax">
+                <label htmlFor={fid('c.purchase_tax')}>מס רכישה (₪)</label>
+<div className="toggle-group onboarding-tax-toggle-group">
+                  <button type="button" className={`toggle-btn${singleApartment ? ' active' : ''}`}
+                    onClick={() => setSingleApartment(true)}>דירה יחידה</button>
+                  <button type="button" className={`toggle-btn${!singleApartment ? ' active' : ''}`}
+                    onClick={() => setSingleApartment(false)}>דירה נוספת</button>
+                </div>
+                <input {...inp('c.purchase_tax', costs.purchase_tax, taxDefault, v => setCosts(c => ({ ...c, purchase_tax: v })))} />
+                {price > 0 ? (
+                  <>
+                    <button type="button" className="onboarding-tax-toggle" onClick={() => setShowBrackets(b => !b)}>
+                      {showBrackets ? 'הסתר את המדרגות' : 'איך חושב?'}
+                    </button>
+                    {showBrackets && (
+                      <div className="onboarding-tax-brackets">
+                        {taxBreakdown(price, singleApartment).map((b, i) => (
+                          <div key={i} className="onboarding-tax-bracket">
+                            <span>{b.label}</span>
+                            <b>{formatCurrency(b.amount)}</b>
+                          </div>
+                        ))}
+                        <div className="onboarding-tax-bracket onboarding-tax-bracket-sum">
+                          <span>{singleApartment ? 'דירה יחידה' : 'דירה נוספת'} · סה״כ</span>
+                          <b>{formatCurrency(purchaseTax(price, singleApartment))}</b>
+                        </div>
+                        <p className="onboarding-field-hint">
+                          לפי מדרגות מס הרכישה התקפות היום. המחשבון של רשות המסים הוא המילה האחרונה.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span className="onboarding-field-hint">יחושב אוטומטית ברגע שיוזן מחיר רכישה</span>
+                )}
+              </div>
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label htmlFor={fid('c.lawyer')}>עורך דין (₪)</label>
                   <input {...inp('c.lawyer', costs.lawyer, lawyerDef, v => setCosts(c => ({ ...c, lawyer: v })))} />
-                  <span className="onboarding-field-hint">0.5% + ₪1,000 + מע"מ 18%</span>
+                  {/* The hint describes the ESTIMATE's formula. Once his own number is in
+                      the box it stopped describing anything on screen but stayed anyway
+                      (Omer, note 6), so past that point it says what his number actually
+                      is as a share of the price. */}
+                  <span className="onboarding-field-hint">{costHint(costs.lawyer, '0.5% + ₪1,000 + מע"מ 18%')}</span>
                 </div>
                 <div className="onboarding-field">
                   <label htmlFor={fid('c.brokerage')}>דמי תיווך (₪)</label>
                   <input {...inp('c.brokerage', costs.brokerage, brokerageDef, v => setCosts(c => ({ ...c, brokerage: v })))} />
-                  <span className="onboarding-field-hint">2% + מע"מ 18%</span>
+                  <span className="onboarding-field-hint">{costHint(costs.brokerage, '2% + מע"מ 18%')}</span>
                 </div>
               </div>
+              {/* The three costs nearly everyone has are above; these are the ones most
+                  people leave at zero. Folding them is the "מה שאפשר לקפל לקפל" half of the
+                  owner's answer on shortening the wizard (21.09) — the step loses four empty
+                  boxes without losing a field. Opens by itself when any of them has a value,
+                  so a returning account never has data hidden behind a caret. */}
+              {!showMore && (
+                <button type="button" className="btn-onboard-skip onboarding-add-btn"
+                  onClick={() => setShowMoreManual(true)}>
+                  + עלויות נוספות (יועץ, ליווי, שמאי)
+                </button>
+              )}
+              {showMore && <>
               <div className="onboarding-row">
                 <div className="onboarding-field">
                   <label htmlFor={fid('c.advisor')}>יועץ משכנתאות (₪)</label>
@@ -233,6 +308,7 @@ export function InvestmentStep() {
                 onClick={() => setExtraCosts(prev => [...prev, { name: '', amount: '' }])}>
                 + הוסף עלות
               </button>
+              </>}
             </>
           )
         })()}

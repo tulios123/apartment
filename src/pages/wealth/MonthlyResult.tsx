@@ -14,6 +14,12 @@ interface Props {
   monthlyPrincipal: number
   /** Estimated average monthly maintenance (trailing), 0 if unknown. */
   monthlyMaintenance: number
+  /**
+   * This month's insurance premium. It was simply absent here — the screen never loaded
+   * the policies — so this card and the תזרים screen each announced "the real profit" for
+   * the same month and differed by exactly the premium (night run C2-B).
+   */
+  monthlyInsurance: number
 }
 
 /**
@@ -22,12 +28,12 @@ interface Props {
  * builds equity. So the honest monthly result is rent − interest − upkeep, and
  * the principal is surfaced separately as money that came back to you.
  */
-export default function MonthlyResult({ monthlyRent, mortgageInterest, loansInterest, monthlyPrincipal, monthlyMaintenance }: Props) {
+export default function MonthlyResult({ monthlyRent, mortgageInterest, loansInterest, monthlyPrincipal, monthlyMaintenance, monthlyInsurance }: Props) {
   const monthlyInterest = mortgageInterest + loansInterest
   if (monthlyRent <= 0 && monthlyInterest <= 0) return null
 
-  const realProfit = monthlyRent - monthlyInterest - monthlyMaintenance
-  const cashFlow = monthlyRent - monthlyInterest - monthlyPrincipal - monthlyMaintenance
+  const realProfit = monthlyRent - monthlyInterest - monthlyMaintenance - monthlyInsurance
+  const cashFlow = monthlyRent - monthlyInterest - monthlyPrincipal - monthlyMaintenance - monthlyInsurance
 
   return (
     <section className="wlth-card wlth-result">
@@ -52,6 +58,12 @@ export default function MonthlyResult({ monthlyRent, mortgageInterest, loansInte
           <div className="wlth-result-row">
             <span><i className="wlth-cf-dot out" /> ריבית ההלוואות</span>
             <strong className="out">−{fmt(loansInterest)}</strong>
+          </div>
+        )}
+        {monthlyInsurance > 0 && (
+          <div className="wlth-result-row">
+            <span><i className="wlth-cf-dot out" /> ביטוח</span>
+            <strong className="out">−{fmt(monthlyInsurance)}</strong>
           </div>
         )}
         {monthlyMaintenance > 0 && (

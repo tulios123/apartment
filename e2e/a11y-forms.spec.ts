@@ -84,6 +84,11 @@ test('שמות נגישים — הטפסים שמאחורי הקשה', async ({ 
   await next(page)                                   // → purchase
   await scan('אשף · פרטי רכישה')
 
+  // The purchase price is required since 21.09 — without it this walk never leaves the
+  // step, and every scan below silently becomes a re-scan of this one.
+  await page.getByLabel(/מחיר רכישה/).fill('2180000')
+  await page.waitForTimeout(250)
+
   await next(page)                                   // → mortgage
   await page.getByRole('button', { name: '+ הוסף מסלול' }).click()
   await page.waitForTimeout(500)

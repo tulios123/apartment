@@ -70,6 +70,20 @@ export async function stubSupabase(page: Page, fixture: Fixture) {
     return json(route, SESSION)
   })
 
+  /**
+   * Storage. Until now nothing routed it, so every upload in every walk quietly failed
+   * against the real host — which the wizard also quietly swallowed, so no spec ever
+   * noticed. Now that a failed upload is surfaced to the user, a walk that means to
+   * exercise the SUCCESS path needs storage to succeed. A spec that wants the failure
+   * overrides this with its own route (see doc-upload-failure.spec.ts).
+   */
+  await page.route('**/storage/v1/**', (route) => {
+    const url = route.request().url()
+    const path = decodeURIComponent(url.split('/storage/v1/object/')[1]?.split('?')[0] ?? 'stub/path')
+    if (route.request().method() === 'DELETE') return json(route, {})
+    return json(route, { Id: 'stub-id', Key: path })
+  })
+
   await page.route('**/rest/v1/**', (route) => {
     const method = route.request().method()
     const table = tableOf(route.request().url())

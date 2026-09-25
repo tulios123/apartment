@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { PencilSimple, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { PencilSimple, CaretLeft, CaretRight, Question } from '@phosphor-icons/react'
 import InvestmentCosts from '../property/InvestmentCosts'
 import LiabilitiesV2 from '../liabilities/LiabilitiesV2'
 import OwnershipScore from './OwnershipScore'
@@ -14,7 +14,8 @@ import { useMortgageData } from '../../hooks/useMortgageData'
 import { useInvestmentData } from '../../hooks/useInvestmentData'
 import { useLoansData } from '../../hooks/useLoansData'
 import { currentSplitInfo, futureSplit, principalNext12Months, interestNext12Months, splitForMonth } from '../../lib/equity'
-import { formatCurrency, todayISO, daysBetween } from '../../lib/format'
+import { formatCurrency, todayISO, daysBetween, monthEndISO } from '../../lib/format'
+import { useInsurance } from '../../hooks/useInsurance'
 import { activeContract as findActiveContract } from '../../lib/projections'
 import { possession } from '../../lib/stage'
 import { loadPlan } from '../../lib/purchasePlan'
@@ -31,11 +32,14 @@ export default function WealthHub() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
+  const [yieldHelp, setYieldHelp] = useState(false)
 
   const { property, contracts, loading: loadingProp, error: errProp, refetch: refetchProp } = usePropertyData()
   const { tracks, summary, loading: loadingMortgage, error: errMortgage, refetch: refetchMortgage } = useMortgageData()
   const { costs, totalInvested, rentReceived, interestPaid, maintenance, loading: loadingInv, error: errInv, refetch: refetchInv } = useInvestmentData()
   const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingLoans, error: errLoans, refetch: refetchLoans } = useLoansData()
+  // Loaded here for the first time — see the note on monthlyInsurance below.
+  const { policies } = useInsurance()
 
   // Before the key nothing on this screen has happened yet: no payment has been made, the
   // mortgage has not been drawn, and the flat is not part-owned. Judgement is therefore
@@ -68,8 +72,55 @@ export default function WealthHub() {
   const future5y = futureSplit(tracks, monthlyLoans, 60)
   const annualPrincipal = principalNext12Months(tracks, monthlyLoans)
 
+  /**
+   * In a grace period the bank takes interest only: nothing at all is converted to equity.
+   * The accelerator — whose entire subject is how much of each payment builds equity —
+   * therefore showed "בונה הון ₪0 (0%)" beside a full interest bar, as if the owner were
+   * choosing badly rather than being in a window where the choice does not exist yet
+   * (Omer, note 19). The owner's call (21.09): hide it during grace, with a line that can
+   * be expanded.
+   *
+   * Detected from the schedule rather than from grace_months, so it is right for every
+   * reason a month can be interest-only, and the resume month is found by asking the
+   * schedule when principal next appears — which is the honest answer to "from when".
+   */
+  const inGrace = split.total > 0 && split.principal <= 0
+  const accelResumes = useMemo(() => {
+    if (!inGrace) return null
+    const [y, m] = splitMonth.split('-').map(Number)
+    for (let i = 1; i <= 36; i++) {
+      const d = new Date(y, m - 1 + i, 1)
+      const mm = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (splitForMonth(tracks, monthlyLoans, mm).principal > 0) return mm
+    }
+    return null
+  }, [inGrace, splitMonth, tracks, monthlyLoans])
+
   const activeContract = findActiveContract(contracts)
   const monthlyRent = activeContract?.monthly_rent ?? 0
+
+  /**
+   * Insurance — the expense this screen did not know existed.
+   *
+   * WealthHub never loaded the policies, so "הרווח החודשי האמיתי" was rent minus interest
+   * minus upkeep, with the premium missing, while the תזרים screen counted it (the forecast
+   * engine has always included it). The two screens each announced "the real profit" for the
+   * same month and gave answers 110 apart — night run C2-B, and the owner cleared this one
+   * to fix on 21.09.
+   *
+   * Not a redefinition: תזרים is the reference and this brings Wealth to it. The same figure
+   * also enters the annual cash used by the yields below, because a card and a yield on ONE
+   * screen disagreeing about whether insurance exists would be worse than the original bug.
+   *
+   * Active-in-month test mirrors monthlyVirtualEntries exactly, so the two engines can't
+   * drift on which policies count.
+   */
+  const monthStart = `${todayISO().slice(0, 7)}-01`
+  const monthEnd = monthEndISO(Number(todayISO().slice(0, 4)), Number(todayISO().slice(5, 7)))
+  const monthlyInsurance = policies.reduce((s, p) => {
+    const active = (!p.start_date || p.start_date <= monthEnd) && (!p.end_date || p.end_date >= monthStart)
+    return s + (active ? (Number(p.monthly_premium) || 0) : 0)
+  }, 0)
   const grossYield = propertyValue > 0 && monthlyRent > 0 ? (monthlyRent * 12 / propertyValue) * 100 : null
 
   // ── Return on the equity you actually put in (cash-on-cash + total) ──────────
@@ -81,21 +132,42 @@ export default function WealthHub() {
   const yearsHeld = property?.purchase_date ? Math.max(1, daysBetween(property.purchase_date, todayISO()) / 365) : 0
   const annualMaintenance = yearsHeld > 0 ? maintenance / yearsHeld : 0
   const monthlyMaintenance = annualMaintenance / 12
-  const netCashAnnual = annualRent - annualInterest - annualMaintenance
-  // Owner (20.07): return on the NET equity — property value minus all debt
-  // (mortgage + loans + balloon), i.e. the "הון עצמי נטו" shown at the top — not the
-  // cash originally invested. "תזרים" is cash-on-cash (principal excluded); "כולל
-  // בניית-הון" adds the principal repaid this year (the equity you build).
-  const netEquity = propertyValue - bankDebt - balloon
-  const canRoe = netEquity > 0 && monthlyRent > 0
-  const roeCash = canRoe ? (netCashAnnual / netEquity) * 100 : null
-  const roeTotal = canRoe ? ((netCashAnnual + annualPrincipal) / netEquity) * 100 : null
+  const netCashAnnual = annualRent - annualInterest - annualMaintenance - monthlyInsurance * 12
+  /**
+   * Return on THE MONEY THAT WENT IN — the owner's decision, 24.09.
+   *
+   * It used to be measured against current net equity (property value minus all debt),
+   * which has a property nobody wants from a yield: as the mortgage is repaid the equity
+   * grows, so the yield FALLS every month while nothing about the deal has changed. A
+   * re-valuation of the flat moved it too, so "how hard is my money working" was answering
+   * a question about the market rather than about the investment.
+   *
+   * The denominator is now `totalInvested` — equity plus every purchase cost, exactly the
+   * figure the cash-flow card on this screen already calls "הון עצמי ועלויות רכישה". It is
+   * fixed once the purchase is done, which is what makes the yield comparable to itself
+   * over time and to any other investment.
+   *
+   * "תזרים בלבד" stays cash-on-cash (principal excluded, because it is not a cost);
+   * "כולל בניית הון" adds back the principal repaid this year.
+   */
+  const canRoe = totalInvested > 0 && monthlyRent > 0
+  const roeCash = canRoe ? (netCashAnnual / totalInvested) * 100 : null
+  const roeTotal = canRoe ? ((netCashAnnual + annualPrincipal) / totalInvested) * 100 : null
 
   // Cumulative cash view: everything that went out (equity + costs + interest +
   // maintenance) vs. rent collected so far. Net is pure cash, ignoring property value.
   const totalOut = totalInvested + interestPaid + maintenance
   const cashNet = rentReceived - totalOut
   const hasCashflow = totalOut > 0 || rentReceived > 0
+
+  /**
+   * With no principal repaid this year, "תזרים בלבד" and "כולל בניית הון" are the same
+   * number by construction — there is nothing to add back. Showing both is then two labels
+   * for one figure, which is the shape of Omer's note 17 (three rows reading 2.5%). Under
+   * the old denominator the gross yield collapsed into them as well; it no longer does, so
+   * only the pair folds.
+   */
+  const noPrincipalYet = annualPrincipal <= 0
 
   const hasData = propertyValue > 0 || mortgageBalance > 0 || balloon > 0
 
@@ -163,6 +235,8 @@ export default function WealthHub() {
               future5yPrincipal={future5y.principal}
               annualPrincipal={annualPrincipal}
               fromMonth={split.isCurrentMonth ? null : split.month}
+              inGrace={inGrace}
+              resumesMonth={accelResumes}
             />
           )}
 
@@ -173,6 +247,7 @@ export default function WealthHub() {
               loansInterest={loansSplit.interest}
               monthlyPrincipal={split.principal}
               monthlyMaintenance={monthlyMaintenance}
+              monthlyInsurance={monthlyInsurance}
             />
           )}
 
@@ -225,14 +300,47 @@ export default function WealthHub() {
               (owner, 20.07). Gross yield + monthly rent aren't shown elsewhere. */}
           {!awaitingKey && (grossYield != null || monthlyRent > 0 || roeCash != null) && (
             <section className="wlth-card">
-              <div className="wlth-card-head"><h2>תשואות</h2></div>
+              <div className="wlth-card-head">
+                <h2>תשואות</h2>
+                <button type="button" className="wlth-yield-help" aria-expanded={yieldHelp}
+                  aria-label="מה ההבדל בין התשואות" onClick={() => setYieldHelp(h => !h)}>
+                  <Question size={16} weight="bold" />
+                </button>
+              </div>
               <div className="wlth-yields">
-                {roeCash != null && <div><span>על ההון העצמי<br />תזרים בלבד</span><strong>{roeCash.toFixed(1)}%</strong></div>}
-                {roeTotal != null && <div><span>על ההון העצמי<br />כולל בניית הון</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
+                {/* With nothing being repaid this year the two equity yields are one number
+                    wearing two labels — there is no principal to add back. That is the
+                    shape of Omer's note 17 (three rows reading 2.5%), so in that state the
+                    card says it once. */}
+                {noPrincipalYet
+                  ? (roeCash != null && <div><span>על מה שהשקעת<br />תזרים</span><strong>{roeCash.toFixed(1)}%</strong></div>)
+                  : (<>
+                      {roeCash != null && <div><span>על מה שהשקעת<br />תזרים בלבד</span><strong>{roeCash.toFixed(1)}%</strong></div>}
+                      {roeTotal != null && <div><span>על מה שהשקעת<br />כולל בניית הון</span><strong>{roeTotal.toFixed(1)}%</strong></div>}
+                    </>)}
                 {grossYield != null && <div><span>ברוטו<br />על שווי הנכס</span><strong>{grossYield.toFixed(1)}%</strong></div>}
                 {monthlyRent > 0 && <div><span>שכר דירה<br />חודשי</span><strong>{fmt(monthlyRent)}</strong></div>}
               </div>
-              {roeCash != null && <p className="wlth-yield-note">ההון העצמי = שווי הנכס בניכוי כל החוב (משכנתא, הלוואות, בלון).</p>}
+              {yieldHelp && (
+                <div className="wlth-yield-help-body">
+                  <p><b>ברוטו</b> — שכר הדירה השנתי חלקי שווי הנכס. לא מתחשב בריבית, בביטוח, באחזקה או בחוב.</p>
+                  <p><b>על מה שהשקעת{noPrincipalYet ? '' : ' · תזרים בלבד'}</b> — מה שנשאר ביד בשנה (שכר דירה פחות ריבית, ביטוח ואחזקה), חלקי הכסף שיצא מהכיס.</p>
+                  {!noPrincipalYet && (
+                    <p><b>על מה שהשקעת · כולל בניית הון</b> — אותו דבר, ובתוספת החזר הקרן: הקרן היא חיסכון, לא הוצאה.</p>
+                  )}
+                  {noPrincipalYet && (
+                    <p className="muted">השנה עוד לא נפרעת קרן (משכנתא שטרם נמשכה, או תקופת גרייס), ולכן אין מה להוסיף — "תזרים" ו"כולל בניית הון" יוצאים זהים ומוצגים פעם אחת.</p>
+                  )}
+                  <p className="muted">
+                    "מה שהשקעת" = ההון העצמי ועלויות הרכישה, {fmt(totalInvested)}. סכום קבוע — ולכן התשואה ניתנת להשוואה לעצמה לאורך זמן ולכל השקעה אחרת.
+                  </p>
+                </div>
+              )}
+              {/* The standing footnote says the same thing the open (?) says at more length —
+                  printing both puts the definition on screen twice. */}
+              {!yieldHelp && roeCash != null && (
+                <p className="wlth-yield-note">מדוד מול {fmt(totalInvested)} — ההון העצמי ועלויות הרכישה.</p>
+              )}
             </section>
           )}
 

@@ -71,3 +71,37 @@ test('הכפתורים הצפים — מה באמת מתחתיהם', async ({ pa
   console.log('\n=== מה יושב מתחת לכפתורים הצפים ===\n' + report.join('\n') + '\n')
   expect(report.length).toBeGreaterThan(0)
 })
+
+/**
+ * …and the fix: does scrolling down actually get it out of the way?
+ *
+ * The complaint was specifically about the bottom of a page — on Settings the bubble sat
+ * on the word "פרטיות", a link you could read and could not tap. Reaching the bottom of
+ * any page means scrolling down, so hiding on downward scroll is what clears it; scrolling
+ * back up has to bring it straight back, or the feature is just a disappearing button.
+ */
+test('הנורה מתפנה בגלילה למטה וחוזרת בגלילה למעלה', async ({ page }) => {
+  await setTheme(page, 'light')
+  await stubSupabase(page, account(217, 60))
+  await page.goto('/settings')
+  const fab = page.locator('.fb-fab')
+  await fab.waitFor({ state: 'visible', timeout: 30_000 })
+  await page.waitForTimeout(600)
+
+  // Near the top it stays put — there is nothing under it there.
+  await expect(fab, 'visible before any scrolling').toBeVisible()
+
+  const scrollable = await page.evaluate(() =>
+    document.documentElement.scrollHeight - window.innerHeight)
+  test.skip(scrollable < 200, 'settings does not scroll at this viewport — nothing to test')
+
+  // Down to the bottom, where the footer links live.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  await page.waitForTimeout(500)
+  await expect(fab, 'the bubble must clear the footer once you scroll down to it').toBeHidden()
+
+  // …and back up.
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.waitForTimeout(500)
+  await expect(fab, 'scrolling back up must bring it back — it is the only way in').toBeVisible()
+})

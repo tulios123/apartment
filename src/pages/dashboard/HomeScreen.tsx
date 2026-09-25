@@ -24,7 +24,7 @@ import { possession } from '../../lib/stage'
 import { HandoverMoment } from './HandoverMoment'
 import { PurchaseMap } from '../purchase/PurchaseMap'
 import { PlanSetup } from '../purchase/PlanSetup'
-import { loadPlan, savePlan, nextStep, type PurchasePlan } from '../../lib/purchasePlan'
+import { loadPlan, savePlan, syncPlan, nextStep, type PurchasePlan } from '../../lib/purchasePlan'
 import '../purchase/purchase.css'
 import { RENT_CATEGORIES, MORTGAGE_CATEGORIES, RENEWAL_WINDOW_DAYS } from '../../lib/constants'
 import { taskCompletionFollowup, type TaskFollowup } from '../../lib/taskFollowup'
@@ -105,11 +105,20 @@ export default function HomeScreen() {
   const awaitingKey = possession(property?.key_delivery_date, todayStr) === 'awaiting_key'
 
   // The payment plan — the centre of this stage (docs/specs/purchase-stage.md). Stored
-  // locally for now and read through lib/purchasePlan, so moving it to Postgres later
-  // touches that module alone.
+  // read through lib/purchasePlan. Since 24.09 it lives in Postgres with localStorage as
+  // its cache, so the read below is still synchronous and instant; `syncPlan` reconciles
+  // the two once per session and hands back whichever copy is newer. That is what makes a
+  // plan survive a cleared browser, a new phone, or a laptop.
   const [plan, setPlan] = useState<PurchasePlan | null>(null)
   const [planSetup, setPlanSetup] = useState(false)
-  useEffect(() => { if (user?.id) setPlan(loadPlan(user.id)) }, [user?.id])
+  useEffect(() => {
+    if (!user?.id) return
+    const uid = user.id
+    setPlan(loadPlan(uid))               // cached copy, immediately
+    let alive = true
+    void syncPlan(uid).then(p => { if (alive) setPlan(p) })
+    return () => { alive = false }
+  }, [user?.id])
   const commitPlan = (p: PurchasePlan) => { setPlan(p); if (user?.id) savePlan(user.id, p) }
 
   // The rent prompt must not appear before the rent is payable: with a post-dated
@@ -120,7 +129,16 @@ export default function HomeScreen() {
     const item = recurringItems.find(i => i.contract_id === activeContract?.id && i.direction === 'income')
     return rentPaymentDay({ dayOfMonth: item?.day_of_month ?? null, startDate: activeContract?.start_date })
   }, [recurringItems, activeContract])
-  const rentPayable = isRentPayable(todayStr, rentDueDay)
+  // …and it must not appear before the keys exist. A lease dated to start before handover
+  // is normal, but the tenant is not paying yet — asking "was the rent received?" then is
+  // asking about money that cannot have arrived (Omer, notes 11+16). Same due-date rule as
+  // the forecast engine (projections.rentDue), computed on this month's own payment day.
+  const rentStarted = useMemo(() => {
+    const handover = property?.key_delivery_date
+    if (!handover) return true
+    return `${todayStr.slice(0, 7)}-${String(rentDueDay).padStart(2, '0')}` >= handover
+  }, [property?.key_delivery_date, todayStr, rentDueDay])
+  const rentPayable = isRentPayable(todayStr, rentDueDay) && rentStarted
   // A5: derive the fixed forecast from the SAME source the Finances ledger uses
   // (monthlyVirtualEntries) — mortgage + loans (schedule-bounded, so grace / paid-off
   // tracks are correct) + insurance. This guarantees the "צפי לסוף החודש" here matches
@@ -132,13 +150,13 @@ export default function HomeScreen() {
   // the opposite by omission — its headline is rent minus the WHOLE payment, so a good
   // month reads as a loss of roughly the principal (brains-tour, 08.09).
   const { fixedExpenses, fixedPrincipal } = useMemo(() => {
-    const rows = monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies)
+    const rows = monthlyVirtualEntries(contracts, tracks, fYear, fMonth, loans, policies, property?.key_delivery_date)
       .filter(e => e.direction === 'expense')
     return {
       fixedExpenses: rows.reduce((s, e) => s + e.amount, 0),
       fixedPrincipal: rows.reduce((s, e) => s + (e.principal ?? 0), 0),
     }
-  }, [contracts, tracks, loans, policies, fYear, fMonth])
+  }, [contracts, tracks, loans, policies, fYear, fMonth, property?.key_delivery_date])
 
   // ── This month's reality ──
   const rentReceived = transactions

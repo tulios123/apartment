@@ -187,3 +187,58 @@ describe('monthlyVirtualEntries — R7: overlapping contracts project ONE rent r
     expect(rents[0].amount).toBe(5000)
   })
 })
+
+/**
+ * Omer's notes 11+16 — the rule the owner approved on 21.09.
+ *
+ * He signed a lease that starts before the key-delivery date (the ordinary shape of a
+ * purchase with a sitting tenant) and the app showed him ₪22,500 of rent income on an
+ * apartment that was not yet his. A rent payment counts only if it falls due ON or AFTER
+ * handover; the forecast and the received total must agree on which month that is.
+ */
+describe('rent starts at handover, not at the lease date', () => {
+  const lease = contract({ start_date: '2026-01-01', end_date: '2027-01-01', monthly_rent: 5000 })
+
+  it('no handover date leaves every existing total untouched', () => {
+    expect(rentReceivedToDate([lease], new Date(2026, 5, 15))).toBe(6 * 5000)
+    expect(rentReceivedToDate([lease], new Date(2026, 5, 15), null)).toBe(6 * 5000)
+  })
+
+  it('a handover already past changes nothing either', () => {
+    expect(rentReceivedToDate([lease], new Date(2026, 5, 15), '2025-11-01')).toBe(6 * 5000)
+  })
+
+  it('drops every payment due before handover', () => {
+    // Jan–Jun due on the 1st; handover 01.04 ⇒ only Apr, May, Jun count.
+    expect(rentReceivedToDate([lease], new Date(2026, 5, 15), '2026-04-01')).toBe(3 * 5000)
+  })
+
+  it('a handover still in the future means no rent at all — the 22,500 case', () => {
+    expect(rentReceivedToDate([lease], new Date(2026, 5, 15), '2026-12-01')).toBe(0)
+  })
+
+  it('the forecast drops the same months the received total drops', () => {
+    const rentRow = (m: number, handover?: string | null) =>
+      monthlyVirtualEntries([lease], [], 2026, m, [], [], handover).find(e => e.direction === 'income')
+    expect(rentRow(3, '2026-04-01')).toBeUndefined()   // March: due 01.03, before handover
+    expect(rentRow(4, '2026-04-01')?.amount).toBe(5000) // April: due 01.04, on handover
+    expect(rentRow(3)).toBeDefined()                    // …and nothing moves without a date
+  })
+
+  it('agrees with the received total on a mid-month lease day', () => {
+    // Lease paid on the 15th, handover on the 20th of the same month: the 15th's payment
+    // is due before the keys, so that month is dropped by BOTH calculations.
+    const mid = contract({ start_date: '2026-01-15', end_date: '2027-01-14', monthly_rent: 5000 })
+    expect(rentReceivedToDate([mid], new Date(2026, 3, 20), '2026-03-20')).toBe(1 * 5000) // Apr 15 only
+    const march = monthlyVirtualEntries([mid], [], 2026, 3, [], [], '2026-03-20').find(e => e.direction === 'income')
+    expect(march).toBeUndefined()
+    const april = monthlyVirtualEntries([mid], [], 2026, 4, [], [], '2026-03-20').find(e => e.direction === 'income')
+    expect(april?.amount).toBe(5000)
+  })
+
+  it('clamps the payment day to the month — a lease paid on the 31st still counts in April', () => {
+    const late = contract({ start_date: '2026-01-31', end_date: '2027-01-30', monthly_rent: 5000 })
+    const april = monthlyVirtualEntries([late], [], 2026, 4, [], [], '2026-04-30').find(e => e.direction === 'income')
+    expect(april?.amount, 'due 30.04 (clamped), which is not before handover').toBe(5000)
+  })
+})

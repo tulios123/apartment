@@ -35,6 +35,33 @@ export interface VirtualEntry {
   interest?: number
 }
 
+/**
+ * The date a payment falls due, given the lease's own payment day and a calendar month.
+ * Clamped to the month's length so a lease paid on the 31st is due on the 30th in April
+ * (and on the 28th/29th in February) rather than silently rolling into the next month.
+ */
+function dueDateISO(year: number, monthIdx0: number, day: number): string {
+  const lastDay = new Date(year, monthIdx0 + 1, 0).getDate()
+  return monthDayISO(new Date(year, monthIdx0, Math.min(day, lastDay)))
+}
+
+/**
+ * Rent cannot be collected on an apartment that has not been handed over.
+ *
+ * A lease is routinely signed — and dated to start — before the keys arrive: that is the
+ * normal shape of a purchase with a sitting tenant or an agreed move-in. The app used to
+ * count rent from the lease's start date alone, so a buyer still waiting for handover was
+ * shown income he had not received (Omer, notes 11+16: ₪22,500 of rent on an apartment
+ * that was not yet his). The rule the owner approved on 21.09: a rent payment counts only
+ * if it falls due ON or AFTER the key-delivery date.
+ *
+ * Passing no handover (or one already past) leaves every existing calculation identical —
+ * which is deliberate: nobody who already holds keys sees a number move.
+ */
+function rentDue(dueISO: string, handover?: string | null): boolean {
+  return !handover || dueISO >= handover
+}
+
 /** Returns the contract active at asOf (defaults to now). */
 export function activeContract<T extends { start_date: string; end_date: string }>(
   contracts: T[],
@@ -48,7 +75,11 @@ export function activeContract<T extends { start_date: string; end_date: string 
 }
 
 /** Total rent received across all contracts from each start_date up to asOf. */
-export function rentReceivedToDate(contracts: Contract[], asOf: Date = new Date()): number {
+export function rentReceivedToDate(
+  contracts: Contract[],
+  asOf: Date = new Date(),
+  handover?: string | null,
+): number {
   // N6: ONE apartment ⇒ at most ONE rent payment per calendar month. Overlapping
   // contract rows (the old lease's tail overlapping the new lease's start — common
   // when a renewal is entered loosely) used to double-count those months. Walk each
@@ -68,6 +99,8 @@ export function rentReceivedToDate(contracts: Contract[], asOf: Date = new Date(
     const months = monthsSpan + (cap.getDate() >= start.getDate() ? 1 : 0)
     for (let i = 0; i < months; i++) {
       const monthIdx = start.getFullYear() * 12 + start.getMonth() + i // calendar month of payment i
+      // Nothing is collected before the keys change hands, however the lease is dated.
+      if (!rentDue(dueDateISO(Math.floor(monthIdx / 12), monthIdx % 12, start.getDate()), handover)) continue
       const cur = byMonth.get(monthIdx)
       if (!cur || start.getTime() > cur.startMs) {
         byMonth.set(monthIdx, { startMs: start.getTime(), rent: Number(c.monthly_rent) || 0 })
@@ -105,6 +138,8 @@ export function monthlyVirtualEntries(
   month?: number,
   loans: Loan[] = [],
   policies: { monthly_premium: number | null; start_date: string | null; end_date: string | null }[] = [],
+  /** The property's key-delivery date. Rent before it is not forecast — see `rentDue`. */
+  handover?: string | null,
 ): VirtualEntry[] {
   const todayStr = todayISO() // LOCAL date — not toISOString (UTC rolls back a day)
 
@@ -132,7 +167,14 @@ export function monthlyVirtualEntries(
         if (!rentContract || c.start_date > rentContract.start_date) rentContract = c
       }
     }
-    if (rentContract) {
+    // The same handover gate `rentReceivedToDate` applies, computed the same way (the
+    // lease's own payment day inside this month) so the forecast and the received total
+    // never disagree about which month rent starts in.
+    const rentPayable = rentContract && rentDue(
+      dueDateISO(year, m - 1, Number(rentContract.start_date.slice(8, 10)) || 1),
+      handover,
+    )
+    if (rentContract && rentPayable) {
       entries.push({
         id: `v-rent-${rentContract.id}-${monthStr}`,
         direction: 'income',

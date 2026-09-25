@@ -8,7 +8,7 @@ import { StepHeader } from './StepHeader'
 import { FillExampleTop } from './FillExampleTop'
 import { DocFileList } from './DocFileList'
 import { emptyTrack, formatPrice } from './types'
-import { purchaseWarnings } from './validation'
+import { purchaseWarnings, purchaseRequiredMissing } from './validation'
 import { useOnboarding } from './context'
 import { DateField } from '../ui/DateField'
 
@@ -23,12 +23,14 @@ export function PurchaseStep() {
     rooms, setRooms, purchasePrice, setPurchasePrice,
     signingDate, setSigningDate, setKeyDeliveryDate,
     propertySizeSqm, setPropertySizeSqm, floorNumber, setFloorNumber,
-    purchaseAiBusy, purchaseAiErr, purchaseAiDone, aiFillPurchase,
+    purchaseAiBusy, purchaseAiErr, purchaseAiDone, purchaseAiKept, aiFillPurchase,
     docAttachments, removeDocFile, renameDocFile,
+    singleApartment, setSingleApartment,
     fillTestPurchase,
   } = useOnboarding()
   const { user } = useAuth()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
+  const priceRef = useRef<HTMLInputElement>(null)
 
   // ── תנאי התשלום ──────────────────────────────────────────────────────────────
   // The owner (10.09): "ההקמה אמורה לקרות בעיקר באונבורדינג". The payment terms belong on
@@ -39,7 +41,6 @@ export function PurchaseStep() {
   // has no plan to build, and a question he cannot answer is worse than no question.
   const [firstPct, setFirstPct] = useState(10)
   const [secondPct, setSecondPct] = useState(15)
-  const [singleApartment, setSingleApartment] = useState(true)
   const price = Number(purchasePrice) || 0
   const awaitingKey = !!keyDeliveryDate && keyDeliveryDate > todayISO()
   const showTerms = awaitingKey && price > 0
@@ -73,9 +74,14 @@ export function PurchaseStep() {
   // a thousands-slip price or an inverted signing/key-delivery pair just asks.
   const warnings = purchaseWarnings({ purchasePrice, signingDate, keyDeliveryDate })
 
+  // The one field the wizard will not continue without — see purchaseRequiredMissing.
+  const missing = purchaseRequiredMissing({ purchasePrice })
+  const [blocked, setBlocked] = useState(false)
+
   return (
     <form onSubmit={e => {
       e.preventDefault()
+      if (missing.length > 0) { setBlocked(true); priceRef.current?.focus(); return }
       setTrackForm(emptyTrack(keyDeliveryDate || undefined))
       advance('mortgage')
     }} noValidate>
@@ -96,6 +102,14 @@ export function PurchaseStep() {
           onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) aiFillPurchase(fs); e.target.value = '' }} />
         {showDocs && <DocFileList files={docs} onFiles={aiFillPurchase} onRemove={name => removeDocFile('purchase', name)} onRename={(oldName, name) => renameDocFile('purchase', oldName, name)} />}
         {purchaseAiErr && <p className="onboarding-error" role="alert">{purchaseAiErr}</p>}
+        {/* Extraction no longer writes over what you typed. When the document disagreed,
+            say which fields were left alone — otherwise "kept your value" is just another
+            silent decision, and the whole point was to stop making those. */}
+        {purchaseAiKept.length > 0 && (
+          <p className="onboarding-soft-warning" role="status">
+            שמרנו את מה שמילאת: {purchaseAiKept.join(', ')} — במסמך רשום אחרת. בדקו מה נכון.
+          </p>
+        )}
         <p className="onboarding-subtitle onboarding-optional" style={{ marginTop: 6 }}>אפשר כמה צילומי מסך יחד · או מלאו ידנית למטה</p>
       </div>
 
@@ -107,7 +121,9 @@ export function PurchaseStep() {
         </div>
         <div className="onboarding-row">
           <div className="onboarding-field">
-            <label htmlFor={`${uid}-street`}>רחוב</label>
+            {/* The hint said "רחוב ומספר" and the label said "רחוב" — and the hint is the one
+              that disappears the moment you type (Omer, note 3). The label carries it. */}
+          <label htmlFor={`${uid}-street`}>רחוב ומספר</label>
             <input id={`${uid}-street`} type="text" placeholder="רחוב ומספר" value={street}
               onChange={e => setStreet(e.target.value)} />
           </div>
@@ -136,10 +152,20 @@ export function PurchaseStep() {
               onChange={e => setRooms(e.target.value)} />
           </div>
           <div className="onboarding-field">
-            <label htmlFor={`${uid}-price`}>מחיר רכישה (₪)</label>
-            <input id={`${uid}-price`} type="text" inputMode="numeric" placeholder="0"
+            <label htmlFor={`${uid}-price`}>
+              מחיר רכישה (₪) <span className="onboarding-required" aria-hidden="true">*</span>
+            </label>
+            <input id={`${uid}-price`} ref={priceRef} type="text" inputMode="numeric" placeholder="0"
+              required aria-required="true"
+              aria-invalid={blocked && missing.length > 0 ? true : undefined}
+              className={blocked && missing.length > 0 ? 'is-invalid' : ''}
               value={formatPrice(purchasePrice)}
-              onChange={e => setPurchasePrice(sanitizeAmountInt(e.target.value))} />
+              onChange={e => { setPurchasePrice(sanitizeAmountInt(e.target.value)); setBlocked(false) }} />
+            {blocked && missing.length > 0 && (
+              <span className="onboarding-field-error" role="alert">
+                בלי מחיר הרכישה אי אפשר לחשב הון עצמי, מס רכישה או תשואה — זה השדה היחיד שחייבים.
+              </span>
+            )}
           </div>
         </div>
         <div className="onboarding-row">

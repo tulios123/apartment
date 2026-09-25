@@ -62,6 +62,9 @@ export default function FinancesV2() {
 
   // Custom range. Defaults to key-delivery → today once the property loads.
   const { property, contracts } = usePropertyData()
+  // Rent is not income before the keys are handed over — every forecast on this screen
+  // is gated on it (see projections.rentDue).
+  const handover = property?.key_delivery_date ?? null
   const [rangeFrom, setRangeFrom] = useState(`${today.getFullYear() - 4}-01-01`)
   const [rangeTo, setRangeTo] = useState(todayISO())
   const [rangeTouched, setRangeTouched] = useState(false)
@@ -82,7 +85,7 @@ export default function FinancesV2() {
   const { loans } = useLoansData()
   const { policies } = useInsurance()
 
-  const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month, loans, policies), [year, month, contracts, mortgageTracks, loans, policies])
+  const virtualEntries = useMemo<VirtualEntry[]>(() => monthlyVirtualEntries(contracts, mortgageTracks, year, month, loans, policies, handover), [year, month, contracts, mortgageTracks, loans, policies, handover])
 
   // Drill-down into one category's full history — set by tapping a breakdown row,
   // or by arriving from elsewhere (e.g. Wealth's "אחזקה ותיקונים") with a preset category.
@@ -180,7 +183,7 @@ export default function FinancesV2() {
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1
       const mtx = transactions.filter(t => Number(t.date.slice(5, 7)) === m)
-      const v = monthlyVirtualEntries(contracts, mortgageTracks, year, m, loans, policies)
+      const v = monthlyVirtualEntries(contracts, mortgageTracks, year, m, loans, policies, handover)
       const rRent = mtx.some(t => t.direction === 'income' && RENT.includes(t.category))
       const rMort = mtx.some(t => t.direction === 'expense' && MORT.includes(t.category))
       const rIns = mtx.some(t => t.direction === 'expense' && t.category === 'ביטוח')
@@ -194,7 +197,7 @@ export default function FinancesV2() {
       const expense = mtx.filter(t => t.direction === 'expense').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'expense').reduce((s, e) => s + e.amount, 0)
       return { month: m, income, expense, net: income - expense, sv, mtx }
     })
-  }, [view, transactions, contracts, mortgageTracks, loans, policies, year])
+  }, [view, transactions, contracts, mortgageTracks, loans, policies, year, handover])
 
   const yearTotals = useMemo(() => {
     const income = monthly.reduce((s, r) => s + r.income, 0)
@@ -221,7 +224,7 @@ export default function FinancesV2() {
     if (view !== 'range') return []
     return periodsBetween(rangeFrom, rangeTo).map(({ year: y, month: m }) => {
       const mtx = transactions.filter(t => Number(t.date.slice(0, 4)) === y && Number(t.date.slice(5, 7)) === m)
-      const v = monthlyVirtualEntries(contracts, mortgageTracks, y, m, loans, policies)
+      const v = monthlyVirtualEntries(contracts, mortgageTracks, y, m, loans, policies, handover)
       const rRent = mtx.some(t => t.direction === 'income' && RENT.includes(t.category))
       const rMort = mtx.some(t => t.direction === 'expense' && MORT.includes(t.category))
       const rIns = mtx.some(t => t.direction === 'expense' && t.category === 'ביטוח')
@@ -235,7 +238,7 @@ export default function FinancesV2() {
       const expense = mtx.filter(t => t.direction === 'expense').reduce((s, t) => s + Number(t.amount), 0) + sv.filter(e => e.direction === 'expense').reduce((s, e) => s + e.amount, 0)
       return { year: y, month: m, income, expense, net: income - expense, sv, mtx }
     })
-  }, [view, rangeFrom, rangeTo, transactions, contracts, mortgageTracks, loans, policies])
+  }, [view, rangeFrom, rangeTo, transactions, contracts, mortgageTracks, loans, policies, handover])
 
   const rangeTotals = useMemo(() => {
     const income = rangeMonthly.reduce((s, r) => s + r.income, 0)

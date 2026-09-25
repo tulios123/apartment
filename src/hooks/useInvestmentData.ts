@@ -45,12 +45,15 @@ export function useInvestmentData(): InvestmentData {
     setLoading(cached == null)
     setError(null)
     try {
-      const [costsRes, txRes, tracksRes, contractsRes, loansRes] = await Promise.all([
+      const [costsRes, txRes, tracksRes, contractsRes, loansRes, propRes] = await Promise.all([
         supabase.from('investment_costs').select('*').eq('owner_id', user.id).order('created_at'),
         supabase.from('transactions').select('direction, amount, category').eq('owner_id', user.id),
         supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id),
         supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', user.id),
         supabase.from('loans').select('*').eq('owner_id', user.id),
+        // Rent counts only from handover (projections.rentDue) — and this total feeds
+        // every yield on the Wealth screen, so it must not include pre-key months.
+        supabase.from('properties').select('key_delivery_date').eq('owner_id', user.id).limit(1),
       ])
       if (costsRes.error) throw costsRes.error
       if (txRes.error) throw txRes.error
@@ -69,7 +72,8 @@ export function useInvestmentData(): InvestmentData {
       const loans = (loansRes.data ?? []) as Loan[]
 
       const nextCosts = (costsRes.data ?? []).map(c => ({ ...c, amount: Number(c.amount) || 0 }))
-      const nextRent = rentReceivedToDate(contracts)
+      const handover = (propRes.error ? null : (propRes.data?.[0]?.key_delivery_date ?? null))
+      const nextRent = rentReceivedToDate(contracts, new Date(), handover)
       const manualInterest = txs.filter(t => t.direction === 'expense' && t.category === INTEREST_CATEGORY).reduce((s, t) => s + t.amount, 0)
       const loansInterest = loans.reduce((s, l) => s + loanInterestToDate(l), 0)
       // N8: a hand-logged 'ריבית' expense describes the SAME financing the schedules

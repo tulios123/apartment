@@ -36,7 +36,12 @@ export function DealStructure({ price, tracks, loans, costs, tax }: {
       label: INVESTMENT_COST_CATEGORIES.find(x => x.value === c.category)?.label ?? c.label ?? 'עלות',
       amount: Number(c.amount),
     }))
-  if (tax != null && tax > 0) named.push({ label: 'מס רכישה', amount: tax })
+  // Since 21.09 the wizard asks for purchase tax as a cost of its own, so most accounts
+  // now carry a real row for it. The plan's figure is the fallback for accounts that
+  // predate that — never an addition to it, or the card would count the tax twice.
+  const hasTaxRow = costs.some(c => c.category === 'purchase_tax' && Number(c.amount) > 0)
+  if (!hasTaxRow && tax != null && tax > 0) named.push({ label: 'מס רכישה', amount: tax })
+  const taxKnown = hasTaxRow || tax != null
   const costsTotal = named.reduce((s, c) => s + c.amount, 0)
 
   /**
@@ -93,7 +98,7 @@ export function DealStructure({ price, tracks, loans, costs, tax }: {
       )}
 
       <div className="wlth-deal-row total"><span>סה״כ מהכיס</span><b>{fmt(pocket)}</b></div>
-      {tax == null && (
+      {!taxKnown && (
         <p className="wlth-deal-note warn">מס רכישה עוד לא חושב — הסכום הזה יגדל כשייקבע.</p>
       )}
       {costsTotal > 0 && (

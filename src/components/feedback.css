@@ -21,6 +21,20 @@
 .fb-fab:hover { opacity: 1; }
 .fb-fab:active { transform: scale(0.92); }
 
+/* Out of the way while reading downwards — see the note in FeedbackButton.tsx.
+   `visibility` (not display) so the fade is real and the button can't be tabbed to
+   or tapped while it is on its way out. */
+.fb-fab.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(14px) scale(0.9);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fb-fab, .fb-fab.is-hidden { transition: opacity 0.18s ease, visibility 0s linear 0.18s; transform: none; }
+}
+
 /* On desktop (sidebar layout, no bottom nav) sit lower. */
 @media (min-width: 768px) {
   .fb-fab { bottom: 20px; }
