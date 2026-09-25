@@ -23,7 +23,7 @@ function fmtInput(raw: string): string {
 }
 
 export default function InvestmentCosts() {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const { costs, loading, error, refetch } = useInvestmentData()
   const { summary: loansSummary } = useLoansData()
 
@@ -75,7 +75,7 @@ export default function InvestmentCosts() {
   }
 
   async function handleSave() {
-    if (!user) return
+    if (!user || !ownerId) return
     setSaving(true)
     setSaveErr(null)
     try {
@@ -88,7 +88,7 @@ export default function InvestmentCosts() {
         if (amount > 0) {
           await upsertInvestmentCost({
             id: row.id,
-            owner_id: user.id,
+            owner_id: ownerId,
             category: row.category,
             label: row.isCustom ? row.label : null,
             amount,

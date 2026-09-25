@@ -45,10 +45,10 @@ export function FirstMonth({ keyDate, contracts, tracks, loans, policies }: {
    * bank's. The app currently gives two different answers to that (NIGHT_RUN B-1) and this
    * screen will not pick one before the owner does.
    */
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const monthKey = `${y}-${String(m).padStart(2, '0')}`
   const planRows = useMemo(() => {
-    const plan = user ? loadPlan(user.id) : null
+    const plan = ownerId ? loadPlan(ownerId) : null
     if (!plan) return []
     return resolveDates(plan).filter(i => !i.done && i.due?.startsWith(monthKey))
   }, [user, monthKey])

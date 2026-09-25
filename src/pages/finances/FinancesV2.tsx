@@ -52,7 +52,7 @@ const emptyForm ={ direction: 'expense' as Dir, amount: '', date: todayISO(), ca
 type Prefill = { direction?: Dir; category?: string; description?: string; amount?: number }
 
 export default function FinancesV2() {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const today = new Date()
@@ -357,7 +357,7 @@ export default function FinancesV2() {
     try {
       const docId = crypto.randomUUID()
       const path = await uploadDocument(file, docId)
-      await supabase.from('documents').insert({ id: docId, owner_id: user.id, property_id: null, contract_id: null, transaction_id: editingId, task_id: null, type: 'receipt', name: file.name, storage_path: path, date: form.date || null })
+      await supabase.from('documents').insert({ id: docId, owner_id: ownerId, property_id: null, contract_id: null, transaction_id: editingId, task_id: null, type: 'receipt', name: file.name, storage_path: path, date: form.date || null })
       if (txDocs.length === 0) await updateTransaction(editingId, { document_id: docId }) // first → primary (row icon)
       await loadTxDocs(editingId); refetch()
     } catch (e) {

@@ -76,7 +76,7 @@ function ContractForm({
   const [err, setErr] = useState<string | null>(null)
 
   // Manager/dev-only quick-fill, mirroring the onboarding "מלא דוגמה" affordance.
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const showFill = isManager(user?.email)            // A4: button — manager only
   const useMock = import.meta.env.DEV || isManager(user?.email)  // AI mock/demo — also in dev, never bills
   function fillExample() {
@@ -128,7 +128,7 @@ function ContractForm({
   function syncDocs() { refetchDocs(); onDocsChanged() }
 
   async function persistScanFiles(files: File[]) {
-    if (!user) return
+    if (!user || !ownerId) return
     const newIds: string[] = []
     await Promise.all(files.map(async (f) => {
       try {
@@ -136,7 +136,7 @@ function ContractForm({
         const path = await uploadDocument(f, id, user.id)
         // Link to the contract when editing an existing one (matches onboarding);
         // for a not-yet-saved new contract it stays null.
-        await createDocument({ id, owner_id: user.id, property_id: property?.id ?? null, contract_id: contractId, transaction_id: null, task_id: null, type: 'rental_contract', name: f.name, storage_path: path, date: null })
+        await createDocument({ id, owner_id: ownerId, property_id: property?.id ?? null, contract_id: contractId, transaction_id: null, task_id: null, type: 'rental_contract', name: f.name, storage_path: path, date: null })
         newIds.push(id)
       } catch { /* best-effort — re-uploadable from Documents */ }
     }))
@@ -342,7 +342,7 @@ function ContractForm({
 }
 
 export default function Rental({ onContractsChange }: { onContractsChange?: () => void } = {}) {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const navigate = useNavigate()
   const { property, contracts, utilities, loading, error, refetch } = usePropertyData()
   const { documents, refetch: refetchRentalDocs } = useDocuments()
@@ -392,9 +392,9 @@ export default function Rental({ onContractsChange }: { onContractsChange?: () =
   }
 
   async function handleContractSave(form: typeof emptyContract, utils: UtilDraft[], scanDocIds: string[] = []) {
-    if (!user || !property) return
+    if (!user || !ownerId || !property) return
     const payload = {
-      owner_id: user.id,
+      owner_id: ownerId,
       property_id: property.id,
       company_name: form.company_name.trim(),
       contact_name: form.contact_name.trim() || null,

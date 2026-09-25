@@ -18,7 +18,7 @@ export interface PropertyData {
 }
 
 export function usePropertyData(): PropertyData {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `property:${user.id}` : null
   const [property, setProperty] = useState<Property | null>(() => readCache<PropertySnapshot>(cacheKey)?.property ?? null)
   const [contracts, setContracts] = useState<Contract[]>(() => readCache<PropertySnapshot>(cacheKey)?.contracts ?? [])
@@ -43,7 +43,7 @@ export function usePropertyData(): PropertyData {
       const { data: props, error: pe } = await supabase
         .from('properties')
         .select('*')
-        .eq('owner_id', user.id)
+        .eq('owner_id', ownerId)
         .order('created_at')
         .limit(1)
       if (pe) throw pe

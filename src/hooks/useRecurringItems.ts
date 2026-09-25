@@ -8,7 +8,7 @@ import type { RecurringItem } from '../types'
 import { latestOnly } from '../lib/latestOnly'
 
 export function useRecurringItems() {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `recurring:${user.id}` : null
   const [items, setItems] = useState<RecurringItem[]>(() => readCache<RecurringItem[]>(cacheKey) ?? [])
   const [loading, setLoading] = useState(() => readCache<RecurringItem[]>(cacheKey) == null)
@@ -26,7 +26,7 @@ export function useRecurringItems() {
     const { data, error } = await supabase
       .from('recurring_items')
       .select('*')
-      .eq('owner_id', user.id)
+      .eq('owner_id', ownerId)
       .order('direction', { ascending: false })
       .order('created_at', { ascending: true })
     if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite

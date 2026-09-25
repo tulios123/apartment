@@ -54,7 +54,7 @@ function greeting(name: string): { text: string; Icon: typeof Sun } {
 
 export default function HomeScreen() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
@@ -119,7 +119,7 @@ export default function HomeScreen() {
     void syncPlan(uid).then(p => { if (alive) setPlan(p) })
     return () => { alive = false }
   }, [user?.id])
-  const commitPlan = (p: PurchasePlan) => { setPlan(p); if (user?.id) savePlan(user.id, p) }
+  const commitPlan = (p: PurchasePlan) => { setPlan(p); if (ownerId) savePlan(ownerId, p) }
 
   // The rent prompt must not appear before the rent is payable: with a post-dated
   // cheque there is literally nothing to deposit before the date written on it, so

@@ -73,19 +73,21 @@ function loanToDraft(l: Loan): LoanDraft {
 /** The named cost rows the wizard shows as its own fields; anything else is "extra". */
 const NAMED_COSTS = ['lawyer', 'brokerage', 'mortgage_advisor', 'investment_company', 'appraiser', 'purchase_tax'] as const
 
-export async function hydrateFromAccount(userId: string): Promise<Hydrated | null> {
-  const { data: props } = await supabase.from('properties').select('*').eq('owner_id', userId).limit(1)
+// `owner` is the apartment being edited — since migration 051 that is not necessarily
+// the signed-in person's own id.
+export async function hydrateFromAccount(owner: string): Promise<Hydrated | null> {
+  const { data: props } = await supabase.from('properties').select('*').eq('owner_id', owner).limit(1)
   const property = (props?.[0] ?? null) as Property | null
   if (!property) return null
 
   // Contracts: the wizard edits ONE rental contract, so take the most recent — that's
   // the one its fields describe. Older contracts are history and stay untouched.
   const [tracksRes, loansRes, policiesRes, contractsRes, costsRes] = await Promise.all([
-    supabase.from('mortgage_tracks').select('*').eq('owner_id', userId),
-    supabase.from('loans').select('*').eq('owner_id', userId),
-    supabase.from('insurance_policies').select('*').eq('owner_id', userId),
-    supabase.from('contracts').select('*').eq('owner_id', userId).order('start_date', { ascending: false }).limit(1),
-    supabase.from('investment_costs').select('*').eq('owner_id', userId),
+    supabase.from('mortgage_tracks').select('*').eq('owner_id', owner),
+    supabase.from('loans').select('*').eq('owner_id', owner),
+    supabase.from('insurance_policies').select('*').eq('owner_id', owner),
+    supabase.from('contracts').select('*').eq('owner_id', owner).order('start_date', { ascending: false }).limit(1),
+    supabase.from('investment_costs').select('*').eq('owner_id', owner),
   ])
 
   const allLoans = (loansRes.data ?? []) as Loan[]
@@ -95,7 +97,7 @@ export async function hydrateFromAccount(userId: string): Promise<Hydrated | nul
   // the day already in force, not a blank that silently resets it.
   const { data: rentItems } = contract
     ? await supabase.from('recurring_items').select('day_of_month')
-        .eq('owner_id', userId).eq('contract_id', contract.id).eq('direction', 'income').limit(1)
+        .eq('owner_id', owner).eq('contract_id', contract.id).eq('direction', 'income').limit(1)
     : { data: null }
   const rentDay = rentItems?.[0]?.day_of_month as number | undefined
   const costs = (costsRes.data ?? []) as InvestmentCost[]

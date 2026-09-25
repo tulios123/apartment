@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
@@ -14,13 +14,42 @@ const DEV_BYPASS = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH =
 const DEV_EMAIL = import.meta.env.VITE_DEV_USER_EMAIL as string
 const DEV_PASSWORD = import.meta.env.VITE_DEV_USER_PASSWORD as string
 
+/** An apartment you belong to. `id` is what every household-scoped row carries as owner_id. */
+export interface Household {
+  id: string
+  name: string
+  /** The property's address, when it has one — what the switcher shows. */
+  address: string | null
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  /**
+   * WHICH APARTMENT is being read and written — the single answer to a question that used
+   * to be assumed. Every household-scoped table filters and stamps on this, never on
+   * user.id, because since migration 051 a person can belong to more than one apartment
+   * and an apartment to more than one person.
+   *
+   * It falls back to `user.id` while memberships are still loading, and that is deliberate
+   * rather than lazy: for anyone in exactly one household — everyone, until someone is
+   * invited — the two are the same value, so there is no window in which the app reads
+   * nothing and blinks empty.
+   *
+   * Two tables deliberately do NOT use it: push_subscriptions and feedback. A device
+   * belongs to a person and a report to its writer, not to an apartment.
+   */
+  ownerId: string | null
+  households: Household[]
+  switchHousehold: (id: string) => void
+  refreshHouseholds: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
 }
+
+/** Which apartment was last chosen, per user. */
+const ACTIVE_KEY = (uid: string) => `active_household:${uid}`
 
 const AuthContext = createContext<AuthContextType>(null!)
 
@@ -33,6 +62,8 @@ async function ensureOwnerRow(userId: string, userName: string) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [households, setHouseholds] = useState<Household[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -82,6 +113,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  /**
+   * The apartments this account belongs to.
+   *
+   * Two round-trips rather than a join, because household_members is readable only through
+   * its own policy and `owners` through another; asking for each separately keeps both
+   * within what RLS will answer, and the lists are at most three rows long.
+   */
+  const refreshHouseholds = useCallback(async () => {
+    const uid = session?.user?.id
+    if (!uid) { setHouseholds([]); setActiveId(null); return }
+    const { data: memberRows, error } = await supabase
+      .from('household_members').select('household_id').eq('user_id', uid)
+    // Before migration 051 is applied the table does not exist. Falling back to the single
+    // own-household case keeps every screen working exactly as it did.
+    const ids = error ? [uid] : (memberRows ?? []).map(r => r.household_id as string)
+    if (ids.length === 0) ids.push(uid)
+
+    const [{ data: ownerRows }, { data: propRows }] = await Promise.all([
+      supabase.from('owners').select('id, name').in('id', ids),
+      supabase.from('properties').select('owner_id, address').in('owner_id', ids),
+    ])
+    const addressOf = new Map((propRows ?? []).map(p => [p.owner_id as string, p.address as string | null]))
+    const list: Household[] = ids.map(id => ({
+      id,
+      name: (ownerRows ?? []).find(o => o.id === id)?.name ?? 'הדירה שלי',
+      address: addressOf.get(id) ?? null,
+    }))
+    setHouseholds(list)
+
+    // Keep the previous choice when it is still one of mine; otherwise prefer my own.
+    let stored: string | null = null
+    try { stored = localStorage.getItem(ACTIVE_KEY(uid)) } catch { /* private mode */ }
+    const next = stored && ids.includes(stored) ? stored : (ids.includes(uid) ? uid : ids[0])
+    setActiveId(next)
+  }, [session?.user?.id])
+
+  useEffect(() => { void refreshHouseholds() }, [refreshHouseholds])
+
+  function switchHousehold(id: string) {
+    setActiveId(id)
+    const uid = session?.user?.id
+    if (uid) { try { localStorage.setItem(ACTIVE_KEY(uid), id) } catch { /* private mode */ } }
+    // The caches are keyed per user, not per apartment, so switching must empty them or
+    // the new apartment would open showing the old one's numbers.
+    clearQueryCache()
+  }
+
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -119,8 +197,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut()
   }
 
+  const user = session?.user ?? null
+  // See the note on `ownerId` above: user.id is the fallback, not a guess.
+  const ownerId = activeId ?? user?.id ?? null
+
   return (
-    <AuthContext.Provider value={{ user: session?.user ?? null, session, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{
+      user, session, loading,
+      ownerId, households, switchHousehold, refreshHouseholds,
+      signInWithGoogle, signOut,
+    }}>
       {children}
     </AuthContext.Provider>
   )

@@ -37,7 +37,7 @@ function isOverdue(t: Task) {
 
 export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const { tasks, setTasks, loading, error, refetch } = useTasks({ status: 'all' })
   const { documents, refetch: refetchDocs } = useDocuments()
 
@@ -62,11 +62,11 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   // list — and the empty state was answering him with a green tick and "הכול תחת שליטה",
   // one tap away from three overdue payments. This screen may only speak for what it
   // holds. A plan exists only before the key, so its presence is the whole condition.
-  const plan = user ? loadPlan(user.id) : null
+  const plan = ownerId ? loadPlan(ownerId) : null
   const planOpen = plan ? plan.items.filter(i => !i.done).length : 0
 
   async function handleAttach(file: File) {
-    if (!user || !editing) return
+    if (!user || !ownerId || !editing) return
     // Mirror the hardened sibling paths (ExpenseSheet EDGE-17 / removeDoc): reject
     // oversized files up front and SURFACE failures — this catch used to be empty,
     // so a failed upload returned to idle with the task silently unchanged.
@@ -77,7 +77,7 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
       const id = crypto.randomUUID()
       const path = await uploadDocument(file, id)
       await createDocument({
-        id, owner_id: user.id, property_id: null, contract_id: null, transaction_id: null, task_id: editing.id,
+        id, owner_id: ownerId, property_id: null, contract_id: null, transaction_id: null, task_id: editing.id,
         type: 'other', name: file.name, storage_path: path, date: null,
       })
       await refetchDocs()

@@ -29,7 +29,7 @@ export interface MortgageData {
 type MortgageSnapshot = { mortgage: Mortgage | null; tracks: MortgageTrack[] }
 
 export function useMortgageData(): MortgageData {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `mortgage:${user.id}` : null
   const [mortgage, setMortgage] = useState<Mortgage | null>(() => readCache<MortgageSnapshot>(cacheKey)?.mortgage ?? null)
   const [tracks, setTracks] = useState<MortgageTrack[]>(() => readCache<MortgageSnapshot>(cacheKey)?.tracks ?? [])
@@ -47,8 +47,8 @@ export function useMortgageData(): MortgageData {
     setError(null)
     try {
       const [mortgageRes, tracksRes] = await Promise.all([
-        supabase.from('mortgages').select('*').eq('owner_id', user.id).limit(1),
-        supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id).order('created_at'),
+        supabase.from('mortgages').select('*').eq('owner_id', ownerId).limit(1),
+        supabase.from('mortgage_tracks').select('*').eq('owner_id', ownerId).order('created_at'),
       ])
       if (mortgageRes.error) throw mortgageRes.error
       if (tracksRes.error) throw tracksRes.error

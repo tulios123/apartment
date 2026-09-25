@@ -11,7 +11,7 @@
 // and it would show the new screen with none of the numbers that are its whole point.
 //
 // Safety: this wipes the signed-in account. It is gated to staging + a manager account in
-// the UI, and every write here is scoped to the passed userId. Staging and production
+// the UI, and every write here is scoped to the passed apartment. Staging and production
 // share one database (both deploy workflows pass the same VITE_SUPABASE_URL), so nothing
 // in this file may ever address a row by anything but the current owner_id.
 
@@ -156,20 +156,21 @@ const WIPE_ORDER = [
  */
 export async function applyScenario(
   supabase: SupabaseClient,
-  userId: string,
+  /** The apartment to seed — since migration 051 not necessarily the caller's own id. */
+  owner: string,
   id: ScenarioId,
   today: string,
 ): Promise<void> {
   const data = scenarioData(id, today)
 
   for (const table of WIPE_ORDER) {
-    const { error } = await supabase.from(table).delete().eq('owner_id', userId)
+    const { error } = await supabase.from(table).delete().eq('owner_id', owner)
     if (error) throw new Error(`מחיקת ${table} נכשלה — ${error.message}`)
   }
 
   const ins = async <T,>(table: string, row: Record<string, unknown>): Promise<T> => {
     const { data: created, error } = await supabase
-      .from(table).insert({ ...row, owner_id: userId }).select().single()
+      .from(table).insert({ ...row, owner_id: owner }).select().single()
     if (error) throw new Error(`יצירת ${table} נכשלה — ${error.message}`)
     return created as T
   }

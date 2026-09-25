@@ -83,7 +83,7 @@ type OnboardingDraft = {
 // form components read this through OnboardingContext, so the shared type stays
 // inferred (ReturnType) rather than a hand-maintained 90-field interface.
 export function useOnboardingState(onComplete: () => void) {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   // A4: the "מילוי דוגמה" quick-fill button is MANAGER-ONLY — a family member must
   // never see it (it injected demo data into a real property). Separately, AI
   // extractions use mock fixtures in local dev too, so a developer never bills the
@@ -128,7 +128,7 @@ export function useOnboardingState(onComplete: () => void) {
   const [notifBusy, setNotifBusy] = useState(false)
 
   async function enableNotifications() {
-    if (!user) return
+    if (!user || !ownerId) return
     setNotifBusy(true)
     try {
       await enablePush(user.id)
@@ -284,7 +284,7 @@ export function useOnboardingState(onComplete: () => void) {
     let alive = true
     ;(async () => {
       let h: Awaited<ReturnType<typeof hydrateFromAccount>> = null
-      try { h = await hydrateFromAccount(user.id) } catch { return }   // offline → keep the draft
+      try { h = await hydrateFromAccount(ownerId ?? user.id) } catch { return }   // offline → keep the draft
       if (!h || !alive) return
       setHydratedIds({ propertyId: h.propertyId, contractId: h.contractId, equityCostId: h.equityCostId, costIds: h.costIds })
       setBuyerName(h.buyerName); setStreet(h.street); setCity(h.city); setRooms(h.rooms)
@@ -728,7 +728,7 @@ export function useOnboardingState(onComplete: () => void) {
   // (and so finish only has to link it). Fire-and-forget: on failure the in-memory
   // File remains and finish uploads it the old way, so nothing is lost either path.
   async function stashDocs(cat: DocCat, files: File[]) {
-    if (!user) return
+    if (!user || !ownerId) return
     const failed: string[] = []
     for (const f of files) {
       try {
@@ -790,14 +790,19 @@ export function useOnboardingState(onComplete: () => void) {
   // rental). Called WITHOUT await from handleFinish so "done" shows immediately; each
   // upload is independent and non-critical, so failures are swallowed (re-uploadable
   // from the Documents screen). Passing userId skips a getUser() round-trip per file.
-  async function uploadOnboardingDocs(userId: string, propertyId: string, contractId: string | null): Promise<string[]> {
+  // `owner` is the apartment the documents belong to; the uploader's own id still decides
+  // the storage folder, so a file stays attributable to the person who added it.
+  async function uploadOnboardingDocs(owner: string, propertyId: string, contractId: string | null): Promise<string[]> {
     const failed: string[] = []
     const put = async (file: File, type: DocumentType, date: string | null, contract_id: string | null) => {
       try {
         const docId = crypto.randomUUID()
-        const path = await uploadDocument(file, docId, userId)
+        // The uploader's own id, not the apartment's — storage folders stay per person
+        // so a file remains attributable to whoever added it (migration 051 widens who
+        // may READ the folder, not who writes into it).
+        const path = await uploadDocument(file, docId, user?.id)
         await supabase.from('documents').insert({
-          id: docId, owner_id: userId, property_id: propertyId,
+          id: docId, owner_id: owner, property_id: propertyId,
           contract_id, transaction_id: null,
           type, name: file.name, storage_path: path, date,
         })
@@ -809,7 +814,7 @@ export function useOnboardingState(onComplete: () => void) {
     const link = async (ref: DocRef, type: DocumentType, date: string | null, contract_id: string | null) => {
       try {
         await supabase.from('documents').insert({
-          id: ref.docId, owner_id: userId, property_id: propertyId,
+          id: ref.docId, owner_id: owner, property_id: propertyId,
           contract_id, transaction_id: null,
           type, name: ref.name, storage_path: ref.path, date,
         })
@@ -838,7 +843,7 @@ export function useOnboardingState(onComplete: () => void) {
 
   // ── handleFinish ─────────────────────────────────────────────────────────────
   async function handleFinish() {
-    if (!user) return
+    if (!user || !ownerId) return
     if (finishingRef.current) return   // a finish is already in flight — ignore the re-fire
     finishingRef.current = true
     setSaving(true)
@@ -854,13 +859,13 @@ export function useOnboardingState(onComplete: () => void) {
       const { data: existingProps } = await supabase
         .from('properties')
         .select('*')
-        .eq('owner_id', user.id)
+        .eq('owner_id', ownerId)
         .limit(1)
 
       const property = existingProps && existingProps.length > 0
         ? (existingProps[0] as Property)
         : await createProperty({
-            owner_id: user.id,
+            owner_id: ownerId,
             address,
             notes: null,
             buyer_name: buyerName.trim() || null,
@@ -929,7 +934,7 @@ export function useOnboardingState(onComplete: () => void) {
               return upsertMortgageTrack({
                 id: d.id,   // set when the row already exists → update, don't insert a duplicate
                 mortgage_id: m.id,
-                owner_id: user.id,
+                owner_id: ownerId,
                 label: null,
                 track_type: d.track_type,
                 principal: parseFloat(d.principal) || 0,
@@ -962,7 +967,7 @@ export function useOnboardingState(onComplete: () => void) {
                   : (parseFloat(d.annual_rate) || 0)
                 return upsertLoan({
                   id: d.id,
-                  owner_id: user.id,
+                  owner_id: ownerId,
                   property_id: property.id,
                   label: d.label.trim() || null,
                   lender: d.lender.trim() || null,
@@ -983,7 +988,7 @@ export function useOnboardingState(onComplete: () => void) {
               if (balloonVal <= 0) continue
               loanWrites.push(upsertLoan({
                 id: b.id,
-                owner_id: user.id,
+                owner_id: ownerId,
                 property_id: property.id,
                 label: b.lender.trim() || 'הלוואת בלון',
                 lender: b.lender.trim() || null,
@@ -1011,7 +1016,7 @@ export function useOnboardingState(onComplete: () => void) {
           if (savedRef.current.costs) return
           try {
             const tasks = []
-            if (equityAmount > 0) tasks.push(upsertInvestmentCost({ id: hydratedIds.equityCostId ?? undefined, owner_id: user.id, category: 'self_equity', label: null, amount: equityAmount }))
+            if (equityAmount > 0) tasks.push(upsertInvestmentCost({ id: hydratedIds.equityCostId ?? undefined, owner_id: ownerId, category: 'self_equity', label: null, amount: equityAmount }))
             const fixedCosts: [string, number][] = [
               ['lawyer', parseFloat(effLawyer) || 0],
               ['brokerage', parseFloat(effBrokerage) || 0],
@@ -1021,11 +1026,11 @@ export function useOnboardingState(onComplete: () => void) {
               ['purchase_tax', parseFloat(effPurchaseTax) || 0],
             ]
             for (const [key, val] of fixedCosts) {
-              if (val > 0) tasks.push(upsertInvestmentCost({ id: hydratedIds.costIds[key], owner_id: user.id, category: key, label: null, amount: val }))
+              if (val > 0) tasks.push(upsertInvestmentCost({ id: hydratedIds.costIds[key], owner_id: ownerId, category: key, label: null, amount: val }))
             }
             for (const ec of extraCosts) {
               const val = parseFloat(ec.amount) || 0
-              if (val > 0) tasks.push(upsertInvestmentCost({ id: ec.id, owner_id: user.id, category: 'other', label: ec.name.trim() || null, amount: val }))
+              if (val > 0) tasks.push(upsertInvestmentCost({ id: ec.id, owner_id: ownerId, category: 'other', label: ec.name.trim() || null, amount: val }))
             }
             await Promise.all(tasks)
             savedRef.current.costs = true
@@ -1079,7 +1084,7 @@ export function useOnboardingState(onComplete: () => void) {
               return
             }
             contract = await createContract({
-              owner_id: user.id,
+              owner_id: ownerId,
               property_id: property.id,
               company_name: companyName.trim(),
               contact_name: null,
@@ -1116,7 +1121,7 @@ export function useOnboardingState(onComplete: () => void) {
                 return p.id
                   ? updateInsurancePolicy(p.id, fields)
                   : createInsurancePolicy({
-                      owner_id: user.id, property_id: property.id,
+                      owner_id: ownerId, property_id: property.id,
                       policy_number: null, notes: null, ...fields,
                     })
               })
@@ -1195,7 +1200,7 @@ export function useOnboardingState(onComplete: () => void) {
        * chose to attach. Anything that still fails is NAMED on the done screen, and the
        * draft is kept so a retry has something to work from.
        */
-      const failedDocs = await uploadOnboardingDocs(user.id, property.id, contract ? (contract as Contract).id : null)
+      const failedDocs = await uploadOnboardingDocs(ownerId, property.id, contract ? (contract as Contract).id : null)
       setDocFailures(failedDocs)
       // C2: data is now persisted server-side — drop the local draft so a later
       // visit doesn't rehydrate a stale wizard. Kept when a document did not make it,
@@ -1205,9 +1210,9 @@ export function useOnboardingState(onComplete: () => void) {
       // The payment plan was built on the purchase step, before the costs were known.
       // Rebuild it now with them, keeping his terms — nothing is marked done during the
       // wizard, so nothing is lost. (docs/specs/purchase-stage.md)
-      const plan = loadPlan(user.id)
+      const plan = loadPlan(ownerId)
       if (plan) {
-        savePlan(user.id, buildPlan({
+        savePlan(ownerId, buildPlan({
           price: plan.price, signing: plan.signing, handover: plan.handover,
           firstPct: plan.firstPct, secondPct: plan.secondPct,
           singleApartment: plan.singleApartment,

@@ -47,7 +47,7 @@ const Accessibility = lazyRoute(() => import('./pages/legal/LegalPages').then(m 
 const ProcessPreview = lazyRoute(() => import('./pages/preview/ProcessPreview'))
 
 function AppRoutes() {
-  const { user, loading } = useAuth()
+  const { user, loading, ownerId } = useAuth()
   const [hasProperty, setHasProperty] = useState<boolean | null>(null)
   // After repeated property-check failures, show a manual retry screen instead of
   // falling through to Onboarding (which would create a duplicate property — C3).
@@ -78,7 +78,7 @@ function AppRoutes() {
       // here used to let network rejections escape the retry ladder entirely,
       // trapping the user on an infinite splash (AUD-011).
       const result = await probeHasProperty(() =>
-        supabase.from('properties').select('id').eq('owner_id', user!.id).limit(1),
+        supabase.from('properties').select('id').eq('owner_id', ownerId).limit(1),
       )
       if (cancelled) return
       if (result === 'error') {

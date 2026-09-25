@@ -23,7 +23,7 @@ import { userErrorMessage } from '../lib/errorHe'
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
 export default function Settings() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, ownerId } = useAuth()
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [pushState, setPushState] = useState<PushState>('loading')
@@ -117,7 +117,7 @@ export default function Settings() {
       const { data: docs, error: docsErr } = await supabase
         .from('documents')
         .select('storage_path')
-        .eq('owner_id', user.id)
+        .eq('owner_id', ownerId)
       if (docsErr) throw docsErr
 
       // R14: supabase returns {error} without throwing — an unchecked failed delete
@@ -125,7 +125,7 @@ export default function Settings() {
       // looked like data corruption. Check every step; any failure aborts with a
       // message and WITHOUT reloading, so the state stays inspectable.
       const del = async (table: string) => {
-        const { error } = await supabase.from(table).delete().eq('owner_id', user.id)
+        const { error } = await supabase.from(table).delete().eq('owner_id', ownerId)
         if (error) throw new Error(`מחיקת ${table} נכשלה — ${error.message}`)
       }
       await del('transactions')

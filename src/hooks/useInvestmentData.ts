@@ -23,7 +23,7 @@ export interface InvestmentData {
 }
 
 export function useInvestmentData(): InvestmentData {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `investment:${user.id}` : null
   const [costs, setCosts] = useState<InvestmentCost[]>(() => readCache<InvestmentSnapshot>(cacheKey)?.costs ?? [])
   const [rentReceived, setRentReceived] = useState(() => readCache<InvestmentSnapshot>(cacheKey)?.rentReceived ?? 0)
@@ -46,14 +46,14 @@ export function useInvestmentData(): InvestmentData {
     setError(null)
     try {
       const [costsRes, txRes, tracksRes, contractsRes, loansRes, propRes] = await Promise.all([
-        supabase.from('investment_costs').select('*').eq('owner_id', user.id).order('created_at'),
-        supabase.from('transactions').select('direction, amount, category').eq('owner_id', user.id),
-        supabase.from('mortgage_tracks').select('*').eq('owner_id', user.id),
-        supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', user.id),
-        supabase.from('loans').select('*').eq('owner_id', user.id),
+        supabase.from('investment_costs').select('*').eq('owner_id', ownerId).order('created_at'),
+        supabase.from('transactions').select('direction, amount, category').eq('owner_id', ownerId),
+        supabase.from('mortgage_tracks').select('*').eq('owner_id', ownerId),
+        supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', ownerId),
+        supabase.from('loans').select('*').eq('owner_id', ownerId),
         // Rent counts only from handover (projections.rentDue) — and this total feeds
         // every yield on the Wealth screen, so it must not include pre-key months.
-        supabase.from('properties').select('key_delivery_date').eq('owner_id', user.id).limit(1),
+        supabase.from('properties').select('key_delivery_date').eq('owner_id', ownerId).limit(1),
       ])
       if (costsRes.error) throw costsRes.error
       if (txRes.error) throw txRes.error
