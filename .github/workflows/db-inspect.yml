@@ -75,6 +75,25 @@ jobs:
              where i.accepted_at is null
              order by i.created_at desc limit 20"
 
+          # Query 4 came back empty on the first run — no pending invitation existed at all,
+          # while an invitation was demonstrably sent (it was visible, and re-sending it was
+          # refused by the unique constraint). So the next question is not "why can he not
+          # see it" but "what happened to the row": accepted, cancelled, or never written.
+          echo "### 4b. EVERY invitation ever written, pending or not"
+          q "select
+               left(i.email,1) || '***' || split_part(i.email,'@',2) as invited_masked,
+               i.role, i.created_at, i.accepted_at,
+               (select count(*) from household_members m where m.household_id = i.household_id) as people_on_that_flat
+             from household_invites i order by i.created_at desc limit 20"
+
+          echo "### 4c. Counts — invitations, memberships, accounts"
+          q "select
+               (select count(*) from household_invites)                          as invites_total,
+               (select count(*) from household_invites where accepted_at is null) as invites_pending,
+               (select count(*) from household_members)                          as memberships,
+               (select count(distinct household_id) from household_members)       as households,
+               (select count(*) from auth.users)                                 as accounts"
+
           echo "### 5. Households and their sizes (no personal data)"
           q "select household_id, count(*) as members, min(role) as roles
              from household_members group by household_id order by members desc limit 20"
