@@ -49,7 +49,7 @@ const Accessibility = lazyRoute(() => import('./pages/legal/LegalPages').then(m 
 const ProcessPreview = lazyRoute(() => import('./pages/preview/ProcessPreview'))
 
 function AppRoutes() {
-  const { user, loading, ownerId } = useAuth()
+  const { user, loading, ownerId, householdsReady } = useAuth()
   const [hasProperty, setHasProperty] = useState<boolean | null>(null)
   // After repeated property-check failures, show a manual retry screen instead of
   // falling through to Onboarding (which would create a duplicate property — C3).
@@ -70,6 +70,16 @@ function AppRoutes() {
 
   useEffect(() => {
     if (!user) { setHasProperty(null); setPropertyError(false); return }
+    // Wait for the memberships, and re-ask if the active household changes.
+    //
+    // This probe asks "does THIS household have a property?", and until the memberships
+    // are read `ownerId` is only the signed-in account. Running it in that gap asked as
+    // the wrong household and then never asked again (ownerId was not a dependency), so
+    // someone who owns nothing and had joined someone else's apartment was sent to the
+    // wizard and left there — the exact case the owner asked about for מורן on 29.09.
+    // Staying on the splash for the extra moment is the honest answer to a question we
+    // cannot yet ask correctly.
+    if (!householdsReady) return
     let cancelled = false
     let attempt = 0
     let timer: ReturnType<typeof setTimeout>
@@ -100,7 +110,7 @@ function AppRoutes() {
 
     check()
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [user, retryNonce])
+  }, [user, retryNonce, householdsReady, ownerId])
 
   // EDGE-08: capture notification-tap navigations at the app root (always mounted —
   // unlike the authed Layout), buffering the target until a Router-bound consumer

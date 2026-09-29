@@ -46,6 +46,8 @@ interface AuthContextType {
    */
   ownerId: string | null
   households: Household[]
+  /** False until the memberships have been read; until then `ownerId` is only a guess. */
+  householdsReady: boolean
   /**
    * May this account change the ACTIVE apartment, or only look at it?
    *
@@ -76,6 +78,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [households, setHouseholds] = useState<Household[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
+  /**
+   * Have the memberships been read yet?
+   *
+   * `loading` clears as soon as the SESSION is known, which is earlier — and in that gap
+   * `ownerId` is still the fallback `user.id`. Anything that asks a question ABOUT the
+   * apartment in that gap asks it as the wrong household. For someone who owns nothing and
+   * was invited into somebody else's apartment, that is the difference between arriving in
+   * it and being sent to build one (owner, 29.09).
+   */
+  const [householdsReady, setHouseholdsReady] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -134,9 +146,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const refreshHouseholds = useCallback(async () => {
     const uid = session?.user?.id
-    if (!uid) { setHouseholds([]); setActiveId(null); return }
-    const { data: memberRows, error } = await supabase
-      .from('household_members').select('household_id, user_id, role').eq('user_id', uid)
+    if (!uid) { setHouseholds([]); setActiveId(null); setHouseholdsReady(false); return }
+    // supabase-js returns an API failure as `{ error }` but REJECTS on a network-level one
+    // (offline boot, reset connection). Since the boot probe now waits for this flag, a
+    // rejection that escaped here would hold the splash for ever — the same shape as
+    // AUD-011. Both failures are folded into the `error` path, which already falls back to
+    // the own-household case, and the flag is set in `finally` so it is set on every exit.
+    let memberRows: Record<string, unknown>[] | null = null
+    let error: unknown
+    try {
+      const res = await supabase
+        .from('household_members').select('household_id, user_id, role').eq('user_id', uid)
+      memberRows = (res.data ?? null) as Record<string, unknown>[] | null
+      error = res.error
+    } catch (e) {
+      error = e
+    }
+    try {
     // Before migration 051 is applied the table does not exist. Falling back to the single
     // own-household case keeps every screen working exactly as it did.
     /**
@@ -170,11 +196,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }))
     setHouseholds(list)
 
-    // Keep the previous choice when it is still one of mine; otherwise prefer my own.
+    /**
+     * Which apartment opens.
+     *
+     * The stored choice first, when it is still one of mine. Then my own — but only if it
+     * actually HAS an apartment: someone who signed up, was invited into somebody else's
+     * apartment and joined it owns an empty household of their own, and preferring it puts
+     * them in front of the onboarding wizard for an apartment they never wanted. That case
+     * survives today only because accepting writes the choice to localStorage, which is
+     * gone on a second device and unavailable in private mode. `propRows` is already
+     * fetched above, so the question costs nothing to ask.
+     */
     let stored: string | null = null
     try { stored = localStorage.getItem(ACTIVE_KEY(uid)) } catch { /* private mode */ }
-    const next = stored && ids.includes(stored) ? stored : (ids.includes(uid) ? uid : ids[0])
+    const withFlat = ids.filter(id => addressOf.has(id))
+    const next = stored && ids.includes(stored)
+      ? stored
+      : (withFlat.includes(uid) ? uid : (withFlat[0] ?? (ids.includes(uid) ? uid : ids[0])))
     setActiveId(next)
+    } finally {
+      // Every exit, including a thrown one further down: nothing here is worth trapping
+      // someone on a splash screen for.
+      setHouseholdsReady(true)
+    }
   }, [session?.user?.id])
 
   useEffect(() => { void refreshHouseholds() }, [refreshHouseholds])
@@ -233,7 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, session, loading,
-      ownerId, households, canWrite, switchHousehold, refreshHouseholds,
+      ownerId, households, householdsReady, canWrite, switchHousehold, refreshHouseholds,
       signInWithGoogle, signOut,
     }}>
       {children}
