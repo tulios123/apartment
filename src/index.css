@@ -4925,11 +4925,39 @@ button .spin { vertical-align: -2px; }
   color: var(--text-muted); cursor: pointer;
 }
 
-.hh-invite { margin-top: 10px; }
-.hh-invite label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-.hh-invite-row { display: flex; gap: 8px; align-items: center; }
-.hh-invite-row input { flex: 1; min-width: 0; }
-.hh-invite-row .btn-secondary { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; }
+.hh-invite { margin-top: 12px; }
+.hh-invite label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+
+/* Stacked, not side by side.
+   Beside each other the field and the button read as two unrelated objects: nothing in
+   this app styles a bare <input>, so it arrived square with a hairline border next to a
+   pill button, at a different height, with an email squeezed into half a phone width.
+   Full-width field then full-width action is this app's own RTL convention, it gives an
+   address the room it needs, and the shape clash disappears instead of being negotiated. */
+.hh-invite-row { display: flex; flex-direction: column; gap: 8px; }
+.hh-invite-row input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  text-align: start;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.hh-invite-row input::placeholder { color: var(--text-muted); opacity: 0.75; }
+.hh-invite-row input:focus { border-color: var(--accent); outline: none; }
+.hh-invite-row .btn-secondary {
+  width: 100%;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding-block: 11px;
+}
+/* The hint explains the field above it; without this it sits flush against the button.
+   display:block because it is a <span>, and margin-top does nothing on an inline box. */
+.hh-invite > .settings-note { display: block; margin-top: 8px; }
 
 .hh-invite-in {
   display: flex; align-items: center; gap: 10px;
