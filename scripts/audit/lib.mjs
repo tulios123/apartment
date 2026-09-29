@@ -5,12 +5,26 @@ import { createClient } from '@supabase/supabase-js'
 import fs from 'node:fs'
 import path from 'node:path'
 
+/**
+ * Credentials, from .env.local when it exists and otherwise from the environment.
+ *
+ * The file used to be the only source, and `readFileSync` on a missing one throws — which
+ * is how the cloud container behaved: it supplies every VITE_* variable directly, has no
+ * .env.local, and so every DB assertion in the onboarding specs died on ENOENT after the
+ * UI walk had already passed. The file still wins where it exists, so a developer's local
+ * override keeps overriding.
+ */
 export function loadEnvLocal() {
-  const file = path.resolve('.env.local')
   const env = {}
-  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-    const m = line.match(/^([A-Z_]+)=(.*)$/)
-    if (m) env[m[1]] = m[2].trim()
+  const file = path.resolve('.env.local')
+  if (fs.existsSync(file)) {
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+      const m = line.match(/^([A-Z_]+)=(.*)$/)
+      if (m) env[m[1]] = m[2].trim()
+    }
+  }
+  for (const k of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_DEV_USER_EMAIL', 'VITE_DEV_USER_PASSWORD']) {
+    if (!env[k] && process.env[k]) env[k] = process.env[k]
   }
   return env
 }
@@ -33,11 +47,11 @@ export async function signedInClient(ownerEmail) {
   const email = env.VITE_DEV_USER_EMAIL
   const password = env.VITE_DEV_USER_PASSWORD
   if (!url || !anon || !email || !password) {
-    console.error('Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY / VITE_DEV_USER_EMAIL / VITE_DEV_USER_PASSWORD in .env.local')
+    console.error('Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY / VITE_DEV_USER_EMAIL / VITE_DEV_USER_PASSWORD in .env.local or the environment')
     process.exit(1)
   }
   if (email !== ownerEmail) {
-    console.error(`Safety stop: --owner-email (${ownerEmail}) != dev account in .env.local (${email})`)
+    console.error(`Safety stop: --owner-email (${ownerEmail}) != dev account (${email})`)
     process.exit(1)
   }
   const supabase = createClient(url, anon)

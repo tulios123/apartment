@@ -218,7 +218,10 @@ test('full onboarding walk with back at each step → complete base dataset', as
   if (await calClose.isVisible().catch(() => false)) await calClose.click()
   await page.locator('.onboarding-field:has-text("שכר דירה חודשי") input').fill('4300')
   await page.getByRole('button', { name: 'העברה בנקאית' }).click()
-  await page.locator('.onboarding-field:has-text("יום תשלום") input').fill('1')
+  // The label is "יום התשלום בחודש" (and "יום הפקדת הצ׳ק" for cheques). The spec asked for
+  // "יום תשלום", which is not a substring of either — a wording change nothing caught,
+  // because this walk could not run in the cloud container.
+  await page.locator('.onboarding-field:has-text("יום התשלום") input').fill('1')
   await saveShot(page, 'onboarding-rental', 'filled', 'light')
   await page.getByRole('button', { name: 'חזור' }).click()
   await expect(page.getByRole('heading', { name: 'הון עצמי ועלויות' })).toBeVisible()
