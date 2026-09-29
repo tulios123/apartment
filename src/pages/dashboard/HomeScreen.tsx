@@ -32,6 +32,7 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState, PageError } from '../../components/ui/EmptyState'
 import { ClayIllustration } from '../../components/ui/ClayIllustration'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { ApartmentBar } from './ApartmentBar'
 import ExpenseSheet from '../../components/capture/ExpenseSheet'
 import TaskSheet from '../../components/capture/TaskSheet'
 import './home-screen.css'
@@ -393,6 +394,10 @@ export default function HomeScreen() {
                 : `יש ${actions.length} פעולות שמחכות לך.`}
           </p>
         )}
+        {/* Last in the header on purpose: the greeting and the status line are one thought
+            ("hello, here is today"), and identity — which apartment, and on what terms —
+            belongs under it rather than wedged into the middle of it. */}
+        <ApartmentBar />
       </header>
 
       {flash && <div className="hs-flash" role="status">{flash}</div>}

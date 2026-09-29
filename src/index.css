@@ -5007,6 +5007,17 @@ button .spin { vertical-align: -2px; }
   border: 1px solid var(--border);
 }
 .modal.is-dialog .invofr { padding: 26px 22px 22px; }
+
+/* The apartment switcher, opened from the chip on Home (pages/dashboard/ApartmentBar).
+   These rules live HERE rather than in home-screen.css because that file is scoped to
+   `.hs` and a Modal renders through a portal on <body> — outside it. Scoped there, the
+   dialog came out with its title clipped against the card edge and its rows flush to the
+   sides, which is what a screenshot showed and a passing build did not. */
+.hs-switch-dlg { padding: 26px 20px 20px; }
+.hs-switch-dlg h2 { font-size: 16px; font-weight: 700; color: var(--text); margin: 0; }
+.hs-switch-dlg .settings-note { margin: 5px 0 13px; }
+.hh-switch-role { display: inline-flex; color: var(--text-muted); margin-inline-start: auto; }
+.hh-switch-role + svg { margin-inline-start: 6px; }
 /* Tightened for the narrower card: at the page size the role line wrapped with one word
    stranded on a line of its own, and a 64px badge above a two-line card made it tall
    rather than the box the owner asked for. */
