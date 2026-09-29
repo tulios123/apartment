@@ -94,6 +94,23 @@ jobs:
                (select count(distinct household_id) from household_members)       as households,
                (select count(*) from auth.users)                                 as accounts"
 
+          # 4b showed the one invitation ever sent marked accepted 17 seconds after it was
+          # created — with nobody added to the apartment. accept_invite inserts the
+          # membership and marks the invitation in ONE transaction, so the insert cannot
+          # have failed: it was silently skipped. `on conflict do nothing` only skips on a
+          # unique violation, and the only unique key is (household_id, user_id) — so the
+          # accepting account was ALREADY a member of that household. This asks which
+          # account that was.
+          echo "### 4d. The accepted invitation: which flat, and who is on it"
+          q "select i.household_id,
+                    (u.id = i.household_id)   as invitee_is_the_flats_owner,
+                    (m.user_id is not null)   as invitee_already_a_member,
+                    (u.id is null)            as invitee_has_no_account
+             from household_invites i
+             left join auth.users u on lower(u.email) = lower(i.email)
+             left join household_members m on m.household_id = i.household_id and m.user_id = u.id
+             order by i.created_at desc limit 5"
+
           echo "### 5. Households and their sizes (no personal data)"
           q "select household_id, count(*) as members, min(role) as roles
              from household_members group by household_id order by members desc limit 20"
