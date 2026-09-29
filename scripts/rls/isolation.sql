@@ -335,5 +335,77 @@ begin;
     (select count(*) from transactions where description = 'אחרי קידום'), 1);
 commit;
 
+-- ── 8. הזמנה חוזרת, והזמנה שאומרת של מי הדירה (053) ────────────────────────
+set role postgres;
+delete from household_invites;
+delete from household_members
+ where household_id = '11111111-1111-1111-1111-111111111111'
+   and user_id <> '11111111-1111-1111-1111-111111111111';
+
+begin;
+  select pg_temp.be('11111111-1111-1111-1111-111111111111', 'omer@example.com');
+  select upsert_invite('11111111-1111-1111-1111-111111111111', 'Moran@Example.com ', 'viewer',
+                       'פסח חברוני 122', 'עומר');
+  select pg_temp.check_count('הזמנה נוצרה', (select count(*) from household_invites), 1);
+
+  -- Sending again must not fail and must not make a second row: same invitation, newly
+  -- offered. This is what the unique constraint used to turn into a dead end.
+  select upsert_invite('11111111-1111-1111-1111-111111111111', 'moran@example.com', 'member',
+                       'פסח חברוני 122', 'עומר');
+  select pg_temp.check_count('שליחה חוזרת לא יוצרת שורה שנייה',
+    (select count(*) from household_invites), 1);
+  select pg_temp.check_count('והדרגה התעדכנה למה שנשלח עכשיו',
+    (select count(*) from household_invites where role = 'member'), 1);
+  select pg_temp.check_count('הכתובת נשמרת מנורמלת',
+    (select count(*) from household_invites where email = 'moran@example.com'), 1);
+commit;
+
+-- The invitee can read the label without being able to read the household itself — which
+-- is the whole reason the label exists.
+begin;
+  select pg_temp.be('22222222-2222-2222-2222-222222222222', 'moran@example.com');
+  select pg_temp.check_count('מורן רואה את ההזמנה', (select count(*) from household_invites), 1);
+  select pg_temp.check_count('ורואה של מי הדירה',
+    (select count(*) from household_invites
+      where household_label = 'פסח חברוני 122' and invited_by_label = 'עומר'), 1);
+  select pg_temp.check_count('בלי לראות את הדירה עצמה — היא עוד לא חברה בה',
+    (select count(*) from properties), 0);
+commit;
+
+-- A stranger cannot invite into someone else's apartment, and cannot learn anything by
+-- trying.
+begin;
+  select pg_temp.be('33333333-3333-3333-3333-333333333333', 'dana@example.com');
+  do $$
+  begin
+    perform upsert_invite('11111111-1111-1111-1111-111111111111', 'x@example.com', 'member', null, null);
+    raise exception 'FAIL: דנה הזמינה לדירה של עומר';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm like 'FAIL:%' then raise; end if;
+      raise notice 'ok · דנה לא יכולה להזמין לדירה זרה: %', sqlerrm;
+  end $$;
+commit;
+
+-- A viewer cannot invite through the function either — the policy and the function must
+-- agree, or the function becomes the way around the policy.
+set role postgres;
+insert into household_members (household_id, user_id, role)
+values ('11111111-1111-1111-1111-111111111111', '77777777-7777-7777-7777-777777777777', 'viewer')
+on conflict (household_id, user_id) do update set role = 'viewer';
+
+begin;
+  select pg_temp.be('77777777-7777-7777-7777-777777777777', 'viewer@example.com');
+  do $$
+  begin
+    perform upsert_invite('11111111-1111-1111-1111-111111111111', 'y@example.com', 'member', null, null);
+    raise exception 'FAIL: צופה הזמין דרך הפונקציה';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm like 'FAIL:%' then raise; end if;
+      raise notice 'ok · צופה נחסם גם בפונקציה: %', sqlerrm;
+  end $$;
+commit;
+
 set role postgres;
 select 'ALL RLS CHECKS PASSED' as result;

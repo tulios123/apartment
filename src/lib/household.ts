@@ -34,8 +34,9 @@ export interface PendingInvite {
 export interface IncomingInvite {
   id: string
   householdId: string
-  householdName: string
-  address: string | null
+  /** Who invited you, and to what — carried ON the invitation (migration 053). */
+  invitedBy: string | null
+  householdLabel: string | null
   role: Role
 }
 
@@ -92,7 +93,26 @@ export type InviteResult =
   | { ok: true }
   | { ok: false; reason: 'full' | 'already' | 'self' | 'invalid' | 'failed'; message: string }
 
-export async function invite(householdId: string, email: string, myEmail: string | null, memberCount: number, role: Role = 'member'): Promise<InviteResult> {
+/**
+ * Send, or send again.
+ *
+ * Through a function rather than an insert, because a second invitation to the same
+ * address collides with `unique (household_id, email)` — and the first version reported
+ * that collision as an error, so someone who never received the first invitation could
+ * not be sent another, and someone who had left could never be re-invited at all
+ * (owner, 29.09). Re-sending updates the existing row: same invitation, newly offered.
+ *
+ * `householdLabel` and `invitedByLabel` travel with it because the person invited cannot
+ * read the household they have not joined — which is correct and stays correct. Without
+ * them the card says "הוזמנת לדירה" and nothing else.
+ */
+export async function invite(
+  householdId: string,
+  email: string,
+  myEmail: string | null,
+  role: Role = 'member',
+  labels: { household?: string | null; invitedBy?: string | null } = {},
+): Promise<InviteResult> {
   const addr = email.trim().toLowerCase()
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) {
     return { ok: false, reason: 'invalid', message: 'כתובת המייל לא נראית תקינה' }
@@ -100,17 +120,19 @@ export async function invite(householdId: string, email: string, myEmail: string
   if (addr === (myEmail ?? '').toLowerCase()) {
     return { ok: false, reason: 'self', message: 'זו הכתובת שלך' }
   }
-  // Checked here for a decent message, and enforced again by the trigger on the way in.
-  if (memberCount >= MAX_MEMBERS) {
-    return { ok: false, reason: 'full', message: `דירה יכולה לכלול עד ${MAX_MEMBERS} אנשים` }
-  }
-  const { data: { user } } = await supabase.auth.getUser()
-  const { error } = await supabase.from('household_invites')
-    .insert({ household_id: householdId, email: addr, role, invited_by: user?.id })
+  const { error } = await supabase.rpc('upsert_invite', {
+    p_household: householdId,
+    p_email: addr,
+    p_role: role,
+    p_household_label: labels.household ?? null,
+    p_invited_by_label: labels.invitedBy ?? null,
+  })
   if (error) {
-    if (/duplicate|unique/i.test(error.message)) {
-      return { ok: false, reason: 'already', message: 'כבר נשלחה הזמנה לכתובת הזו' }
-    }
+    const m = error.message ?? ''
+    if (m.includes('household_full')) return { ok: false, reason: 'full', message: `דירה יכולה לכלול עד ${MAX_MEMBERS} אנשים` }
+    if (m.includes('already_member')) return { ok: false, reason: 'already', message: 'האדם הזה כבר בדירה' }
+    if (m.includes('bad_email')) return { ok: false, reason: 'invalid', message: 'כתובת המייל לא נראית תקינה' }
+    if (m.includes('not_allowed')) return { ok: false, reason: 'failed', message: 'רק שותף מלא יכול להזמין' }
     return { ok: false, reason: 'failed', message: 'לא הצלחנו לשלוח את ההזמנה — נסו שוב' }
   }
   return { ok: true }
@@ -123,24 +145,20 @@ export async function cancelInvite(id: string): Promise<boolean> {
 
 /** Invitations addressed to the signed-in account. RLS does the matching, not this query. */
 export async function myIncomingInvites(): Promise<IncomingInvite[]> {
+  // Only the invitation's own columns. Looking the household up would return nothing —
+  // the whole point is that the invitee cannot read an apartment they have not joined.
   const { data, error } = await supabase
-    .from('household_invites').select('id, household_id, role').is('accepted_at', null)
+    .from('household_invites')
+    .select('id, household_id, role, household_label, invited_by_label')
+    .is('accepted_at', null)
   if (error || !data || data.length === 0) return []
-  const ids = data.map(r => r.household_id as string)
-  const [{ data: owners }, { data: props }] = await Promise.all([
-    supabase.from('owners').select('id, name').in('id', ids),
-    supabase.from('properties').select('owner_id, address').in('owner_id', ids),
-  ])
-  return data.map(r => {
-    const hid = r.household_id as string
-    return {
-      id: r.id as string,
-      householdId: hid,
-      householdName: (owners ?? []).find(o => o.id === hid)?.name as string ?? 'דירה',
-      address: ((props ?? []).find(p => p.owner_id === hid)?.address as string) ?? null,
-      role: ((r as { role?: string }).role === 'viewer' ? 'viewer' : 'member') as Role,
-    }
-  })
+  return data.map(r => ({
+    id: r.id as string,
+    householdId: r.household_id as string,
+    invitedBy: ((r as { invited_by_label?: string }).invited_by_label) ?? null,
+    householdLabel: ((r as { household_label?: string }).household_label) ?? null,
+    role: ((r as { role?: string }).role === 'viewer' ? 'viewer' : 'member') as Role,
+  }))
 }
 
 export type AcceptResult = { ok: true; householdId: string } | { ok: false; message: string }

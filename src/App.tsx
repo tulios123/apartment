@@ -11,6 +11,7 @@ import HomeScreen from './pages/dashboard/HomeScreen'
 import FinancesV2 from './pages/finances/FinancesV2'
 import WealthHub from './pages/wealth/WealthHub'
 import PropertyAdminHub from './pages/property/PropertyAdminHub'
+import { InviteGate } from './components/InviteGate'
 import FinancesHub from './pages/finances/FinancesHub'
 import Settings from './pages/Settings'
 import DevNotes from './components/DevNotes'
@@ -39,6 +40,7 @@ function lazyRoute<T extends React.ComponentType<any>>(load: () => Promise<{ def
   )
 }
 const Onboarding = lazyRoute(() => import('./pages/Onboarding'))
+
 const FeedbackAdmin = lazyRoute(() => import('./pages/admin/FeedbackAdmin'))
 const PrivacyPolicy = lazyRoute(() => import('./pages/legal/LegalPages').then(m => ({ default: m.PrivacyPolicy })))
 const TermsOfService = lazyRoute(() => import('./pages/legal/LegalPages').then(m => ({ default: m.TermsOfService })))
@@ -155,17 +157,25 @@ function AppRoutes() {
     </div>
   )
   if (hasProperty === null) return <Splash />
+  // A waiting invitation comes BEFORE the wizard. Someone invited to an apartment who
+  // has none of their own was being sent to build one, from a screen with no way out to
+  // Settings — which is where the invitation was, and why Omer never saw his (29.09).
   if (!hasProperty || forcedOnboarding) return (
-    <Suspense fallback={<Splash />}>
-      <Onboarding onComplete={() => {
-        sessionStorage.removeItem('reonboard')
-        setForcedOnboarding(false)
-        setHasProperty(true)
-      }} />
-    </Suspense>
+    <InviteGate mode="blocking">
+      <Suspense fallback={<Splash />}>
+        <Onboarding onComplete={() => {
+          sessionStorage.removeItem('reonboard')
+          setForcedOnboarding(false)
+          setHasProperty(true)
+        }} />
+      </Suspense>
+    </InviteGate>
   )
 
+  // …and for someone who already has an apartment, it meets them on entry rather than
+  // waiting in Settings to be found.
   return (
+    <InviteGate mode="entry">
     <AppReadyContext.Provider value={readyValue}>
     <BrowserRouter>
       <Routes>
@@ -216,6 +226,7 @@ function AppRoutes() {
     </BrowserRouter>
     {!appReady && <div className="splash-overlay"><Splash /></div>}
     </AppReadyContext.Provider>
+    </InviteGate>
   )
 }
 

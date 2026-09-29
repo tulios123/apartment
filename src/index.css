@@ -4926,6 +4926,45 @@ button .spin { vertical-align: -2px; }
 }
 
 .hh-open { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; }
+.hh-msg { margin: 10px 0 0; font-size: 13px; line-height: 1.5; }
+.hh-member-acts { margin-inline-start: auto; display: inline-flex; gap: 2px; flex-shrink: 0; }
+.hh-member-acts .hh-member-x { margin-inline-start: 0; }
+
+/* ── "הוזמנת לדירה" — the same card in two places (components/InviteOffer) ──
+   Full screen instead of the onboarding wizard for someone with no apartment, and in a
+   modal on entry for someone who has one. */
+.invofr { text-align: center; padding: 8px 0 4px; }
+.invofr-page { display: flex; align-items: center; justify-content: center; min-height: 100dvh; }
+.invofr-badge {
+  width: 64px; height: 64px; margin: 0 auto 14px;
+  display: grid; place-items: center;
+  border-radius: 20px;
+  background: var(--accent-soft, rgba(42, 125, 225, 0.1));
+  color: var(--accent);
+}
+.invofr-title { margin: 0; font-size: 21px; font-weight: 700; line-height: 1.35; color: var(--text); }
+.invofr-where { margin: 6px 0 0; font-size: 15px; color: var(--text-muted); }
+.invofr-role {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  margin: 16px auto 0; padding: 11px 14px; max-width: 420px;
+  border: 1px solid var(--border); border-radius: var(--r-md, 12px);
+  background: var(--surface);
+  font-size: 13.5px; line-height: 1.5; color: var(--text-secondary);
+  text-align: start;
+}
+.invofr-role b { color: var(--text); }
+.invofr-role.viewer { color: var(--text-muted); }
+/* Stacked and full width. Outside an onboarding form these two buttons keep their
+   natural width and land on the same line, with the skip text running underneath the
+   primary — which is how the first render came out. */
+.invofr-cta, .invofr-skip {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+.invofr-cta { margin-top: 18px; }
+.invofr-skip { margin-top: 10px; }
+.invofr { max-width: 460px; margin-inline: auto; }
 .hh-role {
   display: inline-flex; align-items: center; gap: 4px;
   margin-inline-start: auto; flex-shrink: 0;

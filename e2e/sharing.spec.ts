@@ -127,7 +127,7 @@ test('שתי דירות — הבורר מופיע ומסמן את הפעילה',
   await expect(page.locator('.hh-switch-row').filter({ hasText: 'פסח חברוני 122' })).not.toHaveClass(/is-active/)
 })
 
-test('הזמנה שממתינה לי — מוצעת, ומסבירה מה יקרה', async ({ page }) => {
+test('הזמנה שממתינה לי לא מחכה בהגדרות — היא נפגשת בדלת', async ({ page }) => {
   await settings(page, {
     ...base,
     owners: [
@@ -135,20 +135,21 @@ test('הזמנה שממתינה לי — מוצעת, ומסבירה מה יקר�
       { id: FLAT2, name: 'הדירה של אבא', email: null },
     ],
     household_members: [{ household_id: OWNER, user_id: OWNER, role: 'member' }],
-    // RLS is what limits this row to the addressee in production; here it is simply present.
     household_invites: [
-      { id: 'inv9', household_id: FLAT2, email: 'view@test.local', role: 'member', created_at: '2026-09-25T08:00:00Z', accepted_at: null },
+      { id: 'inv9', household_id: FLAT2, email: 'view@test.local', role: 'member',
+        household_label: 'הרצל 10', invited_by_label: 'אבא',
+        created_at: '2026-09-25T08:00:00Z', accepted_at: null },
     ],
     properties: [flat(OWNER, 'פסח חברוני 122'), flat(FLAT2, 'הרצל 10')],
   })
 
-  const card = page.locator('.hh-invite-in')
-  await expect(card).toBeVisible()
-  await expect(card).toContainText('הרצל 10')
-  await expect(card, 'it says what joining will get you').toContainText('לעבור בין הדירות')
-  await expect(card, 'and on what terms').toContainText('שותף מלא')
-  await expect(card.getByRole('button', { name: /הצטרפות/ })).toBeVisible()
-  await saveShot(page, 'sharing', '03-invited', 'light')
+  // Deliberately NOT here any more. Waiting in Settings for someone to go looking is
+  // exactly how the first real invitation was missed — it is met on entry now
+  // (e2e/invite-gate.spec.ts), and this asserts the move was on purpose rather than lost.
+  const sharing = page.locator('.settings-section').filter({ hasText: 'שיתוף הדירה' })
+  await expect(sharing.locator('.hh-invite-in')).toHaveCount(0)
+  await expect(sharing, 'the section is about THIS apartment, not other people\'s')
+    .not.toContainText('הרצל 10')
 })
 
 test('צופה בלבד — רואה, ולא מוצע לו לשנות', async ({ page }) => {
