@@ -2,6 +2,14 @@ import { test, expect } from '@playwright/test'
 import { gotoAuthed, saveShot, setTheme } from './lib/helpers'
 import { attachConsoleMonitor } from './lib/monitors'
 
+// ── Not runnable in the cloud container ──
+// This spec drives the HOSTED Supabase through the dev-bypass login rather than the
+// offline stub. The credentials are all present there, but the browser cannot complete a
+// TLS handshake to Supabase through the agent proxy, so sign-in never lands and the app
+// sits on the login screen — the failure reads as "no bottom nav" and has nothing to do
+// with the code. Working around it would mean disabling certificate verification, which
+// is not a trade worth making for a screenshot. Run it locally.
+
 // Pre-flight gate (NIGHT_RUN Stage 0.4): the dev-bypass login must actually land
 // on the authenticated shell. If this fails, the run degrades to code-only audit.
 test('pre-flight: bypass login reaches authenticated Home', async ({ page }) => {

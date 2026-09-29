@@ -50,7 +50,27 @@ export async function clearOnboardingDraft(page: Page) {
 }
 
 // Wipe the test account via the protected Settings reset and land back on Onboarding.
+/**
+ * May this run wipe the live test account?
+ *
+ * `resetAccount` clicks "מחק הכול" against the HOSTED Supabase — staging and production
+ * share one project, so it is real data being deleted, not a fixture. Until now that was
+ * held back by an accident: the specs that call it could not launch a browser in the cloud
+ * container at all, so `npx playwright test` there quietly skipped past them. Fixing the
+ * launch path (playwright.config) removes that accident, and an accident is not a safety
+ * measure — so the interlock is explicit instead.
+ *
+ * Opt in with E2E_ALLOW_DESTRUCTIVE=1 when you actually mean to reset the test account.
+ */
+export function destructiveAllowed(): boolean {
+  return process.env.E2E_ALLOW_DESTRUCTIVE === '1'
+}
+
 export async function resetAccount(page: Page) {
+  // Backstop: a spec that forgets the skip must still not delete anybody's data.
+  if (!destructiveAllowed()) {
+    throw new Error('resetAccount wipes the live test account — set E2E_ALLOW_DESTRUCTIVE=1 to allow it')
+  }
   await gotoAuthed(page, '/settings')
   const resetBtn = page.getByRole('button', { name: 'איפוס כל הנתונים' })
   await resetBtn.scrollIntoViewIfNeeded()

@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { gotoAuthed, saveShot } from './lib/helpers'
+import { gotoAuthed, saveShot, destructiveAllowed } from './lib/helpers'
+
+// Deletes real data: staging and production share one Supabase project, so the account
+// this wipes is a live one. Opt in with E2E_ALLOW_DESTRUCTIVE=1 — see destructiveAllowed
+// in lib/helpers. It used to be held back only by a browser that would not launch here.
+test.skip(!destructiveAllowed(), 'מוחק נתונים אמיתיים — הריצו עם E2E_ALLOW_DESTRUCTIVE=1')
+
 
 // Stage 0.5 sequencing: exercise the protected admin data-reset on the test account.
 // Success = the app lands back on Onboarding (clean account). This is itself a

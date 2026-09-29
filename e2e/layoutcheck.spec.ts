@@ -2,6 +2,14 @@ import { test, expect } from '@playwright/test'
 import { gotoAuthed, saveShot, type Theme } from './lib/helpers'
 import { layoutIntegrity } from './lib/layout'
 
+// ── Not runnable in the cloud container ──
+// This spec drives the HOSTED Supabase through the dev-bypass login rather than the
+// offline stub. The credentials are all present there, but the browser cannot complete a
+// TLS handshake to Supabase through the agent proxy, so sign-in never lands and the app
+// sits on the login screen — the failure reads as "no bottom nav" and has nothing to do
+// with the code. Working around it would mean disabling certificate verification, which
+// is not a trade worth making for a screenshot. Run it locally.
+
 // AUD-002 verification: the fixed bottom-nav must not overlap content CTAs on the
 // authed hubs (the full walk left a dataset). Reports remaining violations per screen.
 for (const [route, name] of [['/', 'home'], ['/finances', 'finances'], ['/wealth', 'wealth'], ['/property', 'property']] as const) {

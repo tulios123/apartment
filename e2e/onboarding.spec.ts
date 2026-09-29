@@ -1,11 +1,17 @@
 import { test, expect, type Page } from '@playwright/test'
-import { resetAccount, saveShot, setTheme, clearOnboardingDraft } from './lib/helpers'
+import { resetAccount, saveShot, setTheme, clearOnboardingDraft, destructiveAllowed } from './lib/helpers'
 import { layoutIntegrity } from './lib/layout'
 import { attachConsoleMonitor } from './lib/monitors'
 // Node-side DB assertions, RLS-scoped to the test account. Runs in a child process
 // (scripts/audit/count-rows.mjs) because importing the supabase ESM graph inside
 // Playwright's TS loader crashes it ("Unexpected module status 3").
 import { execFileSync } from 'node:child_process'
+
+// Deletes real data: staging and production share one Supabase project, so the account
+// this wipes is a live one. Opt in with E2E_ALLOW_DESTRUCTIVE=1 — see destructiveAllowed
+// in lib/helpers. It used to be held back only by a browser that would not launch here.
+test.skip(!destructiveAllowed(), 'מוחק נתונים אמיתיים — הריצו עם E2E_ALLOW_DESTRUCTIVE=1')
+
 function dbRows(...tables: string[]): Record<string, any[]> {
   const stdout = execFileSync('node', ['scripts/audit/count-rows.mjs', ...tables], { encoding: 'utf8' })
   const last = stdout.trim().split('\n').pop() ?? '{}'
