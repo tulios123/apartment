@@ -11,7 +11,23 @@ import { openFeedback } from '../../lib/feedbackController'
  * PWA) handles native document scroll + keyboard auto-scroll reliably, whereas
  * a position:fixed overlay trapped inside the locked shell does not.
  */
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, onClose, children, variant = 'sheet' }: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+  /**
+   * `sheet` (default) — the full-screen behaviour described above. Right for anything
+   * with a form in it.
+   *
+   * `dialog` — a small card floating in the middle of the screen, on phones too. The
+   * full-screen sheet exists to solve a keyboard problem; a modal with no input in it
+   * has no keyboard problem, and taking over the whole screen for a two-button card
+   * reads as "the app has changed" rather than "something is asking you a question"
+   * (owner, 29.09). The card supplies its own heading, so the chrome steps back to a
+   * single close control.
+   */
+  variant?: 'sheet' | 'dialog'
+}) {
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -51,16 +67,22 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   }
 
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div ref={modalRef} className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} onKeyDown={trapTab}>
-        {/* Feedback lives in the LEADING corner and close in the TRAILING corner —
-            opposite ends, so a reach for one can't slip onto the other (they used to
-            sit 2px apart in the same corner). */}
-        <div className="modal-header">
-          <button className="btn-icon modal-feedback-btn" onClick={openFeedback} aria-label="דיווח על תקלה או רעיון" title="דיווח"><Lightbulb size={17} weight="fill" /></button>
-          <h2>{title}</h2>
-          <button className="btn-icon" onClick={onClose} aria-label="סגור" title="סגור"><X size={18} /></button>
-        </div>
+    <div className={`modal-overlay${variant === 'dialog' ? ' is-dialog' : ''}`} onClick={onClose}>
+      <div ref={modalRef} className={`modal${variant === 'dialog' ? ' is-dialog' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} onKeyDown={trapTab}>
+        {variant === 'dialog' ? (
+          // No title bar: the card inside already says what this is, and repeating it
+          // above a rule would be the same sentence twice with a line between them.
+          <button className="btn-icon modal-dialog-close" onClick={onClose} aria-label="סגור" title="סגור"><X size={18} /></button>
+        ) : (
+          /* Feedback lives in the LEADING corner and close in the TRAILING corner —
+             opposite ends, so a reach for one can't slip onto the other (they used to
+             sit 2px apart in the same corner). */
+          <div className="modal-header">
+            <button className="btn-icon modal-feedback-btn" onClick={openFeedback} aria-label="דיווח על תקלה או רעיון" title="דיווח"><Lightbulb size={17} weight="fill" /></button>
+            <h2>{title}</h2>
+            <button className="btn-icon" onClick={onClose} aria-label="סגור" title="סגור"><X size={18} /></button>
+          </div>
+        )}
         {children}
       </div>
     </div>,

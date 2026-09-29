@@ -3997,6 +3997,31 @@ button .spin { vertical-align: -2px; }
     padding: 0;
     background: var(--surface);
   }
+  /* …except the dialog variant, which stays a card in the middle of the screen. It has
+     no input, so none of the reasons for the sheet above apply to it. */
+  .modal-overlay.is-dialog {
+    position: fixed;
+    inset: 0;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(14,31,42,0.55);
+  }
+  .modal.is-dialog {
+    display: block;
+    width: 100%;
+    max-width: 340px;
+    max-height: calc(100dvh - 40px);
+    min-height: 0;
+    overflow-y: auto;
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+  }
+  .modal.is-dialog .invofr { padding: 24px 18px 20px; }
+
   .modal {
     display: block;
     width: 100%;
@@ -4967,6 +4992,37 @@ button .spin { vertical-align: -2px; }
 .invofr-cta { margin-top: 18px; }
 .invofr-skip { margin-top: 10px; }
 .invofr { max-width: 460px; margin-inline: auto; }
+
+/* A question, not a new screen.
+   The invitation is the one modal in the app with nothing to type into, so it is the one
+   modal that does not need the full-screen sheet below (which exists for the iOS keyboard).
+   Taking the whole screen for a two-button card reads as "the app has changed" rather than
+   "something is asking you a question" — owner, 29.09. `.is-dialog` therefore keeps the
+   centred floating card on phones as well as on a desktop. */
+.modal.is-dialog {
+  max-width: 380px;
+  /* In dark mode the scrim sits on an already-dark page and separates almost nothing,
+     so the card's edge is what tells you it is floating rather than part of the screen.
+     Invisible in light, load-bearing in dark. */
+  border: 1px solid var(--border);
+}
+.modal.is-dialog .invofr { padding: 26px 22px 22px; }
+/* Tightened for the narrower card: at the page size the role line wrapped with one word
+   stranded on a line of its own, and a 64px badge above a two-line card made it tall
+   rather than the box the owner asked for. */
+.modal.is-dialog .invofr-badge { width: 52px; height: 52px; border-radius: 16px; margin-bottom: 12px; }
+.modal.is-dialog .invofr-badge svg { width: 26px; height: 26px; }
+.modal.is-dialog .invofr-title { font-size: 19px; }
+.modal.is-dialog .invofr-where { font-size: 14px; }
+.modal.is-dialog .invofr-role { font-size: 12.5px; line-height: 1.5; padding: 9px 11px; }
+.modal.is-dialog .invofr-cta { margin-top: 15px; }
+.modal-dialog-close {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+  z-index: 1;
+}
+.modal.is-dialog { position: relative; }
 .hh-role {
   display: inline-flex; align-items: center; gap: 4px;
   margin-inline-start: auto; flex-shrink: 0;

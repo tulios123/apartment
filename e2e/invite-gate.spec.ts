@@ -45,8 +45,8 @@ const flat = {
   purchase_price: 900000, purchase_date: '2025-01-01', key_delivery_date: '2025-01-01', rooms: 3,
 }
 
-async function open(page: Page, fx: Fixture) {
-  await setTheme(page, 'light')
+async function open(page: Page, fx: Fixture, theme: 'light' | 'dark' = 'light') {
+  await setTheme(page, theme)
   await stubSupabase(page, fx)
   await page.addInitScript(() => {
     for (const k of Object.keys(localStorage)) if (k.startsWith('onboarding_draft')) localStorage.removeItem(k)
@@ -102,6 +102,41 @@ test('יש דירה + יש הזמנה ⇒ קופץ בכניסה, ולא חוסם
 
   await page.locator('.invofr').waitFor({ state: 'visible', timeout: 30_000 })
   await saveShot(page, 'invite', '03-on-entry', 'light')
+
+  // A card in the middle of the screen, not a takeover (owner, 29.09). Asserted in
+  // geometry rather than by class name, because "is it actually a box in the middle" is
+  // the thing that was wrong and a class can be present while the layout is not.
+  const vp = page.viewportSize()!
+  const box = (await page.locator('.modal.is-dialog').boundingBox())!
+  expect(box.height, 'the dialog does not fill the screen').toBeLessThan(vp.height * 0.8)
+  expect(box.width, 'nor its full width').toBeLessThan(vp.width - 20)
+  const centre = box.y + box.height / 2
+  expect(Math.abs(centre - vp.height / 2), 'vertically centred').toBeLessThan(40)
+  // …and the page behind it is still visible through the scrim, which is what makes it
+  // read as a question about the app rather than a new screen.
+  await expect(page.locator('.bottom-nav')).toBeVisible()
+
+  // The card is the first thing a new family member ever sees, and half of them are in
+  // dark mode — so it is worth a picture, not an assumption.
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await open(page, {
+    ...base,
+    owners: [{ id: OWNER, name: 'עומר', email: 'omer@example.com' }],
+    household_members: [{ household_id: OWNER, user_id: OWNER, role: 'member' }],
+    household_invites: [inviteRow('viewer')],
+    properties: [flat],
+  }, 'dark')
+  await page.locator('.invofr').waitFor({ state: 'visible', timeout: 30_000 })
+  await saveShot(page, 'invite', '03-on-entry', 'dark')
+  await page.emulateMedia({ colorScheme: 'light' })
+  await open(page, {
+    ...base,
+    owners: [{ id: OWNER, name: 'עומר', email: 'omer@example.com' }],
+    household_members: [{ household_id: OWNER, user_id: OWNER, role: 'member' }],
+    household_invites: [inviteRow()],
+    properties: [flat],
+  })
+  await page.locator('.invofr').waitFor({ state: 'visible', timeout: 30_000 })
 
   // "לא עכשיו" leaves him in his own apartment rather than nowhere.
   await page.getByRole('button', { name: 'לא עכשיו' }).click()

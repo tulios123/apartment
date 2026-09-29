@@ -91,7 +91,7 @@ export function InviteGate({ mode, children }: {
   return (
     <>
       {children}
-      <Modal onClose={decline} title="הוזמנת לדירה">
+      <Modal onClose={decline} title="הוזמנת לדירה" variant="dialog">
         {offer}
       </Modal>
     </>
