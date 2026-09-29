@@ -3,7 +3,8 @@
    Scoped to .wlth. */
 .wlth {
   .wlth-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .wlth-edit-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer; transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+  /* 44pt tap floor — it was 35px tall. */
+  .wlth-edit-btn { display: inline-flex; align-items: center; min-height: 44px; gap: 6px; border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 0 14px; border-radius: var(--r-pill); cursor: pointer; transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
   .wlth-edit-btn:hover { color: var(--brand-navy); border-color: var(--brand-navy); }
 
   /* ── Layer 1: Ownership Score hero ─────────────────────────── */

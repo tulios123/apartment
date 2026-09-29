@@ -83,8 +83,11 @@ export default function DevNotes() {
           bottom: 110,
           left: 16,
           zIndex: 9998,
-          width: 38,
-          height: 38,
+          // 44pt tap floor. Dev-only, but it is a control the owner taps in the testing
+          // app, and it was the one violation showing up on EVERY screen's layout report —
+          // noise that made the real ones easier to skim past.
+          width: 44,
+          height: 44,
           borderRadius: '50%',
           background: '#1a1a2e',
           color: '#fff',

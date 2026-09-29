@@ -3,8 +3,12 @@
 .finv {
   /* Period bar: view toggle + navigator */
   .finv-periodbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 16px; }
-  .finv-viewtoggle { display: inline-flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: var(--r-pill); box-shadow: var(--shadow-sm); }
-  .finv-viewtoggle button { border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: var(--r-pill); cursor: pointer; transition: background var(--t-fast), color var(--t-fast); }
+  /* 44pt tap floor. The buttons were 33px tall inside a 4px-padded track — under the
+     floor while sitting beside month-nav circles that are exactly 44. Dropping the track
+     padding and giving the buttons the height keeps the whole control at 44 rather than
+     growing it to 52, so the period bar now reads as one row of equal-height controls. */
+  .finv-viewtoggle { display: inline-flex; gap: 4px; background: var(--bg-card); padding: 0; border-radius: var(--r-pill); box-shadow: var(--shadow-sm); }
+  .finv-viewtoggle button { display: inline-flex; align-items: center; min-height: 44px; border: none; background: none; color: var(--text-muted); font-family: inherit; font-size: 13px; font-weight: 600; padding: 0 18px; border-radius: var(--r-pill); cursor: pointer; transition: background var(--t-fast), color var(--t-fast); }
   .finv-viewtoggle button:hover { color: var(--brand-navy); }
   .finv-viewtoggle button.on { background: var(--accent); color: #fff; }
 
