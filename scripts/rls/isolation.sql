@@ -32,6 +32,16 @@ insert into owners (id, name, email) values
   ('33333333-3333-3333-3333-333333333333', 'דנה',  'dana@example.com'),
   ('44444444-4444-4444-4444-444444444444', 'הדירה השנייה של עומר', null);
 
+-- The accounts behind them. accept_invite matches on the JWT's email and migration 054
+-- joins auth.users to ask whether an accepted invitation actually produced a membership,
+-- so an invitee with no account is a different test from an invitee with one.
+insert into auth.users (id, email) values
+  ('11111111-1111-1111-1111-111111111111', 'omer@example.com'),
+  ('22222222-2222-2222-2222-222222222222', 'moran@example.com'),
+  ('33333333-3333-3333-3333-333333333333', 'dana@example.com'),
+  ('77777777-7777-7777-7777-777777777777', 'viewer@example.com')
+on conflict (id) do nothing;
+
 -- The trigger should already have made each creator a member of their own household.
 -- (Counted over the cast only — migration 001 seeds an owner row of its own.)
 do $$
@@ -406,6 +416,92 @@ begin;
       raise notice 'ok · צופה נחסם גם בפונקציה: %', sqlerrm;
   end $$;
 commit;
+
+-- ── Accepting must actually join (migration 054) ─────────────────────────────
+-- The clause this replaces cost a day: `on conflict do nothing` with no target swallowed
+-- the insert, the function stamped accepted_at anyway, and the invitation was spent from
+-- both sides while nobody had been added to anything. The live database had exactly one
+-- invitation and it was in that state.
+set role postgres;
+delete from household_members
+ where household_id = '33333333-3333-3333-3333-333333333333'
+   and user_id = '22222222-2222-2222-2222-222222222222';
+delete from household_invites
+ where household_id = '33333333-3333-3333-3333-333333333333'
+   and lower(email) = 'moran@example.com';
+insert into household_invites (household_id, email, role, invited_by)
+values ('33333333-3333-3333-3333-333333333333', 'moran@example.com', 'viewer',
+        '33333333-3333-3333-3333-333333333333');
+
+begin;
+  select pg_temp.be('22222222-2222-2222-2222-222222222222', 'moran@example.com');
+  select accept_invite((select id from household_invites
+                        where household_id = '33333333-3333-3333-3333-333333333333'
+                          and lower(email) = 'moran@example.com'));
+commit;
+
+set role postgres;
+select pg_temp.check_count('הצטרפות באמת מצרפת',
+  (select count(*) from household_members
+    where household_id = '33333333-3333-3333-3333-333333333333'
+      and user_id = '22222222-2222-2222-2222-222222222222'), 1);
+select pg_temp.check_count('התפקיד שהוצע הוא התפקיד שהתקבל',
+  (select count(*) from household_members
+    where household_id = '33333333-3333-3333-3333-333333333333'
+      and user_id = '22222222-2222-2222-2222-222222222222' and role = 'viewer'), 1);
+select pg_temp.check_count('הזמנה שנוצלה מסומנת ככזו',
+  (select count(*) from household_invites
+    where household_id = '33333333-3333-3333-3333-333333333333'
+      and lower(email) = 'moran@example.com' and accepted_at is not null), 1);
+
+-- Accepting again is not an error. She IS a member; telling her the invitation is spent
+-- would be a claim about a state she can see for herself is fine.
+begin;
+  select pg_temp.be('22222222-2222-2222-2222-222222222222', 'moran@example.com');
+  select accept_invite((select id from household_invites
+                        where household_id = '33333333-3333-3333-3333-333333333333'
+                          and lower(email) = 'moran@example.com'));
+commit;
+set role postgres;
+select pg_temp.check_count('הצטרפות פעמיים לא מכפילה ולא נכשלת',
+  (select count(*) from household_members
+    where household_id = '33333333-3333-3333-3333-333333333333'
+      and user_id = '22222222-2222-2222-2222-222222222222'), 1);
+
+-- …and someone who was never invited still cannot get in through the function.
+begin;
+  select pg_temp.be('77777777-7777-7777-7777-777777777777', 'viewer@example.com');
+  do $$
+  begin
+    perform accept_invite((select id from household_invites
+                           where household_id = '33333333-3333-3333-3333-333333333333'
+                             and lower(email) = 'moran@example.com'));
+    raise exception 'FAIL: מישהו הצטרף עם הזמנה של מישהי אחרת';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm like 'FAIL:%' then raise; end if;
+      raise notice 'ok · הזמנה של אחר לא מצרפת: %', sqlerrm;
+  end $$;
+commit;
+set role postgres;
+select pg_temp.check_count('הדירה של דנה לא קיבלה חבר לא-מוזמן',
+  (select count(*) from household_members
+    where household_id = '33333333-3333-3333-3333-333333333333'), 2);
+
+-- And the repair: an invitation stamped accepted with no membership behind it reopens,
+-- rather than staying spent for ever with nothing on either screen to say why.
+delete from household_members
+ where household_id = '33333333-3333-3333-3333-333333333333'
+   and user_id = '22222222-2222-2222-2222-222222222222';
+update household_invites i set accepted_at = null
+ where i.accepted_at is not null
+   and not exists (select 1 from auth.users u join household_members m
+                     on m.household_id = i.household_id and m.user_id = u.id
+                   where lower(u.email) = lower(i.email));
+select pg_temp.check_count('הזמנה שלא צירפה אף אחד חוזרת להמתנה',
+  (select count(*) from household_invites
+    where household_id = '33333333-3333-3333-3333-333333333333'
+      and lower(email) = 'moran@example.com' and accepted_at is null), 1);
 
 set role postgres;
 select 'ALL RLS CHECKS PASSED' as result;

@@ -187,6 +187,9 @@ export async function acceptInvite(inviteId: string): Promise<AcceptResult> {
     if (m.includes('household_full')) return { ok: false, message: `הדירה כבר כוללת ${MAX_MEMBERS} אנשים` }
     if (m.includes('invite_already_used')) return { ok: false, message: 'ההזמנה כבר נוצלה' }
     if (m.includes('invite_not_found')) return { ok: false, message: 'ההזמנה לא נמצאה' }
+    // Raised by the function when the join did not actually add anyone (migration 054).
+    // The invitation stays open on purpose, so "נסו שוב" is real advice and not a shrug.
+    if (m.includes('join_failed')) return { ok: false, message: 'ההצטרפות לא הושלמה — ההזמנה נשארה פתוחה, נסו שוב' }
     return { ok: false, message: 'ההצטרפות נכשלה — נסו שוב' }
   }
   return { ok: true, householdId: data as string }

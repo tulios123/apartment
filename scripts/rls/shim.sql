@@ -26,6 +26,14 @@ language sql stable as $$
   select nullif(auth.jwt() ->> 'sub', '')::uuid
 $$;
 
+-- The accounts table. Migration 054 joins against it to tell an invitation that produced
+-- a membership from one that only claims to have — so the rig needs it to run the
+-- migrations at all, and `pg_temp.be()` keeps it in step with whoever the test is being.
+create table if not exists auth.users (
+  id uuid primary key,
+  email text
+);
+
 -- Buckets are created by the migrations themselves; they only need somewhere to land.
 create table if not exists storage.buckets (
   id text primary key,
