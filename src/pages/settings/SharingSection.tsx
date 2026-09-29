@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { UserPlus, X, Check, SignOut, House, Eye } from '@phosphor-icons/react'
+import { UserPlus, X, SignOut, Eye, ArrowClockwise } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import {
-  MAX_MEMBERS, listMembers, listPendingInvites, invite, cancelInvite,
-  myIncomingInvites, acceptInvite, leaveHousehold,
-  type Member, type PendingInvite, type IncomingInvite, type Role,
+  MAX_MEMBERS, listMembers, listPendingInvites, invite, cancelInvite, leaveHousehold,
+  type Member, type PendingInvite, type Role,
 } from '../../lib/household'
 
 /**
@@ -29,10 +28,9 @@ const ROLE_HINT: Record<Role, string> = {
 }
 
 export function SharingSection() {
-  const { user, ownerId, households, canWrite, switchHousehold, refreshHouseholds } = useAuth()
+  const { user, ownerId, households, canWrite, refreshHouseholds } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
   const [pending, setPending] = useState<PendingInvite[]>([])
-  const [incoming, setIncoming] = useState<IncomingInvite[]>([])
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('member')
@@ -40,17 +38,15 @@ export function SharingSection() {
   const [msg, setMsg] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null)
   const [confirmLeave, setConfirmLeave] = useState(false)
 
+  // Invitations addressed to ME are no longer shown here: they are met at the door now
+  // (components/InviteGate) — instead of the onboarding wizard for someone with no
+  // apartment, and on entry for someone who has one. Waiting in Settings to be found is
+  // exactly how the first real invitation was missed.
   const load = useCallback(async () => {
     if (!ownerId || !user) return
-    const [m, p, i] = await Promise.all([
-      listMembers(ownerId, user.id),
-      listPendingInvites(ownerId),
-      myIncomingInvites(),
-    ])
+    const [m, p] = await Promise.all([listMembers(ownerId, user.id), listPendingInvites(ownerId)])
     setMembers(m); setPending(p)
-    // An invitation to an apartment you are already in is not news.
-    setIncoming(i.filter(x => !households.some(h => h.id === x.householdId)))
-  }, [ownerId, user, households])
+  }, [ownerId, user])
 
   useEffect(() => { void load() }, [load])
 
@@ -59,29 +55,32 @@ export function SharingSection() {
   const shared = members.length > 1 || pending.length > 0
   const myRole = households.find(h => h.id === ownerId)?.role ?? 'member'
 
-  async function send() {
+  // The labels travel with the invitation because the person invited cannot read the
+  // apartment they have not joined — without them the card says "הוזמנת לדירה" and
+  // nothing else. They come from here, where they ARE readable.
+  const labels = {
+    household: households.find(h => h.id === ownerId)?.address
+      ?? households.find(h => h.id === ownerId)?.name ?? null,
+    invitedBy: members.find(m => m.isMe)?.name
+      ?? user?.user_metadata?.full_name as string | undefined
+      ?? user?.email ?? null,
+  }
+
+  async function send(addr: string, r: Role, resent = false) {
     if (!ownerId || busy) return
     setBusy(true); setMsg(null)
-    const res = await invite(ownerId, email, user?.email ?? null, taken, role)
+    const res = await invite(ownerId, addr, user?.email ?? null, r, labels)
     setBusy(false)
     if (res.ok) {
       setEmail(''); setOpen(false)
-      setMsg({ text: 'ההזמנה נשמרה. היא תחכה לה בכניסה הבאה לאפליקציה.', tone: 'ok' })
+      setMsg({
+        text: resent ? 'ההזמנה נשלחה שוב.' : 'ההזמנה נשמרה. היא תחכה לה בכניסה הבאה לאפליקציה.',
+        tone: 'ok',
+      })
       void load()
     } else {
       setMsg({ text: res.message, tone: 'err' })
     }
-  }
-
-  async function accept(inv: IncomingInvite) {
-    setBusy(true); setMsg(null)
-    const res = await acceptInvite(inv.id)
-    setBusy(false)
-    if (!res.ok) { setMsg({ text: res.message, tone: 'err' }); return }
-    await refreshHouseholds()
-    switchHousehold(res.householdId)
-    setMsg({ text: 'הצטרפת לדירה.', tone: 'ok' })
-    void load()
   }
 
   async function leave() {
@@ -96,21 +95,6 @@ export function SharingSection() {
   return (
     <section className="settings-section">
       <h2>שיתוף הדירה</h2>
-
-      {/* An invitation waiting for me — first, because it is the only thing in this
-          section about a different apartment than the one on screen. */}
-      {incoming.map(inv => (
-        <div className="hh-invite-in" key={inv.id}>
-          <House size={18} weight="duotone" />
-          <div className="hh-invite-in-body">
-            <b>הוזמנת ל{inv.address ? `דירה ב${inv.address}` : inv.householdName}</b>
-            <span>{inv.role === 'viewer' ? 'לצפייה בלבד.' : 'כשותף מלא.'} אחרי ההצטרפות אפשר לעבור בין הדירות מכאן.</span>
-          </div>
-          <button className="btn-secondary" disabled={busy} onClick={() => accept(inv)}>
-            <Check size={14} weight="bold" /> הצטרפות
-          </button>
-        </div>
-      ))}
 
       {/* The list earns its place only once someone else is on the apartment. On your
           own it is one row saying your own address back to you. */}
@@ -127,10 +111,21 @@ export function SharingSection() {
             <div className="hh-member pending" key={p.id}>
               <span className="hh-member-name">{p.email}</span>
               <span className="hh-member-email">ממתין/ה{p.role === 'viewer' ? ' · כצופה' : ''}</span>
-              <button className="hh-member-x" aria-label={`ביטול ההזמנה ל${p.email}`}
-                onClick={async () => { await cancelInvite(p.id); void load() }}>
-                <X size={14} />
-              </button>
+              {/* Sending again used to be refused outright by the unique constraint —
+                  so someone who never got the first invitation could not be sent
+                  another (owner, 29.09). */}
+              {canWrite && (
+                <span className="hh-member-acts">
+                  <button className="hh-member-x" title="שליחה שוב" aria-label={`שליחת ההזמנה ל${p.email} שוב`}
+                    disabled={busy} onClick={() => send(p.email, p.role, true)}>
+                    <ArrowClockwise size={14} />
+                  </button>
+                  <button className="hh-member-x" aria-label={`ביטול ההזמנה ל${p.email}`}
+                    onClick={async () => { await cancelInvite(p.id); void load() }}>
+                    <X size={14} />
+                  </button>
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -149,9 +144,15 @@ export function SharingSection() {
           כל המקומות תפוסים — עד {MAX_MEMBERS} אנשים לדירה.
         </p>
       ) : !open ? (
-        <button type="button" className="btn-secondary hh-open" onClick={() => { setOpen(true); setMsg(null) }}>
-          <UserPlus size={15} weight="bold" /> הזמנת מישהו
-        </button>
+        <>
+          {/* Directly under the button that produced it. It used to sit after the whole
+              invite block, and on success that block collapses — so the confirmation
+              appeared half-clipped against the following section (owner, 29.09). */}
+          {msg && <p className={`hh-msg ${msg.tone === 'err' ? 'onboarding-error' : 'hh-ok'}`} role="status">{msg.text}</p>}
+          <button type="button" className="btn-secondary hh-open" onClick={() => { setOpen(true); setMsg(null) }}>
+            <UserPlus size={15} weight="bold" /> הזמנת מישהו
+          </button>
+        </>
       ) : (
         <div className="hh-invite">
           <label htmlFor="hh-email">המייל שאיתו היא נכנסת לאפליקציה</label>
@@ -170,17 +171,16 @@ export function SharingSection() {
           <span className="settings-note hh-role-hint">{ROLE_HINT[role]}</span>
 
           <div className="hh-invite-actions">
-            <button className="btn-secondary" disabled={busy || !email.trim()} onClick={send}>
+            <button className="btn-secondary" disabled={busy || !email.trim()} onClick={() => send(email, role)}>
               {busy ? 'שולח…' : 'שליחת הזמנה'}
             </button>
             <button className="btn-secondary hh-cancel" onClick={() => { setOpen(false); setEmail(''); setMsg(null) }}>
               ביטול
             </button>
           </div>
+          {msg && <p className={`hh-msg ${msg.tone === 'err' ? 'onboarding-error' : 'hh-ok'}`} role="status">{msg.text}</p>}
         </div>
       )}
-
-      {msg && <p className={msg.tone === 'err' ? 'onboarding-error' : 'hh-ok'} role="status">{msg.text}</p>}
 
       {/* Leaving is offered only where it means something: leaving an apartment that is
           yours alone would hide it from you with nobody left to let you back in. */}
