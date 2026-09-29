@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ChatDots } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
+import { SharingSection } from './settings/SharingSection'
+import { ApartmentSwitcher } from './settings/ApartmentSwitcher'
 import { supabase } from '../lib/supabase'
 import { resetListCache, GOOGLE_TASKS_ENABLED } from '../lib/googleTasks'
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme'
@@ -23,7 +25,7 @@ import { userErrorMessage } from '../lib/errorHe'
 type PushState = 'loading' | 'unsupported' | 'not-installed' | 'default' | 'granted' | 'denied'
 
 export default function Settings() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, ownerId } = useAuth()
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [pushState, setPushState] = useState<PushState>('loading')
@@ -117,7 +119,7 @@ export default function Settings() {
       const { data: docs, error: docsErr } = await supabase
         .from('documents')
         .select('storage_path')
-        .eq('owner_id', user.id)
+        .eq('owner_id', ownerId)
       if (docsErr) throw docsErr
 
       // R14: supabase returns {error} without throwing — an unchecked failed delete
@@ -125,7 +127,7 @@ export default function Settings() {
       // looked like data corruption. Check every step; any failure aborts with a
       // message and WITHOUT reloading, so the state stays inspectable.
       const del = async (table: string) => {
-        const { error } = await supabase.from(table).delete().eq('owner_id', user.id)
+        const { error } = await supabase.from(table).delete().eq('owner_id', ownerId)
         if (error) throw new Error(`מחיקת ${table} נכשלה — ${error.message}`)
       }
       await del('transactions')
@@ -177,6 +179,12 @@ export default function Settings() {
             <button className="btn-secondary" onClick={signOut}>יציאה מהחשבון</button>
           </div>
         </section>
+
+        {/* Which apartment, and who else is on it. Directly under the account, because
+            both answer "who am I here" — and the switcher only appears for someone who
+            actually has more than one apartment. */}
+        <ApartmentSwitcher />
+        <SharingSection />
 
         <section className="settings-section">
           <h2>מראה</h2>

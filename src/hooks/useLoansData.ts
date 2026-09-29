@@ -28,7 +28,7 @@ export interface LoansData {
 }
 
 export function useLoansData(): LoansData {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `loans:${user.id}` : null
   const [loans, setLoans] = useState<Loan[]>(() => readCache<Loan[]>(cacheKey) ?? [])
   const [loading, setLoading] = useState(() => readCache<Loan[]>(cacheKey) == null)
@@ -47,7 +47,7 @@ export function useLoansData(): LoansData {
       const { data, error: err } = await supabase
         .from('loans')
         .select('*')
-        .eq('owner_id', user.id)
+        .eq('owner_id', ownerId)
         .order('created_at')
       if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
       if (err) throw err

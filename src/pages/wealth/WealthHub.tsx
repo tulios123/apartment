@@ -30,7 +30,7 @@ const fmt = (v: number) => formatCurrency(v)
 
 export default function WealthHub() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { ownerId } = useAuth()
   const [editing, setEditing] = useState(false)
   const [yieldHelp, setYieldHelp] = useState(false)
 
@@ -46,7 +46,7 @@ export default function WealthHub() {
   // silent here — what stays is the composition, which is true from the day of signing.
   // (Owner, 09.09: "בהון נעשה את מבנה המימון המלא וכל מבנה העסקה הסופי".)
   const awaitingKey = possession(property?.key_delivery_date, todayISO()) === 'awaiting_key'
-  const plan = user?.id ? loadPlan(user.id) : null
+  const plan = ownerId ? loadPlan(ownerId) : null
   // Purchase tax is his money and often his largest cost after the equity, but it is not
   // an investment_cost row — only the plan knows it. Passing the FIGURE (not a total) keeps
   // מבנה העסקה adding up its own rows; see the note in DealStructure.

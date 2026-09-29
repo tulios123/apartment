@@ -43,7 +43,7 @@ const fmt = (v: number) => formatCurrency(v)
 export default function PropertyAdminHub() {
   const { section } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const [tab, setTab] = useState(() => resolveSection(section))
 
   const { property, contracts, loading, error, refetch } = usePropertyData()
@@ -87,9 +87,9 @@ export default function PropertyAdminHub() {
   }
 
   async function handleSave(data: Partial<Omit<Property, 'id' | 'owner_id' | 'created_at'>>) {
-    if (!user) return
+    if (!user || !ownerId) return
     if (property) await updateProperty(property.id, data)
-    else await createProperty({ owner_id: user.id, address: data.address ?? '', notes: data.notes ?? null, ...data })
+    else await createProperty({ owner_id: ownerId, address: data.address ?? '', notes: data.notes ?? null, ...data })
     setShowModal(false)
     refetch()
   }

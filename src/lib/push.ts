@@ -51,16 +51,19 @@ export async function isSubscribed(): Promise<boolean> {
 // R15: the user's explicit "notifications off" choice, per account (a shared device
 // can host two accounts with different preferences). Without it, ensurePushFresh
 // re-subscribed on the next app open — the off toggle silently reverted.
-const optOutKey = (ownerId: string) => `push_opt_out:${ownerId}`
-export function pushOptedOut(ownerId: string): boolean {
-  return localStorage.getItem(optOutKey(ownerId)) === '1'
+const optOutKey = (userId: string) => `push_opt_out:${userId}`
+export function pushOptedOut(userId: string): boolean {
+  return localStorage.getItem(optOutKey(userId)) === '1'
 }
 
 /**
  * Request permission, subscribe via PushManager, and persist the subscription
  * (upsert on endpoint). Throws 'denied' if the user declines.
  */
-export async function enablePush(ownerId: string): Promise<void> {
+// A subscription belongs to a DEVICE, and a device to a person — deliberately not to
+// the apartment (migration 051). Sharing an apartment must not start sending one
+// member the other's reminders.
+export async function enablePush(userId: string): Promise<void> {
   if (!pushSupported()) throw new Error('unsupported')
   if (!VAPID_PUBLIC_KEY) throw new Error('VITE_VAPID_PUBLIC_KEY missing')
 
@@ -82,7 +85,7 @@ export async function enablePush(ownerId: string): Promise<void> {
   const json = sub.toJSON()
   const { error } = await supabase.from('push_subscriptions').upsert(
     {
-      owner_id: ownerId,
+      owner_id: userId,
       endpoint: sub.endpoint,
       p256dh: json.keys?.p256dh ?? '',
       auth: json.keys?.auth ?? '',
@@ -93,7 +96,7 @@ export async function enablePush(ownerId: string): Promise<void> {
   )
   if (error) throw error
   // Turning pushes on always clears a previous explicit opt-out for this account.
-  localStorage.removeItem(optOutKey(ownerId))
+  localStorage.removeItem(optOutKey(userId))
 }
 
 /**
@@ -103,17 +106,17 @@ export async function enablePush(ownerId: string): Promise<void> {
  * them off/on. Called on app open: if permission is still granted but there's no
  * live subscription, re-subscribe + re-upsert (no permission prompt, since granted).
  */
-export async function ensurePushFresh(ownerId: string): Promise<void> {
+export async function ensurePushFresh(userId: string): Promise<void> {
   if (!pushSupported() || !pushConfigured()) return
   if (Notification.permission !== 'granted') return
   // R15: respect an explicit off — don't silently re-subscribe the account that
   // turned notifications off (the toggle used to revert on the next app open).
-  if (pushOptedOut(ownerId)) return
+  if (pushOptedOut(userId)) return
   try {
     const reg = await navigator.serviceWorker.getRegistration()
     if (!reg) return
     const sub = await reg.pushManager.getSubscription()
-    if (!sub) { await enablePush(ownerId); return }
+    if (!sub) { await enablePush(userId); return }
     // R15: a live browser subscription may still be REGISTERED TO THE PREVIOUS
     // ACCOUNT on a shared device (their reminders would land here). Re-key the
     // endpoint to the current account. RLS blocks updating someone else's row —
@@ -122,7 +125,7 @@ export async function ensurePushFresh(ownerId: string): Promise<void> {
     const json = sub.toJSON()
     const { error } = await supabase.from('push_subscriptions').upsert(
       {
-        owner_id: ownerId,
+        owner_id: userId,
         endpoint: sub.endpoint,
         p256dh: json.keys?.p256dh ?? '',
         auth: json.keys?.auth ?? '',
@@ -133,7 +136,7 @@ export async function ensurePushFresh(ownerId: string): Promise<void> {
     )
     if (error) {
       await sub.unsubscribe()
-      await enablePush(ownerId)
+      await enablePush(userId)
     }
   } catch {
     // Best-effort recovery — never block app start on it.

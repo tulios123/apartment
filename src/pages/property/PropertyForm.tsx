@@ -98,7 +98,7 @@ export function PropertyForm({
   // property RIGHT AWAY (automatic, not tied to the form's Save button), and (2) fill
   // the fields via the same extract-contract function the onboarding step uses. The
   // filled field values are still only committed on "שמור" so the user reviews them.
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const propertyId = initial.id           // present when editing; absent for a new property
   const useMockExtraction = import.meta.env.DEV || isManager(user?.email)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -116,7 +116,7 @@ export function PropertyForm({
       const docId = crypto.randomUUID()
       const path = await uploadDocument(f, docId, user.id)
       const { error } = await supabase.from('documents').insert({
-        id: docId, owner_id: user.id, property_id: propertyId,
+        id: docId, owner_id: ownerId, property_id: propertyId,
         contract_id: null, transaction_id: null,
         type: 'purchase_contract', name: f.name, storage_path: path,
         date: purchaseDate || null,

@@ -45,7 +45,7 @@ const TYPE_TONE: Record<DocumentType, string> = {
 const emptyForm = { type: 'other' as DocumentType, name: '', date: '' }
 
 export default function DocumentsV2({ embedded = false }: { embedded?: boolean }) {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const { documents, loading, error, refetch } = useDocuments()
   // The property's real situation drives which key documents are EXPECTED — so we only ask
   // for what actually applies (a rental contract only if it's rented, a mortgage doc only if
@@ -106,7 +106,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
   }
 
   async function handleSubmit() {
-    if (!user) return
+    if (!user || !ownerId) return
     if (editingId) {
       if (!form.name.trim()) { setFormError('יש להזין שם'); return }
       setSaving(true); setFormError(null)
@@ -125,7 +125,7 @@ export default function DocumentsV2({ embedded = false }: { embedded?: boolean }
       const id = crypto.randomUUID()
       const path = await uploadDocument(file, id)
       await createDocument({
-        id, owner_id: user.id, property_id: null, contract_id: null, transaction_id: null, task_id: null,
+        id, owner_id: ownerId, property_id: null, contract_id: null, transaction_id: null, task_id: null,
         type: form.type, name: form.name.trim() || file.name, storage_path: path, date: form.date || null,
       })
       setDrawerOpen(false); setFile(null)

@@ -6,7 +6,7 @@ import type { InsurancePolicy } from '../types'
 import { latestOnly } from '../lib/latestOnly'
 
 export function useInsurance() {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `insurance:${user.id}` : null
   const [policies, setPolicies] = useState<InsurancePolicy[]>(() => readCache<InsurancePolicy[]>(cacheKey) ?? [])
   const [loading, setLoading] = useState(() => readCache<InsurancePolicy[]>(cacheKey) == null)
@@ -24,7 +24,7 @@ export function useInsurance() {
     const { data, error: err } = await supabase
       .from('insurance_policies')
       .select('*')
-      .eq('owner_id', user.id)
+      .eq('owner_id', ownerId)
       .order('created_at', { ascending: true })
     if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
     if (err) setError(err.message)

@@ -14,7 +14,7 @@ interface Filters {
 }
 
 export function useTransactions(filters: Filters = {}) {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user
     ? `tx:${user.id}:${filters.from ?? ''}:${filters.to ?? ''}:${filters.year ?? ''}:${filters.month ?? ''}`
     : null
@@ -37,7 +37,7 @@ export function useTransactions(filters: Filters = {}) {
     let query = supabase
       .from('transactions')
       .select('*')
-      .eq('owner_id', user.id)
+      .eq('owner_id', ownerId)
       .order('date', { ascending: false })
 
     if (filters.from && filters.to) {

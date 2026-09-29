@@ -50,6 +50,20 @@ jobs:
             exit 1
           fi
 
+      # The policies this repo relies on are only as good as the last edit to them, and a
+      # migration that re-scopes them is exactly where a leak would be introduced. Proving
+      # isolation before touching the shared production database is cheap; finding out
+      # afterwards is not.
+      - name: Prove the policies still isolate one apartment from another
+        run: |
+          sudo apt-get install -y --no-install-recommends postgresql-16 >/dev/null 2>&1 || true
+          if [ -x /usr/lib/postgresql/16/bin/initdb ]; then
+            scripts/rls/verify.sh
+          else
+            echo "::error::postgres 16 not available — refusing to migrate without the isolation proof."
+            exit 1
+          fi
+
       - name: Check the file
         id: check
         run: |

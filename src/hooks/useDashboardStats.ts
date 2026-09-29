@@ -35,7 +35,7 @@ export interface DashboardStats {
 }
 
 export function useDashboardStats(): DashboardStats {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `dashboard:${user.id}` : null
   const cached0 = readCache<StatsSnapshot>(cacheKey)
   const [totalIncome, setTotalIncome] = useState(() => readCache<StatsSnapshot>(cacheKey)?.totalIncome ?? 0)
@@ -67,27 +67,27 @@ export function useDashboardStats(): DashboardStats {
           supabase
             .from('transactions')
             .select('id, direction, amount, date, category, description, payment_method, contract_id, recurring_item_id, document_id, owner_id, created_at')
-            .eq('owner_id', user!.id)
+            .eq('owner_id', ownerId)
             .order('date', { ascending: false }),
           supabase
             .from('tasks')
             .select('*')
-            .eq('owner_id', user!.id)
+            .eq('owner_id', ownerId)
             .eq('status', 'open')
             .order('due_date', { ascending: true }),
           supabase
             .from('contracts')
             .select('*')
-            .eq('owner_id', user!.id)
+            .eq('owner_id', ownerId)
             .gte('end_date', todayStr)
             .lte('end_date', in90Str)
             .order('end_date', { ascending: true }),
-          supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', user!.id),
-          supabase.from('mortgage_tracks').select('*').eq('owner_id', user!.id),
-          supabase.from('mortgages').select('payment_day').eq('owner_id', user!.id).limit(1),
+          supabase.from('contracts').select('start_date, end_date, monthly_rent').eq('owner_id', ownerId),
+          supabase.from('mortgage_tracks').select('*').eq('owner_id', ownerId),
+          supabase.from('mortgages').select('payment_day').eq('owner_id', ownerId).limit(1),
           // Rent before handover is not income (see projections.rentDue) — the all-time
           // total needs the key-delivery date to know where to start counting.
-          supabase.from('properties').select('key_delivery_date').eq('owner_id', user!.id).limit(1),
+          supabase.from('properties').select('key_delivery_date').eq('owner_id', ownerId).limit(1),
         ])
 
         if (txRes.error) throw txRes.error

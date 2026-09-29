@@ -21,7 +21,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog'
  * promotion for something unrelated cannot carry it into the family's app.
  */
 export function ScenarioMenuItems() {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const navigate = useNavigate()
   const [pending, setPending] = useState<ScenarioId | null>(null)
   const [busy, setBusy] = useState(false)
@@ -35,10 +35,10 @@ export function ScenarioMenuItems() {
   if (!visible) return null
 
   async function run(id: ScenarioId) {
-    if (!user) return
+    if (!user || !ownerId) return
     setBusy(true)
     try {
-      await applyScenario(supabase, user.id, id, todayISO())
+      await applyScenario(supabase, ownerId, id, todayISO())
       window.location.assign('/')
     } catch (e) {
       setError(userErrorMessage(e, 'טעינת התרחיש נכשלה — נסו שוב'))

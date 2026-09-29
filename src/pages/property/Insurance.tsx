@@ -173,7 +173,7 @@ function InsuranceForm({
 }
 
 export default function Insurance() {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const { property } = usePropertyData()
   const { policies, loading, error, refetch } = useInsurance()
   const { documents } = useDocuments()
@@ -200,9 +200,9 @@ export default function Insurance() {
   }
 
   async function handleSave(form: typeof emptyForm) {
-    if (!user) return
+    if (!user || !ownerId) return
     const payload = {
-      owner_id: user.id,
+      owner_id: ownerId,
       property_id: property?.id ?? null,
       type: form.type,
       company: form.company.trim() || null,

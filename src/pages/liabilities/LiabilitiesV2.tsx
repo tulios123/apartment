@@ -45,7 +45,7 @@ const MOCK_LOANS: Record<string, unknown>[] = [
 ]
 
 export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean }) {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const { mortgage, tracks, summary, loading: loadingM, error: errorM, refetch: refetchM } = useMortgageData()
   const { monthlyLoans, balloonLoans, summary: loansSummary, loading: loadingL, error: errorL, refetch: refetchL } = useLoansData()
   const { property } = usePropertyData()
@@ -199,7 +199,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
 
   // Persist every reviewed draft at once from the smart review card, then clear it.
   async function saveScannedDrafts(drafts: ScanDraft[]) {
-    if (!user || !scanResult) return
+    if (!user || !ownerId || !scanResult) return
     setScanSaving(true)
     try {
       if (scanResult.kind === 'mortgage') {
@@ -212,7 +212,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           const splitOk = anchored && t.prime_rate !== '' &&
             Math.abs((Number(t.prime_rate || 0) + Number(t.margin || 0)) - Number(t.annual_rate || 0)) < 0.005
           return upsertMortgageTrack({
-            mortgage_id: mortgageId, owner_id: user.id,
+            mortgage_id: mortgageId, owner_id: ownerId,
             label: t.label || null, track_type: t.track_type,
             principal: Number(t.principal) || 0, annual_rate: Number(t.annual_rate || 0),
             prime_rate: splitOk ? Number(t.prime_rate || 0) : null,
@@ -228,7 +228,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
           const l = d as LoanDraft
           const isMonthly = l.repayment_type === 'monthly_fixed'
           return upsertLoan({
-            owner_id: user.id, label: l.label || null, lender: l.lender || null,
+            owner_id: ownerId, label: l.label || null, lender: l.lender || null,
             repayment_type: l.repayment_type, track_type: isMonthly ? l.track_type : null,
             principal: Number(l.principal) || 0,
             annual_rate: isMonthly ? Number(l.annual_rate || 0) : null,
@@ -252,13 +252,13 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   // Persist the scanned file(s) as documents so they're not lost and show in the
   // Documents screen too. Best-effort (re-uploadable), not awaited by the scan.
   async function persistScanFiles(files: File[], type: 'mortgage_statement' | 'loan_statement') {
-    if (!user) return
+    if (!user || !ownerId) return
     await Promise.all(files.map(async (f) => {
       try {
         const id = crypto.randomUUID()
         const path = await uploadDocument(f, id, user.id)
         await createDocument({
-          id, owner_id: user.id, property_id: property?.id ?? null,
+          id, owner_id: ownerId, property_id: property?.id ?? null,
           contract_id: null, transaction_id: null, task_id: null,
           type, name: f.name, storage_path: path, date: null,
         })
@@ -304,7 +304,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
   }
 
   async function save() {
-    if (!user) return
+    if (!user || !ownerId) return
     setSaving(true); setFormError(null)
     try {
       if (kind === 'mortgage') {
@@ -317,7 +317,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         const tAnchored = isAnchoredType(tForm.track_type)
         const tEffRate = tAnchored ? Number(tForm.prime_rate || 0) + Number(tForm.margin || 0) : Number(tForm.annual_rate || 0)
         await upsertMortgageTrack({
-          id: editId ?? undefined, mortgage_id: mortgageId, owner_id: user.id,
+          id: editId ?? undefined, mortgage_id: mortgageId, owner_id: ownerId,
           label: tForm.label || null, track_type: tForm.track_type,
           principal: Number(tForm.principal), annual_rate: tEffRate,
           prime_rate: tAnchored ? Number(tForm.prime_rate || 0) : null,
@@ -337,7 +337,7 @@ export default function LiabilitiesV2({ embedded = false }: { embedded?: boolean
         // Prime/variable: effective rate = anchor + margin (margin can be negative, "prime minus").
         const effRate = anchored ? Number(lForm.prime_rate || 0) + Number(lForm.margin || 0) : Number(lForm.annual_rate || 0)
         await upsertLoan({
-          id: editId ?? undefined, owner_id: user.id, label: lForm.label || null, lender: lForm.lender || null,
+          id: editId ?? undefined, owner_id: ownerId, label: lForm.label || null, lender: lForm.lender || null,
           repayment_type: lForm.repayment_type, track_type: isMonthly ? lForm.track_type : null,
           principal: Number(lForm.principal),
           annual_rate: isMonthly ? effRate : null,

@@ -28,7 +28,7 @@ export function PurchaseStep() {
     singleApartment, setSingleApartment,
     fillTestPurchase,
   } = useOnboarding()
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const purchaseDocRef = useRef<HTMLInputElement>(null)
   const priceRef = useRef<HTMLInputElement>(null)
 
@@ -54,9 +54,9 @@ export function PurchaseStep() {
   // The plan IS the persistence — no extra draft field to keep in sync, and it is rebuilt
   // at finish once the costs are known (useOnboardingState).
   useEffect(() => {
-    if (!user?.id) return
-    if (!canPlan) { clearPlan(user.id); return }
-    savePlan(user.id, buildPlan({
+    if (!ownerId) return
+    if (!canPlan) { clearPlan(ownerId); return }
+    savePlan(ownerId, buildPlan({
       price,
       signing: signingDate,
       handover: keyDeliveryDate!,

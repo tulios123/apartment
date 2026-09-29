@@ -6,7 +6,7 @@ import type { Document } from '../types'
 import { latestOnly } from '../lib/latestOnly'
 
 export function useDocuments() {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `documents:${user.id}` : null
   const [documents, setDocuments] = useState<Document[]>(() => readCache<Document[]>(cacheKey) ?? [])
   const [loading, setLoading] = useState(() => readCache<Document[]>(cacheKey) == null)
@@ -24,7 +24,7 @@ export function useDocuments() {
     const { data, error } = await supabase
       .from('documents')
       .select('*')
-      .eq('owner_id', user.id)
+      .eq('owner_id', ownerId)
       .order('created_at', { ascending: false })
     if (!fresh()) return   // superseded by a newer fetch (or unmounted) — don't overwrite
     if (error) setError(error.message)

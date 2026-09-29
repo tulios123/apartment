@@ -13,7 +13,7 @@ interface Filters {
 }
 
 export function useTasks(filters: Filters = {}) {
-  const { user } = useAuth()
+  const { user, ownerId } = useAuth()
   const cacheKey = user ? `tasks:${user.id}:${filters.status ?? 'open'}` : null
   const [tasks, setTasks] = useState<Task[]>(() => readCache<Task[]>(cacheKey) ?? [])
   const [loading, setLoading] = useState(() => readCache<Task[]>(cacheKey) == null)
@@ -33,7 +33,7 @@ export function useTasks(filters: Filters = {}) {
     let query = supabase
       .from('tasks')
       .select('*')
-      .eq('owner_id', user.id)
+      .eq('owner_id', ownerId)
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
 
