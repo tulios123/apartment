@@ -76,24 +76,40 @@ test('שתי דירות ⇒ רואים באיזו אני, ואפשר לעבור'
 
   await chip.click()
   await page.waitForTimeout(350)
-  await expect(page.locator('.hs-switch-dlg')).toBeVisible()
-  await saveShot(page, 'home-ctx', '02-switch-dialog', 'light')
 
-  // The dialog's own styling first shipped inside home-screen.css, which is scoped to
-  // `.hs` — and a Modal renders through a portal on <body>, outside it. Nothing failed:
-  // the build was clean and the rows were all there, with the title clipped against the
-  // card edge. So the guard is containment, which is what was actually broken.
-  const card = (await page.locator('.modal.is-dialog').boundingBox())!
-  const heading = (await page.locator('.hs-switch-dlg h2').boundingBox())!
-  expect(heading.x, 'the title starts inside the card').toBeGreaterThanOrEqual(card.x)
-  expect(heading.x + heading.width, 'and ends inside it').toBeLessThanOrEqual(card.x + card.width)
-  const row = (await page.locator('.hh-switch-row').first().boundingBox())!
-  expect(row.x, 'the rows are not flush to the card edge').toBeGreaterThan(card.x + 6)
+  // A menu under the chip, holding only the OTHER apartments — the active one is already
+  // written on the chip, and a row that does nothing when tapped is not a choice.
+  const menu = page.locator('.hs-ctx-menu')
+  await expect(menu).toBeVisible()
+  await expect(menu.locator('.hs-ctx-item')).toHaveCount(1)
+  await expect(menu).toContainText('הרצל 10')
+  await expect(menu, 'the one I am already in is not offered').not.toContainText('פסח חברוני 122')
+  await saveShot(page, 'home-ctx', '02-switch-menu', 'light')
 
-  await page.locator('.hh-switch-row').filter({ hasText: 'הרצל 10' }).click()
+  // Under the chip, not over it, and inside the screen — the two ways a menu anchored
+  // near the top of a phone goes wrong.
+  const chipBox = (await chip.boundingBox())!
+  const menuBox = (await menu.boundingBox())!
+  expect(menuBox.y, 'opens downward').toBeGreaterThanOrEqual(chipBox.y + chipBox.height)
+  expect(menuBox.x, 'does not run off the screen').toBeGreaterThanOrEqual(0)
+  expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+
+  // …and nothing paints over it. Every section on Home is animated, so each opens its own
+  // stacking context and a later sibling will cover this menu unless the header is lifted
+  // above them. Asserted by asking the document what is actually on top at the row's own
+  // centre, because "visible" and "not covered" are different questions.
+  const onTop = await menu.locator('.hs-ctx-item').first().evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+    return !!hit && el.contains(hit)
+  })
+  expect(onTop, 'the menu is not painted under the card below it').toBe(true)
+
+  await menu.locator('.hs-ctx-item').filter({ hasText: 'הרצל 10' }).click()
   await page.waitForTimeout(900)
   // Switching is the whole point of the control: the chip must now name the other one.
   await expect(page.locator('.hs-ctx-chip')).toContainText('הרצל 10')
+  await expect(page.locator('.hs-ctx-menu'), 'and the menu closes behind it').toHaveCount(0)
 })
 
 test('צופה בלבד ⇒ מסומן, וקטן', async ({ page }) => {

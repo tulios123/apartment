@@ -24,7 +24,11 @@
   &.hs--prekey .hs-quick { order: 4; }
 
   /* ── Humanized header ── */
-  .hs-header { position: relative; margin-bottom: var(--hs-gap); animation: hsFade 0.4s var(--ease) both; }
+  /* z-index, not decoration: every section here is animated, so each one opens its own
+     stacking context and the later ones paint over this one at equal level. Without this
+     the apartment menu hanging off the chip is drawn UNDER the card beneath it — which is
+     exactly how it first shipped, with the build green and half a row visible. */
+  .hs-header { position: relative; z-index: 5; margin-bottom: var(--hs-gap); animation: hsFade 0.4s var(--ease) both; }
   .hs-gear {
     position: absolute; top: 0; inset-inline-end: 0;
     width: 38px; height: 38px; border-radius: 11px;
@@ -51,7 +55,39 @@
     font-family: inherit; font-size: 12.5px; font-weight: 600;
     cursor: pointer; max-width: 100%;
   }
-  .hs-ctx-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .hs-ctx-chip:hover, .hs-ctx-chip.is-open { border-color: var(--accent); color: var(--accent); }
+  .hs-ctx-chip.is-open .hs-ctx-caret { transform: rotate(180deg); }
+  .hs-ctx-caret { transition: transform 0.15s var(--ease); }
+
+  /* The list of the other apartments, hanging off the chip. Aligned to the chip's start
+     edge (right, in RTL) so it reads as belonging to it, and capped in width so a long
+     address cannot push it off the screen. */
+  .hs-ctx-wrap { position: relative; display: inline-flex; max-width: 100%; }
+  .hs-ctx-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    inset-inline-start: 0;
+    min-width: 100%;
+    max-width: min(280px, calc(100vw - 48px));
+    z-index: 30;
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    box-shadow: var(--shadow-lg);
+    animation: hsCtxMenu 0.13s var(--ease) both;
+  }
+  .hs-ctx-item {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; min-height: 40px; padding: 8px 10px;
+    border: 0; border-radius: var(--r-sm);
+    background: none; color: var(--text);
+    font-family: inherit; font-size: 13.5px; font-weight: 600; text-align: start;
+    cursor: pointer;
+  }
+  .hs-ctx-item:hover { background: var(--hover-bg); }
+  .hs-ctx-item-name { overflow-wrap: anywhere; }
+  .hs-ctx-item-eye { color: var(--text-muted); margin-inline-start: auto; flex-shrink: 0; }
   .hs-ctx-name { color: var(--text); overflow-wrap: anywhere; }
   .hs-ctx-view {
     display: inline-flex; align-items: center; gap: 4px;
@@ -225,3 +261,4 @@
 @keyframes hsRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes hsFlash { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes hsSpin { to { transform: rotate(360deg); } }
+@keyframes hsCtxMenu { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
