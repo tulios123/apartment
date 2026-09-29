@@ -116,6 +116,32 @@ jobs:
             exit 1
           fi
 
+      # Without this the CLI's ledger and the database disagree: applying from here used to
+      # leave `schema_migrations` behind (it said 051 while the database was at 054), so the
+      # owner's next `supabase db push` would re-run everything this workflow had already
+      # applied. Every file here must be idempotent, so that re-run is survivable rather
+      # than safe — and two sources of truth about what is applied is how a migration ends
+      # up running twice with nobody expecting it.
+      - name: Record the version in the CLI's ledger
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          MIGRATION_FILE: ${{ steps.check.outputs.file }}
+        run: |
+          # This repo's ledger uses the file's numeric prefix ('051'), not a CLI timestamp.
+          VERSION=$(basename "$MIGRATION_FILE" | sed -E 's/^([0-9]+)_.*/\1/')
+          NAME=$(basename "$MIGRATION_FILE")
+          case "$VERSION" in
+            ''|*[!0-9]*) echo "::warning::$NAME has no numeric prefix — not recorded."; exit 0 ;;
+          esac
+          SQL="insert into supabase_migrations.schema_migrations (version, name)
+               values ('$VERSION', '$NAME')
+               on conflict (version) do nothing;"
+          jq -nc --arg q "$SQL" '{query: $q}' | curl -sS \
+            -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H 'Content-Type: application/json' --data-binary @-
+          echo "recorded $VERSION"
+
       - name: Report the schema afterwards
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
