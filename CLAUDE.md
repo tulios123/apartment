@@ -98,8 +98,18 @@ npm run build                  # tsc -b && vite build (bundles even without env;
                                #   built app throws at LOAD if Supabase env is missing)
 npm run lint                   # eslint
 ```
+**Cloud session?** `scripts/dev/trust-proxy-ca.sh` runs at session start (.claude/settings.json)
+and imports the agent proxy's CA into the browser's NSS store. Without it Chromium reaches
+localhost fine and fails every Supabase call with ERR_CERT_AUTHORITY_INVALID, landing on the
+login screen with nothing that points at a certificate — which is what made the live-backend
+specs look permanently unrunnable. The store is per-container and the CA rotates, so this
+re-imports every run. Verification stays on; this is not --ignore-certificate-errors.
+
 E2E (optional): `npm i -D @playwright/test && npx playwright install webkit chromium`,
-then `npx playwright test`. The dev-bypass auto-login (set `VITE_DEV_BYPASS_AUTH=true`
+then `npx playwright test`. Five specs drive the HOSTED Supabase through the dev-bypass
+login rather than the offline stub (preflight, layoutcheck, onboarding, reset); of those,
+onboarding and reset DELETE the test account's data, so `resetAccount` refuses unless
+`E2E_ALLOW_DESTRUCTIVE=1`. The dev-bypass auto-login (set `VITE_DEV_BYPASS_AUTH=true`
 + `VITE_DEV_USER_EMAIL`/`VITE_DEV_USER_PASSWORD` in `.env.local`) lets specs start
 authenticated. Backend from scratch (only if not reusing the hosted project):
 `supabase link --project-ref <ref>` → `supabase db push` → `supabase functions deploy`
