@@ -37,7 +37,7 @@ function isOverdue(t: Task) {
 
 export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
-  const { user, ownerId } = useAuth()
+  const { user, ownerId, canWrite } = useAuth()
   const { tasks, setTasks, loading, error, refetch } = useTasks({ status: 'all' })
   const { documents, refetch: refetchDocs } = useDocuments()
 
@@ -205,9 +205,11 @@ export default function TasksV2({ embedded = false }: { embedded?: boolean }) {
             {/* One add-affordance for the whole app: a primary card that opens the
                 same task sheet the Home screen uses (title + date + time + repeat),
                 instead of the old inline text row. */}
-            <button type="button" className="add-card" onClick={() => setAddOpen(true)}>
-              <Plus size={18} weight="bold" /> הוספת משימה
-            </button>
+            {canWrite && (
+              <button type="button" className="add-card" onClick={() => setAddOpen(true)}>
+                <Plus size={18} weight="bold" /> הוספת משימה
+              </button>
+            )}
 
             <div className="tav-section-head">
               <span className="tav-bucket-dot accent" />

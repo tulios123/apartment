@@ -1,31 +1,41 @@
 import { useCallback, useEffect, useState } from 'react'
-import { UserPlus, X, Check, SignOut, House } from '@phosphor-icons/react'
+import { UserPlus, X, Check, SignOut, House, Eye } from '@phosphor-icons/react'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   MAX_MEMBERS, listMembers, listPendingInvites, invite, cancelInvite,
   myIncomingInvites, acceptInvite, leaveHousehold,
-  type Member, type PendingInvite, type IncomingInvite,
+  type Member, type PendingInvite, type IncomingInvite, type Role,
 } from '../../lib/household'
 
 /**
- * שיתוף הדירה — the feature Omer asked for by name: Moran on the same apartment, seeing
- * and doing the same things he does.
+ * שיתוף הדירה.
  *
- * Three states share one section, because they are one idea seen from different sides:
- * who is already on this apartment, who has been asked and has not answered, and — when
- * you are the one who was asked — the invitation waiting for you.
+ * Rebuilt 29.09 after the owner read the first version: "למה יש שם קופסה של המייל שלי
+ * למעלה ויש שם יותר מדי מלל".
  *
- * Everything enforceable is enforced by the database (migration 051). This screen's job is
- * to say plainly what is about to happen, especially the two things people get wrong:
- * that a new member is an equal rather than a viewer, and that leaving does not take your
- * entries with you.
+ * Both complaints are the same mistake — the section was written for the shared case and
+ * shown to everyone. Alone in your own apartment there is no list worth reading (it has
+ * one row, and the row is you), and no paragraph worth reading either, because nothing
+ * has happened yet. So: one line and one button. The form opens from the button, the
+ * member list appears only once there is more than one member, and the explanation of
+ * what each permission means sits on the permission control itself rather than above the
+ * whole section in the abstract.
  */
+
+const ROLE_LABEL: Record<Role, string> = { member: 'שותף מלא', viewer: 'צופה בלבד' }
+const ROLE_HINT: Record<Role, string> = {
+  member: 'רואה הכול, ויכול להוסיף, לערוך ולמחוק — בדיוק כמוך.',
+  viewer: 'רואה הכול, ולא יכול לשנות שום דבר.',
+}
+
 export function SharingSection() {
-  const { user, ownerId, households, switchHousehold, refreshHouseholds } = useAuth()
+  const { user, ownerId, households, canWrite, switchHousehold, refreshHouseholds } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
   const [pending, setPending] = useState<PendingInvite[]>([])
   const [incoming, setIncoming] = useState<IncomingInvite[]>([])
+  const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState<Role>('member')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null)
   const [confirmLeave, setConfirmLeave] = useState(false)
@@ -38,25 +48,24 @@ export function SharingSection() {
       myIncomingInvites(),
     ])
     setMembers(m); setPending(p)
-    // An invitation to the apartment you are already looking at is not news.
+    // An invitation to an apartment you are already in is not news.
     setIncoming(i.filter(x => !households.some(h => h.id === x.householdId)))
   }, [ownerId, user, households])
 
   useEffect(() => { void load() }, [load])
 
-  // A pending invitation is a place already spoken for.
   const taken = members.length + pending.length
   const slotsLeft = Math.max(0, MAX_MEMBERS - taken)
-  const full = taken >= MAX_MEMBERS
-  const iAmOnlyMember = members.length <= 1
+  const shared = members.length > 1 || pending.length > 0
+  const myRole = households.find(h => h.id === ownerId)?.role ?? 'member'
 
   async function send() {
     if (!ownerId || busy) return
     setBusy(true); setMsg(null)
-    const res = await invite(ownerId, email, user?.email ?? null, taken)
+    const res = await invite(ownerId, email, user?.email ?? null, taken, role)
     setBusy(false)
     if (res.ok) {
-      setEmail('')
+      setEmail(''); setOpen(false)
       setMsg({ text: 'ההזמנה נשמרה. היא תחכה לה בכניסה הבאה לאפליקציה.', tone: 'ok' })
       void load()
     } else {
@@ -79,8 +88,7 @@ export function SharingSection() {
     if (!ownerId || !user) return
     setBusy(true)
     const ok = await leaveHousehold(ownerId, user.id)
-    setBusy(false)
-    setConfirmLeave(false)
+    setBusy(false); setConfirmLeave(false)
     if (!ok) { setMsg({ text: 'היציאה נכשלה — נסו שוב', tone: 'err' }); return }
     await refreshHouseholds()
   }
@@ -88,23 +96,15 @@ export function SharingSection() {
   return (
     <section className="settings-section">
       <h2>שיתוף הדירה</h2>
-      {/* How many MORE can join, not the fixed cap — a household with two members and an
-          invitation out has one place left, and saying "עוד 2" there is simply wrong. */}
-      <p className="settings-note">
-        {slotsLeft > 0
-          ? <>אפשר לשתף את הדירה עם עוד {slotsLeft === 1 ? 'אדם אחד' : `${slotsLeft} אנשים`}. </>
-          : null}
-        כל מי שמשותף רואה ועושה בדיוק את אותם דברים — אין "צופה בלבד".
-      </p>
 
-      {/* An invitation waiting for me. First, because it is the only thing here that is
-          about a different apartment than the one on screen. */}
+      {/* An invitation waiting for me — first, because it is the only thing in this
+          section about a different apartment than the one on screen. */}
       {incoming.map(inv => (
         <div className="hh-invite-in" key={inv.id}>
           <House size={18} weight="duotone" />
           <div className="hh-invite-in-body">
             <b>הוזמנת ל{inv.address ? `דירה ב${inv.address}` : inv.householdName}</b>
-            <span>אחרי ההצטרפות תוכלו לעבור בין הדירות מכאן.</span>
+            <span>{inv.role === 'viewer' ? 'לצפייה בלבד.' : 'כשותף מלא.'} אחרי ההצטרפות אפשר לעבור בין הדירות מכאן.</span>
           </div>
           <button className="btn-secondary" disabled={busy} onClick={() => accept(inv)}>
             <Check size={14} weight="bold" /> הצטרפות
@@ -112,59 +112,83 @@ export function SharingSection() {
         </div>
       ))}
 
-      <div className="hh-members">
-        {members.map(m => (
-          <div className="hh-member" key={m.userId}>
-            <span className="hh-member-name">{m.name}{m.isMe && <span className="hh-you"> · את/ה</span>}</span>
-            {m.email && <span className="hh-member-email">{m.email}</span>}
-          </div>
-        ))}
-        {pending.map(p => (
-          <div className="hh-member pending" key={p.id}>
-            <span className="hh-member-name">{p.email}</span>
-            <span className="hh-member-email">ממתין/ה לאישור</span>
-            <button className="hh-member-x" aria-label={`ביטול ההזמנה ל${p.email}`}
-              onClick={async () => { await cancelInvite(p.id); void load() }}>
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
+      {/* The list earns its place only once someone else is on the apartment. On your
+          own it is one row saying your own address back to you. */}
+      {shared ? (
+        <div className="hh-members">
+          {members.map(m => (
+            <div className="hh-member" key={m.userId}>
+              <span className="hh-member-name">{m.name}{m.isMe && <span className="hh-you"> · את/ה</span>}</span>
+              {m.email && <span className="hh-member-email">{m.email}</span>}
+              {m.role === 'viewer' && <span className="hh-role"><Eye size={12} weight="bold" /> צופה</span>}
+            </div>
+          ))}
+          {pending.map(p => (
+            <div className="hh-member pending" key={p.id}>
+              <span className="hh-member-name">{p.email}</span>
+              <span className="hh-member-email">ממתין/ה{p.role === 'viewer' ? ' · כצופה' : ''}</span>
+              <button className="hh-member-x" aria-label={`ביטול ההזמנה ל${p.email}`}
+                onClick={async () => { await cancelInvite(p.id); void load() }}>
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="settings-note">הדירה הזו רק שלך.</p>
+      )}
 
-      {full ? (
+      {/* A viewer cannot invite — RLS refuses it, and a viewer who could invite a full
+          member would be promoting themselves by proxy. */}
+      {!canWrite ? (
         <p className="settings-note">
-          {members.length >= MAX_MEMBERS
-            ? `הדירה כוללת כבר ${MAX_MEMBERS} אנשים — המקסימום כרגע.`
-            : `כל המקומות תפוסים — ${members.length} משותפים ו-${pending.length} הזמנות שממתינות.`}
+          <Eye size={13} weight="bold" /> יש לך גישת צפייה בלבד בדירה הזו.
         </p>
+      ) : slotsLeft === 0 ? (
+        <p className="settings-note">
+          כל המקומות תפוסים — עד {MAX_MEMBERS} אנשים לדירה.
+        </p>
+      ) : !open ? (
+        <button type="button" className="btn-secondary hh-open" onClick={() => { setOpen(true); setMsg(null) }}>
+          <UserPlus size={15} weight="bold" /> הזמנת מישהו
+        </button>
       ) : (
         <div className="hh-invite">
-          <label htmlFor="hh-email">הזמנה לפי מייל</label>
-          <div className="hh-invite-row">
-            <input id="hh-email" type="email" inputMode="email" dir="ltr"
-              placeholder="name@gmail.com" value={email}
-              onChange={e => { setEmail(e.target.value); setMsg(null) }} />
+          <label htmlFor="hh-email">המייל שאיתו היא נכנסת לאפליקציה</label>
+          <input id="hh-email" type="email" inputMode="email" dir="ltr" autoFocus
+            placeholder="name@gmail.com" value={email}
+            onChange={e => { setEmail(e.target.value); setMsg(null) }} />
+
+          <div className="toggle-group hh-roles">
+            {(['member', 'viewer'] as Role[]).map(r => (
+              <button key={r} type="button" className={`toggle-btn${role === r ? ' active' : ''}`}
+                onClick={() => setRole(r)}>{ROLE_LABEL[r]}</button>
+            ))}
+          </div>
+          {/* The explanation belongs to the choice, not to the section — it changes with
+              what is selected, which is the only moment it means anything. */}
+          <span className="settings-note hh-role-hint">{ROLE_HINT[role]}</span>
+
+          <div className="hh-invite-actions">
             <button className="btn-secondary" disabled={busy || !email.trim()} onClick={send}>
-              <UserPlus size={15} weight="bold" /> הזמנה
+              {busy ? 'שולח…' : 'שליחת הזמנה'}
+            </button>
+            <button className="btn-secondary hh-cancel" onClick={() => { setOpen(false); setEmail(''); setMsg(null) }}>
+              ביטול
             </button>
           </div>
-          <span className="settings-note">
-            צריך להיות המייל שאיתו היא נכנסת לאפליקציה — ההזמנה תחכה לה שם.
-          </span>
         </div>
       )}
 
       {msg && <p className={msg.tone === 'err' ? 'onboarding-error' : 'hh-ok'} role="status">{msg.text}</p>}
 
-      {/* Leaving is only offered where it means something. Leaving an apartment that is
-          yours alone would just hide it from you with nobody left to let you back in. */}
-      {!iAmOnlyMember && (
+      {/* Leaving is offered only where it means something: leaving an apartment that is
+          yours alone would hide it from you with nobody left to let you back in. */}
+      {members.length > 1 && (
         <div className="settings-actions">
           {confirmLeave ? (
             <>
-              <span className="settings-note">
-                לצאת מהדירה? תאבדו גישה אליה. מה שהזנתם נשאר בדירה.
-              </span>
+              <span className="settings-note">לצאת מהדירה? תאבדו גישה אליה. מה שהזנתם נשאר בדירה.</span>
               <button className="btn-secondary" disabled={busy} onClick={leave}>כן, לצאת</button>
               <button className="btn-secondary" onClick={() => setConfirmLeave(false)}>ביטול</button>
             </>
@@ -174,6 +198,10 @@ export function SharingSection() {
             </button>
           )}
         </div>
+      )}
+
+      {myRole === 'viewer' && shared && (
+        <p className="settings-note">מי ששיתף אותך יכול להפוך אותך לשותף/ה מלא/ה.</p>
       )}
     </section>
   )

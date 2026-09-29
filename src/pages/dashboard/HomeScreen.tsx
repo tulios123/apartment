@@ -54,7 +54,7 @@ function greeting(name: string): { text: string; Icon: typeof Sun } {
 
 export default function HomeScreen() {
   const navigate = useNavigate()
-  const { user, ownerId } = useAuth()
+  const { user, ownerId, canWrite } = useAuth()
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
@@ -545,7 +545,9 @@ export default function HomeScreen() {
           {/* ── Quick capture ── Two clear, structured entries. The free-text bar was
               removed (owner, 25.07): its Hebrew parser was only lightly reliable and it
               stacked a third, overlapping capture path on top of these two. */}
-          <section className="hs-quick">
+          {/* Hidden for a viewer: RLS would refuse both of these anyway (migration 052),
+              and offering an action that cannot succeed is worse than not offering it. */}
+          {canWrite && <section className="hs-quick">
             <div className="hs-fabs">
               <button onClick={() => {
                 // Docked sheet + another tap = restore it (V3), preserving typed data.
@@ -558,7 +560,7 @@ export default function HomeScreen() {
                 <span className="hs-fab-icon"><ListPlus size={17} weight="bold" /></span> משימה
               </button>
             </div>
-          </section>
+          </section>}
 
           {/* ── Calm cash flow ── */}
           <section className="hs-flow">

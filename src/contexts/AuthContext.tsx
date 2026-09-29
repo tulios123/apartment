@@ -15,11 +15,15 @@ const DEV_EMAIL = import.meta.env.VITE_DEV_USER_EMAIL as string
 const DEV_PASSWORD = import.meta.env.VITE_DEV_USER_PASSWORD as string
 
 /** An apartment you belong to. `id` is what every household-scoped row carries as owner_id. */
+/** What you may do on an apartment. Set when you are invited; enforced by RLS. */
+export type HouseholdRole = 'member' | 'viewer'
+
 export interface Household {
   id: string
   name: string
   /** The property's address, when it has one — what the switcher shows. */
   address: string | null
+  role: HouseholdRole
 }
 
 interface AuthContextType {
@@ -42,6 +46,14 @@ interface AuthContextType {
    */
   ownerId: string | null
   households: Household[]
+  /**
+   * May this account change the ACTIVE apartment, or only look at it?
+   *
+   * The screens use it to avoid offering what would be refused — but the refusal itself
+   * lives in the policies (migration 052), not here. Defaults to true so that a slow or
+   * failed membership load never silently locks a real owner out of their own app.
+   */
+  canWrite: boolean
   switchHousehold: (id: string) => void
   refreshHouseholds: () => Promise<void>
   signInWithGoogle: () => Promise<void>
@@ -124,13 +136,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const uid = session?.user?.id
     if (!uid) { setHouseholds([]); setActiveId(null); return }
     const { data: memberRows, error } = await supabase
-      .from('household_members').select('household_id').eq('user_id', uid)
+      .from('household_members').select('household_id, user_id, role').eq('user_id', uid)
     // Before migration 051 is applied the table does not exist. Falling back to the single
     // own-household case keeps every screen working exactly as it did.
-    // Deduplicated: two people in the SAME apartment produce two membership rows, and if
-    // the user_id filter is ever dropped — as the offline harness drops it — that lands
-    // here as the same apartment listed twice, with duplicate React keys behind it.
-    const ids = error ? [uid] : [...new Set((memberRows ?? []).map(r => r.household_id as string))]
+    /**
+     * Filtered again here, on purpose.
+     *
+     * The query already asks for this user's rows, but the ROLE decides what the app
+     * offers, and a permission must not rest on the server filter alone. Two people in
+     * one apartment produce two rows; if that filter is ever dropped — as the offline
+     * harness drops it — the map below would take the LAST row's role, which is somebody
+     * else's. That is exactly how a full member was shown "you have view-only access"
+     * while this was being built.
+     */
+    const mine = (memberRows ?? []).filter(r => (r as { user_id?: string }).user_id === uid)
+    const ids = error ? [uid] : [...new Set(mine.map(r => r.household_id as string))]
     if (ids.length === 0) ids.push(uid)
 
     const [{ data: ownerRows }, { data: propRows }] = await Promise.all([
@@ -138,10 +158,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       supabase.from('properties').select('owner_id, address').in('owner_id', ids),
     ])
     const addressOf = new Map((propRows ?? []).map(p => [p.owner_id as string, p.address as string | null]))
+    // 'member' when the column is absent (a database still on 051) or the row is missing,
+    // which keeps an existing owner writing rather than locking them out on a bad read.
+    const roleOf = new Map(mine.map(r =>
+      [r.household_id as string, ((r as { role?: string }).role === 'viewer' ? 'viewer' : 'member') as HouseholdRole]))
     const list: Household[] = ids.map(id => ({
       id,
       name: (ownerRows ?? []).find(o => o.id === id)?.name ?? 'הדירה שלי',
       address: addressOf.get(id) ?? null,
+      role: roleOf.get(id) ?? 'member',
     }))
     setHouseholds(list)
 
@@ -203,11 +228,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const user = session?.user ?? null
   // See the note on `ownerId` above: user.id is the fallback, not a guess.
   const ownerId = activeId ?? user?.id ?? null
+  const canWrite = households.find(h => h.id === ownerId)?.role !== 'viewer'
 
   return (
     <AuthContext.Provider value={{
       user, session, loading,
-      ownerId, households, switchHousehold, refreshHouseholds,
+      ownerId, households, canWrite, switchHousehold, refreshHouseholds,
       signInWithGoogle, signOut,
     }}>
       {children}

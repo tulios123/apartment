@@ -52,7 +52,7 @@ const emptyForm ={ direction: 'expense' as Dir, amount: '', date: todayISO(), ca
 type Prefill = { direction?: Dir; category?: string; description?: string; amount?: number }
 
 export default function FinancesV2() {
-  const { user, ownerId } = useAuth()
+  const { user, ownerId, canWrite } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const today = new Date()
@@ -565,9 +565,11 @@ export default function FinancesV2() {
         </div>
       </div>
 
-      <button className="finv-addbtn" onClick={openNew}>
-        <Plus size={19} weight="bold" /> הוספת תנועה
-      </button>
+      {canWrite && (
+        <button className="finv-addbtn" onClick={openNew}>
+          <Plus size={19} weight="bold" /> הוספת תנועה
+        </button>
+      )}
 
       {categoryFilter && (
         <div className="finv-filter-chip">

@@ -11,10 +11,14 @@ import { supabase } from './supabase'
 
 export const MAX_MEMBERS = 3
 
+/** Chosen when inviting, carried by the invitation, and enforced by RLS (migration 052). */
+export type Role = 'member' | 'viewer'
+
 export interface Member {
   userId: string
   name: string
   email: string | null
+  role: Role
   /** True for the account this app is currently signed in as. */
   isMe: boolean
 }
@@ -22,6 +26,7 @@ export interface Member {
 export interface PendingInvite {
   id: string
   email: string
+  role: Role
   createdAt: string
 }
 
@@ -31,6 +36,7 @@ export interface IncomingInvite {
   householdId: string
   householdName: string
   address: string | null
+  role: Role
 }
 
 /**
@@ -45,9 +51,13 @@ function missingTable(error: { message?: string; code?: string } | null): boolea
 
 export async function listMembers(householdId: string, myUserId: string): Promise<Member[]> {
   const { data, error } = await supabase
-    .from('household_members').select('user_id').eq('household_id', householdId)
+    .from('household_members').select('user_id, role').eq('household_id', householdId)
   if (error) return missingTable(error) ? [] : []
   const ids = [...new Set((data ?? []).map(r => r.user_id as string))]
+  // 'member' when the column is missing (a database still on 051), which is what every
+  // existing membership is.
+  const roleOf = new Map((data ?? []).map(r =>
+    [r.user_id as string, ((r as { role?: string }).role === 'viewer' ? 'viewer' : 'member') as Role]))
   if (ids.length === 0) return []
   // Names live on `owners`; a member who has never created an apartment of their own has
   // no row there, so the id is the fallback rather than a crash.
@@ -58,6 +68,7 @@ export async function listMembers(householdId: string, myUserId: string): Promis
       userId: id,
       name: (p?.name as string) || 'בן משפחה',
       email: (p?.email as string) ?? null,
+      role: roleOf.get(id) ?? 'member',
       isMe: id === myUserId,
     }
   })
@@ -65,18 +76,23 @@ export async function listMembers(householdId: string, myUserId: string): Promis
 
 export async function listPendingInvites(householdId: string): Promise<PendingInvite[]> {
   const { data, error } = await supabase
-    .from('household_invites').select('id, email, created_at')
+    .from('household_invites').select('id, email, role, created_at')
     .eq('household_id', householdId).is('accepted_at', null)
     .order('created_at')
   if (error) return []
-  return (data ?? []).map(r => ({ id: r.id as string, email: r.email as string, createdAt: r.created_at as string }))
+  return (data ?? []).map(r => ({
+    id: r.id as string,
+    email: r.email as string,
+    role: ((r as { role?: string }).role === 'viewer' ? 'viewer' : 'member') as Role,
+    createdAt: r.created_at as string,
+  }))
 }
 
 export type InviteResult =
   | { ok: true }
   | { ok: false; reason: 'full' | 'already' | 'self' | 'invalid' | 'failed'; message: string }
 
-export async function invite(householdId: string, email: string, myEmail: string | null, memberCount: number): Promise<InviteResult> {
+export async function invite(householdId: string, email: string, myEmail: string | null, memberCount: number, role: Role = 'member'): Promise<InviteResult> {
   const addr = email.trim().toLowerCase()
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) {
     return { ok: false, reason: 'invalid', message: 'כתובת המייל לא נראית תקינה' }
@@ -90,7 +106,7 @@ export async function invite(householdId: string, email: string, myEmail: string
   }
   const { data: { user } } = await supabase.auth.getUser()
   const { error } = await supabase.from('household_invites')
-    .insert({ household_id: householdId, email: addr, invited_by: user?.id })
+    .insert({ household_id: householdId, email: addr, role, invited_by: user?.id })
   if (error) {
     if (/duplicate|unique/i.test(error.message)) {
       return { ok: false, reason: 'already', message: 'כבר נשלחה הזמנה לכתובת הזו' }
@@ -108,7 +124,7 @@ export async function cancelInvite(id: string): Promise<boolean> {
 /** Invitations addressed to the signed-in account. RLS does the matching, not this query. */
 export async function myIncomingInvites(): Promise<IncomingInvite[]> {
   const { data, error } = await supabase
-    .from('household_invites').select('id, household_id').is('accepted_at', null)
+    .from('household_invites').select('id, household_id, role').is('accepted_at', null)
   if (error || !data || data.length === 0) return []
   const ids = data.map(r => r.household_id as string)
   const [{ data: owners }, { data: props }] = await Promise.all([
@@ -122,6 +138,7 @@ export async function myIncomingInvites(): Promise<IncomingInvite[]> {
       householdId: hid,
       householdName: (owners ?? []).find(o => o.id === hid)?.name as string ?? 'דירה',
       address: ((props ?? []).find(p => p.owner_id === hid)?.address as string) ?? null,
+      role: ((r as { role?: string }).role === 'viewer' ? 'viewer' : 'member') as Role,
     }
   })
 }
