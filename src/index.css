@@ -4927,6 +4927,8 @@ button .spin { vertical-align: -2px; }
 
 .hh-open { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; }
 .hh-msg { margin: 10px 0 0; font-size: 13px; line-height: 1.5; }
+.hh-check { margin-top: 8px; line-height: 1.6; }
+.hh-check span { color: var(--text-muted); white-space: nowrap; }
 .hh-member-acts { margin-inline-start: auto; display: inline-flex; gap: 2px; flex-shrink: 0; }
 .hh-member-acts .hh-member-x { margin-inline-start: 0; }
 

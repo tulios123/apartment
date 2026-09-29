@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ChatDots } from '@phosphor-icons/react'
 import { useAuth } from '../contexts/AuthContext'
+import { APP_VERSION, BUILD_ID } from '../lib/version'
 import { SharingSection } from './settings/SharingSection'
 import { ApartmentSwitcher } from './settings/ApartmentSwitcher'
 import { supabase } from '../lib/supabase'
@@ -174,6 +175,14 @@ export default function Settings() {
           <div className="settings-row">
             <span className="settings-label">ספק</span>
             <span className="settings-value">{providerLabel}</span>
+          </div>
+          {/* Shown in production too, not only on staging.
+              When someone reports that a shipped fix "isn't there", the first question is
+              which build they are actually running — and until now that was unanswerable
+              on the live app, so it stayed a guess. One screenshot settles it. */}
+          <div className="settings-row">
+            <span className="settings-label">גרסה</span>
+            <span className="settings-value" dir="ltr">{APP_VERSION} · {BUILD_ID}</span>
           </div>
           <div className="settings-actions">
             <button className="btn-secondary" onClick={signOut}>יציאה מהחשבון</button>

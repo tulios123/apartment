@@ -1,0 +1,80 @@
+name: Inspect the database (read-only)
+
+# Why this exists
+# ---------------
+# "הוא לא רואה את ההזמנה" is not one bug, it is four possible ones: the address it was
+# sent to is not the address he signs in with; the schema the app queries is not the schema
+# that is there; the policy that should let him read it is missing; or his phone is running
+# an older build. Three of those four are facts the database already knows, and guessing at
+# them in turn — each guess costing a round-trip through another person's phone — is the
+# slowest possible way to find out.
+#
+# So: a fixed set of read-only questions, run on demand, printing answers rather than data.
+#
+# Deliberate limits:
+#  * NO free-form SQL input. A workflow that runs whatever it is handed against production
+#    is a backdoor, whoever writes the input.
+#  * SELECT only, and the queries are in this file where they can be read before they run.
+#  * Addresses are MASKED in the output. The question is "does an account with this address
+#    exist", and that can be answered without printing anybody's email into a CI log.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: db-inspect
+  cancel-in-progress: true
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_REF: bjholzkesnzkbogxmurw
+    steps:
+      - name: Ask
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is not set."; exit 1
+          fi
+          q() {
+            jq -nc --arg q "$1" '{query: $q}' | curl -sS \
+              -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H 'Content-Type: application/json' --data-binary @- | jq .
+          }
+
+          echo "### 1. Is the schema the app queries actually there? (migrations 051–053)"
+          q "select column_name from information_schema.columns
+             where table_schema='public' and table_name='household_invites' order by column_name"
+
+          echo "### 2. Can an invited person read their own invitation? (the policy that decides it)"
+          q "select policyname, cmd, qual from pg_policies
+             where schemaname='public' and tablename='household_invites' order by policyname"
+
+          echo "### 3. Do the functions the app calls exist?"
+          q "select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+             where n.nspname='public'
+               and p.proname in ('accept_invite','upsert_invite','auth_households','auth_households_rw')
+             order by p.proname"
+
+          # The one that usually settles it. An invitation only ever reaches the address it
+          # was sent to; if no account signs in with that address, nothing downstream can
+          # make it appear. Masked: first and last character of the local part.
+          echo "### 4. For every pending invitation — is there an account with that exact address?"
+          q "select
+               left(i.email,1) || '***' || substr(split_part(i.email,'@',1), length(split_part(i.email,'@',1)), 1)
+                 || '@' || split_part(i.email,'@',2)            as invited_address_masked,
+               i.role,
+               i.created_at::date                               as sent,
+               (u.id is not null)                               as account_exists,
+               (select count(*) from household_members m where m.household_id = i.household_id) as people_on_that_flat
+             from household_invites i
+             left join auth.users u on lower(u.email) = lower(i.email)
+             where i.accepted_at is null
+             order by i.created_at desc limit 20"
+
+          echo "### 5. Households and their sizes (no personal data)"
+          q "select household_id, count(*) as members, min(role) as roles
+             from household_members group by household_id order by members desc limit 20"

@@ -35,7 +35,7 @@ export function InviteGate({ mode, children }: {
 
   const load = useCallback(async () => {
     if (!user) { setInvites([]); return }
-    try { setInvites(await myIncomingInvites()) } catch { setInvites([]) }
+    try { setInvites(await myIncomingInvites(user.email)) } catch { setInvites([]) }
   }, [user])
 
   useEffect(() => { void load() }, [load])

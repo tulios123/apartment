@@ -127,31 +127,6 @@ test('שתי דירות — הבורר מופיע ומסמן את הפעילה',
   await expect(page.locator('.hh-switch-row').filter({ hasText: 'פסח חברוני 122' })).not.toHaveClass(/is-active/)
 })
 
-test('הזמנה שממתינה לי לא מחכה בהגדרות — היא נפגשת בדלת', async ({ page }) => {
-  await settings(page, {
-    ...base,
-    owners: [
-      { id: OWNER, name: 'עומר', email: 'omer@example.com' },
-      { id: FLAT2, name: 'הדירה של אבא', email: null },
-    ],
-    household_members: [{ household_id: OWNER, user_id: OWNER, role: 'member' }],
-    household_invites: [
-      { id: 'inv9', household_id: FLAT2, email: 'view@test.local', role: 'member',
-        household_label: 'הרצל 10', invited_by_label: 'אבא',
-        created_at: '2026-09-25T08:00:00Z', accepted_at: null },
-    ],
-    properties: [flat(OWNER, 'פסח חברוני 122'), flat(FLAT2, 'הרצל 10')],
-  })
-
-  // Deliberately NOT here any more. Waiting in Settings for someone to go looking is
-  // exactly how the first real invitation was missed — it is met on entry now
-  // (e2e/invite-gate.spec.ts), and this asserts the move was on purpose rather than lost.
-  const sharing = page.locator('.settings-section').filter({ hasText: 'שיתוף הדירה' })
-  await expect(sharing.locator('.hh-invite-in')).toHaveCount(0)
-  await expect(sharing, 'the section is about THIS apartment, not other people\'s')
-    .not.toContainText('הרצל 10')
-})
-
 test('צופה בלבד — רואה, ולא מוצע לו לשנות', async ({ page }) => {
   await settings(page, {
     ...base,
@@ -194,4 +169,59 @@ test('שותף מלא — כן מוצע לו להוסיף', async ({ page }) => 
   await page.locator('.page').first().waitFor({ state: 'visible', timeout: 30_000 })
   await page.waitForTimeout(800)
   await expect(page.locator('.finv-addbtn')).toBeVisible()
+})
+
+test('הזמנה ממתינה אומרת לאן היא נשלחה, ולמה היא אולי לא מגיעה', async ({ page }) => {
+  await settings(page, {
+    ...base,
+    owners: [{ id: OWNER, name: 'איתי', email: 'itai@example.com' }],
+    household_members: [{ household_id: OWNER, user_id: OWNER, role: 'member' }],
+    household_invites: [
+      { id: 'i1', household_id: OWNER, email: 'omer.wrong@gmail.com', role: 'member',
+        household_label: 'פסח חברוני 122', invited_by_label: 'איתי',
+        created_at: '2026-09-29T08:00:00Z', accepted_at: null },
+    ],
+    properties: [flat(OWNER, 'פסח חברוני 122')],
+  })
+
+  // The stub cannot filter by RLS, so an invitation addressed to someone else would once
+  // have opened the entry modal over this page. `myIncomingInvites` now checks the address
+  // client-side too — which is why this sender-side screen is reachable at all here, and
+  // is the same defensive filtering that caught the role bug.
+  await expect(page.locator('.modal-overlay'), 'not my invitation — no door').toHaveCount(0)
+
+  // The address it went to, in full — this is the one fact that turns "he says he can't
+  // see it" from a mystery into a five-second check.
+  await expect(page.locator('.hh-member.pending')).toContainText('omer.wrong@gmail.com')
+  await expect(page.locator('.hh-check')).toContainText('רק לכתובת שאיתה נכנסים')
+
+  // ↻ opens the invitation for re-sending OR for correcting the address, prefilled.
+  await page.getByRole('button', { name: /שליחה שוב או תיקון הכתובת/ }).click()
+  await page.waitForTimeout(300)
+  await expect(page.locator('.hh-invite input')).toHaveValue('omer.wrong@gmail.com')
+})
+
+test('הזמנה שמחכה לי נמצאת גם בהגדרות, לא רק בדלת', async ({ page }) => {
+  await settings(page, {
+    ...base,
+    owners: [
+      { id: OWNER, name: 'עומר', email: 'omer@example.com' },
+      { id: FLAT2, name: 'הדירה של איתי', email: null },
+    ],
+    household_members: [{ household_id: OWNER, user_id: OWNER, role: 'member' }],
+    household_invites: [
+      { id: 'i9', household_id: FLAT2, email: 'view@test.local', role: 'member',
+        household_label: 'פסח חברוני 122', invited_by_label: 'איתי',
+        created_at: '2026-09-29T08:00:00Z', accepted_at: null },
+    ],
+    properties: [flat(OWNER, 'הרצל 10'), flat(FLAT2, 'פסח חברוני 122')],
+  })
+
+  // The door can be missed — dismissed, or not there yet on a phone running an older
+  // build. A thing that exists in exactly one place is a thing that can disappear.
+  const card = page.locator('.hh-invite-in')
+  await expect(card).toBeVisible()
+  await expect(card).toContainText('איתי שיתף/ה איתך דירה')
+  await expect(card).toContainText('פסח חברוני 122')
+  await saveShot(page, 'sharing', '05-invite-in-settings', 'light')
 })

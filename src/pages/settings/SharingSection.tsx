@@ -3,7 +3,8 @@ import { UserPlus, X, SignOut, Eye, ArrowClockwise } from '@phosphor-icons/react
 import { useAuth } from '../../contexts/AuthContext'
 import {
   MAX_MEMBERS, listMembers, listPendingInvites, invite, cancelInvite, leaveHousehold,
-  type Member, type PendingInvite, type Role,
+  myIncomingInvites, acceptInvite,
+  type Member, type PendingInvite, type IncomingInvite, type Role,
 } from '../../lib/household'
 
 /**
@@ -31,22 +32,34 @@ export function SharingSection() {
   const { user, ownerId, households, canWrite, refreshHouseholds } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
   const [pending, setPending] = useState<PendingInvite[]>([])
+  const [incoming, setIncoming] = useState<IncomingInvite[]>([])
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('member')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null)
   const [confirmLeave, setConfirmLeave] = useState(false)
+  /** The pending invitation the form was opened from, so a corrected address replaces it. */
+  const [editing, setEditing] = useState<PendingInvite | null>(null)
 
-  // Invitations addressed to ME are no longer shown here: they are met at the door now
-  // (components/InviteGate) — instead of the onboarding wizard for someone with no
-  // apartment, and on entry for someone who has one. Waiting in Settings to be found is
-  // exactly how the first real invitation was missed.
+  /**
+   * Invitations addressed to ME are shown here as well as at the door.
+   *
+   * They were moved out entirely when the door was built, and that was an
+   * over-correction: the door can be missed — dismissed, or simply not there yet on a
+   * phone still running an older build — and then there is no second place to look. A
+   * thing that exists in exactly one place is a thing that can disappear.
+   */
   const load = useCallback(async () => {
     if (!ownerId || !user) return
-    const [m, p] = await Promise.all([listMembers(ownerId, user.id), listPendingInvites(ownerId)])
+    const [m, p, i] = await Promise.all([
+      listMembers(ownerId, user.id),
+      listPendingInvites(ownerId),
+      myIncomingInvites(user.email),
+    ])
     setMembers(m); setPending(p)
-  }, [ownerId, user])
+    setIncoming(i.filter(x => !households.some(h => h.id === x.householdId)))
+  }, [ownerId, user, households])
 
   useEffect(() => { void load() }, [load])
 
@@ -66,13 +79,19 @@ export function SharingSection() {
       ?? user?.email ?? null,
   }
 
-  async function send(addr: string, r: Role, resent = false) {
+  async function send(addr: string, r: Role) {
     if (!ownerId || busy) return
     setBusy(true); setMsg(null)
     const res = await invite(ownerId, addr, user?.email ?? null, r, labels)
+    if (res.ok && editing && editing.email.toLowerCase() !== addr.trim().toLowerCase()) {
+      // The address was corrected rather than re-sent: the old invitation would otherwise
+      // sit there for ever, addressed to someone who is never going to see it.
+      await cancelInvite(editing.id)
+    }
     setBusy(false)
     if (res.ok) {
-      setEmail(''); setOpen(false)
+      const resent = !!editing && editing.email.toLowerCase() === addr.trim().toLowerCase()
+      setEmail(''); setOpen(false); setEditing(null)
       setMsg({
         text: resent ? 'ההזמנה נשלחה שוב.' : 'ההזמנה נשמרה. היא תחכה לה בכניסה הבאה לאפליקציה.',
         tone: 'ok',
@@ -81,6 +100,11 @@ export function SharingSection() {
     } else {
       setMsg({ text: res.message, tone: 'err' })
     }
+  }
+
+  /** Open the form on an existing invitation — to send it again, or to fix the address. */
+  function reopen(p: PendingInvite) {
+    setEditing(p); setEmail(p.email); setRole(p.role); setOpen(true); setMsg(null)
   }
 
   async function leave() {
@@ -92,9 +116,29 @@ export function SharingSection() {
     await refreshHouseholds()
   }
 
+  async function join(inv: IncomingInvite) {
+    setBusy(true); setMsg(null)
+    const res = await acceptInvite(inv.id)
+    setBusy(false)
+    if (!res.ok) { setMsg({ text: res.message, tone: 'err' }); return }
+    await refreshHouseholds()
+    window.location.assign('/')
+  }
+
   return (
     <section className="settings-section">
       <h2>שיתוף הדירה</h2>
+
+      {/* Also at the door (components/InviteGate) — deliberately in both places. */}
+      {incoming.map(inv => (
+        <div className="hh-invite-in" key={inv.id}>
+          <div className="hh-invite-in-body">
+            <b>{inv.invitedBy ? `${inv.invitedBy} שיתף/ה איתך דירה` : 'הוזמנת לדירה'}</b>
+            <span>{inv.householdLabel ?? ''}{inv.role === 'viewer' ? ' · כצופה בלבד' : ''}</span>
+          </div>
+          <button className="btn-secondary" disabled={busy} onClick={() => join(inv)}>הצטרפות</button>
+        </div>
+      ))}
 
       {/* The list earns its place only once someone else is on the apartment. On your
           own it is one row saying your own address back to you. */}
@@ -116,8 +160,9 @@ export function SharingSection() {
                   another (owner, 29.09). */}
               {canWrite && (
                 <span className="hh-member-acts">
-                  <button className="hh-member-x" title="שליחה שוב" aria-label={`שליחת ההזמנה ל${p.email} שוב`}
-                    disabled={busy} onClick={() => send(p.email, p.role, true)}>
+                  <button className="hh-member-x" title="שליחה שוב או תיקון הכתובת"
+                    aria-label={`שליחה שוב או תיקון הכתובת של ההזמנה ל${p.email}`}
+                    disabled={busy} onClick={() => reopen(p)}>
                     <ArrowClockwise size={14} />
                   </button>
                   <button className="hh-member-x" aria-label={`ביטול ההזמנה ל${p.email}`}
@@ -131,6 +176,18 @@ export function SharingSection() {
         </div>
       ) : (
         <p className="settings-note">הדירה הזו רק שלך.</p>
+      )}
+
+      {/* The one thing the sender could never see.
+          An invitation sat on "ממתין/ה" forever with nothing to say whether it could
+          possibly arrive — and the likeliest reason it cannot is that the address is not
+          the one she signs in with. Stating it is what turns a mystery into a fix.
+          The reader's own address is beside it, because comparing the two is the check. */}
+      {pending.length > 0 && (
+        <p className="settings-note hh-check">
+          הזמנה מגיעה רק לכתובת שאיתה נכנסים לאפליקציה. אם היא נכנסת עם מייל אחר — הקישו
+          על ↻ ושלחו לכתובת הנכונה. <span dir="ltr">({user?.email ?? '—'} :אתה)</span>
+        </p>
       )}
 
       {/* A viewer cannot invite — RLS refuses it, and a viewer who could invite a full
@@ -149,13 +206,15 @@ export function SharingSection() {
               invite block, and on success that block collapses — so the confirmation
               appeared half-clipped against the following section (owner, 29.09). */}
           {msg && <p className={`hh-msg ${msg.tone === 'err' ? 'onboarding-error' : 'hh-ok'}`} role="status">{msg.text}</p>}
-          <button type="button" className="btn-secondary hh-open" onClick={() => { setOpen(true); setMsg(null) }}>
+          <button type="button" className="btn-secondary hh-open" onClick={() => { setEditing(null); setEmail(''); setOpen(true); setMsg(null) }}>
             <UserPlus size={15} weight="bold" /> הזמנת מישהו
           </button>
         </>
       ) : (
         <div className="hh-invite">
-          <label htmlFor="hh-email">המייל שאיתו היא נכנסת לאפליקציה</label>
+          <label htmlFor="hh-email">
+            {editing ? 'הכתובת שאליה נשלחת ההזמנה' : 'המייל שאיתו היא נכנסת לאפליקציה'}
+          </label>
           <input id="hh-email" type="email" inputMode="email" dir="ltr" autoFocus
             placeholder="name@gmail.com" value={email}
             onChange={e => { setEmail(e.target.value); setMsg(null) }} />
@@ -172,9 +231,9 @@ export function SharingSection() {
 
           <div className="hh-invite-actions">
             <button className="btn-secondary" disabled={busy || !email.trim()} onClick={() => send(email, role)}>
-              {busy ? 'שולח…' : 'שליחת הזמנה'}
+              {busy ? 'שולח…' : editing ? 'שליחה' : 'שליחת הזמנה'}
             </button>
-            <button className="btn-secondary hh-cancel" onClick={() => { setOpen(false); setEmail(''); setMsg(null) }}>
+            <button className="btn-secondary hh-cancel" onClick={() => { setOpen(false); setEmail(''); setEditing(null); setMsg(null) }}>
               ביטול
             </button>
           </div>

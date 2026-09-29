@@ -144,15 +144,27 @@ export async function cancelInvite(id: string): Promise<boolean> {
 }
 
 /** Invitations addressed to the signed-in account. RLS does the matching, not this query. */
-export async function myIncomingInvites(): Promise<IncomingInvite[]> {
+/**
+ * Invitations addressed to the signed-in account.
+ *
+ * `myEmail` is checked here as well as by the policy, and that is not belt-and-braces for
+ * its own sake: this decides what a person is SHOWN about an apartment they have not
+ * joined, and a visibility decision must not rest on the server filter alone. The same
+ * reasoning caught a real bug in the role lookup — and the offline harness, which drops
+ * such filters, turns the omission into an invitation from a stranger appearing on screen.
+ */
+export async function myIncomingInvites(myEmail?: string | null): Promise<IncomingInvite[]> {
   // Only the invitation's own columns. Looking the household up would return nothing —
   // the whole point is that the invitee cannot read an apartment they have not joined.
   const { data, error } = await supabase
     .from('household_invites')
-    .select('id, household_id, role, household_label, invited_by_label')
+    .select('id, household_id, role, email, household_label, invited_by_label')
     .is('accepted_at', null)
   if (error || !data || data.length === 0) return []
-  return data.map(r => ({
+  const mine = myEmail
+    ? data.filter(r => String((r as { email?: string }).email ?? '').toLowerCase() === myEmail.toLowerCase())
+    : data
+  return mine.map(r => ({
     id: r.id as string,
     householdId: r.household_id as string,
     invitedBy: ((r as { invited_by_label?: string }).invited_by_label) ?? null,
