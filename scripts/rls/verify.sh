@@ -13,28 +13,44 @@
 #   scripts/rls/verify.sh          # build and check
 #   KEEP=1 scripts/rls/verify.sh   # leave the cluster running to poke at it
 #
-# Needs the postgres 16 binaries (no server, no docker, no network).
+# Needs the postgres 16 binaries (no running server, no docker, no network). Works both
+# as root (this project's container) and as an ordinary user (a CI runner, a laptop).
 set -euo pipefail
 
 BIN=/usr/lib/postgresql/16/bin
-DATA=/var/lib/postgresql/rlsdata
-SOCK=/tmp/pgsock
-PORT=55432
+PORT=${RLS_PORT:-55432}
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 [ -x "$BIN/initdb" ] || { echo "postgres 16 binaries not found at $BIN"; exit 2; }
 
-# The cluster refuses to run as root, so it runs as the postgres system user.
-as_pg() { su postgres -c "PATH=$BIN:\$PATH $1"; }
+# Where the cluster lives, and who runs it. Postgres refuses to run as root, so as root we
+# hand the work to the postgres system user and put the data somewhere that user owns; as
+# an ordinary user (a CI runner, a laptop) we run it directly in a writable temp dir.
+# The first version of this script assumed root and failed on the runner at `mkdir
+# /var/lib/postgresql` — which is what the migration gate then correctly refused over.
+if [ "$(id -u)" = "0" ]; then
+  DATA=/var/lib/postgresql/rlsdata
+  SOCK=/tmp/pgsock
+  run() { su postgres -c "PATH=$BIN:\$PATH $1"; }
+  OWN=postgres:postgres
+else
+  DATA="${TMPDIR:-/tmp}/rlsdata"
+  SOCK="${TMPDIR:-/tmp}/pgsock"
+  run() { PATH="$BIN:$PATH" bash -c "$1"; }
+  OWN=""
+fi
 
 if ! "$BIN/pg_isready" -h "$SOCK" -p "$PORT" >/dev/null 2>&1; then
   echo "· starting a throwaway cluster"
   rm -rf "$DATA"; mkdir -p "$DATA" "$SOCK"
-  chown postgres:postgres "$DATA" "$SOCK"
-  as_pg "initdb -D $DATA -U postgres --auth=trust" >/dev/null
+  [ -n "$OWN" ] && chown "$OWN" "$DATA" "$SOCK"
+  run "initdb -D $DATA -U postgres --auth=trust" >/dev/null
   # listen_addresses empty ⇒ unix socket only; nothing is exposed.
-  as_pg "pg_ctl -D $DATA -o '-p $PORT -k $SOCK -c listen_addresses=' -l $SOCK/pg.log start" >/dev/null
-  sleep 2
+  run "pg_ctl -D $DATA -o '-p $PORT -k $SOCK -c listen_addresses=' -l $SOCK/pg.log start" >/dev/null
+  for _ in $(seq 1 20); do
+    "$BIN/pg_isready" -h "$SOCK" -p "$PORT" >/dev/null 2>&1 && break
+    sleep 1
+  done
 fi
 
 export PGHOST="$SOCK" PGPORT="$PORT" PGUSER=postgres
@@ -69,5 +85,5 @@ else
 fi
 
 if [ -z "${KEEP:-}" ]; then
-  as_pg "pg_ctl -D $DATA -m immediate stop" >/dev/null 2>&1 || true
+  run "pg_ctl -D $DATA -m immediate stop" >/dev/null 2>&1 || true
 fi
