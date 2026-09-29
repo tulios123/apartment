@@ -235,5 +235,105 @@ begin;
   select pg_temp.check_count('ולא את המשוב שלו', (select count(*) from feedback), 0);
 commit;
 
+-- ── 7. צופה בלבד — reads everything, changes nothing ────────────────────────
+-- The second kind of membership (migration 052). The interesting assertions are the
+-- negative ones: a viewer who can still write is not a viewer, and this is the only
+-- place that can tell, because hiding a button in the client is a courtesy and not a
+-- permission.
+set role postgres;
+insert into owners (id, name, email)
+values ('77777777-7777-7777-7777-777777777777', 'צופה', 'viewer@example.com');
+-- Free a place first: the apartment is at three after the tests above.
+delete from household_members
+ where household_id = '11111111-1111-1111-1111-111111111111'
+   and user_id in ('22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555');
+insert into household_members (household_id, user_id, role)
+values ('11111111-1111-1111-1111-111111111111', '77777777-7777-7777-7777-777777777777', 'viewer');
+
+begin;
+  select pg_temp.be('77777777-7777-7777-7777-777777777777', 'viewer@example.com');
+  select pg_temp.check_count('צופה רואה את הדירה', (select count(*) from properties), 1);
+  select pg_temp.check_count('צופה רואה את התנועות',
+    (select count(*) from transactions where description = 'מורן הוסיפה'), 1);
+  select pg_temp.check_count('צופה רואה את המסמכים', (select count(*) from storage.objects), 1);
+
+  do $$
+  begin
+    insert into transactions (owner_id, direction, amount, date, category, description)
+    values ('11111111-1111-1111-1111-111111111111', 'expense', 5, current_date, 'אחר', 'צופה כתב');
+    raise exception 'FAIL: צופה הצליח להוסיף תנועה';
+  exception
+    when insufficient_privilege then raise notice 'ok · צופה לא יכול להוסיף';
+    when sqlstate 'P0001' then raise;
+  end $$;
+
+  do $$
+  declare n int;
+  begin
+    update transactions set amount = 1
+     where owner_id = '11111111-1111-1111-1111-111111111111';
+    get diagnostics n = row_count;
+    -- An UPDATE blocked by RLS matches no rows rather than erroring, so "nothing changed"
+    -- IS the refusal. Asserting the row count is the only way to see it.
+    if n <> 0 then raise exception 'FAIL: צופה שינה % שורות', n; end if;
+    raise notice 'ok · צופה לא יכול לערוך';
+  end $$;
+
+  do $$
+  declare n int;
+  begin
+    delete from transactions where owner_id = '11111111-1111-1111-1111-111111111111';
+    get diagnostics n = row_count;
+    if n <> 0 then raise exception 'FAIL: צופה מחק % שורות', n; end if;
+    raise notice 'ok · צופה לא יכול למחוק';
+  end $$;
+
+  do $$
+  begin
+    insert into household_invites (household_id, email, invited_by)
+    values ('11111111-1111-1111-1111-111111111111', 'stranger@example.com',
+            '77777777-7777-7777-7777-777777777777');
+    raise exception 'FAIL: צופה הזמין מישהו — זו העלאת דרגה בעקיפין';
+  exception
+    when insufficient_privilege then raise notice 'ok · צופה לא יכול להזמין';
+    when sqlstate 'P0001' then raise;
+  end $$;
+commit;
+
+-- Nothing the viewer attempted left a trace.
+do $$
+begin
+  if exists (select 1 from transactions where description = 'צופה כתב') then
+    raise exception 'FAIL: כתיבה של צופה נשמרה בכל זאת';
+  end if;
+  if exists (select 1 from transactions
+             where owner_id = '11111111-1111-1111-1111-111111111111' and amount = 1) then
+    raise exception 'FAIL: עריכה של צופה נשמרה בכל זאת';
+  end if;
+end $$;
+
+-- The full member is unaffected by any of it.
+begin;
+  select pg_temp.be('11111111-1111-1111-1111-111111111111', 'omer@example.com');
+  insert into transactions (owner_id, direction, amount, date, category, description)
+  values ('11111111-1111-1111-1111-111111111111', 'expense', 7, current_date, 'אחר', 'עומר עדיין כותב');
+  select pg_temp.check_count('שותף מלא ממשיך לכתוב כרגיל',
+    (select count(*) from transactions where description = 'עומר עדיין כותב'), 1);
+commit;
+
+-- …and promoting the viewer gives writing back, without anything else changing.
+set role postgres;
+update household_members set role = 'member'
+ where household_id = '11111111-1111-1111-1111-111111111111'
+   and user_id = '77777777-7777-7777-7777-777777777777';
+
+begin;
+  select pg_temp.be('77777777-7777-7777-7777-777777777777', 'viewer@example.com');
+  insert into transactions (owner_id, direction, amount, date, category, description)
+  values ('11111111-1111-1111-1111-111111111111', 'expense', 9, current_date, 'אחר', 'אחרי קידום');
+  select pg_temp.check_count('אחרי קידום — אותו אדם כבר כן כותב',
+    (select count(*) from transactions where description = 'אחרי קידום'), 1);
+commit;
+
 set role postgres;
 select 'ALL RLS CHECKS PASSED' as result;
