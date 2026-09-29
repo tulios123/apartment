@@ -18,6 +18,24 @@ function dbRows(...tables: string[]): Record<string, any[]> {
   return JSON.parse(last)
 }
 
+/**
+ * The wizard no longer goes straight from the last step to "הכול מוכן!".
+ *
+ * Since the owner's 21.09 decision ("סיכום שאפשר לתקן") it stops on a review screen —
+ * "רגע לפני שמירה" — which lists every section with its own edit button and saves only on
+ * "הכול נכון · שמרו". Nothing is written until that tap, which is the whole point of the
+ * screen: the proofreading moved to BEFORE the write.
+ *
+ * These specs still expected the old flow and had been stale since that day, unnoticed
+ * because they cannot launch a browser in the cloud container — the very gap that was
+ * fixed today. Asserting the review screen on the way past is deliberate: skipping
+ * silently would let it disappear again without a single test noticing.
+ */
+async function confirmAndSave(page: Page) {
+  await expect(page.getByRole('heading', { name: 'רגע לפני שמירה' })).toBeVisible({ timeout: 30_000 })
+  await page.getByRole('button', { name: /הכול נכון/ }).click()
+}
+
 async function startWizard(page: Page) {
   await clearOnboardingDraft(page)
   await page.goto('/')
@@ -69,6 +87,7 @@ test('finish-early with an incomplete open track/loan form must not silently wri
   await page.getByRole('button', { name: 'המשך בלי לשמור' }).click()
 
   // Finishing continues (property gets created), but NO fabricated track may be written
+  await confirmAndSave(page)
   await expect(page.getByRole('heading', { name: 'הכול מוכן!' })).toBeVisible({ timeout: 30_000 })
   const rows = dbRows('mortgage_tracks')
   expect(rows.mortgage_tracks, 'no fabricated track may be written').toHaveLength(0)
@@ -86,6 +105,7 @@ test('finish-early with an untouched mortgage form skips it silently (no dialog,
   // Mortgage form is auto-open but untouched — tap סיימו עכשיו straight away.
   await page.getByRole('button', { name: /סיימו עכשיו/ }).click()
   // No completeness dialog — finishing proceeds directly.
+  await confirmAndSave(page)
   await expect(page.getByRole('heading', { name: 'הכול מוכן!' })).toBeVisible({ timeout: 30_000 })
   const rows = dbRows('mortgage_tracks')
   expect(rows.mortgage_tracks, 'untouched form must not fabricate a track').toHaveLength(0)
@@ -112,6 +132,7 @@ test('finish-early at investment step → all hubs render sanely with partial da
   await expect(page.getByRole('heading', { name: 'הון עצמי ועלויות' })).toBeVisible()
 
   await page.getByRole('button', { name: /סיימו עכשיו/ }).click()
+  await confirmAndSave(page)
   await expect(page.getByRole('heading', { name: 'הכול מוכן!' })).toBeVisible({ timeout: 30_000 })
   await page.getByRole('button', { name: /כניסה לאפליקציה/ }).click()
   await page.locator('.bottom-nav').waitFor({ state: 'visible', timeout: 20_000 })
@@ -216,6 +237,7 @@ test('full onboarding walk with back at each step → complete base dataset', as
   await saveShot(page, 'onboarding-insurance', 'policy-saved', 'light')
   await page.getByRole('button', { name: /סיום/ }).click()
 
+  await confirmAndSave(page)
   await expect(page.getByRole('heading', { name: 'הכול מוכן!' })).toBeVisible({ timeout: 30_000 })
   await saveShot(page, 'onboarding-done', 'summary', 'light')
   await page.getByRole('button', { name: /כניסה לאפליקציה/ }).click()
