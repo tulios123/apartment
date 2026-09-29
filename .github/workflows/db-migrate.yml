@@ -30,6 +30,11 @@ on:
         description: 'Type the project ref to confirm: bjholzkesnzkbogxmurw'
         required: true
         type: string
+      record_only:
+        description: 'Only record the version as applied — run NO SQL. For a file already applied.'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: db-migrate
@@ -55,8 +60,19 @@ jobs:
       # isolation before touching the shared production database is cheap; finding out
       # afterwards is not.
       - name: Prove the policies still isolate one apartment from another
+        env:
+          # …and that THIS file survives being applied twice. The grep below cannot tell;
+          # a second run against a real Postgres can, and 052 needed exactly that.
+          RERUN_CHECK: supabase/migrations/${{ inputs.file }}
         run: |
           sudo apt-get install -y --no-install-recommends postgresql-16 >/dev/null 2>&1 || true
+          if [ ! -f "$RERUN_CHECK" ]; then
+            echo "::error::$RERUN_CHECK does not exist on this ref."
+            exit 1
+          fi
+          case "${{ inputs.file }}" in
+            */*|..*) echo "::error::Pass a bare file name, not a path."; exit 1 ;;
+          esac
           if [ -x /usr/lib/postgresql/16/bin/initdb ]; then
             scripts/rls/verify.sh
           else
@@ -85,7 +101,13 @@ jobs:
           echo "--- SQL to be applied ---"
           cat "$FILE"
 
+      # record_only exists because replaying an old file is not a re-run, it is a downgrade:
+      # 052 carries its own `create or replace accept_invite`, so applying it again to get a
+      # ledger row would quietly reinstate the version 054 was written to fix. The rig caught
+      # that (29.09). When the database already has the change and only the ledger is behind,
+      # the honest move is to write the row and run no SQL at all.
       - name: Apply
+        if: ${{ !inputs.record_only }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           # Through the environment, never interpolated into the script: the value comes

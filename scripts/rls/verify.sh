@@ -59,13 +59,39 @@ echo "· rebuilding the database from scratch"
 psql -q -c "drop database if exists rls" -c "create database rls" >/dev/null
 psql -q -d rls -v ON_ERROR_STOP=1 -f "$ROOT/scripts/rls/shim.sql" >/dev/null
 
+# RERUN_CHECK — the migrate workflow sets it to the file it is about to apply, and that
+# file is applied TWICE IN A ROW, in its own place in the order.
+#
+# Twice, because the workflow's own guard only greps for "if not exists / if exists / or
+# replace", and 052 passed that grep while being genuinely non-re-runnable: it dropped the
+# OLD policy names and created two new ones it never dropped, so a second run died on
+# "policy already exists" (29.09). A grep cannot know that; applying the file again can.
+#
+# In its own place, because applying an old file AFTER the ones that follow it is not a
+# re-run, it is a downgrade: 052 carries its own `create or replace accept_invite`, so
+# replaying it at the end quietly reinstates the version 054 was written to fix. The rig
+# caught exactly that, which is the second reason this check is worth having.
+#
+# And only that one file: the early migrations were applied once through the CLI and
+# recorded, and `create table owners` was never meant to survive a second run — demanding
+# it of them would invent a rule this repo never had.
 echo "· applying $(ls "$ROOT"/supabase/migrations/*.sql | wc -l) migrations"
 for f in "$ROOT"/supabase/migrations/*.sql; do
-  if ! out=$(psql -q -d rls -v ON_ERROR_STOP=1 -f "$f" 2>&1); then
-    echo "  ✗ $(basename "$f")"
-    echo "$out" | grep -E "ERROR|LINE" | head -5
-    exit 1
+  runs=1
+  if [ -n "${RERUN_CHECK:-}" ] && [ "$(basename "$f")" = "$(basename "$RERUN_CHECK")" ]; then
+    runs=2
+    echo "  · $(basename "$f") — applied twice, it must be re-runnable"
   fi
+  i=0
+  while [ "$i" -lt "$runs" ]; do
+    if ! out=$(psql -q -d rls -v ON_ERROR_STOP=1 -f "$f" 2>&1); then
+      if [ "$i" -gt 0 ]; then echo "  ✗ $(basename "$f") is NOT re-runnable"
+      else echo "  ✗ $(basename "$f")"; fi
+      echo "$out" | grep -E "ERROR|LINE" | head -5
+      exit 1
+    fi
+    i=$((i + 1))
+  done
 done
 
 echo "· checking isolation"

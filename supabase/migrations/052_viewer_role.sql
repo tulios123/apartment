@@ -124,6 +124,12 @@ create policy "household_write" on owners
 -- A viewer who could invite could invite a full member, which is the same as promoting
 -- themselves by proxy.
 drop policy if exists "invites_by_members" on household_invites;
+-- …and the two this file creates, so applying it twice is a no-op rather than an error.
+-- Every other block here already dropped the names it goes on to create; this one did not,
+-- which made the whole file non-re-runnable and would have failed the owner's next
+-- `supabase db push` outright (29.09).
+drop policy if exists "invites_read_by_members" on household_invites;
+drop policy if exists "invites_managed_by_members" on household_invites;
 create policy "invites_read_by_members" on household_invites
   for select to authenticated
   using (household_id in (select public.auth_households()));
