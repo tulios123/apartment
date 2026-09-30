@@ -17,6 +17,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { monthDayISO, parseLocalISO } from './format'
+import { rentPaymentDay } from './rent'
 
 export type ScenarioId = 'purchase_process' | 'handover_soon' | 'keys_no_tenant' | 'leased'
 
@@ -130,7 +131,12 @@ export function scenarioData(id: ScenarioId, today: string): ScenarioData {
         direction: 'income',
         amount: rent,
         category: 'שכר דירה',
-        day_of_month: Number(addMonths(today, -1).slice(8, 10)),
+        // recurring_items.day_of_month is constrained to 1–28 (001_initial_schema), the
+        // range that exists in every month. The app's own writes go through
+        // rentPaymentDay, which clamps; this one did not, so loading the leased scenario
+        // on the 29th–31st failed with a raw check-constraint error and left the account
+        // half-wiped. Same clamp, same reason.
+        day_of_month: rentPaymentDay({ startDate: addMonths(today, -1) }),
         start_date: addMonths(today, -1),
         end_date: addMonths(today, 11),
         payee: 'דנה לוי',
