@@ -131,28 +131,65 @@ authenticated. Backend from scratch (only if not reusing the hosted project):
 - **Env safety:** every `VITE_*` var is inlined into the public bundle — never put a
   real secret in one. `build:prod` blanks the dev-login vars as a guard.
 
-## CURRENT STATUS (as of this readiness pass, 18.07.2026)
-- **Works:** onboarding (9-step wizard), Home/Finances/Wealth/Property hubs, add/edit
-  transactions, tasks (recurring, date+time), documents + checklist, mortgage/loan/
-  insurance modeling with grace & balloon, dark mode, web push, a feedback→Claude
-  auto-fix pipeline. Unit suite green (140), build green, TypeScript clean.
-- **Branches:** `staging` is the active line (build → owner verifies in a testing app
-  → "פרסם לכולם" promotes to `main`/production). `main` is production. Feature branches
-  `feat/extract-rate-limit`, `feat/feedback-autofix-pipeline`, `fix/onboarding-atomicity`
-  are prepared/merged work. `chore/remote-readiness` is this readiness pass.
-- **In progress:** a smoothness/correctness audit on `staging` — Stage 0–1 done
-  (calibration, e2e infra, money-correctness verified, 2 fixes shipped: AUD-001
-  onboarding-fabrication P1, AUD-002 nav-overlap P2). Resumable state and the full
-  findings ledger are in `docs/audit/RUN_STATE.md`; morning summary in
-  `docs/audit/MORNING_REPORT.md`. Next: audit stages 2–7 (layout/a11y, smoothness,
-  resilience, code quality, design golden list).
-- **Next / open:** live privacy re-verification after recent migrations; the next
-  "promote to everyone"; testing real family documents through extraction. See `ROADMAP.md`.
+## CURRENT STATUS (29–30.09.2026)
 
-## IN-FLIGHT WORK — another session is editing this repo right now
-A second Claude Code session is actively running the audit above on `staging`,
-committing as it goes (working tree stays clean). It touches `docs/audit/*`, `e2e/*`,
-and `src/` files it fixes. **To pick up its work, read `docs/audit/RUN_STATE.md`** —
-it holds the stage list, coverage matrix, findings ledger, and the exact next action.
-Do not force-push or rewrite `staging`; coordinate through git as it does.
+- **Live version:** v1.21.7. `main` and `staging` are the same commit; both deploy on push
+  (staging → staging.apartment-6s4.pages.dev, main → apartment-6s4.pages.dev). The DB is
+  ONE hosted project shared by both — there is no such thing as "staging data".
+- **Works:** onboarding (9-step wizard, ending on a review screen — see below), Home /
+  Finances / Wealth / Property hubs, transactions, tasks, documents + checklist, mortgage /
+  loan / insurance modelling with grace & balloon, dark mode, web push, the feedback→Claude
+  autofix pipeline, and **shared apartments** (up to 3 people, `member` / `viewer`, invite
+  by email, switch between apartments). 306 unit tests, 130 e2e, build and TypeScript clean.
+- **The audit is DONE.** Stages 0–8 all completed 18.07 — `docs/audit/RUN_STATE.md` is the
+  ledger. (The old copy of this block said stages 2–7 were still ahead; that was wrong and
+  cost a session the trouble of rediscovering it.)
 
+### What the backend can do without the owner
+Migrations, SQL reads and function deploys all run from CI with the stored
+`SUPABASE_ACCESS_TOKEN` — nothing here needs the owner at a keyboard:
+- `.github/workflows/db-migrate.yml` — apply ONE named migration. Gated on
+  `scripts/rls/verify.sh` passing, and on the file surviving being applied twice
+  (`RERUN_CHECK`). `record_only: true` writes the ledger row and runs no SQL — use that when
+  the database already has the change, because replaying an old file is a DOWNGRADE (052
+  carries its own `accept_invite` and would reinstate the bug 054 fixes).
+- `.github/workflows/db-inspect.yml` — read-only, fixed queries, masked addresses. Reach for
+  this before theorising about live data; it turned "why can't he see the invitation" from a
+  three-guess mystery into one answer.
+- `supabase_migrations.schema_migrations` is now in step with the database (054).
+
+### Browser access from a cloud session
+`scripts/dev/trust-proxy-ca.sh` runs at session start (`.claude/settings.json`) and imports
+the agent proxy's CA into Chromium's NSS store. Without it the app loads from localhost and
+every Supabase call fails with `ERR_CERT_AUTHORITY_INVALID`, landing on the login screen
+with nothing that points at a certificate. The store is per-container and the CA rotates, so
+it re-imports every run. **Verification stays on** — never `--ignore-certificate-errors`.
+
+With that in place the whole suite runs here: 123 passed / 7 skipped. Five specs drive the
+HOSTED Supabase (preflight, layoutcheck, onboarding, reset); onboarding and reset DELETE the
+test account's data, so `resetAccount` refuses without `E2E_ALLOW_DESTRUCTIVE=1`. The
+dev-bypass account is `dev@test.local`, NOT the owner's.
+
+### Sharing — where it actually stands
+The code path works end to end and is proved by `scripts/rls/verify.sh` (52 assertions on a
+real Postgres). **But no human has ever completed a join.** As of 29.09 the database held 10
+households, every one of them a household of one, and exactly one invitation ever written —
+which `accept_invite` had marked used without adding anybody (fixed in 054, and that
+invitation was reopened). Moran has never been invited. Treat the feature as unproven in the
+field until a second real person is inside an apartment.
+
+### Known debt
+- Three controls still under the 44pt tap floor: `/` `.hs-link` "פירוט" (33×15),
+  `/property` `.padm-binder-edit` (77×32) and `.btn-primary` "+ חוזה חדש" (110×39). Each
+  needs a layout decision, not a `min-height` — `.btn-primary` is shared app-wide.
+- `npm run lint`: 97 problems (29 errors). Pre-existing; measure against this number rather
+  than assuming a change introduced them.
+- Owner-side, not code: nobody has invited Moran, and the Auth redirect allow-list should be
+  confirmed to include staging as well as production.
+
+### A caution this repo earned the hard way
+The offline e2e stub (`e2e/lib/stub.ts`) deliberately DROPS `owner_id` / `user_id` filters.
+That is the right default — a per-screen fixture is one user's data by construction — but it
+means a spec about who-can-see-what passes against broken code. It produced three false
+readings in one session. When a spec's subject is visibility or permissions, re-route the
+table yourself (see `e2e/joined-flat-boot.spec.ts`) or test it in the RLS rig instead.
