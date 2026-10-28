@@ -1,11 +1,5 @@
 import { chromium, devices } from '@playwright/test'
-import { existsSync, readdirSync } from 'node:fs'
-function chromiumPath() {
-  const root = '/opt/pw-browsers'
-  if (!existsSync(root)) return undefined
-  const dir = readdirSync(root).filter(d => /^chromium-\d+$/.test(d)).sort().pop()
-  return dir ? `${root}/${dir}/chrome-linux/chrome` : undefined
-}
+import { chromiumPath } from './chromium-path.mjs'
 const SCEN = process.argv[2] || 'מושכרת'
 const PROXY = process.env.HTTPS_PROXY || process.env.https_proxy
 const browser = await chromium.launch({ executablePath: chromiumPath(), ...(PROXY ? { proxy: { server: PROXY, bypass: 'localhost,127.0.0.1' } } : {}) })

@@ -15,18 +15,28 @@ import { defineConfig, devices } from '@playwright/test'
  * Resolved rather than hard-coded: an env var wins, then whatever chromium- build is
  * actually present, and otherwise nothing at all, so Playwright's own download is used on
  * a machine that has one (the owner's, and CI).
+ *
+ * The image has since moved AGAIN — in October 2026 the layout became chrome-linux64/,
+ * and every path pinned to chrome-linux/ stopped launching with exactly the same symptom
+ * as before. So prefer the stable /opt/pw-browsers/chromium symlink, and treat both
+ * layouts as fallbacks: resolving by one fixed shape is the bug, not the build number.
+ * Mirrored in scripts/dev/chromium-path.mjs, which the clean-eyes walks use.
  */
 function chromiumPath(): string | undefined {
   if (process.env.PW_CHROMIUM_PATH) return process.env.PW_CHROMIUM_PATH
   const root = '/opt/pw-browsers'
   if (!existsSync(root)) return undefined
+  if (existsSync(`${root}/chromium`)) return `${root}/chromium`
   const dir = readdirSync(root)
     .filter(d => /^chromium-\d+$/.test(d))
     .sort()
     .pop()
   if (!dir) return undefined
-  const exe = `${root}/${dir}/chrome-linux/chrome`
-  return existsSync(exe) ? exe : undefined
+  for (const layout of ['chrome-linux64', 'chrome-linux']) {
+    const exe = `${root}/${dir}/${layout}/chrome`
+    if (existsSync(exe)) return exe
+  }
+  return undefined
 }
 
 const CHROMIUM = chromiumPath()

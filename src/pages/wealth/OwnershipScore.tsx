@@ -11,6 +11,16 @@ interface Props {
   balloon: number
   /** This month's principal portion — money converted into ownership. */
   monthlyPrincipal: number
+  /**
+   * Has this account told us how the flat was financed — any mortgage track, any loan,
+   * or a self-equity figure someone actually entered?
+   *
+   * "No debt recorded" and "no debt" are different facts, and the subtraction below
+   * cannot tell them apart: with an empty account it returns the full price and declares
+   * 100% ownership to someone who may well owe a bank 1.5M. A real cash buyer enters
+   * their equity, so they stay on the true branch.
+   */
+  financingKnown: boolean
 }
 
 /**
@@ -18,10 +28,27 @@ interface Props {
  * an ownership % framed as progress, with a three-tier ladder splitting the
  * property value into yours / banks / family.
  */
-export default function OwnershipScore({ propertyValue, bankDebt, balloon, monthlyPrincipal }: Props) {
+export default function OwnershipScore({ propertyValue, bankDebt, balloon, monthlyPrincipal, financingKnown }: Props) {
   const netEquity = propertyValue - bankDebt - balloon
   const pct = (v: number) => (propertyValue > 0 ? Math.max(0, (v / propertyValue) * 100) : 0)
   const ownPct = pct(netEquity)
+
+  // Nothing is known about the financing: say so and ask, rather than publishing a
+  // headline figure that is the purchase price wearing a different label.
+  if (!financingKnown) {
+    return (
+      <section className="wlth-hero">
+        <div className="wlth-hero-top">
+          <div>
+            <div className="wlth-hero-label">שווי הנכס</div>
+            <div className="wlth-hero-value">{fmt(propertyValue)}</div>
+            <div className="wlth-hero-sub">עוד לא יודעים איך מימנתם — משכנתא או הון עצמי</div>
+          </div>
+        </div>
+        <div className="wlth-own-pct">כדי לדעת כמה מהנכס שלכם, הוסיפו משכנתא או הון עצמי</div>
+      </section>
+    )
+  }
 
   return (
     <section className="wlth-hero">

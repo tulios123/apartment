@@ -345,7 +345,19 @@ export function useOnboardingState(onComplete: () => void) {
   // who funds it — so they're shown as offsets in the totals, not subtracted here.
   const totalMortgagePrincipal = tracks.reduce((s, t) => s + (parseFloat(t.principal) || 0), 0)
   const balloonTotal = balloonLoans.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0)
-  const derivedEquityAmount = Math.max(0, price - totalMortgagePrincipal)
+  // The subtraction is only meaningful once a mortgage exists. With no track entered it
+  // returns the FULL price — which reads as "you bought this flat in cash": it rendered
+  // as "= 100.0% ממחיר הרכישה", printed on the review screen under "זה מה שנשמר", and was
+  // written to investment_costs as self_equity. From there it poisons ownership %, both
+  // equity-based yields and the accelerator. And the mortgage step calls itself
+  // "אופציונלי", so skipping it is the behaviour we invited.
+  //
+  // We do not know this person paid cash. We know they have not told us yet, and those
+  // are different facts. No mortgage ⇒ no derived figure; the field stays empty until a
+  // human fills it, and nothing is saved. (Someone who really did pay cash types the
+  // price in, which is one field — much cheaper than the silent wrong answer.)
+  const hasMortgage = totalMortgagePrincipal > 0
+  const derivedEquityAmount = hasMortgage ? Math.max(0, price - totalMortgagePrincipal) : 0
   const derivedEquityPct = price > 0 ? Math.round(derivedEquityAmount / price * 100) : 0
   // effective = user value if typed, else the derived default (grey placeholder)
   const effEquity = equityValue || (equityMode === 'percent'
@@ -1684,7 +1696,7 @@ export function useOnboardingState(onComplete: () => void) {
     insuranceDocFiles, addInsuranceDocs, addTabuDocs,
     // investment / equity
     price, equityMode, setEquityMode, equityValue, setEquityValue,
-    equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct,
+    equityAmount, equityPercent, costsTotal, derivedEquityAmount, derivedEquityPct, hasMortgage,
     costs, setCosts, extraCosts, setExtraCosts,
     singleApartment, setSingleApartment, effPurchaseTax, taxDefault, effLawyer, effBrokerage,
     balloonLoans, setBalloonLoans, balloonTotal,

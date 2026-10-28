@@ -132,7 +132,9 @@ export function ReviewStep() {
           <h3>הון ועלויות</h3>
           <button type="button" onClick={edit('investment')} aria-label="עריכת ההון והעלויות"><PencilSimple size={16} /></button>
         </div>
-        <Row label="הון עצמי" value={formatCurrency(equityAmount)} />
+        {/* "זה מה שנשמר" has to be true of this row too: nothing entered reads as
+            "לא הוזן", the same as the address and the dates above, not as ₪0. */}
+        <Row label="הון עצמי" value={equityAmount > 0 ? formatCurrency(equityAmount) : 'לא הוזן'} />
         {/* The EFFECTIVE values, not the typed ones. The lawyer and agent fees are shown
             in the wizard as grey computed estimates and saved exactly as displayed, so
             reading `costs.lawyer` here would have hidden two rows that the total below

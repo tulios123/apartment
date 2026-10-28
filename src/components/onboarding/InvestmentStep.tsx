@@ -16,7 +16,7 @@ export function InvestmentStep() {
     advance, price, error,
     equityMode, setEquityMode, equityValue, setEquityValue,
     focusedInput, setFocusedInput, equityAmount, equityPercent,
-    derivedEquityAmount, derivedEquityPct,
+    derivedEquityAmount, derivedEquityPct, hasMortgage,
     balloonLoans, setBalloonLoans, balloonTotal,
     costs, setCosts, extraCosts, setExtraCosts, costsTotal,
     singleApartment, setSingleApartment, taxDefault,
@@ -51,7 +51,10 @@ export function InvestmentStep() {
       <div className="onboarding-form">
         {/* Equity */}
         <div className="onboarding-field">
-          <label>הון עצמי <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>· מחושב: מחיר הרכישה − משכנתא (ניתן לשנות)</span></label>
+          {/* The hint must describe what is actually happening. With no mortgage there is
+              no subtraction to report, and saying there is one is how the full price used
+              to pass for a considered figure. */}
+          <label>הון עצמי <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>{hasMortgage ? '· מחושב: מחיר הרכישה − משכנתא (ניתן לשנות)' : '· כמה מכספכם נכנס לדירה'}</span></label>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <div className="toggle-group" style={{ flexShrink: 0 }}>
               <button type="button" className={`toggle-btn${equityMode === 'amount' ? ' active' : ''}`}
@@ -100,12 +103,20 @@ export function InvestmentStep() {
               )
             })()}
           </div>
-          {price > 0 && (
+          {/* Only state a percentage once there is a number behind it. An untouched field
+              with no mortgage used to read "= 100.0% ממחיר הרכישה" — a confident claim
+              about money, assembled from two blanks. */}
+          {price > 0 && equityAmount > 0 && (
             <p className="onboarding-running-total" style={{ marginTop: 4 }}>
               {equityMode === 'percent'
                 ? <>= {formatCurrency(equityAmount)} מתוך {formatCurrency(price)}</>
                 : <>= {equityPercent.toFixed(1)}% ממחיר הרכישה</>
               }
+            </p>
+          )}
+          {price > 0 && equityAmount === 0 && !hasMortgage && (
+            <p className="onboarding-running-total" style={{ marginTop: 4, opacity: 0.75 }}>
+              לא הוזנה משכנתא, אז אין ממה לחשב — מלאו כמה מכספכם נכנס. רכשתם במזומן? זה מחיר הרכישה המלא.
             </p>
           )}
           {price === 0 && (

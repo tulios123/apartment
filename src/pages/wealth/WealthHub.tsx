@@ -226,6 +226,10 @@ export default function WealthHub() {
               bankDebt={bankDebt}
               balloon={balloon}
               monthlyPrincipal={split.isCurrentMonth ? split.principal : 0}
+              financingKnown={
+                tracks.length > 0 || monthlyLoans.length > 0 || balloonLoans.length > 0
+                || costs.some(c => c.category === 'self_equity' && c.amount > 0)
+              }
             />
           )}
 

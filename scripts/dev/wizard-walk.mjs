@@ -1,16 +1,10 @@
 // Walk the onboarding wizard as a first-time user, capturing what each screen says,
 // what it asks for, and what it costs to get past it.
 import { chromium, devices } from '@playwright/test'
+import { chromiumPath } from './chromium-path.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
-import { existsSync, readdirSync } from 'node:fs'
 
-function chromiumPath() {
-  const root = '/opt/pw-browsers'
-  if (!existsSync(root)) return undefined
-  const dir = readdirSync(root).filter(d => /^chromium-\d+$/.test(d)).sort().pop()
-  return dir ? `${root}/${dir}/chrome-linux/chrome` : undefined
-}
 const OUT = process.env.OUT || '/tmp/claude-0/-home-user-apartment/c6dcf340-f4bd-586e-8cd1-0aacec5664e5/scratchpad/walk/wizard'
 fs.mkdirSync(OUT, { recursive: true })
 

@@ -1,15 +1,9 @@
 // Retention probe: what is left on the home screen once the one thing it asks for
 // is done? A landlord's month has one approval in it; this is day 2 of 30.
 import { chromium, devices } from '@playwright/test'
+import { chromiumPath } from './chromium-path.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
-import { existsSync, readdirSync } from 'node:fs'
-function chromiumPath() {
-  const root = '/opt/pw-browsers'
-  if (!existsSync(root)) return undefined
-  const dir = readdirSync(root).filter(d => /^chromium-\d+$/.test(d)).sort().pop()
-  return dir ? `${root}/${dir}/chrome-linux/chrome` : undefined
-}
 const OUT = '/tmp/claude-0/-home-user-apartment/c6dcf340-f4bd-586e-8cd1-0aacec5664e5/scratchpad/walk/probe30'
 fs.mkdirSync(OUT, { recursive: true })
 const PROXY = process.env.HTTPS_PROXY || process.env.https_proxy

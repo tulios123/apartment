@@ -2,19 +2,10 @@
 // real user would: load a data state, then visit each screen, screenshot it, and dump
 // what it actually says so the run can be read as text rather than only as pictures.
 import { chromium, devices } from '@playwright/test'
+import { chromiumPath } from './chromium-path.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
-import { existsSync, readdirSync } from 'node:fs'
 
-function chromiumPath() {
-  if (process.env.PW_CHROMIUM_PATH) return process.env.PW_CHROMIUM_PATH
-  const root = '/opt/pw-browsers'
-  if (!existsSync(root)) return undefined
-  const dir = readdirSync(root).filter(d => /^chromium-\d+$/.test(d)).sort().pop()
-  if (!dir) return undefined
-  const exe = `${root}/${dir}/chrome-linux/chrome`
-  return existsSync(exe) ? exe : undefined
-}
 
 const args = Object.fromEntries(process.argv.slice(2).map(a => {
   const [k, ...v] = a.replace(/^--/, '').split('=')
