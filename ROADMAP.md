@@ -4,8 +4,10 @@
 
 ## ⭐ עכשיו — 28.10: הסימולטור
 הבעלים: *"I think about building the simulator site and then continue the finishes in the app."*
-השאלה הראשונה שהוא עונה עליה — **"האם כדאי לי לקנות את הדירה הזו?"** עלויות שוטפות נכנסות,
-שכר דירה נשאל ולא מוערך, וזה **אתר** — מחשב וטלפון. רף UX/UI: "perfect and well thought".
+הנושא — **העסקה והמימון שלה: להראות נתונים ומידע, לא לפסוק.** המסגור המדויק **פתוח
+בכוונה** ("don't frame it too much because we will need to define it", 28.10) וזו העבודה
+של סשן האפיון. עלויות שוטפות נכנסות, שכר דירה נשאל ולא מוערך, וזה **אתר** — מחשב וטלפון.
+רף UX/UI: "perfect and well thought".
 
 **הסשן הבא נפתח באפיון, לא בקוד** (בקשת הבעלים). התדריך: **`docs/specs/simulator.md`**.
 
