@@ -1,0 +1,542 @@
+<title>סימולטור עסקה</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: desktop two-column working surface (levers on the right / results on the left),
+     a full-width honest "monthly picture" hero above, a sticky compare strip. RTL, Hebrew. */
+  :root{
+    --bg:#f3f5f8; --surface:#ffffff; --surface-2:#eceff4; --fg:#1b2230; --muted:#5c6476;
+    --line:#d7dce4; --line-strong:#c2c9d4;
+    --accent:#1f4e6b; --accent-soft:#e4eef4;
+    --equity:#0f7d6b; --equity-soft:#e2f1ee;
+    --cost:#b4502f; --cost-soft:#f7e8e1;
+    --warn:#9a6b00;
+    --shadow:0 1px 2px rgba(20,30,50,.05), 0 8px 24px -14px rgba(20,30,50,.22);
+    --radius:14px;
+    --f-display:"Frank Ruhl Libre", Georgia, "Times New Roman", serif;
+    --f-body:"Heebo", system-ui, "Segoe UI", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#10141b; --surface:#171c25; --surface-2:#1e2530; --fg:#e8ecf2; --muted:#98a2b2;
+    --line:#29313d; --line-strong:#39434f;
+    --accent:#72b2d6; --accent-soft:#142a38;
+    --equity:#39c9af; --equity-soft:#10302b;
+    --cost:#e4906a; --cost-soft:#39241a;
+    --warn:#e0b04a;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#10141b; --surface:#171c25; --surface-2:#1e2530; --fg:#e8ecf2; --muted:#98a2b2;
+    --line:#29313d; --line-strong:#39434f;
+    --accent:#72b2d6; --accent-soft:#142a38;
+    --equity:#39c9af; --equity-soft:#10302b;
+    --cost:#e4906a; --cost-soft:#39241a;
+    --warn:#e0b04a;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--bg); color:var(--fg); font-family:var(--f-body); line-height:1.45;
+       -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;}
+  .app{direction:rtl}
+  .wrap{max-width:1180px; margin-inline:auto;
+        padding-left:max(16px, env(safe-area-inset-left,0px));
+        padding-right:max(16px, env(safe-area-inset-right,0px));}
+  .num{font-family:var(--f-body); font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1;}
+
+  /* top bar */
+  .topbar{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:color-mix(in srgb, var(--bg) 88%, transparent);
+          backdrop-filter:saturate(1.2) blur(8px); border-block-end:1px solid var(--line);}
+  body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:21; background:var(--bg);}
+  .topbar .wrap{display:flex; align-items:center; gap:16px; padding-block:12px; flex-wrap:wrap;}
+  .brand{display:flex; align-items:baseline; gap:9px; margin-inline-end:auto;}
+  .brand .mark{font-family:var(--f-display); font-weight:900; font-size:20px; letter-spacing:-.01em;}
+  .brand .tag{font-size:12px; color:var(--muted);}
+  .switch{display:inline-flex; background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px;}
+  .switch button{font-family:inherit; font-size:13.5px; font-weight:600; color:var(--muted); background:none; border:0;
+                 padding:7px 14px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:7px;}
+  .switch button.on{background:var(--surface); color:var(--fg); box-shadow:var(--shadow);}
+  .switch .soon{font-size:10px; font-weight:700; color:var(--accent); background:var(--accent-soft); padding:1px 6px; border-radius:999px;}
+  .pinbtn{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; border-radius:10px; padding:8px 14px;
+          border:1px solid var(--line-strong); background:var(--surface); color:var(--fg); display:inline-flex; gap:8px; align-items:center;}
+  .pinbtn:hover{border-color:var(--accent);}
+  .pinbtn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+
+  /* compare strip */
+  .compare{border-block-end:1px solid var(--line); background:var(--surface);}
+  .compare .wrap{display:flex; gap:10px; padding-block:10px; align-items:stretch; flex-wrap:wrap;}
+  .compare .lead{font-size:12.5px; color:var(--muted); align-self:center; font-weight:600;}
+  .cmp{flex:1 1 150px; min-width:0; border:1px solid var(--line); border-radius:10px; padding:8px 11px; background:var(--surface-2);}
+  .cmp .k{font-size:11.5px; color:var(--muted);}
+  .cmp .row{display:flex; align-items:baseline; gap:8px; justify-content:space-between;}
+  .cmp .was{font-size:12.5px; color:var(--muted); text-decoration:line-through;}
+  .cmp .now{font-size:16px; font-weight:800;}
+  .cmp .delta{font-size:12px; font-weight:700;}
+  .up{color:var(--equity)} .down{color:var(--cost)} .flat{color:var(--muted)}
+  .clearpin{margin-inline-start:auto; align-self:center; background:none; border:0; color:var(--muted); font-family:inherit;
+            font-size:12.5px; cursor:pointer; text-decoration:underline;}
+
+  /* hero – the monthly picture */
+  .hero{padding-block:30px 22px;}
+  .hero h1{font-family:var(--f-display); font-weight:700; font-size:clamp(20px,2.4vw,27px); margin:0 0 3px; letter-spacing:-.01em;
+           text-wrap:balance;}
+  .hero .sub{color:var(--muted); font-size:14px; margin-bottom:20px;}
+  .picture{display:grid; grid-template-columns:1.25fr 1fr 1fr; gap:16px;}
+  .fig{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow);}
+  .fig.lead-fig{background:linear-gradient(180deg, var(--accent-soft), var(--surface) 70%); border-color:var(--line-strong);}
+  .fig .lab{display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:6px;}
+  .fig .dot{width:9px; height:9px; border-radius:3px;}
+  .fig .big{font-size:clamp(28px,4.4vw,44px); font-weight:800; letter-spacing:-.02em; line-height:1.05;}
+  .fig.lead-fig .big{font-family:var(--f-display); font-weight:900;}
+  .fig .cap{font-size:12.5px; color:var(--muted); margin-top:5px;}
+  .sentence{margin-top:16px; font-size:15.5px; background:var(--surface); border:1px solid var(--line);
+            border-inline-start:4px solid var(--accent); border-radius:10px; padding:13px 16px; box-shadow:var(--shadow);}
+  .sentence b{font-weight:800;}
+
+  .estnote{margin-top:12px; font-size:12.5px; color:var(--warn); display:flex; gap:7px; align-items:center;}
+  .estnote .pill{border:1px dashed var(--warn); border-radius:999px; padding:0 7px; font-weight:700; font-size:11px;}
+
+  /* working grid */
+  .grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; padding-block:6px 40px;}
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
+  .panel>h2{font-family:var(--f-display); font-weight:700; font-size:17px; margin:0; padding:15px 18px 12px; border-block-end:1px solid var(--line);}
+  .panel .body{padding:6px 18px 16px;}
+
+  .field{display:flex; align-items:center; gap:12px; padding:9px 0; border-block-end:1px solid var(--line);}
+  .field:last-child{border-block-end:0;}
+  .field .name{flex:1 1 auto; min-width:0; font-size:14px;}
+  .field .name small{display:block; color:var(--muted); font-size:11.5px;}
+  .ctrl{display:inline-flex; align-items:center; gap:6px; position:relative;}
+  input[type="number"], input[type="text"]{font-family:var(--f-body); font-variant-numeric:tabular-nums; font-size:15px; font-weight:700;
+    color:var(--fg); background:var(--surface-2); border:1px solid var(--line-strong); border-radius:9px; padding:7px 10px; width:124px; text-align:start;}
+  input:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+  .unit{color:var(--muted); font-size:13px;}
+  .est input{background:transparent; border-style:dashed; border-color:var(--line-strong); font-weight:600; color:var(--muted);}
+  .esttag{position:absolute; inset-block-start:-8px; inset-inline-start:8px; font-size:9.5px; font-weight:700; letter-spacing:.02em;
+          color:var(--warn); background:var(--surface); padding:0 5px; border-radius:6px;}
+  .field.est .name{color:var(--muted);}
+  .field:not(.est) .esttag{display:none;}
+
+  .finrow{padding:12px 0; border-block-end:1px solid var(--line);}
+  .finrow:last-child{border-block-end:0;}
+  .finhead{display:flex; align-items:center; gap:10px; margin-bottom:9px;}
+  .finhead .t{font-weight:700; font-size:14.5px;}
+  .finhead .amt{margin-inline-start:auto; font-weight:800; font-size:15px;}
+  .finhead .amt small{color:var(--muted); font-weight:600; font-size:11.5px;}
+  .mini{display:flex; gap:9px; flex-wrap:wrap;}
+  .mini label{flex:1 1 72px; min-width:0; font-size:11.5px; color:var(--muted);}
+  .mini input{width:100%; font-size:13.5px; padding:5px 8px; margin-top:2px;}
+  .grace{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--muted); cursor:pointer; user-select:none;
+         border:1px solid var(--line); border-radius:999px; padding:4px 10px; margin-top:8px;}
+  .grace input{accent-color:var(--accent); width:15px; height:15px;}
+  .grace.on{color:var(--accent); border-color:var(--accent); background:var(--accent-soft); font-weight:700;}
+
+  /* results */
+  .yields{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:6px;}
+  .yield{border:1px solid var(--line); border-radius:11px; padding:13px 14px; background:var(--surface-2);}
+  .yield .k{font-size:12.5px; color:var(--muted); font-weight:600;}
+  .yield .v{font-size:26px; font-weight:800; letter-spacing:-.01em; margin-top:2px;}
+  .yield .d{font-size:11.5px; color:var(--muted); margin-top:3px;}
+
+  .sale{margin-top:4px;}
+  .slider{margin:12px 0 6px;}
+  .slider .top{display:flex; justify-content:space-between; align-items:baseline; font-size:13px;}
+  .slider .top b{font-size:16px; font-weight:800;}
+  input[type="range"]{width:100%; accent-color:var(--accent); margin-top:6px;}
+  .appr0{font-size:11.5px; color:var(--muted);}
+  .saleout{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;}
+  .so{border:1px solid var(--line); border-radius:10px; padding:10px 12px;}
+  .so .k{font-size:12px; color:var(--muted);}
+  .so .v{font-size:19px; font-weight:800; margin-top:1px;}
+
+  .paybar{height:12px; border-radius:7px; overflow:hidden; display:flex; margin-top:14px; border:1px solid var(--line);}
+  .paybar .p{background:var(--equity);} .paybar .i{background:var(--cost);}
+  .paykey{display:flex; gap:16px; font-size:12px; color:var(--muted); margin-top:7px; flex-wrap:wrap;}
+  .paykey span{display:inline-flex; align-items:center; gap:6px;}
+  .sw{width:10px; height:10px; border-radius:3px; display:inline-block;}
+
+  .toast{margin-top:16px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:11px;
+         padding:12px 16px; font-size:13.5px; line-height:1.5;}
+  .toast b{font-weight:800;}
+
+  .foot{color:var(--muted); font-size:12px; padding-block:0 30px; text-align:center;}
+
+  @media (max-width:860px){
+    .picture{grid-template-columns:1fr;}
+    .grid{grid-template-columns:1fr;}
+    .brand{margin-inline-end:0; width:100%;}
+    .topbar .wrap{gap:10px;}
+  }
+  @media (prefers-reduced-motion: reduce){ *{transition:none!important;} }
+</style>
+
+<div class="app">
+  <header class="topbar"><div class="wrap">
+    <div class="brand"><span class="mark">בוחן העסקה</span><span class="tag">אב־טיפוס · הרצל 10, אשקלון</span></div>
+    <div class="switch" role="tablist">
+      <button class="on" role="tab" aria-selected="true">בחינת עסקה</button>
+      <button role="tab" aria-selected="false" id="modeCapital">מה אפשר לעשות עם הכסף שלי <span class="soon">בקרוב</span></button>
+    </div>
+    <button class="pinbtn" id="pinBtn" aria-pressed="false">📌 הצמד להשוואה</button>
+  </div></header>
+
+  <section class="compare" id="compareStrip" hidden><div class="wrap">
+    <span class="lead">מוצמד ↔ עכשיו</span>
+    <div class="cmp" data-cmp="real"><div class="k">תוצאה אמיתית / חודש</div><div class="row"><span class="was"></span><span class="now"></span><span class="delta"></span></div></div>
+    <div class="cmp" data-cmp="cash"><div class="k">מהכיס / חודש</div><div class="row"><span class="was"></span><span class="now"></span><span class="delta"></span></div></div>
+    <div class="cmp" data-cmp="equity"><div class="k">בונה הון / חודש</div><div class="row"><span class="was"></span><span class="now"></span><span class="delta"></span></div></div>
+    <div class="cmp" data-cmp="roe"><div class="k">תשואה על ההון</div><div class="row"><span class="was"></span><span class="now"></span><span class="delta"></span></div></div>
+    <button class="clearpin" id="clearPin">נקה</button>
+  </div></section>
+
+  <main class="wrap">
+    <div class="toast" id="modeToast" hidden>
+      <b>מצב "מה אפשר לעשות עם הכסף שלי" — בבנייה.</b>
+      כאן תקבע תקציב, יעד (תזרים או תשואה) ונוחות־סיכון, והכלי יפתור את <b>עסקת־התקרה</b> ויציג אותה באותו מסך בדיוק.
+    </div>
+    <section class="hero">
+      <h1>התמונה החודשית של העסקה</h1>
+      <div class="sub">מה הדירה הזו באמת עושה לכיס שלך — אחרי מימון ואחרי עלויות שוטפות.</div>
+      <div class="picture">
+        <div class="fig lead-fig">
+          <div class="lab"><span class="dot" style="background:var(--accent)"></span>תוצאה אמיתית לחודש</div>
+          <div class="big num" id="figReal">—</div>
+          <div class="cap">תזרים + ההון שאתה בונה</div>
+        </div>
+        <div class="fig">
+          <div class="lab"><span class="dot" style="background:var(--cost)"></span>יוצא מהכיס</div>
+          <div class="big num" id="figCash">—</div>
+          <div class="cap" id="capCash">שכירות פחות החזר ועלויות</div>
+        </div>
+        <div class="fig">
+          <div class="lab"><span class="dot" style="background:var(--equity)"></span>בונה הון</div>
+          <div class="big num" id="figEquity">—</div>
+          <div class="cap">הקרן שנפרעת מההחזר</div>
+        </div>
+      </div>
+      <div class="sentence" id="sentence"></div>
+      <div class="estnote"><span class="pill">ברירת מחדל</span> חלק מהמספרים הם הערכות פתוחות — שנה אותם כדי שהתמונה תהיה שלך.</div>
+    </section>
+
+    <div class="grid">
+      <!-- LEVERS -->
+      <section class="panel">
+        <h2>העסקה</h2>
+        <div class="body">
+          <div class="field" data-typed><div class="name">מחיר הנכס</div>
+            <div class="ctrl"><span class="esttag">ברירת מחדל</span><input type="number" id="price" value="1090000" step="10000"><span class="unit">₪</span></div></div>
+          <div class="field" data-typed><div class="name">שכר דירה חודשי</div>
+            <div class="ctrl"><span class="esttag">ברירת מחדל</span><input type="number" id="rent" value="5000" step="100"><span class="unit">₪</span></div></div>
+          <div class="field est"><div class="name">הון שיש לך<small>כמה מזומן אתה מביא לעסקה</small></div>
+            <div class="ctrl"><span class="esttag">ברירת מחדל</span><input type="number" id="cash" value="265320" step="5000"><span class="unit">₪</span></div></div>
+          <div class="field est"><div class="name">עלויות רכישה<small>תיווך, עו״ד, אגרות, ליווי — ללא מס</small></div>
+            <div class="ctrl"><span class="esttag">ברירת מחדל</span><input type="number" id="buyCosts" value="72105" step="500"><span class="unit">₪</span></div></div>
+          <div class="field est"><div class="name">עלויות שוטפות<small>אחזקה, ביטוח, אי־אכלוס — לחודש</small></div>
+            <div class="ctrl"><span class="esttag">הערכה</span><input type="number" id="running" value="500" step="50"><span class="unit">₪</span></div></div>
+        </div>
+      </section>
+
+      <!-- FINANCING + RESULTS -->
+      <section class="panel">
+        <h2>מימון</h2>
+        <div class="body">
+          <div class="finrow" id="finMortgage">
+            <div class="finhead"><span class="t">משכנתא</span><span class="amt"><span class="num" id="mortAmt">—</span> <small id="mortLtvCap"></small></span></div>
+            <div class="mini">
+              <label>אחוז מימון<input type="number" id="ltv" value="75" step="1" min="0" max="90"></label>
+              <label>שנים<input type="number" id="mortYears" value="30" step="1" min="1" max="30"></label>
+              <label>ריבית %<input type="number" id="mortRate" value="4.8" step="0.1"></label>
+            </div>
+            <label class="grace" id="graceMortWrap"><input type="checkbox" id="graceMort"> גרייס (ריבית בלבד)</label>
+          </div>
+          <div class="finrow" id="finLoan">
+            <div class="finhead"><span class="t">הלוואה משלימה</span><span class="amt"><span class="num" id="loanAmt">—</span> <small>סוגרת את פער ההון</small></span></div>
+            <div class="mini">
+              <label>שנים<input type="number" id="loanYears" value="12" step="1" min="1" max="30"></label>
+              <label>ריבית %<input type="number" id="loanRate" value="5" step="0.1"></label>
+            </div>
+            <label class="grace" id="graceLoanWrap"><input type="checkbox" id="graceLoan"> גרייס (ריבית בלבד)</label>
+          </div>
+          <div class="paybar"><div class="p" id="barP"></div><div class="i" id="barI"></div></div>
+          <div class="paykey">
+            <span><i class="sw" style="background:var(--equity)"></i> קרן (בונה הון) <b class="num" id="keyP">—</b></span>
+            <span><i class="sw" style="background:var(--cost)"></i> ריבית (לבנק) <b class="num" id="keyI">—</b></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>תשואה</h2>
+        <div class="body">
+          <div class="yields">
+            <div class="yield"><div class="k">על ההון שלך</div><div class="v num" id="roe">—</div><div class="d">אחרי ריבית ועלויות שוטפות</div></div>
+            <div class="yield"><div class="k">על העסקה</div><div class="v num" id="rod">—</div><div class="d">ברוטו, אחרי עלויות שוטפות</div></div>
+          </div>
+          <div class="appr0">הון נדרש לעסקה: <b class="num" id="equityReq">—</b> · מזה מהכיס שלך <b class="num" id="cashUsed">—</b></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>מכירה — מה אם אמכור</h2>
+        <div class="body sale">
+          <div class="slider">
+            <div class="top"><span>עליית ערך שנתית</span><b class="num" id="apprVal">0%</b></div>
+            <input type="range" id="appr" min="0" max="6" step="0.5" value="0">
+            <div class="appr0" id="apprNote">מתחיל מ־0% — המבט הראשון בלי הנחות. גרור כדי לבחון תרחישים.</div>
+          </div>
+          <div class="slider">
+            <div class="top"><span>שנה</span><b class="num" id="yearVal">3</b></div>
+            <input type="range" id="year" min="1" max="8" step="1" value="3">
+          </div>
+          <div class="saleout">
+            <div class="so"><div class="k">שווי משוער</div><div class="v num" id="saleValue">—</div></div>
+            <div class="so"><div class="k">יתרת חוב</div><div class="v num" id="saleDebt">—</div></div>
+            <div class="so"><div class="k">ההון שלך במכירה</div><div class="v num" id="saleEquity">—</div></div>
+            <div class="so"><div class="k">רווח מול ההשקעה</div><div class="v num" id="saleGain">—</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="foot">אב־טיפוס לאפיון · חישוב אמיתי (PMT/לוח סילוקין) · אין כאן פסיקה — רק הצגה של העסקה והמימון שלה.</div>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  function fmt(n){
+    var neg = n < 0;
+    var v = Math.round(Math.abs(n)).toLocaleString('he-IL');
+    return (neg ? '−' : '') + '₪' + v;
+  }
+  function fmtSigned(n){
+    if (Math.round(n) === 0) return '₪0';
+    return (n > 0 ? '+' : '−') + '₪' + Math.round(Math.abs(n)).toLocaleString('he-IL');
+  }
+  function pct(x){ return (x*100).toLocaleString('he-IL',{maximumFractionDigits:1}) + '%'; }
+
+  function pmt(P, annualRate, years){
+    var r = annualRate/12, n = years*12;
+    if (P <= 0) return 0;
+    if (r === 0) return P/n;
+    return P * r / (1 - Math.pow(1+r, -n));
+  }
+  function balanceAfter(P, annualRate, years, k){
+    var r = annualRate/12, n = years*12;
+    if (P <= 0) return 0;
+    k = Math.min(k, n);
+    var pay = pmt(P, annualRate, years);
+    if (r === 0) return Math.max(0, P - pay*k);
+    return Math.max(0, P*Math.pow(1+r,k) - pay*(Math.pow(1+r,k)-1)/r);
+  }
+  function firstYearInterest(P, annualRate, years){
+    if (P <= 0) return 0;
+    var pay = pmt(P, annualRate, years);
+    var bal = balanceAfter(P, annualRate, years, 12);
+    var principalPaid = P - bal;
+    return pay*12 - principalPaid;
+  }
+  // monthly split for component, honoring grace (interest-only)
+  function comp(P, rate, years, grace){
+    var r = rate/12;
+    if (P <= 0) return {pay:0, interest:0, principal:0};
+    if (grace){ var i = P*r; return {pay:i, interest:i, principal:0}; }
+    var pay = pmt(P, rate, years);
+    var interest = P*r;
+    return {pay:pay, interest:interest, principal:pay-interest};
+  }
+
+  var pin = null;
+
+  function read(id){ var v = parseFloat($(id).value); return isNaN(v) ? 0 : v; }
+
+  function compute(){
+    var price = read('price');
+    var rent = read('rent');
+    var cash = read('cash');
+    var buyCosts = read('buyCosts');
+    var running = read('running');
+    var ltv = read('ltv')/100;
+    var mortYears = read('mortYears');
+    var mortRate = read('mortRate')/100;
+    var loanYears = read('loanYears');
+    var loanRate = read('loanRate')/100;
+    var graceMort = $('graceMort').checked;
+    var graceLoan = $('graceLoan').checked;
+
+    var mortP = Math.max(0, price*ltv);
+    var equityReq = Math.max(0, price - mortP) + buyCosts;   // total equity the deal needs
+    var loanP = Math.max(0, equityReq - cash);               // top-up loan bridges the gap
+    var cashUsed = Math.min(cash, equityReq);
+
+    var m = comp(mortP, mortRate, mortYears, graceMort);
+    var l = comp(loanP, loanRate, loanYears, graceLoan);
+
+    var totalPay = m.pay + l.pay;
+    var totalInt = m.interest + l.interest;
+    var totalPrin = m.principal + l.principal;      // equity built this month
+
+    var cashFlow = rent - totalPay - running;        // out of pocket (neg = you add)
+    var equityBuilt = totalPrin;
+    var real = cashFlow + equityBuilt;
+
+    // returns (first year, running-cost inclusive)
+    var fyInt = (graceMort ? mortP*mortRate : firstYearInterest(mortP, mortRate, mortYears))
+              + (graceLoan ? loanP*loanRate : firstYearInterest(loanP, loanRate, loanYears));
+    var annualRent = rent*12, annualRun = running*12;
+    var roe = equityReq > 0 ? (annualRent - fyInt - annualRun)/equityReq : 0;
+    var totalDeal = price + buyCosts;
+    var rod = totalDeal > 0 ? (annualRent - annualRun)/totalDeal : 0;
+
+    // sale
+    var appr = read('appr')/100;
+    var yr = read('year');
+    var saleValue = price*Math.pow(1+appr, yr);
+    var saleDebt = balanceAfter(mortP, mortRate, mortYears, yr*12) + balanceAfter(loanP, loanRate, loanYears, yr*12);
+    var saleEquity = saleValue - saleDebt;
+    var saleGain = saleValue - totalDeal;
+
+    return {price:price, rent:rent, mortP:mortP, loanP:loanP, equityReq:equityReq, cashUsed:cashUsed,
+      m:m, l:l, totalPay:totalPay, totalInt:totalInt, totalPrin:totalPrin,
+      cashFlow:cashFlow, equityBuilt:equityBuilt, real:real, roe:roe, rod:rod,
+      saleValue:saleValue, saleDebt:saleDebt, saleEquity:saleEquity, saleGain:saleGain, appr:appr, yr:yr, ltv:ltv};
+  }
+
+  function colorFor(el, n){ el.style.color = n > 0 ? 'var(--equity)' : (n < 0 ? 'var(--cost)' : 'var(--fg)'); }
+
+  function render(){
+    var d = compute();
+
+    $('figReal').textContent = fmtSigned(d.real); colorFor($('figReal'), d.real);
+    $('figCash').textContent = fmtSigned(d.cashFlow); colorFor($('figCash'), d.cashFlow);
+    $('figEquity').textContent = '+' + fmt(d.equityBuilt).replace('₪','₪');
+    $('figEquity').style.color = 'var(--equity)';
+
+    // honest sentence
+    var s;
+    if (d.cashFlow < 0 && d.real >= 0){
+      s = 'מרגיש כמו הפסד של <b>'+fmt(-d.cashFlow)+'</b> בחודש — אבל אתה <b>'+fmtSigned(d.real)+'</b> קדימה, כי <b>'+fmt(d.equityBuilt)+'</b> מההחזר בונים לך הון.';
+    } else if (d.cashFlow >= 0){
+      s = '<b>'+fmt(d.cashFlow)+'</b> נכנסים לכיס כל חודש, ועוד <b>'+fmt(d.equityBuilt)+'</b> בונים הון — תוצאה אמיתית <b>'+fmtSigned(d.real)+'</b>.';
+    } else {
+      s = 'גם אחרי ההון שנבנה (<b>'+fmt(d.equityBuilt)+'</b>), העסקה במינוס אמיתי של <b>'+fmtSigned(d.real)+'</b> בחודש.';
+    }
+    $('sentence').innerHTML = s;
+
+    $('mortAmt').textContent = fmt(d.mortP);
+    $('mortLtvCap').textContent = Math.round(d.ltv*100) + '% מהמחיר';
+    $('loanAmt').textContent = fmt(d.loanP);
+    $('finLoan').style.opacity = d.loanP > 0 ? '1' : '.5';
+
+    // pay bar
+    var tot = d.totalInt + d.totalPrin;
+    var pp = tot > 0 ? (d.totalPrin/tot*100) : 0;
+    $('barP').style.width = pp + '%';
+    $('barI').style.width = (100-pp) + '%';
+    $('keyP').textContent = fmt(d.totalPrin);
+    $('keyI').textContent = fmt(d.totalInt);
+
+    $('roe').textContent = pct(d.roe); colorFor($('roe'), d.roe);
+    $('rod').textContent = pct(d.rod);
+    $('equityReq').textContent = fmt(d.equityReq);
+    $('cashUsed').textContent = fmt(d.cashUsed);
+
+    $('apprVal').textContent = (d.appr*100).toLocaleString('he-IL',{maximumFractionDigits:1}) + '%';
+    $('yearVal').textContent = d.yr;
+    $('apprNote').textContent = d.appr === 0
+      ? 'מתחיל מ־0% — המבט הראשון בלי הנחות. גרור כדי לבחון תרחישים.'
+      : 'תרחיש: עלייה של ' + $('apprVal').textContent + ' לשנה. הנחה, לא ודאות.';
+    $('saleValue').textContent = fmt(d.saleValue);
+    $('saleDebt').textContent = fmt(d.saleDebt);
+    $('saleEquity').textContent = fmt(d.saleEquity);
+    $('saleGain').textContent = fmtSigned(d.saleGain); colorFor($('saleGain'), d.saleGain);
+
+    renderCompare(d);
+  }
+
+  function renderCompare(d){
+    var strip = $('compareStrip');
+    if (!pin){ strip.hidden = true; return; }
+    strip.hidden = false;
+    var map = {
+      real:{was:pin.real, now:d.real, money:true},
+      cash:{was:pin.cashFlow, now:d.cashFlow, money:true},
+      equity:{was:pin.equityBuilt, now:d.equityBuilt, money:true},
+      roe:{was:pin.roe, now:d.roe, money:false}
+    };
+    Object.keys(map).forEach(function(k){
+      var c = document.querySelector('.cmp[data-cmp="'+k+'"]');
+      var o = map[k];
+      var wasT = o.money ? fmtSigned(o.was) : pct(o.was);
+      var nowT = o.money ? fmtSigned(o.now) : pct(o.now);
+      var diff = o.now - o.was;
+      var dT = o.money ? fmtSigned(diff) : (diff>=0?'+':'−')+pct(Math.abs(diff));
+      c.querySelector('.was').textContent = wasT;
+      c.querySelector('.now').textContent = nowT;
+      var dEl = c.querySelector('.delta');
+      dEl.textContent = Math.abs(diff) < 1e-9 ? '—' : dT;
+      dEl.className = 'delta ' + (Math.abs(diff)<1e-9?'flat':(diff>0?'up':'down'));
+    });
+  }
+
+  // estimate -> typed when user edits a field marked as default
+  function markTyped(input){
+    var field = input.closest('.field');
+    if (field && field.classList.contains('est')){
+      field.classList.remove('est');
+    }
+    checkEstNote();
+  }
+  function checkEstNote(){
+    var any = document.querySelectorAll('.field.est').length > 0;
+    document.querySelector('.estnote').style.display = any ? 'flex' : 'none';
+  }
+
+  // wire up
+  var inputs = document.querySelectorAll('input[type="number"], input[type="range"], input[type="checkbox"]');
+  inputs.forEach(function(inp){
+    inp.addEventListener('input', function(){
+      if (inp.type === 'number') markTyped(inp);
+      render();
+    });
+    inp.addEventListener('change', render);
+  });
+
+  // grace pill styling
+  function graceStyle(){
+    $('graceMortWrap').classList.toggle('on', $('graceMort').checked);
+    $('graceLoanWrap').classList.toggle('on', $('graceLoan').checked);
+  }
+  $('graceMort').addEventListener('change', graceStyle);
+  $('graceLoan').addEventListener('change', graceStyle);
+
+  $('pinBtn').addEventListener('click', function(){
+    var d = compute();
+    pin = d;
+    $('pinBtn').classList.add('active');
+    $('pinBtn').setAttribute('aria-pressed','true');
+    $('pinBtn').textContent = '📌 מוצמד';
+    render();
+  });
+  $('clearPin').addEventListener('click', function(){
+    pin = null;
+    $('pinBtn').classList.remove('active');
+    $('pinBtn').setAttribute('aria-pressed','false');
+    $('pinBtn').textContent = '📌 הצמד להשוואה';
+    render();
+  });
+
+  $('modeCapital').addEventListener('click', function(){
+    var t = $('modeToast');
+    t.hidden = false;
+    clearTimeout(t._tmr);
+    t._tmr = setTimeout(function(){ t.hidden = true; }, 6000);
+  });
+
+  graceStyle();
+  render();
+})();
+</script>
