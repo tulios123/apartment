@@ -1,8 +1,9 @@
 <title>בוחן העסקה</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-  /* Full-screen main (levers + the headline conclusion); a chevron / scroll reveals the full
-     breakdown and the collapsed costs below. RTL Hebrew, palette matched to the app (light, blue, navy). */
+  /* Two modes on one engine: "בחינת עסקה" (a deal you type) and "מה אפשר לעשות עם הכסף שלי"
+     (conditions -> solve the ceiling deal -> render it on the same screen). Full-height main,
+     chevron/scroll to the breakdown, costs collapsed below. RTL, app palette (light, blue, navy). */
   :root{
     --bg:#f5f6f8; --bg-alt:#eef1f4; --surface:#ffffff; --border:#e3e7ec; --border-strong:#cfd6de;
     --text:#1a1a1a; --muted:#666c77; --navy:#0a1f44;
@@ -59,9 +60,8 @@
   .brand .tag{font-size:12px; color:var(--muted);}
   .switch{display:inline-flex; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--r-pill); padding:3px; gap:2px;}
   .switch button{font-family:inherit; font-size:13.5px; font-weight:600; color:var(--muted); background:none; border:0;
-                 padding:7px 14px; border-radius:var(--r-pill); cursor:pointer; display:inline-flex; align-items:center; gap:7px;}
+                 padding:7px 14px; border-radius:var(--r-pill); cursor:pointer;}
   .switch button.on{background:var(--surface); color:var(--navy); box-shadow:var(--shadow-sm);}
-  .switch .soon{font-size:10px; font-weight:700; color:var(--accent); background:var(--accent-light); padding:1px 6px; border-radius:var(--r-pill);}
   .pinbtn{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; border-radius:10px; padding:8px 14px;
           border:1px solid var(--border-strong); background:var(--surface); color:var(--text); display:inline-flex; gap:7px; align-items:center;}
   .pinbtn:hover{border-color:var(--accent); color:var(--accent);}
@@ -80,7 +80,6 @@
   .clearpin{margin-inline-start:auto; align-self:center; background:none; border:0; color:var(--muted); font-family:inherit;
             font-size:12.5px; cursor:pointer; text-decoration:underline;}
 
-  /* MAIN full-height screen */
   .screen1{min-height:calc(100svh - 60px); display:flex; flex-direction:column; justify-content:center; gap:20px; padding-block:22px 6px;}
   .blockhead{display:flex; align-items:baseline; gap:12px; margin-bottom:2px;}
   .blockhead .step{font-size:12px; font-weight:800; letter-spacing:.05em; color:var(--accent); background:var(--accent-light);
@@ -102,6 +101,7 @@
 
   .fin-grid{display:grid; grid-template-columns:1fr 1fr; gap:13px;}
   .fin{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:15px 17px; box-shadow:var(--shadow-sm);}
+  .fin.ceiling{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset, var(--shadow-md);}
   .fin .fh{display:flex; align-items:baseline; gap:10px; margin-bottom:11px;}
   .fin .fh .t{font-size:15px; font-weight:800; color:var(--navy);}
   .fin .fh .amt{margin-inline-start:auto; font-weight:800; font-size:16px; color:var(--navy); text-align:end;}
@@ -115,8 +115,8 @@
          border:1px solid var(--border); border-radius:var(--r-pill); padding:5px 11px; margin-top:11px;}
   .grace input{accent-color:var(--accent); width:15px; height:15px;}
   .grace.on{color:var(--accent); border-color:var(--accent); background:var(--accent-light); font-weight:700;}
+  .ceilbig{font-size:34px; font-weight:800; color:var(--navy); letter-spacing:-.02em; line-height:1.05;}
 
-  /* the headline conclusion inside screen 1 */
   .picture{display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:13px;}
   .fig{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:15px 18px; box-shadow:var(--shadow-sm);}
   .fig.lead-fig{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset, var(--shadow-md);}
@@ -136,9 +136,7 @@
   .chevron:hover{color:var(--accent);}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
 
-  /* DETAIL (below the fold) */
   .detail{border-block-start:1px solid var(--border); padding-block:26px 8px;}
-  .picture2head{margin-bottom:14px;}
   .midgrid{display:grid; grid-template-columns:1fr 1fr; gap:13px;}
   .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:16px 18px; box-shadow:var(--shadow-sm);}
   .card h3{font-size:13.5px; font-weight:700; color:var(--navy); margin:0 0 10px;}
@@ -166,7 +164,6 @@
   .so .k{font-size:11.5px; color:var(--muted);}
   .so .v{font-size:18px; font-weight:800; color:var(--navy); margin-top:1px;}
 
-  /* collapsed cost folds */
   .folds{margin-top:14px; display:flex; flex-direction:column; gap:10px;}
   .fold{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); box-shadow:var(--shadow-sm); overflow:hidden;}
   .fold>summary{list-style:none; cursor:pointer; padding:14px 18px; display:flex; align-items:center; gap:10px; font-weight:700; color:var(--navy); font-size:14.5px;}
@@ -184,11 +181,9 @@
   .cf .est-mark{color:var(--warn);}
   .foldnote{font-size:12px; color:var(--muted); margin-top:10px;}
 
-  .resetbtn{margin-top:16px; font-family:var(--f); font-size:13px; font-weight:700; color:var(--accent); background:var(--accent-light);
+  .resetbtn{font-family:var(--f); font-size:13px; font-weight:700; color:var(--accent); background:var(--accent-light);
             border:1px solid transparent; border-radius:10px; padding:9px 16px; cursor:pointer;}
   .resetbtn:hover{border-color:var(--accent);}
-  .toast{margin-top:14px; background:var(--accent-light); border:1px solid var(--accent); border-radius:12px; padding:12px 16px; font-size:13.5px; line-height:1.5; color:var(--navy);}
-  .toast b{font-weight:800;}
   .foot{color:var(--muted); font-size:12px; padding-block:22px 34px; text-align:center;}
 
   @media (max-width:880px){
@@ -209,8 +204,8 @@
   <header class="topbar"><div class="wrap">
     <div class="brand"><span class="mark">בוחן העסקה</span><span class="tag">אב־טיפוס · הרצל 10, אשקלון</span></div>
     <div class="switch" role="tablist">
-      <button class="on" role="tab" aria-selected="true">בחינת עסקה</button>
-      <button role="tab" aria-selected="false" id="modeCapital">מה אפשר לעשות עם הכסף שלי <span class="soon">בקרוב</span></button>
+      <button class="on" role="tab" aria-selected="true" id="modeDeal">בחינת עסקה</button>
+      <button role="tab" aria-selected="false" id="modeCapital">מה אפשר לעשות עם הכסף שלי</button>
     </div>
     <button class="pinbtn" id="pinBtn" aria-pressed="false">📌 הצמד להשוואה</button>
   </div></header>
@@ -225,10 +220,10 @@
   </div></section>
 
   <main class="wrap">
-    <!-- SCREEN 1 (full height): levers + headline conclusion -->
     <section class="screen1">
-      <div>
-        <div class="blockhead"><span class="step">מה אתה בוחן</span><h2>המספרים שאתה משנה</h2></div>
+      <!-- MODE A inputs -->
+      <div id="modeAInputs">
+        <div class="blockhead"><span class="step">בחינת עסקה</span><h2>המספרים שאתה משנה</h2></div>
         <div class="inputs-primary">
           <label class="tile" data-typed><span class="tl">מחיר הנכס</span><span class="tin"><input class="money" type="text" inputmode="numeric" id="price" value="1090000"><span class="u">₪</span></span></label>
           <label class="tile" data-typed><span class="tl">שכר דירה חודשי</span><span class="tin"><input class="money" type="text" inputmode="numeric" id="rent" value="5000"><span class="u">₪</span></span></label>
@@ -255,8 +250,34 @@
         </div>
       </div>
 
+      <!-- MODE B inputs (conditions -> ceiling) -->
+      <div id="modeBInputs" hidden>
+        <div class="blockhead"><span class="step">מה אפשר לעשות עם הכסף שלי</span><h2>קבע תנאים — נמצא את עסקת־התקרה</h2></div>
+        <div class="inputs-primary">
+          <label class="tile"><span class="tl">כמה כסף יש לך</span><span class="tin"><input class="money bcond" type="text" inputmode="numeric" id="bCash" value="265320"><span class="u">₪</span></span></label>
+          <label class="tile"><span class="tl">כמה מוכן להוסיף מהכיס / חודש <span class="esttag">יעד</span></span><span class="tin"><input class="money bcond" type="text" inputmode="numeric" id="bTarget" value="500"><span class="u">₪</span></span></label>
+          <label class="tile"><span class="tl">תשואת שכירות צפויה <span class="esttag">הנחה</span></span><span class="tin"><input class="bcond" type="number" id="bYield" value="5.5" step="0.1" min="1" max="12"><span class="u">%</span></span></label>
+        </div>
+        <div class="fin-grid" style="margin-top:13px;">
+          <div class="fin">
+            <div class="fh"><span class="t">נוחות סיכון</span></div>
+            <div class="trip">
+              <label class="mini">מקסימום מינוף %<input class="bcond" type="number" id="bLTV" value="75" step="1" min="0" max="90"></label>
+            </div>
+            <label class="grace on" id="bAllowLoanWrap"><input class="bcond" type="checkbox" id="bAllowLoan" checked> להשתמש בהלוואה משלימה</label>
+          </div>
+          <div class="fin ceiling">
+            <div class="fh"><span class="t">עסקת־התקרה</span></div>
+            <div class="ceilbig num" id="ceilPrice">—</div>
+            <div style="font-size:12.5px;color:var(--muted);margin-top:4px;" id="ceilSub">—</div>
+            <button class="resetbtn" id="openAsDeal" style="margin-top:12px;">פתח כעסקה מלאה →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- shared conclusion -->
       <div>
-        <div class="computed" style="margin-bottom:9px;"><span class="c"></span> מספרים מחושבים — נגזרים מהקלט שלמעלה, לא מוקלדים.</div>
+        <div class="computed" style="margin-bottom:9px;"><span class="c"></span> <span id="computedNote">מספרים מחושבים — נגזרים מהקלט שלמעלה, לא מוקלדים.</span></div>
         <div class="picture">
           <div class="fig lead-fig">
             <div class="lab"><span class="dot" style="background:var(--accent)"></span>תוצאה אמיתית לחודש</div>
@@ -282,9 +303,8 @@
       </div>
     </section>
 
-    <!-- DETAIL (below the fold) -->
     <section class="detail" id="detail">
-      <div class="blockhead picture2head"><span class="step">הפירוט</span><h2>לאן הולך הכסף, תשואה, מכירה — וכל העלויות</h2></div>
+      <div class="blockhead" style="margin-bottom:14px;"><span class="step">הפירוט</span><h2>לאן הולך הכסף, תשואה, מכירה — וכל העלויות</h2></div>
 
       <div class="midgrid">
         <div class="card">
@@ -369,12 +389,7 @@
         </details>
       </div>
 
-      <button class="resetbtn" id="resetBtn">↺ חזרה לעסקה האמיתית</button>
-      <div class="toast" id="modeToast" hidden>
-        <b>מצב "מה אפשר לעשות עם הכסף שלי" — בבנייה.</b>
-        כאן תקבע תקציב, יעד (תזרים או תשואה) ונוחות־סיכון, והכלי יפתור את <b>עסקת־התקרה</b> ויציג אותה באותו מסך בדיוק.
-      </div>
-
+      <button class="resetbtn" id="resetBtn" style="margin-top:16px;">↺ חזרה לעסקה האמיתית</button>
       <div class="foot">אב־טיפוס לאפיון · חישוב אמיתי (PMT/לוח סילוקין) · מציג את העסקה והמימון — לא פוסק.</div>
     </section>
   </main>
@@ -384,10 +399,11 @@
 (function(){
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
-  var MONEY = ['price','rent','cash','tax','brokerage','lawyer','fees','registry','advice','escort','appraisal','maint','insure','manage','improve'];
+  var MONEY = ['price','rent','cash','tax','brokerage','lawyer','fees','registry','advice','escort','appraisal','maint','insure','manage','improve','bCash','bTarget'];
   var DEFAULTS = {price:1090000, rent:5000, cash:265320, ltv:75, mortYears:30, mortRate:4.8, loanYears:12, loanRate:5,
     tax:0, brokerage:25724, lawyer:6431, fees:1000, registry:50, advice:5900, escort:29500, appraisal:3500,
     maint:200, insure:60, manage:0, vacancy:4, improve:0, appr:0, year:3};
+  var mode='A', pin=null;
 
   function fmt(n){ var neg=n<0; return (neg?'−':'')+'₪'+Math.round(Math.abs(n)).toLocaleString('he-IL'); }
   function fmtSigned(n){ if(Math.round(n)===0) return '₪0'; return (n>0?'+':'−')+'₪'+Math.round(Math.abs(n)).toLocaleString('he-IL'); }
@@ -401,10 +417,8 @@
     if(grace){ var i=P*r; return {pay:i,interest:i,principal:0}; }
     var pay=pmt(P,rate,years), interest=P*r; return {pay:pay, interest:interest, principal:pay-interest}; }
 
-  var pin=null;
   function read(id){ var v=parseFloat(String($(id).value).replace(/[^\d.\-]/g,'')); return isNaN(v)?0:v; }
 
-  // thousands separators in money inputs, caret-preserving
   function formatMoneyInput(el){
     var digitsBefore = el.value.slice(0, el.selectionStart||0).replace(/[^\d]/g,'').length;
     var raw = el.value.replace(/[^\d]/g,'');
@@ -415,10 +429,11 @@
     try{ el.setSelectionRange(pos,pos); }catch(e){}
   }
 
+  function buyCostsSum(){ return read('tax')+read('brokerage')+read('lawyer')+read('fees')+read('registry')+read('advice')+read('escort')+read('appraisal'); }
+
   function compute(){
     var price=read('price'), rent=read('rent'), cash=read('cash');
-    var buyCosts=read('tax')+read('brokerage')+read('lawyer')+read('fees')+read('registry')+read('advice')+read('escort')+read('appraisal');
-    var improve=read('improve');
+    var buyCosts=buyCostsSum(), improve=read('improve');
     var running=read('maint')+read('insure')+read('manage')+rent*read('vacancy')/100;
     var ltv=read('ltv')/100, mortYears=read('mortYears'), mortRate=read('mortRate')/100;
     var loanYears=read('loanYears'), loanRate=read('loanRate')/100;
@@ -448,6 +463,36 @@
     return {mortP:mortP,loanP:loanP,equityReq:equityReq,cashUsed:cashUsed,ltv:ltv,buyCosts:buyCosts,running:running,improve:improve,
       totalInt:totalInt,totalPrin:totalPrin,cashFlow:cashFlow,equityBuilt:equityBuilt,real:real,roe:roe,rod:rod,
       saleValue:saleValue,saleDebt:saleDebt,saleEquity:saleEquity,saleGain:saleGain,appr:appr,yr:yr};
+  }
+
+  // Mode B: scan prices, find the highest that meets the conditions, then feed the deal engine.
+  function solveAndApply(){
+    var cash=read('bCash'), target=read('bTarget'), yld=read('bYield')/100, ltv=read('bLTV')/100, allowLoan=$('bAllowLoan').checked;
+    var buyCosts=buyCostsSum(), improve=read('improve');
+    var maint=read('maint'), insure=read('insure'), manage=read('manage'), vac=read('vacancy')/100;
+    var mortRate=read('mortRate')/100, mortYears=read('mortYears'), loanRate=read('loanRate')/100, loanYears=read('loanYears');
+    var best=0, bestRent=0;
+    for(var P=100000; P<=6000000; P+=5000){
+      var mortP=P*ltv, equity=P*(1-ltv)+buyCosts+improve;
+      if(!allowLoan && equity>cash) continue;
+      var loan=allowLoan?Math.max(0,equity-cash):0;
+      var rent=P*yld/12;
+      var running=maint+insure+manage+rent*vac;
+      var cf=rent-pmt(mortP,mortRate,mortYears)-pmt(loan,loanRate,loanYears)-running;
+      if(cf>=-target){ best=P; bestRent=rent; }
+    }
+    if(best>0){
+      $('price').value=Math.round(best).toLocaleString('he-IL');
+      $('rent').value=Math.round(bestRent).toLocaleString('he-IL');
+      $('ltv').value=read('bLTV');
+      $('cash').value=Math.round(cash).toLocaleString('he-IL');
+      $('ceilPrice').textContent=fmt(best);
+      var eq=best*(1-ltv)+buyCosts+improve, cashUsed=Math.min(cash,eq);
+      $('ceilSub').innerHTML='שכ״ד משוער <b>'+fmt(bestRent)+'</b> · הון מהכיס <b>'+fmt(cashUsed)+'</b>';
+    } else {
+      $('ceilPrice').textContent='—';
+      $('ceilSub').textContent='עם התנאים האלה לא נמצאה עסקה. הגדל תקציב, מינוף, או מה שאתה מוכן להוסיף.';
+    }
   }
 
   function colorBySign(el,n){ el.style.color = n>0?'var(--pos)':(n<0?'var(--neg)':'var(--navy)'); }
@@ -508,16 +553,34 @@
     });
   }
 
-  function markTyped(input){ var t=input.closest('.tile'); if(t&&t.classList.contains('est')) t.classList.remove('est'); }
+  function markTyped(input){ var t=input.closest('.tile'); if(t&&t.classList.contains('est')&&t.querySelector('.esttag')&&t.querySelector('.esttag').textContent.indexOf('ברירת')>=0) t.classList.remove('est'); }
 
-  var inputs=document.querySelectorAll('input');
-  inputs.forEach(function(inp){
+  function setMode(m){
+    mode=m;
+    $('modeAInputs').hidden = (m!=='A');
+    $('modeBInputs').hidden = (m!=='B');
+    $('modeDeal').classList.toggle('on', m==='A'); $('modeDeal').setAttribute('aria-selected', m==='A');
+    $('modeCapital').classList.toggle('on', m==='B'); $('modeCapital').setAttribute('aria-selected', m==='B');
+    $('computedNote').textContent = (m==='B')
+      ? 'זו עסקת־התקרה שהתנאים שלך מאפשרים — מחושבת, ומוצגת כמו כל עסקה.'
+      : 'מספרים מחושבים — נגזרים מהקלט שלמעלה, לא מוקלדים.';
+    if(m==='B') solveAndApply();
+    render();
+  }
+
+  // wiring
+  document.querySelectorAll('input').forEach(function(inp){
+    if(inp.classList.contains('bcond')) return;
     inp.addEventListener('input', function(){
       if(inp.classList.contains('money')) formatMoneyInput(inp);
       if(inp.type!=='checkbox' && inp.type!=='range') markTyped(inp);
       render();
     });
     inp.addEventListener('change', render);
+  });
+  document.querySelectorAll('.bcond').forEach(function(inp){
+    inp.addEventListener('input', function(){ if(inp.classList.contains('money')) formatMoneyInput(inp); solveAndApply(); render(); });
+    inp.addEventListener('change', function(){ if(inp.id==='bAllowLoan') $('bAllowLoanWrap').classList.toggle('on',$('bAllowLoan').checked); solveAndApply(); render(); });
   });
 
   function graceStyle(){
@@ -526,6 +589,10 @@
   }
   $('graceMort').addEventListener('change',graceStyle);
   $('graceLoan').addEventListener('change',graceStyle);
+
+  $('modeDeal').addEventListener('click', function(){ setMode('A'); });
+  $('modeCapital').addEventListener('click', function(){ setMode('B'); });
+  $('openAsDeal').addEventListener('click', function(){ setMode('A'); window.scrollTo({top:0, behavior:'smooth'}); });
 
   $('pinBtn').addEventListener('click', function(){
     pin=compute(); this.classList.add('active'); this.setAttribute('aria-pressed','true'); this.textContent='📌 מוצמד'; render();
@@ -539,13 +606,8 @@
   $('resetBtn').addEventListener('click', function(){
     Object.keys(DEFAULTS).forEach(function(k){ if($(k)) $(k).value=DEFAULTS[k]; });
     $('graceMort').checked=false; $('graceLoan').checked=false;
-    document.querySelectorAll('.tile').forEach(function(t){ if(t.querySelector('.esttag')) t.classList.add('est'); });
-    formatAll(); graceStyle(); render();
-  });
-
-  $('modeCapital').addEventListener('click', function(){
-    var t=$('modeToast'); t.hidden=false; clearTimeout(t._tmr); t._tmr=setTimeout(function(){ t.hidden=true; },7000);
-    t.scrollIntoView({behavior:'smooth', block:'nearest'});
+    document.querySelectorAll('.tile').forEach(function(t){ var tag=t.querySelector('.esttag'); if(tag&&tag.textContent.indexOf('ברירת')>=0) t.classList.add('est'); });
+    formatAll(); graceStyle(); setMode('A');
   });
 
   function formatAll(){ MONEY.forEach(function(id){ var el=$(id); if(!el) return;
