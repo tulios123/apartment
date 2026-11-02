@@ -124,6 +124,11 @@
   .seg{display:inline-flex; border:1px solid var(--border); border-radius:var(--r-pill); overflow:hidden; margin-inline-start:6px;}
   .seg button{font-family:var(--f); font-size:11px; font-weight:700; border:0; background:var(--bg-alt); color:var(--muted); padding:3px 11px; cursor:pointer;}
   .seg button.on{background:var(--accent); color:#fff;}
+  .stepper{display:inline-flex; flex-direction:column; margin-inline-start:6px;}
+  .stepbtn{font-family:var(--f); border:1px solid var(--border); background:var(--bg-alt); color:var(--muted); cursor:pointer; line-height:1; font-size:9px; padding:2px 7px;}
+  .stepbtn:first-child{border-radius:7px 7px 0 0;}
+  .stepbtn:last-child{border-radius:0 0 7px 7px; border-block-start:0;}
+  .stepbtn:hover{color:var(--accent); border-color:var(--accent);}
 
   .picture{display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:13px;}
   .fig{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:15px 18px; box-shadow:var(--shadow-sm);}
@@ -267,7 +272,7 @@
             <div class="tslide"><b class="num" id="bTargetVal">₪500</b><input class="bcond" type="range" id="bTarget" min="0" max="5000" step="100" value="500"></div></div>
           <div class="tile"><span class="tl">שכר דירה צפוי <span class="esttag">הנחה</span><span class="seg" id="rySeg"><button type="button" data-ry="pct" class="on">אחוז</button><button type="button" data-ry="amt">סכום</button></span></span>
             <span class="tin" id="bYieldWrap"><input class="bcond" type="number" id="bYield" value="5.5" step="0.1" min="1" max="12"><span class="u">%</span></span>
-            <span class="tin" id="bRentWrap" hidden><input class="money bcond" type="text" inputmode="numeric" id="bRentAmt" value="5000"><span class="u">₪</span></span></div>
+            <span class="tin" id="bRentWrap" hidden><input class="money bcond" type="text" inputmode="numeric" id="bRentAmt" value="5000"><span class="u">₪</span><span class="stepper"><button type="button" class="stepbtn" data-for="bRentAmt" data-step="100">▲</button><button type="button" class="stepbtn" data-for="bRentAmt" data-step="-100">▼</button></span></span></div>
         </div>
         <div class="fin-grid" style="margin-top:13px;">
           <div class="fin">
@@ -484,7 +489,7 @@
     var buyCosts=buyCostsSum(), improve=read('improve');
     var maint=read('maint'), insure=read('insure'), manage=read('manage'), vac=read('vacancy')/100;
     var mortRate=read('mortRate')/100, mortYears=read('mortYears'), loanRate=read('loanRate')/100, loanYears=read('loanYears');
-    var best=0, bestRent=0, FLOOR=50000;
+    var best=0, bestRent=0, FLOOR=400000;
     for(var P=FLOOR; P<=6000000; P+=5000){
       var mortP=P*ltv, equity=P*(1-ltv)+buyCosts+improve;
       if(!allowLoan && equity>cash) continue;
@@ -506,6 +511,10 @@
       var mortPf=FLOOR*ltv, eqf=FLOOR*(1-ltv)+buyCosts+improve, loanf=allowLoan?Math.max(0,eqf-cash):0;
       var rentf=rentMode==='amt'?rentAmt:FLOOR*yld/12, runf=maint+insure+manage+rentf*vac;
       var oopf=pmt(mortPf,mortRate,mortYears)+pmt(loanf,loanRate,loanYears)+runf-rentf;
+      $('price').value=Math.round(FLOOR).toLocaleString('he-IL');
+      $('rent').value=Math.round(rentf).toLocaleString('he-IL');
+      $('ltv').value=read('bLTV');
+      $('cash').value=Math.round(cash).toLocaleString('he-IL');
       $('ceilPrice').textContent='—';
       $('ceilSub').innerHTML='אין עסקה שנשארת בתוך ₪'+Math.round(target).toLocaleString('he-IL')+'/חודש. גם עסקה של '+fmt(FLOOR)+' עולה '+fmt(oopf)+' מהכיס לחודש — הגדל את מה שאתה מוכן להוסיף, או ששכר הדירה נמוך מדי.';
     }
@@ -616,6 +625,14 @@
     $('bYieldWrap').hidden = (rentMode!=='pct');
     $('bRentWrap').hidden = (rentMode!=='amt');
     solveAndApply(); render();
+  }); });
+
+  document.querySelectorAll('.stepbtn').forEach(function(b){ b.addEventListener('click', function(){
+    var id=b.getAttribute('data-for'), el=$(id);
+    var nv=Math.max(0, read(id)+parseFloat(b.getAttribute('data-step')));
+    el.value=Math.round(nv).toLocaleString('he-IL');
+    if(/\bbcond\b/.test(el.className)) solveAndApply();
+    render();
   }); });
 
   $('pinBtn').addEventListener('click', function(){
