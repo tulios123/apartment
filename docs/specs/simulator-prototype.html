@@ -116,6 +116,12 @@
   .grace input{accent-color:var(--accent); width:15px; height:15px;}
   .grace.on{color:var(--accent); border-color:var(--accent); background:var(--accent-light); font-weight:700;}
   .ceilbig{font-size:34px; font-weight:800; color:var(--navy); letter-spacing:-.02em; line-height:1.05;}
+  .tslide{display:flex; flex-direction:column; gap:2px;}
+  .tslide b{font-size:26px; font-weight:800; color:var(--navy);}
+  .tslide input[type="range"]{margin-top:5px;}
+  .seg{display:inline-flex; border:1px solid var(--border); border-radius:var(--r-pill); overflow:hidden; margin-inline-start:6px;}
+  .seg button{font-family:var(--f); font-size:11px; font-weight:700; border:0; background:var(--bg-alt); color:var(--muted); padding:3px 11px; cursor:pointer;}
+  .seg button.on{background:var(--accent); color:#fff;}
 
   .picture{display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:13px;}
   .fig{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:15px 18px; box-shadow:var(--shadow-sm);}
@@ -255,8 +261,11 @@
         <div class="blockhead"><span class="step">מה אפשר לעשות עם הכסף שלי</span><h2>קבע תנאים — נמצא את עסקת־התקרה</h2></div>
         <div class="inputs-primary">
           <label class="tile"><span class="tl">כמה כסף יש לך</span><span class="tin"><input class="money bcond" type="text" inputmode="numeric" id="bCash" value="265320"><span class="u">₪</span></span></label>
-          <label class="tile"><span class="tl">כמה מוכן להוסיף מהכיס / חודש <span class="esttag">יעד</span></span><span class="tin"><input class="money bcond" type="text" inputmode="numeric" id="bTarget" value="500"><span class="u">₪</span></span></label>
-          <label class="tile"><span class="tl">תשואת שכירות צפויה <span class="esttag">הנחה</span></span><span class="tin"><input class="bcond" type="number" id="bYield" value="5.5" step="0.1" min="1" max="12"><span class="u">%</span></span></label>
+          <div class="tile"><span class="tl">כמה מוכן להוסיף מהכיס / חודש <span class="esttag">יעד</span></span>
+            <div class="tslide"><b class="num" id="bTargetVal">₪500</b><input class="bcond" type="range" id="bTarget" min="0" max="5000" step="100" value="500"></div></div>
+          <div class="tile"><span class="tl">שכר דירה צפוי <span class="esttag">הנחה</span><span class="seg" id="rySeg"><button type="button" data-ry="pct" class="on">אחוז</button><button type="button" data-ry="amt">סכום</button></span></span>
+            <span class="tin" id="bYieldWrap"><input class="bcond" type="number" id="bYield" value="5.5" step="0.1" min="1" max="12"><span class="u">%</span></span>
+            <span class="tin" id="bRentWrap" hidden><input class="money bcond" type="text" inputmode="numeric" id="bRentAmt" value="5000"><span class="u">₪</span></span></div>
         </div>
         <div class="fin-grid" style="margin-top:13px;">
           <div class="fin">
@@ -399,11 +408,11 @@
 (function(){
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
-  var MONEY = ['price','rent','cash','tax','brokerage','lawyer','fees','registry','advice','escort','appraisal','maint','insure','manage','improve','bCash','bTarget'];
+  var MONEY = ['price','rent','cash','tax','brokerage','lawyer','fees','registry','advice','escort','appraisal','maint','insure','manage','improve','bCash','bRentAmt'];
   var DEFAULTS = {price:1090000, rent:5000, cash:265320, ltv:75, mortYears:30, mortRate:4.8, loanYears:12, loanRate:5,
     tax:0, brokerage:25724, lawyer:6431, fees:1000, registry:50, advice:5900, escort:29500, appraisal:3500,
     maint:200, insure:60, manage:0, vacancy:4, improve:0, appr:0, year:3};
-  var mode='A', pin=null;
+  var mode='A', pin=null, rentMode='pct';
 
   function fmt(n){ var neg=n<0; return (neg?'−':'')+'₪'+Math.round(Math.abs(n)).toLocaleString('he-IL'); }
   function fmtSigned(n){ if(Math.round(n)===0) return '₪0'; return (n>0?'+':'−')+'₪'+Math.round(Math.abs(n)).toLocaleString('he-IL'); }
@@ -468,6 +477,8 @@
   // Mode B: scan prices, find the highest that meets the conditions, then feed the deal engine.
   function solveAndApply(){
     var cash=read('bCash'), target=read('bTarget'), yld=read('bYield')/100, ltv=read('bLTV')/100, allowLoan=$('bAllowLoan').checked;
+    var rentAmt=read('bRentAmt');
+    $('bTargetVal').textContent=fmt(target);
     var buyCosts=buyCostsSum(), improve=read('improve');
     var maint=read('maint'), insure=read('insure'), manage=read('manage'), vac=read('vacancy')/100;
     var mortRate=read('mortRate')/100, mortYears=read('mortYears'), loanRate=read('loanRate')/100, loanYears=read('loanYears');
@@ -476,7 +487,7 @@
       var mortP=P*ltv, equity=P*(1-ltv)+buyCosts+improve;
       if(!allowLoan && equity>cash) continue;
       var loan=allowLoan?Math.max(0,equity-cash):0;
-      var rent=P*yld/12;
+      var rent=rentMode==='amt'?rentAmt:P*yld/12;
       var running=maint+insure+manage+rent*vac;
       var cf=rent-pmt(mortP,mortRate,mortYears)-pmt(loan,loanRate,loanYears)-running;
       if(cf>=-target){ best=P; bestRent=rent; }
@@ -593,6 +604,14 @@
   $('modeDeal').addEventListener('click', function(){ setMode('A'); });
   $('modeCapital').addEventListener('click', function(){ setMode('B'); });
   $('openAsDeal').addEventListener('click', function(){ setMode('A'); window.scrollTo({top:0, behavior:'smooth'}); });
+
+  document.querySelectorAll('#rySeg button').forEach(function(b){ b.addEventListener('click', function(){
+    rentMode=b.getAttribute('data-ry');
+    document.querySelectorAll('#rySeg button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    $('bYieldWrap').hidden = (rentMode!=='pct');
+    $('bRentWrap').hidden = (rentMode!=='amt');
+    solveAndApply(); render();
+  }); });
 
   $('pinBtn').addEventListener('click', function(){
     pin=compute(); this.classList.add('active'); this.setAttribute('aria-pressed','true'); this.textContent='📌 מוצמד'; render();
