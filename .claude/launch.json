@@ -13,6 +13,13 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "preview", "--port", "4173"],
       "port": 4173
+    },
+    {
+      "name": "sim-proto",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4178", "--directory", "docs/specs"],
+      "port": 4178,
+      "url": "http://localhost:4178"
     }
   ]
 }
