@@ -484,8 +484,8 @@
     var buyCosts=buyCostsSum(), improve=read('improve');
     var maint=read('maint'), insure=read('insure'), manage=read('manage'), vac=read('vacancy')/100;
     var mortRate=read('mortRate')/100, mortYears=read('mortYears'), loanRate=read('loanRate')/100, loanYears=read('loanYears');
-    var best=0, bestRent=0;
-    for(var P=100000; P<=6000000; P+=5000){
+    var best=0, bestRent=0, FLOOR=50000;
+    for(var P=FLOOR; P<=6000000; P+=5000){
       var mortP=P*ltv, equity=P*(1-ltv)+buyCosts+improve;
       if(!allowLoan && equity>cash) continue;
       var loan=allowLoan?Math.max(0,equity-cash):0;
@@ -503,8 +503,11 @@
       var eq=best*(1-ltv)+buyCosts+improve, cashUsed=Math.min(cash,eq);
       $('ceilSub').innerHTML='שכ״ד משוער <b>'+fmt(bestRent)+'</b> · הון מהכיס <b>'+fmt(cashUsed)+'</b>';
     } else {
+      var mortPf=FLOOR*ltv, eqf=FLOOR*(1-ltv)+buyCosts+improve, loanf=allowLoan?Math.max(0,eqf-cash):0;
+      var rentf=rentMode==='amt'?rentAmt:FLOOR*yld/12, runf=maint+insure+manage+rentf*vac;
+      var oopf=pmt(mortPf,mortRate,mortYears)+pmt(loanf,loanRate,loanYears)+runf-rentf;
       $('ceilPrice').textContent='—';
-      $('ceilSub').textContent='עם התנאים האלה לא נמצאה עסקה. הגדל תקציב, מינוף, או מה שאתה מוכן להוסיף.';
+      $('ceilSub').innerHTML='אין עסקה שנשארת בתוך ₪'+Math.round(target).toLocaleString('he-IL')+'/חודש. גם עסקה של '+fmt(FLOOR)+' עולה '+fmt(oopf)+' מהכיס לחודש — הגדל את מה שאתה מוכן להוסיף, או ששכר הדירה נמוך מדי.';
     }
   }
 
